@@ -15,12 +15,20 @@ import {
   Loader2,
   User,
   Share2,
-  Trash2
+  Trash2,
+  MoreVertical
 } from 'lucide-react';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -513,260 +521,260 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
-              <CreditCard className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.total)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.total')}</p>
-            </div>
-          </div>
+      <div className="grid grid-cols-4 gap-1.5 text-center select-none">
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('debts.total')}</span>
+          <span className="text-xs font-black text-foreground font-mono whitespace-nowrap">{formatCurrency(stats.total)}</span>
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-warning/10">
-              <Clock className="w-4 h-4 md:w-5 md:h-5 text-warning" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.remaining)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.remaining')}</p>
-            </div>
-          </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-destructive font-medium block truncate">{t('debts.remaining')}</span>
+          <span className="text-xs font-black text-destructive font-mono whitespace-nowrap">{formatCurrency(stats.remaining)}</span>
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-success/10">
-              <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-success" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.paid)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.paid')}</p>
-            </div>
-          </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">{t('debts.paid')}</span>
+          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">{formatCurrency(stats.paid)}</span>
         </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-destructive/10">
-              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-destructive" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatCurrency(stats.overdue)}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('debts.overdue')}</p>
-            </div>
-          </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('debts.overdue')}</span>
+          <span className="text-xs font-black text-orange-600 dark:text-orange-400 font-mono whitespace-nowrap">{formatCurrency(stats.overdue)}</span>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3">
+      <div className="space-y-1.5">
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             type="text"
             placeholder={t('debts.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-9 md:pr-10 bg-muted border-0"
+            className="h-9 pr-9 text-xs bg-card border-border rounded-xl font-medium shadow-xs focus-visible:ring-1 focus-visible:ring-primary"
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px]">
           {filterOptions.map((filter) => (
             <button
               key={filter.key}
               onClick={() => setSelectedFilter(filter.key)}
               className={cn(
-                "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                "px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all text-[11px] shrink-0 shadow-xs border",
                 selectedFilter === filter.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground"
               )}
             >
               {filter.label}
             </button>
           ))}
         </div>
+        <div className="flex items-center justify-between text-muted-foreground text-[10.5px] px-1 font-semibold">
+          <span>قائمة الديون</span>
+          <span className="font-mono">{filteredDebts.length} ديون معروضة</span>
+        </div>
       </div>
 
       {/* Debts List */}
-      <div className="space-y-3 md:space-y-4">
-        {filteredDebts.map((debt, index) => {
-          const status = statusConfig[debt.status];
-          const StatusIcon = status.icon;
-          const progress = (debt.totalPaid / debt.totalDebt) * 100;
+      <div className="space-y-2.5">
+        {filteredDebts.length === 0 ? (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+            <CreditCard className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">لا توجد ديون مطابقة</p>
+          </div>
+        ) : (
+          filteredDebts.map((debt) => {
+            const status = statusConfig[debt.status];
+            const StatusIcon = status.icon;
+            const progress = debt.totalDebt > 0 ? Math.min(100, Math.round((debt.totalPaid / debt.totalDebt) * 100)) : 0;
 
-          return (
-            <div
-              key={debt.id}
-              className="bg-card rounded-xl md:rounded-2xl border border-border p-4 md:p-6 card-hover fade-in"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <div className="flex flex-col gap-4">
-                {/* Customer Info */}
-                <div className="flex items-start gap-3 md:gap-4">
-                  <div className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
-                    <span className="text-base md:text-xl font-bold text-primary-foreground">
-                      {debt.customerName.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-semibold text-foreground text-sm md:text-base">{debt.customerName}</h3>
-                            {debt.pending_sync && (
-                              <Badge variant={debt.sync_failed ? 'destructive' : 'outline'} className={!debt.sync_failed ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : ''}>
-                                {debt.sync_failed ? 'فشل في المزامنة' : 'غير متزامنة'}
-                              </Badge>
-                            )}
-                      <span className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium",
-                        status.color
-                      )}>
-                        <StatusIcon className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                        {status.label}
-                      </span>
-                      {debt.isCashDebt && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium bg-accent/20 text-accent">
-                          {t('debts.cash')}
-                        </span>
+            return (
+              <div
+                key={debt.id}
+                onClick={() => openViewDialog(debt)}
+                className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+              >
+                {/* Top-Left Options Dropdown */}
+                <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted active:scale-90 transition-transform">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-44 text-xs font-bold">
+                      {debt.remainingDebt > 0 && (
+                        <DropdownMenuItem onClick={() => openPaymentDialog(debt)} className="justify-between cursor-pointer">
+                          <span>تسديد دفعة</span>
+                          <DollarSign className="w-4 h-4 text-emerald-600" />
+                        </DropdownMenuItem>
                       )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {debt.customerPhone}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {debt.dueDate}
-                      </span>
-                      {debt.cashierName && (
-                        <span className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded text-[10px] md:text-xs">
-                          <User className="w-3 h-3 text-muted-foreground shrink-0" /> <span>الكاشير: {debt.cashierName}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                      <DropdownMenuItem onClick={() => openViewDialog(debt)} className="justify-between cursor-pointer">
+                        <span>تفاصيل الدين</span>
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShareDebt(debt)} className="justify-between cursor-pointer">
+                        <span>مشاركة كشف الدين</span>
+                        <Share2 className="w-4 h-4 text-muted-foreground" />
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedDebt(debt);
+                          setShowDeleteDialog(true);
+                        }}
+                        className="justify-between text-destructive cursor-pointer"
+                      >
+                        <span>حذف الدين</span>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                {/* Progress */}
-                <div>
-                  <div className="flex items-center justify-between text-xs md:text-sm mb-1.5 md:mb-2">
-                    <span className="text-muted-foreground">{t('debts.progress')}</span>
-                    <span className="font-medium text-foreground">{progress.toFixed(0)}%</span>
+                {/* Header Row: Customer Name & Badges */}
+                <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap">
+                  <span className="font-black text-foreground text-sm truncate">{debt.customerName}</span>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border",
+                    debt.status === 'fully_paid' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                    debt.status === 'overdue' ? "bg-destructive/10 text-destructive border-destructive/20" :
+                    debt.status === 'partially_paid' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                    "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20"
+                  )}>
+                    <StatusIcon className="w-3 h-3" />
+                    <span>{status.label}</span>
+                  </span>
+                  {debt.isCashDebt && (
+                    <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                      سلفة نقدية
+                    </span>
+                  )}
+                  {debt.pending_sync && (
+                    <span className={cn(
+                      "text-[9px] px-1.5 py-0.5 rounded border font-semibold",
+                      debt.sync_failed ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
+                    )}>
+                      {debt.sync_failed ? 'فشل المزامنة' : 'غير متزامنة'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Meta Tags Row */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10.5px]">
+                  <span className="bg-muted text-muted-foreground font-mono px-1.5 py-0.5 rounded font-bold" dir="ltr">
+                    📞 {debt.customerPhone}
+                  </span>
+                  {debt.dueDate && (
+                    <span className="text-muted-foreground font-medium flex items-center gap-1">
+                      📅 استحقاق: <span dir="ltr">{debt.dueDate}</span>
+                    </span>
+                  )}
+                  {debt.invoiceId && (
+                    <span className="bg-muted/70 text-muted-foreground font-mono px-1.5 py-0.5 rounded font-bold">
+                      #{debt.invoiceId}
+                    </span>
+                  )}
+                  {debt.cashierName && (
+                    <span className="text-primary font-bold flex items-center gap-0.5 bg-primary/10 px-1.5 py-0.5 rounded mr-auto">
+                      👤 {debt.cashierName}
+                    </span>
+                  )}
+                </div>
+
+                {/* Progress Line */}
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>نسبة السداد: <b className="text-foreground font-mono">{progress}%</b></span>
+                    <span>الأصل: <b className="text-foreground font-mono">{formatCurrency(debt.totalDebt)}</b></span>
                   </div>
-                  <div className="h-1.5 md:h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-1 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-primary rounded-full transition-all duration-500"
+                      className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] md:text-xs text-muted-foreground mt-1">
-                    <span>{t('debts.paidAmount')}: {formatCurrency(debt.totalPaid)}</span>
-                    <span>{t('debts.totalAmount')}: {formatCurrency(debt.totalDebt)}</span>
-                  </div>
                 </div>
 
-                {/* Amount & Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <div>
-                    <p className="text-xs md:text-sm text-muted-foreground">{t('debts.remainingAmount')}</p>
-                    <p className={cn(
-                      "text-lg md:text-2xl font-bold",
-                      debt.remainingDebt > 0 ? "text-destructive" : "text-success"
+                {/* Financial Box */}
+                <div className="mt-2.5 pt-2 border-t border-dashed border-border flex items-end justify-between">
+                  <div className="text-[10px] text-muted-foreground space-y-0.5">
+                    <div className="font-medium">
+                      المسدد: <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatCurrency(debt.totalPaid)}</span>
+                    </div>
+                  </div>
+                  <div className="text-left whitespace-nowrap shrink-0">
+                    <span className="text-[9.5px] text-muted-foreground block font-sans">المتبقي</span>
+                    <span className={cn(
+                      "text-base font-black font-mono whitespace-nowrap",
+                      debt.remainingDebt > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"
                     )}>
                       {formatCurrency(debt.remainingDebt)}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(debt)}>
-                      <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                      {t('common.view')}
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 md:h-9 text-xs md:text-sm" onClick={() => handleShareDebt(debt)}>
-                      <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                      {t('common.share')}
-                    </Button>
-                    {debt.remainingDebt > 0 && (
-                      <Button size="sm" className="h-8 md:h-9 bg-success hover:bg-success/90 text-xs md:text-sm" onClick={() => openPaymentDialog(debt)}>
-                        <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                        {t('debts.payment')}
-                      </Button>
-                    )}
-                    {/* ✅ زر حذف الدين */}
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 md:h-9 text-xs md:text-sm"
-                      onClick={() => {
-                        setSelectedDebt(debt);
-                        setShowDeleteDialog(true);
-                      }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
-                      {t('common.delete')}
-                    </Button>
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Add Cash Debt Dialog */}
       <Dialog open={showAddDebtDialog} onOpenChange={handleAddDebtDialogChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary" />
-              {t('debts.addCashDebt')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('debts.addDebtWithoutInvoice')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+            <DialogHeader className="p-0 space-y-0.5 text-right">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <span>{t('debts.addCashDebt')}</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mr-10">
+                {t('debts.addDebtWithoutInvoice')}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('debts.customerName')} *</label>
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('debts.customerName')} *</label>
               <div className="relative">
                 <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder={t('debts.customerName')}
                   value={newDebtForm.customerName}
                   onChange={(e) => setNewDebtForm({ ...newDebtForm, customerName: e.target.value })}
-                  className="pr-10"
+                  className="pr-9 h-10 rounded-xl"
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('common.phone')} *</label>
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('common.phone')} *</label>
               <div className="relative">
                 <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="+963 xxx xxx xxx"
                   value={newDebtForm.customerPhone}
                   onChange={(e) => setNewDebtForm({ ...newDebtForm, customerPhone: e.target.value })}
-                  className="pr-10"
+                  className="pr-9 h-10 rounded-xl font-mono text-xs"
+                  dir="ltr"
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('debts.amount')} ($) *</label>
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('debts.amount')} ($) *</label>
               <div className="relative">
                 <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="number"
-                  placeholder="0"
+                  placeholder="0.00"
                   value={newDebtForm.amount || ''}
                   onChange={(e) => setNewDebtForm({ ...newDebtForm, amount: Number(e.target.value) })}
-                  className="pr-10"
+                  className="pr-9 h-10 rounded-xl font-mono text-sm font-bold"
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('debts.dueDate')} *</label>
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('debts.dueDate')} *</label>
               <DatePicker
                 value={newDebtForm.dueDate}
                 onChange={(date) => setNewDebtForm({ ...newDebtForm, dueDate: date })}
@@ -774,22 +782,23 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('common.notes')}</label>
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('common.notes')}</label>
               <Input
                 placeholder={t('debts.notesPlaceholder')}
                 value={newDebtForm.notes}
                 onChange={(e) => setNewDebtForm({ ...newDebtForm, notes: e.target.value })}
+                className="h-10 rounded-xl text-xs"
               />
             </div>
-            <div className="flex gap-3 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => handleAddDebtDialogChange(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button className="flex-1" onClick={handleAddCashDebt}>
-                <Save className="w-4 h-4 ml-2" />
-                {t('common.save')}
-              </Button>
-            </div>
+          </div>
+          <div className="p-3 bg-muted/20 border-t border-border flex gap-2">
+            <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => handleAddDebtDialogChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddCashDebt}>
+              <Save className="w-3.5 h-3.5 ml-1.5" />
+              {t('common.save')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -801,33 +810,37 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
           if (!isSubmitting) setShowPaymentDialog(open);
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-success" />
-              {t('debts.recordPayment')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('debts.recordPaymentFor')} {selectedDebt?.customerName}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+            <DialogHeader className="p-0 space-y-0.5 text-right">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+                <span>{t('debts.recordPayment')}</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mr-10">
+                {t('debts.recordPaymentFor')} <strong className="text-foreground">{selectedDebt?.customerName}</strong>
+              </DialogDescription>
+            </DialogHeader>
+          </div>
           {selectedDebt && (
-            <div className="space-y-4 py-4">
-              <div className="bg-muted rounded-xl p-4">
-                <div className="flex justify-between mb-2">
+            <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+              <div className="bg-muted/40 border border-border/60 rounded-2xl p-3 space-y-2">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
-                  <span className="font-bold">{formatCurrency(selectedDebt.totalDebt)}</span>
+                  <span className="font-bold font-mono">{formatCurrency(selectedDebt.totalDebt)}</span>
                 </div>
-                <div className="flex justify-between mb-2">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">{t('debts.paidSoFar')}</span>
-                  <span className="font-bold text-success">{formatCurrency(selectedDebt.totalPaid)}</span>
+                  <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedDebt.totalPaid)}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t">
-                  <span className="text-muted-foreground">{t('debts.remaining')}</span>
+                <div className="flex justify-between pt-2 border-t border-border/60 text-xs">
+                  <span className="text-muted-foreground font-semibold">{t('debts.remaining')}</span>
                   <div className="text-left">
-                    <span className="font-bold text-destructive block">{formatCurrency(selectedDebt.remainingDebt)}</span>
+                    <span className="font-black font-mono text-sm text-destructive block whitespace-nowrap">{formatCurrency(selectedDebt.remainingDebt)}</span>
                     {paymentCurrency !== 'USD' && (
-                      <span className="text-xs text-muted-foreground block font-mono">
+                      <span className="text-[11px] text-muted-foreground block font-mono">
                         ≈ {formatNumber(maxInCurrency)} {paymentCurrency === 'TRY' ? '₺' : 'ل.س'}
                       </span>
                     )}
@@ -847,15 +860,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       setPaymentAmountInput('');
                     }}
                     className={cn(
-                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                      "min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                       isSubmitting && "opacity-50 cursor-not-allowed",
                       paymentCurrency === 'USD'
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                     )}
                   >
-                    <span className="text-sm font-bold">💵 دولار</span>
-                    <span className="text-xs font-normal opacity-80">(USD)</span>
+                    <span className="text-xs font-bold">💵 دولار</span>
+                    <span className="text-[10px] opacity-80">(USD)</span>
                   </button>
                   <button
                     type="button"
@@ -865,15 +878,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       setPaymentAmountInput('');
                     }}
                     className={cn(
-                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                      "min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                       isSubmitting && "opacity-50 cursor-not-allowed",
                       paymentCurrency === 'TRY'
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                     )}
                   >
-                    <span className="text-sm font-bold">₺ تركي</span>
-                    <span className="text-xs font-normal opacity-80">(TRY)</span>
+                    <span className="text-xs font-bold">₺ تركي</span>
+                    <span className="text-[10px] opacity-80">(TRY)</span>
                   </button>
                   <button
                     type="button"
@@ -883,15 +896,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       setPaymentAmountInput('');
                     }}
                     className={cn(
-                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                      "min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                       isSubmitting && "opacity-50 cursor-not-allowed",
                       paymentCurrency === 'SYP'
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                     )}
                   >
-                    <span className="text-sm font-bold">ل.س سوري</span>
-                    <span className="text-xs font-normal opacity-80">(SYP)</span>
+                    <span className="text-xs font-bold">ل.س سوري</span>
+                    <span className="text-[10px] opacity-80">(SYP)</span>
                   </button>
                 </div>
                 {paymentCurrency !== 'USD' && (
@@ -902,15 +915,14 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 )}
               </div>
 
-
               {/* حقل إدخال المبلغ */}
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-sm font-medium">
+                  <label className="text-xs font-semibold text-muted-foreground">
                     مبلغ الدفعة ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
                   </label>
                   {paymentCurrency !== 'USD' && amountUSD > 0 && (
-                    <span className="text-xs font-bold text-success font-mono">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                       ≈ ${formatNumber(amountUSD)}
                     </span>
                   )}
@@ -922,15 +934,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   onChange={(e) => setPaymentAmountInput(e.target.value)}
                   max={maxInCurrency}
                   step={paymentCurrency === 'USD' ? "0.01" : "1"}
-                  className="text-lg font-bold"
+                  className="text-base font-bold font-mono h-11 rounded-xl"
                   disabled={isSubmitting}
                 />
 
                 {/* المعادل بالدولار إذا كانت العملة أجنبية */}
                 {paymentCurrency !== 'USD' && (
-                  <div className="mt-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">المبلغ المعادل بالدولار المخصوم من الدين:</span>
-                    <span className="font-bold text-primary text-sm font-mono">${formatNumber(amountUSD)}</span>
+                  <div className="mt-2 p-2.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">المبلغ المخصوم من الدين:</span>
+                    <span className="font-bold text-primary font-mono">${formatNumber(amountUSD)}</span>
                   </div>
                 )}
 
@@ -938,7 +950,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-[11px] h-8 rounded-lg font-medium"
                     disabled={isSubmitting}
                     onClick={() => setPaymentAmountInput(String(maxInCurrency))}
                   >
@@ -947,7 +959,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-xs"
+                    className="flex-1 text-[11px] h-8 rounded-lg font-medium"
                     disabled={isSubmitting}
                     onClick={() => setPaymentAmountInput(String(Math.round((maxInCurrency / 2) * 100) / 100))}
                   >
@@ -955,165 +967,177 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   </Button>
                 </div>
               </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isSubmitting}
-                  onClick={() => setShowPaymentDialog(false)}
-                >
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  className="flex-1 bg-success hover:bg-success/90"
-                  onClick={handlePayment}
-                  disabled={isSubmitting || amountUSD <= 0}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                      <span>جاري الدفع...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 ml-2" />
-                      <span>{t('debts.confirmPayment')}</span>
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
           )}
+          <div className="p-3 bg-muted/20 border-t border-border flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-9 rounded-xl text-xs"
+              disabled={isSubmitting}
+              onClick={() => setShowPaymentDialog(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              className="flex-1 h-9 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handlePayment}
+              disabled={isSubmitting || amountUSD <= 0}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />
+                  <span>جاري الدفع...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 ml-1.5" />
+                  <span>{t('debts.confirmPayment')}</span>
+                </>
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5 text-primary" />
-              {t('debts.debtDetails')}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+            <DialogHeader className="p-0 space-y-0.5 text-right">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Eye className="w-4 h-4" />
+                </div>
+                <span>{t('debts.debtDetails')}</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mr-10">
+                تفاصيل دين {selectedDebt?.customerName}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
           {selectedDebt && (
-            <div className="space-y-4 py-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-primary flex items-center justify-center">
-                  <span className="text-xl font-bold text-primary-foreground">
-                    {selectedDebt.customerName.charAt(0)}
+            <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+              <div className="flex items-center gap-3 bg-muted/30 p-3 rounded-2xl border border-border/50">
+                <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-base shrink-0">
+                  {selectedDebt.customerName.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-bold truncate text-foreground">{selectedDebt.customerName}</h3>
+                  <p className="text-xs text-muted-foreground font-mono" dir="ltr">{selectedDebt.customerPhone}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between py-1.5 border-b border-border/50">
+                  <span className="text-muted-foreground">{t('debts.invoiceId')}</span>
+                  <span className="font-semibold font-mono">{selectedDebt.invoiceId}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-border/50">
+                  <span className="text-muted-foreground">{t('debts.createdAt')}</span>
+                  <span className="font-semibold" dir="ltr">
+                    {formatDateTime(new Date(selectedDebt.createdAt))}
                   </span>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold">{selectedDebt.customerName}</h3>
-                  <p className="text-muted-foreground">{selectedDebt.customerPhone}</p>
+                <div className="flex justify-between py-1.5 border-b border-border/50">
+                  <span className="text-muted-foreground">{t('debts.dueDate')}</span>
+                  <span className="font-semibold">{selectedDebt.dueDate}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-border/50">
+                  <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
+                  <span className="font-bold font-mono">{formatCurrency(selectedDebt.totalDebt)}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-border/50">
+                  <span className="text-muted-foreground">{t('debts.paid')}</span>
+                  <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedDebt.totalPaid)}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b border-border/50">
+                  <span className="text-muted-foreground font-bold">{t('debts.remaining')}</span>
+                  <span className="font-black font-mono text-sm text-destructive">{formatCurrency(selectedDebt.remainingDebt)}</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">{t('debts.invoiceId')}</span>
-                    <span className="font-medium font-mono">{selectedDebt.invoiceId}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">{t('debts.createdAt')}</span>
-                    <span className="font-medium" dir="ltr">
-                      {formatDateTime(new Date(selectedDebt.createdAt))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">{t('debts.dueDate')}</span>
-                    <span className="font-medium">{selectedDebt.dueDate}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">{t('debts.totalDebt')}</span>
-                    <span className="font-bold">{formatCurrency(selectedDebt.totalDebt)}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">{t('debts.paid')}</span>
-                    <span className="font-bold text-success">{formatCurrency(selectedDebt.totalPaid)}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">{t('debts.remaining')}</span>
-                    <span className="font-bold text-destructive">{formatCurrency(selectedDebt.remainingDebt)}</span>
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                {!selectedDebt.isCashDebt && (
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-muted-foreground">{t('invoices.products')}:</span>
-                    {isLoadingItems ? (
-                      <div className="py-4 text-center text-sm text-muted-foreground">
-                        Loading items...
-                      </div>
-                    ) : debtItems.length > 0 ? (
-                      <div className="bg-muted rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
-                        {debtItems.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm py-1 border-b border-border/50 last:border-0">
-                            <span>{item.name} <span className="text-muted-foreground">أ—{item.quantity}</span></span>
-                            <span className="font-medium">{formatCurrency(item.total)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="py-2 text-center text-sm text-muted-foreground italic">
-                        No items found
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {selectedDebt.notes && (
-                <div className="bg-muted rounded-lg p-3">
-                  <p className="text-sm text-muted-foreground">{t('common.notes')}:</p>
-                  <p className="text-sm">{selectedDebt.notes}</p>
+              {/* Items Table */}
+              {!selectedDebt.isCashDebt && (
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-xs font-semibold text-muted-foreground">{t('invoices.products')}:</span>
+                  {isLoadingItems ? (
+                    <div className="py-3 text-center text-xs text-muted-foreground">
+                      جاري التحميل...
+                    </div>
+                  ) : debtItems.length > 0 ? (
+                    <div className="bg-muted/40 rounded-xl p-2.5 space-y-1.5 max-h-36 overflow-y-auto border border-border/50">
+                      {debtItems.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-xs py-1 border-b border-border/40 last:border-0">
+                          <span className="truncate max-w-[65%]">{item.name} <span className="text-muted-foreground font-mono">×{item.quantity}</span></span>
+                          <span className="font-bold font-mono shrink-0">{formatCurrency(item.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-2 text-center text-xs text-muted-foreground italic">
+                      لا توجد أصناف
+                    </div>
+                  )}
                 </div>
               )}
 
-              {selectedDebt.remainingDebt > 0 && (
-                <Button
-                  className="w-full bg-success hover:bg-success/90"
-                  onClick={() => {
-                    setShowViewDialog(false);
-                    openPaymentDialog(selectedDebt);
-                  }}
-                >
-                  <DollarSign className="w-4 h-4 ml-2" />
-                  {t('debts.recordPayment')}
-                </Button>
+              {selectedDebt.notes && (
+                <div className="bg-muted/40 rounded-xl p-2.5 border border-border/50">
+                  <p className="text-[11px] text-muted-foreground font-semibold">{t('common.notes')}:</p>
+                  <p className="text-xs text-foreground mt-0.5">{selectedDebt.notes}</p>
+                </div>
               )}
             </div>
           )}
+          <div className="p-3 bg-muted/20 border-t border-border flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-9 rounded-xl text-xs"
+              onClick={() => setShowViewDialog(false)}
+            >
+              {t('common.close') || 'إغلاق'}
+            </Button>
+            {selectedDebt && selectedDebt.remainingDebt > 0 && (
+              <Button
+                className="flex-1 h-9 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => {
+                  setShowViewDialog(false);
+                  openPaymentDialog(selectedDebt);
+                }}
+              >
+                <DollarSign className="w-3.5 h-3.5 ml-1.5" />
+                {t('debts.recordPayment')}
+              </Button>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-destructive" />
-              {t('common.confirmDelete')}
+        <AlertDialogContent className="max-w-md w-[95vw] rounded-3xl p-5 border border-border shadow-2xl modal-dot-expand bg-card">
+          <AlertDialogHeader className="text-right">
+            <AlertDialogTitle className="flex items-center gap-2 text-base font-bold">
+              <div className="w-8 h-8 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <span>{t('common.confirmDelete')}</span>
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-xs text-muted-foreground pt-2">
               {selectedDebt && (
                 <>
-                  ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ط¯ظٹظ† <strong>{selectedDebt.customerName}</strong> ط¨ظ‚ظٹظ…ط© <strong>{formatCurrency(selectedDebt.totalDebt)}</strong>طں
+                  هل أنت متأكد من حذف دين <strong>{selectedDebt.customerName}</strong> بقيمة <strong className="font-mono text-destructive">{formatCurrency(selectedDebt.totalDebt)}</strong>؟
                   <br />
-                  <span className="text-destructive">ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط، ظ„ط§ ظٹظ…ظƒظ† ط§ظ„طھط±ط§ط¬ط¹ ط¹ظ†ظ‡.</span>
+                  <span className="text-destructive font-medium mt-1 block">هذا الإجراء لا يمكن التراجع عنه.</span>
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteGuard.isRunning}>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogFooter className="flex gap-2 pt-3">
+            <AlertDialogCancel disabled={deleteGuard.isRunning} className="flex-1 h-9 rounded-xl text-xs">{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleteGuard.isRunning}
-              className="bg-destructive hover:bg-destructive/90"
+              className="flex-1 h-9 rounded-xl text-xs font-bold bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={() => deleteGuard.run(async () => {
                 if (!selectedDebt) return;
                 const debtSnapshot = selectedDebt;
@@ -1121,7 +1145,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 // Close dialog immediately for responsive UX
                 setShowDeleteDialog(false);
                 setSelectedDebt(null);
-                toast.loading('ط¬ط§ط±ظٹ ط§ظ„ط­ط°ظپ...', { id: toastId });
+                toast.loading('جاري الحذف...', { id: toastId });
                 try {
                   const success = await deleteDebtCloud(debtSnapshot.id);
                   if (success) {
@@ -1137,7 +1161,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 }
               })}
             >
-              {deleteGuard.isRunning ? 'ط¬ط§ط±ظٹ ط§ظ„ط­ط°ظپ...' : t('common.delete')}
+              {deleteGuard.isRunning ? 'جاري الحذف...' : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
