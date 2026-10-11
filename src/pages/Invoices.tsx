@@ -158,11 +158,8 @@ export default function Invoices() {
   const [showDebtPaymentDialog, setShowDebtPaymentDialog] = useState(false);
   const [selectedDebtForPayment, setSelectedDebtForPayment] = useState<Debt | null>(null);
   const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => {
-    if (enabledCurrencies.USD === false) {
-      if (enabledCurrencies.TRY) return 'TRY';
-      if (enabledCurrencies.SYP) return 'SYP';
-    }
-    return 'USD';
+    const defaultCurr = loadDefaultCurrencyCode();
+    return (defaultCurr as 'USD' | 'TRY' | 'SYP') || 'USD';
   });
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);

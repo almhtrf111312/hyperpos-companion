@@ -23,7 +23,7 @@ import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
 import { roundCurrency, addCurrency, formatNumber } from './utils';
-import { addGrossProfit, addOperatingExpense } from './profits-store';
+import { addGrossProfit, addOperatingExpense, removeOperatingExpense } from './profits-store';
 import { withLock, LOCK_RESOURCES } from './transaction-lock';
 import { addToQueue } from './sync-queue';
 
@@ -340,24 +340,37 @@ export const processExpense = (
 };
 
 /**
- * استرداد / عكس مصروف تشغيلي وإعادة المال للصندوق والوردية
+ * استرداد / عكس مصروف تشغيلي وإعادة المال للصندوق والوردية وإلغاء أثره من الأرباح التشغيلية
  */
 export const reverseExpenseTransaction = (
-  expenseId: string,
-  amount: number,
-  expenseType: string
+  expenseIdOrTx: string | { id?: string; reference_id?: string; amount?: number; expense_type?: string; type?: string; currency?: any },
+  amount?: number,
+  expenseType: string = 'other',
+  currency: 'USD' | 'TRY' | 'SYP' = 'USD'
 ): TransactionResult => {
   try {
-    // 1. إعادة المبلغ للوردية الحالية / الصندوق وتخفيض إجمالي المصاريف بالعملة الصحيحة
-    refundExpenseFromShift(roundCurrency(amount), 'USD');
+    const isObj = typeof expenseIdOrTx === 'object' && expenseIdOrTx !== null;
+    const tx = isObj ? expenseIdOrTx : null;
+    const targetId = tx ? (tx.reference_id || tx.id || '') : (typeof expenseIdOrTx === 'string' ? expenseIdOrTx : '');
+    const targetAmount = tx ? Number(amount ?? tx.amount ?? 0) : Number(amount || 0);
+    const targetType = tx ? (expenseType !== 'other' ? expenseType : (tx.expense_type || tx.type || 'other')) : expenseType;
+    const targetCurrency = (tx?.currency || currency || 'USD') as 'USD' | 'TRY' | 'SYP';
 
-    // 2. تسجيل النشاط والحدث المالي
+    // 1. إعادة المبلغ للوردية الحالية / الصندوق بالعملة الفعلية المحددة (وليس نصاً وصفياً)
+    refundExpenseFromShift(roundCurrency(targetAmount), targetCurrency || 'USD');
+
+    // 2. حذف المصروف التشغيلي حتى يتم تصفيره من تقارير المصروفات التشغيلية ولا يظهر في حسابات الأرباح
+    if (targetId) {
+      removeOperatingExpense(targetId);
+    }
+
+    // 3. تسجيل النشاط والحدث المالي
     addActivityLog(
       'expense_refund',
       'system',
       'كاشير',
-      `استرداد مصروف تشغيلي (${expenseType}): +$${formatNumber(amount)}`,
-      { expenseId, amount, type: 'refund' }
+      `استرداد مصروف تشغيلي (${targetType}): +$${formatNumber(targetAmount)}`,
+      { expenseId: targetId, amount: targetAmount, type: 'refund', currency: targetCurrency }
     );
 
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
@@ -373,8 +386,13 @@ export const reverseExpenseTransaction = (
 /**
  * إعادة المبلغ المخصوم إلى رصيد الصندوق والوردية فوراً
  */
-export const restoreExpenseCash = (amount: number, expenseType: string = 'other'): TransactionResult => {
-  return reverseExpenseTransaction('', amount, expenseType);
+export const restoreExpenseCash = (
+  amount: number,
+  expenseType: string = 'other',
+  expenseId: string = '',
+  currency: 'USD' | 'TRY' | 'SYP' = 'USD'
+): TransactionResult => {
+  return reverseExpenseTransaction(expenseId, amount, expenseType, currency);
 };
 
 /**

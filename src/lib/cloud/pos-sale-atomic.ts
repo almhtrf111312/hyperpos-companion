@@ -125,6 +125,7 @@ export async function processPosSaleAtomic(
       _down_payment: paymentType === 'debt'
         ? Math.max(0, Math.min(Number(bundle.downPayment || 0), Number(bundle.total || 0)))
         : 0,
+      _exchange_rate: Number((bundle as any).exchangeRate) || null,
     });
 
     if (error) {
@@ -137,12 +138,6 @@ export async function processPosSaleAtomic(
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.success || !row.invoice_id || !row.invoice_number) {
       throw new Error('Atomic sale returned an invalid result');
-    }
-
-    // ✅ حفظ سعر الصرف الفعلي للفاتورة في السحابة
-    const actualExchangeRate = Number((bundle as any).exchangeRate) || 1;
-    if (actualExchangeRate > 0 && actualExchangeRate !== 1) {
-      sb.from('invoices').update({ exchange_rate: actualExchangeRate }).eq('id', row.invoice_id).then?.(() => {}).catch?.(() => {});
     }
 
     invalidateInvoicesCache();

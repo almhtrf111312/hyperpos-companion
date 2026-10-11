@@ -349,8 +349,8 @@ export default function Expenses() {
       // 1. استدعاء السحابة لتعليم المصروف كمسترد مع السبب
       await reverseExpenseCloud(reversedId, 'تراجع بواسطة المستخدم');
 
-      // 2. إعادة المبلغ المخصوم إلى رصيد الصندوق فوراً
-      restoreExpenseCash(reversedAmount, reversedType);
+      // 2. إعادة المبلغ المخصوم إلى رصيد الصندوق فوراً وحذف المصروف التشغيلي من الأرباح
+      restoreExpenseCash(reversedAmount, reversedType, reversedId, (expense.currency as any) || 'USD');
 
       // 3. تحديث البيانات محلياً
       const [expensesData, statsData] = await Promise.all([
