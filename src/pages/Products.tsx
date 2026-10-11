@@ -495,7 +495,9 @@ export default function Products() {
     } catch (error) {
       console.warn('Error refreshing products from cloud:', error);
     } finally {
-      setIsLoading(false);
+      if (!isBackground) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -525,18 +527,29 @@ export default function Products() {
       .filter(item => item.quantity > 0);
   }, [warehouses, warehouseStocks]);
 
-  // Load archived products from cloud
-  const loadArchivedData = useCallback(async () => {
-    setIsArchiveLoading(true);
+  // Load archived products from cloud (supports background silent load)
+  const loadArchivedData = useCallback(async (isBackground = false) => {
+    if (!isBackground) {
+      setIsArchiveLoading(true);
+    }
     try {
       const archived = await loadArchivedProductsCloud();
       setArchivedProducts(archived);
     } catch (err) {
       console.warn('[Products] Error loading archived products:', err);
     } finally {
-      setIsArchiveLoading(false);
+      if (!isBackground) {
+        setIsArchiveLoading(false);
+      }
     }
   }, []);
+
+  // تتبع ما إذا كانت أي نافذة تفاعلية مفتوحة لمنع مقاطعة المستخدم أثناء العمل
+  const isAnyProductModalOpenRef = useRef(false);
+  isAnyProductModalOpenRef.current = Boolean(
+    showAddDialog || showEditDialog || showDeleteDialog || showRestockDialog || showPurchaseInvoiceDialog || showHardDeleteDialog
+  );
+  const pendingProductRefreshRef = useRef(false);
 
   // Memory leak prevention - proper cleanup for storage events
   useEffect(() => {
@@ -544,10 +557,23 @@ export default function Products() {
     loadArchivedData();
 
     const handleProductsUpdated = () => {
-      loadData();
-      loadArchivedData();
+      // 🛡️ إذا كانت هناك نافذة مفتوحة تفاعلية (إضافة/تعديل/توريد)، نؤجل التحديث حتى تغلق
+      if (isAnyProductModalOpenRef.current) {
+        pendingProductRefreshRef.current = true;
+        return;
+      }
+      // 🚀 تحديث صامت في الخلفية دائماً لتجنب الوميض وفقدان التركيز أو التمرير
+      loadData(true);
+      loadArchivedData(true);
     };
-    const handleCategoriesUpdated = () => loadData();
+
+    const handleCategoriesUpdated = () => {
+      if (isAnyProductModalOpenRef.current) {
+        pendingProductRefreshRef.current = true;
+        return;
+      }
+      loadData(true);
+    };
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
@@ -557,6 +583,16 @@ export default function Products() {
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
     };
   }, [loadData, loadArchivedData]);
+
+  // تنفيذ أي تحديث مؤجل عند إغلاق النوافذ المنبثقة
+  useEffect(() => {
+    const isAnyOpen = showAddDialog || showEditDialog || showDeleteDialog || showRestockDialog || showPurchaseInvoiceDialog || showHardDeleteDialog;
+    if (!isAnyOpen && pendingProductRefreshRef.current) {
+      pendingProductRefreshRef.current = false;
+      loadData(true);
+      loadArchivedData(true);
+    }
+  }, [showAddDialog, showEditDialog, showDeleteDialog, showRestockDialog, showPurchaseInvoiceDialog, showHardDeleteDialog, loadData, loadArchivedData]);
 
   // Auto-open add dialog from URL params
   // ✅ يُنفَّذ مرة واحدة فقط لكل طلب فتح، حتى لا يُمسح ما يكتبه المستخدم عند تحديث الفئات

@@ -192,10 +192,8 @@ export default function POS() {
   const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ✅ استعادة حالة السلة المفتوحة عند العودة للتطبيق
-  const [cartOpen, setCartOpen] = useState(() => {
-    try { return localStorage.getItem(CART_OPEN_KEY) === '1'; } catch { return false; }
-  });
+  // تبدأ السلة مغلقة دائماً عند تشغيل الشاشة / التطبيق
+  const [cartOpen, setCartOpen] = useState(false);
 
   const [activeMode, setActiveMode] = useState<'products' | 'maintenance'>('products');
   const hideMaintenanceSection = loadHideMaintenanceSetting();
@@ -305,14 +303,17 @@ export default function POS() {
     }
   }, []);
 
-  // ✅ حفظ حالة فتح السلة في localStorage واستعادتها بأمان دون التسبب بإشعار خروج غير مرغوب
+  // ✅ حفظ حالة فتح السلة في sessionStorage للجلسة الحية فقط دون التخزين الدائم
   const handleSetCartOpen = useCallback((open: boolean) => {
     if (open) {
       if (!cartOpen) {
         window.history.pushState({ posCartOpen: true }, '');
       }
       setCartOpen(true);
-      try { localStorage.setItem(CART_OPEN_KEY, '1'); } catch { }
+      try {
+        sessionStorage.setItem(CART_OPEN_KEY, '1');
+        localStorage.removeItem(CART_OPEN_KEY);
+      } catch { }
     } else {
       // 🛡️ كبت إشعار الخروج لمدة ثانيتين عند إغلاق السلة برمجياً
       (window as any).__posSuppressExitUntil = Date.now() + 2000;
@@ -320,7 +321,10 @@ export default function POS() {
         window.history.replaceState(null, '');
       }
       setCartOpen(false);
-      try { localStorage.setItem(CART_OPEN_KEY, '0'); } catch { }
+      try {
+        sessionStorage.setItem(CART_OPEN_KEY, '0');
+        localStorage.removeItem(CART_OPEN_KEY);
+      } catch { }
     }
   }, [cartOpen]);
 
@@ -329,7 +333,10 @@ export default function POS() {
       if (cartOpenRef.current) {
         (window as any).__posSuppressExitUntil = Date.now() + 2000;
         setCartOpen(false);
-        try { localStorage.setItem(CART_OPEN_KEY, '0'); } catch { }
+        try {
+          sessionStorage.setItem(CART_OPEN_KEY, '0');
+          localStorage.removeItem(CART_OPEN_KEY);
+        } catch { }
       }
     };
     window.addEventListener('popstate', handlePopState, true);
@@ -351,7 +358,10 @@ export default function POS() {
           localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(currentCart));
           console.log('[POS] App going background, saved cart:', currentCart.length);
         }
-        localStorage.setItem(CART_OPEN_KEY, cartOpenRef.current ? '1' : '0');
+        try {
+          sessionStorage.setItem(CART_OPEN_KEY, cartOpenRef.current ? '1' : '0');
+          localStorage.removeItem(CART_OPEN_KEY);
+        } catch { }
       } else {
         // استعادة عند العودة دون إعادة طلب سحابي
         restoreCart();
@@ -363,9 +373,9 @@ export default function POS() {
             setPendingScan(pending);
           }
         } catch { }
-        // ✅ استعادة حالة السلة المفتوحة
+        // ✅ استعادة حالة السلة المفتوحة فقط أثناء الجلسة الحية (sessionStorage)
         try {
-          const wasOpen = localStorage.getItem(CART_OPEN_KEY) === '1';
+          const wasOpen = sessionStorage.getItem(CART_OPEN_KEY) === '1';
           if (wasOpen) {
             setCartOpen(true);
           }

@@ -92,11 +92,12 @@ const AppContent = () => {
     saveLastRoute(location.pathname + location.search);
   }, [location]);
 
-  // تفريغ السلة من التخزين المحلي عند تشغيل التطبيق بالكامل (Cold Start)
+  // تفريغ السلة وحالتها من التخزين عند تشغيل التطبيق بالكامل (Cold Start) لضمان بدء السلة مغلقة دائماً
   useEffect(() => {
     try {
       localStorage.removeItem('hyperpos_temp_cart');
       localStorage.removeItem('hyperpos_cart_open');
+      sessionStorage.removeItem('hyperpos_cart_open');
       localStorage.removeItem('hyperpos_cart_customer');
       localStorage.removeItem('hyperpos_cart_discount');
     } catch (e) {

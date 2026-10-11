@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -285,27 +285,76 @@ export default function Invoices() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Load invoices with proper cleanup
-  useEffect(() => {
-    const loadData = async () => {
+  // Load invoices with proper cleanup & silent background updates
+  const isAnyModalOpenRef = useRef(false);
+  isAnyModalOpenRef.current = Boolean(showViewDialog || showShareSheet || showRefundDialog || showDebtPaymentDialog);
+
+  const selectedInvoiceRef = useRef<Invoice | null>(null);
+  selectedInvoiceRef.current = selectedInvoice;
+
+  const pendingUpdateRef = useRef(false);
+  const isRefreshingRef = useRef(false);
+
+  const loadData = useCallback(async (isSilent = false) => {
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
+    if (!isSilent) {
       setIsLoading(true);
+    }
+    try {
       const [invoicesData, statsData] = await Promise.all([
         loadInvoicesCloud(),
         getInvoiceStatsCloud()
       ]);
       setInvoices(invoicesData);
       setStats(statsData);
-      setIsLoading(false);
-    };
-    loadData();
 
-    const handleUpdate = () => loadData();
+      // تحديث بيانات الفاتورة المحددة بصمت إذا كانت معروضة دون إغلاق النافذة
+      if (selectedInvoiceRef.current) {
+        const currentId = selectedInvoiceRef.current.id;
+        const freshSelected = invoicesData.find(i => i.id === currentId);
+        if (freshSelected) {
+          setSelectedInvoice(freshSelected);
+        }
+      }
+    } catch (err) {
+      console.warn('[Invoices] Error loading invoices:', err);
+    } finally {
+      if (!isSilent) {
+        setIsLoading(false);
+      }
+      isRefreshingRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData(false);
+
+    const handleUpdate = () => {
+      // 🛡️ إذا كانت هناك نافذة تفاعلية مفتوحة (عرض، مشاركة، استرداد، سداد)، نؤجل التحديث حتى تغلق
+      if (isAnyModalOpenRef.current) {
+        pendingUpdateRef.current = true;
+        return;
+      }
+      // 🚀 تحديث صامت في الخلفية دائماً عند وصول أحداث التحديث لمنع وميض الشاشة أو تصفير التمرير
+      loadData(true);
+    };
+
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
 
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     };
-  }, []);
+  }, [loadData]);
+
+  // تنفيذ أي تحديث مؤجل بمجرد إغلاق كافة النوافذ المنبثقة
+  useEffect(() => {
+    const isAnyOpen = showViewDialog || showShareSheet || showRefundDialog || showDebtPaymentDialog;
+    if (!isAnyOpen && pendingUpdateRef.current) {
+      pendingUpdateRef.current = false;
+      loadData(true);
+    }
+  }, [showViewDialog, showShareSheet, showRefundDialog, showDebtPaymentDialog, loadData]);
 
   // Memoized filtered invoices for performance
   // Refunded invoices appear only in the "فواتير مستردة" view (full or partial refunds)

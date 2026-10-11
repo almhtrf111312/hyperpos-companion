@@ -62,7 +62,7 @@ export function ExitConfirmDialog() {
               return;
             }
 
-            if (localStorage.getItem('hyperpos_cart_open') === '1') {
+            if (sessionStorage.getItem('hyperpos_cart_open') === '1' || localStorage.getItem('hyperpos_cart_open') === '1') {
               return;
             }
 
@@ -95,6 +95,7 @@ export function ExitConfirmDialog() {
       if (
         event.state?.posCartOpen ||
         window.history.state?.posCartOpen ||
+        sessionStorage.getItem('hyperpos_cart_open') === '1' ||
         localStorage.getItem('hyperpos_cart_open') === '1' ||
         document.querySelector('[data-state="open"], [role="dialog"], [role="alertdialog"]')
       ) {
