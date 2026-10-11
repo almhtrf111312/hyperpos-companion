@@ -2040,7 +2040,7 @@ html { font-size: 14px; }
 @keyframes laserSheetUp {
   from {
     transform: translateY(100%);
-    box-shadow: 0 -4px 18px rgba(245, 158, 11, 0.35);
+    box-shadow: 0 -4px 18px hsl(var(--primary) / 0.35);
   }
   to {
     transform: translateY(0);
@@ -2062,7 +2062,7 @@ html { font-size: 14px; }
 
 .bottom-sheet-content[data-state="open"],
 [data-state="open"].bottom-sheet-content {
-  animation: sheetUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: sheetUp 0.20s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 .bottom-sheet-content[data-state="closed"],
@@ -2072,7 +2072,7 @@ html { font-size: 14px; }
 
 .laser-sheet-content[data-state="open"],
 [data-state="open"].laser-sheet-content {
-  animation: laserSheetUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: laserSheetUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 .laser-sheet-content[data-state="closed"],
@@ -2080,10 +2080,10 @@ html { font-size: 14px; }
   animation: sheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
 }
 
-/* 3. Laser Lead Line */
+/* 3. Laser Lead Line (Dynamic Scene Primary Token) */
 .laser-lead-line {
-  background: linear-gradient(90deg, transparent 0%, #f59e0b 50%, transparent 100%);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 3px #ffffff;
+  background: linear-gradient(90deg, transparent 0%, hsl(var(--primary)) 50%, transparent 100%);
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.8), 0 0 3px #ffffff;
   animation: laserSweep 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform-origin: center;
 }

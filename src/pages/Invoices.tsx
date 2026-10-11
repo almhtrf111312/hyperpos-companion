@@ -1341,379 +1341,346 @@ export default function Invoices() {
 
       <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
         <TabsContent value="sales" className="space-y-3 m-0">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Card className="rounded-lg">
-          <CardContent className="p-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 rounded-md bg-primary/10 shrink-0">
-                <FileText className="w-4 h-4 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.totalInvoices')}</p>
-                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums">{stats.total}</p>
-              </div>
+          {/* Compact Stats Strip (Compressed 4-Metric Grid saving significant vertical space) */}
+          <div className="grid grid-cols-4 gap-1.5 text-center select-none">
+            {/* إجمالي الفواتير */}
+            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">إجمالي الفواتير</span>
+              <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-lg">
-          <CardContent className="p-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 rounded-md bg-success/10 shrink-0">
-                <DollarSign className="w-4 h-4 text-success" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.todaySales')}</p>
-                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all">
-                  {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
-                </p>
-                {statCurrencyCode !== 'USD' && enabledCurrencies.USD !== false && (
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    (${formatNumber(stats.todaySales, 2)})
-                  </p>
-                )}
-              </div>
+            {/* مؤجلة معلقة */}
+            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+              <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">مؤجلة معلقة</span>
+              <span className="text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums">{stats.pendingDebts}</span>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-lg">
-          <CardContent className="p-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 rounded-md bg-warning/10 shrink-0">
-                <CreditCard className="w-4 h-4 text-warning" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.pendingDebts')}</p>
-                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums">{stats.pendingDebts}</p>
-              </div>
+            {/* مبيعات اليوم */}
+            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">مبيعات اليوم</span>
+              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
+                {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
+              </span>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-lg">
-          <CardContent className="p-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 rounded-md bg-accent/10 shrink-0">
-                <Banknote className="w-4 h-4 text-accent" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.totalProfit')}</p>
-                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all text-success">
-                  {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
-                </p>
-                {statCurrencyCode !== 'USD' && enabledCurrencies.USD !== false && (
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    (${formatNumber(stats.totalProfit, 2)})
-                  </p>
-                )}
-              </div>
+            {/* إجمالي الأرباح */}
+            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">إجمالي الأرباح</span>
+              <span className="text-xs font-black text-primary font-mono whitespace-nowrap">
+                {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
+              </span>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
 
-      {/* Filters */}
-      <div className="space-y-1.5">
-        <div className="relative">
-          <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input
-            placeholder={t('invoices.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9 pr-8 text-sm"
-          />
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-          <div className="min-w-0 space-y-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground">نوع الفاتورة</span>
-            <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
-              <SelectTrigger className="h-8 px-2 text-[11px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل الأنواع</SelectItem>
-                <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
-                <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground">طريقة البيع</span>
-            <Select value={filterPayment} onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}>
-              <SelectTrigger className="h-8 px-2 text-[11px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">نقدي ومؤجل</SelectItem>
-                <SelectItem value="cash">نقدي</SelectItem>
-                <SelectItem value="debt">بيع مؤجل</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground">التاريخ</span>
-            <div className="flex items-center gap-1 min-w-0">
-              <DatePicker
-                value={dateFilter}
-                onChange={setDateFilter}
-                placeholder="كل التواريخ"
-                className="w-full min-w-0 h-8 px-2 text-[11px] gap-1 [&_svg]:size-3"
-                highlightedDates={salesInvoiceDates}
+          {/* Filters */}
+          <div className="space-y-1.5">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="بحث بالاسم أو رقم الفاتورة..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 pr-9 text-xs bg-card border-border rounded-xl font-medium shadow-xs focus-visible:ring-1 focus-visible:ring-primary"
               />
-              {dateFilter && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setDateFilter('')}>
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="min-w-0">
+                <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
+                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder="نوع الفاتورة" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">كل الأنواع</SelectItem>
+                    <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
+                    <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0">
+                <Select value={filterPayment} onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}>
+                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder="طريقة البيع" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">نقدي ومؤجل</SelectItem>
+                    <SelectItem value="cash">نقدي</SelectItem>
+                    <SelectItem value="debt">بيع مؤجل</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0">
+                <Select value={displayCurrencyFilter} onValueChange={(v: any) => setDisplayCurrencyFilter(v)}>
+                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder="عملة العرض" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stored">حسب الفاتورة</SelectItem>
+                    {enabledCurrencies.TRY && <SelectItem value="TRY">₺ ليرة تركية</SelectItem>}
+                    {enabledCurrencies.SYP && <SelectItem value="SYP">ل.س ليرة سورية</SelectItem>}
+                    {enabledCurrencies.USD !== false && <SelectItem value="USD">$ دولار أمريكي</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0 flex items-center gap-1">
+                <DatePicker
+                  value={dateFilter}
+                  onChange={setDateFilter}
+                  placeholder="كل التواريخ"
+                  className="w-full min-w-0 h-8 px-2 text-[11px] bg-card border-border rounded-xl gap-1 [&_svg]:size-3"
+                  highlightedDates={salesInvoiceDates}
+                />
+                {dateFilter && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setDateFilter('')}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Slim فواتير مستردة Strip & Counter */}
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={() => setShowRefunded(v => !v)}
+                className={cn(
+                  "rounded-xl border py-1.5 px-3 flex items-center gap-2 text-[11px] font-bold transition-all shadow-xs select-none",
+                  showRefunded
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                <span>فواتير مستردة</span>
+                <span className={cn(
+                  "text-[9px] px-1.5 py-0.2 rounded-full font-bold",
+                  showRefunded ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                )}>
+                  {invoices.filter(i => i.status === 'refunded').length}
+                </span>
+              </button>
+
+              <span className="text-muted-foreground text-[10.5px] font-semibold">
+                {filteredInvoices.length} فواتير معروضة
+              </span>
             </div>
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <span className="text-[10px] font-medium text-muted-foreground">عملة العرض</span>
-            <Select value={displayCurrencyFilter} onValueChange={(v: any) => setDisplayCurrencyFilter(v)}>
-              <SelectTrigger className="h-8 px-2 text-[11px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="stored">حسب الفاتورة</SelectItem>
-                {enabledCurrencies.TRY && <SelectItem value="TRY">₺ ليرة تركية</SelectItem>}
-                {enabledCurrencies.SYP && <SelectItem value="SYP">ل.س ليرة سورية</SelectItem>}
-                {enabledCurrencies.USD !== false && <SelectItem value="USD">$ دولار أمريكي</SelectItem>}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-0 space-y-0.5 col-span-2 sm:col-span-1">
-            <span className="text-[10px] font-medium text-muted-foreground">المرتجعات</span>
-            <Button
-              type="button"
-              variant={showRefunded ? 'default' : 'outline'}
-              className="h-8 w-full gap-1 px-1 text-[11px] [&_svg]:size-3"
-              onClick={() => setShowRefunded(v => !v)}
-            >
-              <Undo2 className="w-3 h-3" />
-              فواتير مستردة
-            </Button>
-          </div>
-        </div>
-      </div>
 
-      {/* Invoices List */}
-      <div className="space-y-3">
-        {isLoading ? (
-          // Skeleton loading state
-          [1, 2, 3, 4, 5].map(i => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 flex-1">
-                    <Skeleton className="w-10 h-10 rounded-lg" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-24" />
+          {/* Invoices List */}
+          <div className="space-y-2.5">
+            {isLoading ? (
+              // Skeleton loading state
+              [1, 2, 3, 4, 5].map(i => (
+                <Card key={i} className="rounded-2xl border-border bg-card">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <Skeleton className="w-9 h-9 rounded-xl" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-6 w-20" />
-                    <Skeleton className="h-10 w-10 rounded" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : filteredInvoices.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">{t('invoices.noInvoices')}</p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredInvoices.map((invoice) => {
-            const financials = getInvoiceFinancials(invoice);
-            const invUsdTotal = invoice.total || 0;
-            const invUsdProfit = financials.baseProfit || 0;
+                  </CardContent>
+                </Card>
+              ))
+            ) : filteredInvoices.length === 0 ? (
+              <Card className="rounded-2xl border-border bg-card">
+                <CardContent className="p-8 text-center">
+                  <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">{t('invoices.noInvoices')}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredInvoices.map((invoice) => {
+                const financials = getInvoiceFinancials(invoice, true);
+                const invUsdTotal = invoice.total || 0;
+                const invUsdProfit = financials.baseProfit || 0;
+                const invUpper = (invoice.currency || 'USD').toUpperCase();
 
-            const altCode = financials.code !== 'USD'
-              ? null
-              : ((invoice.currency && invoice.currency !== 'USD')
-                  ? (invoice.currency as 'TRY' | 'SYP')
-                  : (currencyCode !== 'USD'
-                      ? (currencyCode as 'TRY' | 'SYP')
-                      : (enabledCurrencies.TRY ? 'TRY' : (enabledCurrencies.SYP ? 'SYP' : null))));
+                // Rates for secondary currencies
+                const tryRate = (invUpper === 'TRY' && typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 1)
+                  ? invoice.exchangeRate
+                  : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
 
-            const altRate = altCode === 'TRY' ? financials.tryRate : (altCode === 'SYP' ? financials.sypRate : 1);
-            const altSymbol = altCode === 'TRY' ? '₺' : (altCode === 'SYP' ? 'ل.س' : '$');
-            const altDecimals = altCode === 'SYP' ? 0 : 2;
-            const altTotal = roundCurrency(invUsdTotal * altRate);
-            const altProfit = roundCurrency(invUsdProfit * altRate);
+                const sypRate = (invUpper === 'SYP' && typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 1)
+                  ? invoice.exchangeRate
+                  : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
 
-            return (
-            <Card key={invoice.id} className="hover:shadow-md transition-all cursor-pointer active:scale-[0.99]" onClick={() => handleView(invoice)}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                      invoice.type === 'sale' ? "bg-primary/10" : "bg-warning/10"
-                    )}>
-                      {invoice.type === 'sale' ? (
-                        <ShoppingCart className="w-5 h-5 text-primary" />
+                // Primary display total & currency
+                let primaryTotalVal = invUsdTotal;
+                let primarySymbol = '$';
+                let primaryDecimals = 2;
+
+                if (invUpper === 'SYP') {
+                  primaryTotalVal = roundCurrency(invUsdTotal * sypRate);
+                  primarySymbol = 'ل.س';
+                  primaryDecimals = 0;
+                } else if (invUpper === 'TRY') {
+                  primaryTotalVal = roundCurrency(invUsdTotal * tryRate);
+                  primarySymbol = '₺';
+                  primaryDecimals = 2;
+                }
+
+                // Equivalent tags:
+                const tag1 = invUpper === 'SYP' || invUpper === 'TRY'
+                  ? { text: `($${formatNumber(invUsdTotal, 2)})`, class: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" }
+                  : (enabledCurrencies.TRY ? { text: `${formatCurrency(invUsdTotal * tryRate, '₺', 2)}`, class: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" } : null);
+
+                const tag2 = invUpper === 'SYP'
+                  ? (enabledCurrencies.TRY ? { text: `${formatCurrency(invUsdTotal * tryRate, '₺', 2)}`, class: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" } : null)
+                  : (invUpper === 'TRY'
+                      ? (enabledCurrencies.SYP ? { text: `${formatCurrency(invUsdTotal * sypRate, 'ل.س', 0)}`, class: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" } : null)
+                      : (enabledCurrencies.SYP ? { text: `${formatCurrency(invUsdTotal * sypRate, 'ل.س', 0)}`, class: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" } : null));
+
+                const itemCount = invoice.items?.filter(it => !it.refunded && it.quantity > 0).length || 0;
+
+                return (
+                  <div
+                    key={invoice.id}
+                    onClick={() => handleView(invoice)}
+                    className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+                  >
+                    {/* Top-Left Options Button */}
+                    <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted active:scale-90 transition-transform">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-44 text-xs font-bold">
+                          <DropdownMenuItem onClick={() => handleView(invoice)} className="justify-between cursor-pointer">
+                            <span>عرض</span>
+                            <Eye className="w-4 h-4 text-muted-foreground" />
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShare(invoice)} className="justify-between cursor-pointer">
+                            <span>مشاركة</span>
+                            <Share2 className="w-4 h-4 text-muted-foreground" />
+                          </DropdownMenuItem>
+                          {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handlePayDebt(invoice)} className="justify-between cursor-pointer">
+                                <span>تسديد دفعة</span>
+                                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMarkPaid(invoice)} className="justify-between cursor-pointer">
+                                <span>{t('invoices.markAsPaid')}</span>
+                                <Check className="w-4 h-4 text-muted-foreground" />
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {invoice.status !== 'refunded' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleRefund(invoice)} className="justify-between text-destructive cursor-pointer">
+                                <span>استرداد الفاتورة</span>
+                                <Undo2 className="w-4 h-4 text-destructive" />
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Card Header Row (Customer & Badges) */}
+                    <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap">
+                      <span className="font-black text-foreground text-sm truncate">{invoice.customerName}</span>
+                      {invoice.paymentType === 'cash' ? (
+                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                          {t('invoices.cash')}
+                        </span>
                       ) : (
-                        <Wrench className="w-5 h-5 text-warning" />
+                        <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                          {t('invoices.credit')}
+                        </span>
+                      )}
+                      {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
+                        invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
+                          <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[9.5px] font-bold px-1.5 py-0.5 rounded">
+                            مدفوع جزئياً
+                          </span>
+                        ) : (
+                          <span className="bg-destructive text-destructive-foreground text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">
+                            {t('invoices.unpaid')}
+                          </span>
+                        )
+                      )}
+                      {invoice.status === 'refunded' && (
+                        <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[9.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <Undo2 className="w-3 h-3" />
+                          مسترجعة
+                        </span>
+                      )}
+                      {refundMeta[invoice.id] && (
+                        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border">
+                          {refundMeta[invoice.id].condition === 'damaged' ? 'معيب' : 'سليم'}
+                        </span>
+                      )}
+                      {invoice.pending_sync && (
+                        <span className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded border font-semibold",
+                          invoice.sync_failed ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
+                        )}>
+                          {invoice.sync_failed ? 'فشل المزامنة' : 'غير متزامنة'}
+                        </span>
                       )}
                     </div>
-                    <div className="flex flex-col justify-start items-start gap-1.5 flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold truncate">{invoice.customerName}</span>
-                        <Badge variant={invoice.paymentType === 'cash' ? 'default' : 'secondary'}>
-                          {invoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
-                        </Badge>
-                          {invoice.pending_sync && (
-                            <Badge variant={invoice.sync_failed ? 'destructive' : 'outline'} className={!invoice.sync_failed ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : ''}>
-                              {invoice.sync_failed ? '\u0641\u0634\u0644 \u0641\u064A \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629' : '\u063A\u064A\u0631 \u0645\u062A\u0632\u0627\u0645\u0646\u0629'}
-                            </Badge>
-                          )}
-                        {invoice.status === 'refunded' && (
-                          <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">
-                            <Undo2 className="w-3 h-3 ml-1" />
-                            مسترجعة
-                          </Badge>
-                        )}
-                        {refundMeta[invoice.id] && (
-                          <Badge variant={refundMeta[invoice.id].condition === 'damaged' ? 'destructive' : 'outline'} className="text-[10px]">
-                            {refundMeta[invoice.id].condition === 'damaged' ? 'معيب' : 'سليم'} • {new Date(refundMeta[invoice.id].at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
-                          </Badge>
-                        )}
-                        {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
-                          invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
-                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
-                              مدفوع جزئياً
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive">{t('invoices.unpaid')}</Badge>
-                          )
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                        <span className="bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md">{invoice.id}</span>
-                        <span className="bg-muted/50 border border-border/50 px-1.5 py-0.5 rounded-md">{formatDateTime(new Date(invoice.createdAt))}</span>
-                        {invoice.cashierName && (
-                          <span className="flex items-center gap-1 bg-muted/80 border border-border/50 px-1.5 py-0.5 rounded-md">
-                            👤 {invoice.cashierName}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="text-left whitespace-nowrap">
-                      <div className="flex flex-col items-end">
-                        {financials.code !== 'USD' ? (
+                    {/* Meta Tags (Number, Date, Cashier, Item Count) */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10.5px]">
+                      <span className="bg-muted text-muted-foreground font-mono px-1.5 py-0.5 rounded font-bold">
+                        {invoice.id}
+                      </span>
+                      <span className="text-muted-foreground font-medium" dir="ltr">
+                        {formatDateTime(new Date(invoice.createdAt))}
+                      </span>
+                      {invoice.cashierName && (
+                        <span className="text-primary font-bold flex items-center gap-0.5 bg-primary/10 px-1.5 py-0.5 rounded">
+                          👤 {invoice.cashierName}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground text-[10px] flex items-center gap-1 mr-auto font-medium">
+                        <span>🛒</span>
+                        <span>{itemCount} {itemCount === 1 ? 'صنف' : 'أصناف'}</span>
+                      </span>
+                    </div>
+
+                    {/* Multi-Currency Display Box */}
+                    <div className="mt-2.5 pt-2 border-t border-dashed border-border flex items-end justify-between">
+                      {/* Multi-Currency Profit breakdown */}
+                      <div className="text-[10px] text-muted-foreground space-y-0.5 min-w-0">
+                        {invUsdProfit > 0 ? (
                           <>
-                            <div className="flex flex-col sm:flex-row sm:items-baseline items-end gap-0.5 sm:gap-1.5">
-                              <span className="font-bold text-base sm:text-lg text-foreground">
-                                {formatCurrency(financials.displayTotal, financials.symbol, financials.decimals)}
-                              </span>
-                              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap" dir="ltr">
-                                ({formatCurrency(invUsdTotal, '$', 2)})
-                              </span>
+                            <div className="font-bold text-foreground">
+                              صافي الربح: <span className="text-emerald-600 dark:text-emerald-400 font-black font-mono whitespace-nowrap" dir="ltr">${formatNumber(invUsdProfit, 2)}</span>
                             </div>
-                            {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                المدفوع: {formatCurrency((invoice.debtPaid || 0) * financials.rate, financials.symbol, financials.decimals)} / المتبقي: {formatCurrency(((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.total - (invoice.debtPaid || 0))) * financials.rate, financials.symbol, financials.decimals)}
-                              </p>
-                            )}
-                            {invUsdProfit > 0 && (
-                              <p className="text-xs text-success font-medium mt-0.5 whitespace-nowrap">
-                                صافي الربح: <span dir="ltr">{formatCurrency(invUsdProfit, '$', 2)}</span> ({formatCurrency(financials.displayProfit, financials.symbol, financials.decimals)})
-                              </p>
-                            )}
-                          </>
-                        ) : altCode ? (
-                          <>
-                            <div className="flex flex-col sm:flex-row sm:items-baseline items-end gap-0.5 sm:gap-1.5">
-                              <span className="font-bold text-base sm:text-lg text-foreground" dir="ltr">
-                                {formatCurrency(invUsdTotal, '$', 2)}
-                              </span>
-                              <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                                ({formatCurrency(altTotal, altSymbol, altDecimals)})
-                              </span>
+                            <div className="text-[9.5px] text-muted-foreground font-mono whitespace-nowrap" dir="ltr">
+                              [ {formatCurrency(invUsdProfit * sypRate, 'ل.س', 0)}{enabledCurrencies.TRY ? ` | ${formatCurrency(invUsdProfit * tryRate, '₺', 2)}` : ''} ]
                             </div>
-                            {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                المدفوع: {formatCurrency(invoice.debtPaid || 0, '$', 2)} / المتبقي: {formatCurrency(((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.total - (invoice.debtPaid || 0))), '$', 2)}
-                              </p>
-                            )}
-                            {invUsdProfit > 0 && (
-                              <p className="text-xs text-success font-medium mt-0.5 whitespace-nowrap">
-                                صافي الربح: <span dir="ltr">{formatCurrency(invUsdProfit, '$', 2)}</span> ({formatCurrency(altProfit, altSymbol, altDecimals)})
-                              </p>
-                            )}
                           </>
                         ) : (
-                          <>
-                            <p className="font-bold text-base sm:text-lg text-foreground" dir="ltr">
-                              {formatCurrency(invUsdTotal, '$', 2)}
-                            </p>
-                            {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                المدفوع: {formatCurrency(invoice.debtPaid || 0, '$', 2)} / المتبقي: {formatCurrency(((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.total - (invoice.debtPaid || 0))), '$', 2)}
-                              </p>
-                            )}
-                            {invUsdProfit > 0 && (
-                              <p className="text-xs text-success font-medium mt-0.5 whitespace-nowrap" dir="ltr">
-                                صافي الربح: {formatCurrency(invUsdProfit, '$', 2)}
-                              </p>
-                            )}
-                          </>
+                          <div className="text-[10px] text-muted-foreground font-medium">
+                            {invoice.type === 'maintenance' ? 'فاتورة صيانة' : 'فاتورة مبيعات'}
+                          </div>
                         )}
                       </div>
-                    </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]">
-                          <MoreVertical className="w-5 h-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleView(invoice)}>
-                          <Eye className="w-4 h-4 ml-2" />
-                          {t('common.view')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleShare(invoice)}>
-                          <Share2 className="w-4 h-4 ml-2 text-primary" />
-                          {t('common.share') || 'مشاركة الفاتورة (صورة)'}
-                        </DropdownMenuItem>
-                        {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handlePayDebt(invoice)}>
-                              <DollarSign className="w-4 h-4 ml-2" />
-                              تسديد دفعة
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleMarkPaid(invoice)}>
-                              <Check className="w-4 h-4 ml-2" />
-                              {t('invoices.markAsPaid')}
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        {invoice.status !== 'refunded' && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleRefund(invoice)}
-                              className="text-orange-600"
-                            >
-                              <Undo2 className="w-4 h-4 ml-2" />
-                              استرداد الفاتورة
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      {/* Main Total Values formatted cleanly */}
+                      <div className="text-left whitespace-nowrap shrink-0">
+                        <div className="text-base font-black text-foreground flex items-baseline gap-1 justify-end leading-none font-mono">
+                          <span className="whitespace-nowrap">{formatNumber(primaryTotalVal, primaryDecimals)}</span>
+                          <span className="text-xs font-semibold text-muted-foreground font-sans">{primarySymbol}</span>
+                        </div>
+                        {/* Secondary & Tertiary Currency Tags */}
+                        <div className="flex items-center gap-1 mt-1 justify-end text-[10px] font-mono font-bold whitespace-nowrap">
+                          {tag1 && <span className={cn("px-1.5 py-0.5 rounded", tag1.class)} dir="ltr">{tag1.text}</span>}
+                          {tag2 && <span className={cn("px-1.5 py-0.5 rounded", tag2.class)} dir="ltr">{tag2.text}</span>}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })
-        )}
-      </div>
-    </TabsContent>
+                );
+              })
+            )}
+          </div>
+        </TabsContent>
 
     <TabsContent value="purchases" className="space-y-6 m-0">
       <PurchaseInvoicesListTab />
@@ -1722,8 +1689,8 @@ export default function Invoices() {
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-lg rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] flex flex-col p-0 border border-border shadow-2xl">
-          <DialogHeader className="p-5 pb-3 border-b border-border/50 text-right bg-muted/20">
+        <DialogContent className="sm:max-w-lg rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] flex flex-col p-0 border border-border bg-card text-card-foreground shadow-2xl">
+          <DialogHeader className="p-4 pb-3 border-b border-border/50 text-right bg-muted/30">
             <DialogTitle className="flex items-center justify-between text-base font-bold">
               <div className="flex items-center gap-2 text-foreground">
                 <FileText className="w-5 h-5 text-primary" />
@@ -1927,7 +1894,7 @@ export default function Invoices() {
 
       {/* Share Bottom Sheet */}
       <Dialog open={showShareSheet} onOpenChange={setShowShareSheet}>
-        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-md mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-background p-0 max-h-[85vh] flex flex-col overflow-hidden shadow-2xl laser-sheet-content">
+        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-md mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[85vh] flex flex-col overflow-hidden shadow-2xl laser-sheet-content">
           {/* Laser Lead Line */}
           <div className="laser-lead-line h-[2.5px] w-full" />
 
@@ -2028,7 +1995,7 @@ export default function Invoices() {
 
       {/* Refund Confirmation Dialog (Bottom Sheet) */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-xl mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-background p-0 max-h-[92vh] flex flex-col overflow-hidden shadow-2xl bottom-sheet-content">
+        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-xl mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[92vh] flex flex-col overflow-hidden shadow-2xl bottom-sheet-content">
           {/* Drawer Drag Handle */}
           <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2.5" />
 
