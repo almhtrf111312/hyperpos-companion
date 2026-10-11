@@ -27,7 +27,8 @@ import {
   Share2,
   Loader2,
   Save,
-  Coins
+  Coins,
+  Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,7 +93,7 @@ import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
 import { processDebtPayment } from '@/lib/unified-transactions';
 import { logActivity } from '@/lib/activity-log';
 import { printHTML } from '@/lib/native-print';
-import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
+import { shareInvoice, InvoiceShareData, generateInvoiceShareText, nativeShare } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
 import { addToQueueIfNotExists } from '@/lib/sync-queue';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
@@ -119,6 +120,9 @@ export default function Invoices() {
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [invoiceToShare, setInvoiceToShare] = useState<Invoice | null>(null);
+  const [isGeneratingShare, setIsGeneratingShare] = useState(false);
   const [refundMode, setRefundMode] = useState<'full' | 'partial'>('full');
   const [partialRefundQuantities, setPartialRefundQuantities] = useState<Record<string, number>>({});
   const [showRefunded, setShowRefunded] = useState(false);
@@ -1171,58 +1175,131 @@ export default function Invoices() {
     printHTML(printContent);
     toast.success('جاري إرسال الفاتورة للطابعة...');
   };
-  const handleWhatsApp = async (invoice: Invoice) => {
-    // Dynamic store settings with proper defaults
-    let storeName = 'FlowPOS Pro';
-    let storePhone = '';
-
-    try {
-      const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
-      if (settingsRaw) {
-        const settings = JSON.parse(settingsRaw);
-        storeName = settings.storeSettings?.name || storeName;
-        storePhone = settings.storeSettings?.phone || '';
-      }
-    } catch (error) {
-      console.error('Failed to load store settings for WhatsApp:', error);
-    }
-
-    const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
-
-    const shareFinancials = getInvoiceFinancials(invoice);
-    const rate = shareFinancials.rate;
-    const currencySymbol = shareFinancials.symbol;
-    
-    // تحضير بيانات المشاركة
-    const shareData: InvoiceShareData = {
-      id: invoice.id,
-      storeName,
-      storePhone,
-      customerName: invoice.customerName,
-      customerPhone: invoice.customerPhone,
-      date,
-      items: invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.price * rate,
-        total: item.total * rate,
-      })),
-      subtotal: invoice.subtotal * rate,
-      discount: invoice.discount * rate,
-      total: shareFinancials.displayTotal,
-      currencySymbol,
-      paymentType: invoice.paymentType,
-      downPayment: invoice.debtPaid ? invoice.debtPaid * rate : undefined,
-      debtRemaining: ((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.paymentType === 'debt' ? invoice.total : 0)) * rate,
-      serviceDescription: invoice.serviceDescription,
-      type: invoice.type,
-      taxAmount: invoice.taxAmount ? invoice.taxAmount * rate : 0,
-      taxRate: invoice.taxRate,
-    };
-
-    await shareInvoice(shareData);
+  const handleShare = (invoice: Invoice) => {
+    setInvoiceToShare(invoice);
+    setShowShareSheet(true);
   };
-  const handleShare = handleWhatsApp;
+
+  const executeShareInvoice = async (invoice: Invoice, mode: 'image' | 'text' = 'image') => {
+    setIsGeneratingShare(true);
+    try {
+      let storeName = 'FlowPOS Pro';
+      let storePhone = '';
+      let storeAddress = '';
+      let storeLogo = '';
+
+      try {
+        const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+        if (settingsRaw) {
+          const settings = JSON.parse(settingsRaw);
+          storeName = settings.storeSettings?.name || storeName;
+          storePhone = settings.storeSettings?.phone || '';
+          storeAddress = settings.storeSettings?.address || '';
+          storeLogo = settings.storeSettings?.logo || '';
+        }
+      } catch (error) {
+        console.error('Failed to load store settings for share:', error);
+      }
+
+      const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
+      const shareFinancials = getInvoiceFinancials(invoice, true);
+      const rate = shareFinancials.rate;
+      const currencySymbol = shareFinancials.symbol;
+
+      const shareData: InvoiceShareData = {
+        id: invoice.id,
+        storeName,
+        storePhone,
+        storeAddress,
+        storeLogo,
+        customerName: invoice.customerName,
+        customerPhone: invoice.customerPhone,
+        date,
+        items: invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.price * rate,
+          total: item.total * rate,
+        })),
+        subtotal: (invoice.subtotal || 0) * rate,
+        discount: (invoice.discount || 0) * rate,
+        total: shareFinancials.displayTotal,
+        currencySymbol,
+        paymentType: invoice.paymentType,
+        downPayment: invoice.debtPaid ? invoice.debtPaid * rate : undefined,
+        debtRemaining: ((invoice.debtRemaining !== undefined && invoice.debtRemaining !== null) ? invoice.debtRemaining : (invoice.paymentType === 'debt' ? invoice.total : 0)) * rate,
+        serviceDescription: invoice.serviceDescription,
+        type: invoice.type,
+        taxAmount: invoice.taxAmount ? invoice.taxAmount * rate : 0,
+        taxRate: invoice.taxRate,
+      };
+
+      if (mode === 'text') {
+        const text = generateInvoiceShareText(shareData);
+        await nativeShare({
+          title: `فاتورة رقم ${invoice.id}`,
+          text,
+          dialogTitle: 'مشاركة نص الفاتورة',
+        });
+        setShowShareSheet(false);
+      } else {
+        toast.info('جاري إنشاء صورة الفاتورة للمشاركة...', { duration: 1500 });
+        const success = await shareInvoice(shareData);
+        if (success) {
+          setShowShareSheet(false);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error during invoice share:', err);
+      toast.error('تعذر مشاركة الفاتورة');
+    } finally {
+      setIsGeneratingShare(false);
+    }
+  };
+
+  const handleCopyShareText = async (invoice: Invoice) => {
+    try {
+      let storeName = 'FlowPOS Pro';
+      let storePhone = '';
+      try {
+        const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
+        if (settingsRaw) {
+          const settings = JSON.parse(settingsRaw);
+          storeName = settings.storeSettings?.name || storeName;
+          storePhone = settings.storeSettings?.phone || '';
+        }
+      } catch (e) {}
+
+      const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
+      const shareFinancials = getInvoiceFinancials(invoice, true);
+      const rate = shareFinancials.rate;
+
+      const shareData: InvoiceShareData = {
+        id: invoice.id,
+        storeName,
+        storePhone,
+        customerName: invoice.customerName,
+        customerPhone: invoice.customerPhone,
+        date,
+        items: invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.price * rate,
+          total: item.total * rate,
+        })),
+        subtotal: (invoice.subtotal || 0) * rate,
+        discount: (invoice.discount || 0) * rate,
+        total: shareFinancials.displayTotal,
+        currencySymbol: shareFinancials.symbol,
+        paymentType: invoice.paymentType,
+      };
+      const text = generateInvoiceShareText(shareData);
+      await navigator.clipboard.writeText(text);
+      toast.success('تم نسخ تفاصيل الفاتورة بنجاح');
+    } catch (e) {
+      toast.error('تعذر نسخ تفاصيل الفاتورة');
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -1463,7 +1540,7 @@ export default function Invoices() {
             const altProfit = roundCurrency(invUsdProfit * altRate);
 
             return (
-            <Card key={invoice.id} className="hover:shadow-md transition-shadow">
+            <Card key={invoice.id} className="hover:shadow-md transition-all cursor-pointer active:scale-[0.99]" onClick={() => handleView(invoice)}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -1587,7 +1664,7 @@ export default function Invoices() {
                     </div>
 
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-10 w-10 min-w-[40px]">
                           <MoreVertical className="w-5 h-5" />
                         </Button>
@@ -1645,12 +1722,15 @@ export default function Invoices() {
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              {t('invoices.details')}
+        <DialogContent className="sm:max-w-lg rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] flex flex-col p-0 border border-border shadow-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-border/50 text-right bg-muted/20">
+            <DialogTitle className="flex items-center justify-between text-base font-bold">
+              <div className="flex items-center gap-2 text-foreground">
+                <FileText className="w-5 h-5 text-primary" />
+                <span>{t('invoices.details') || 'تفاصيل الفاتورة'}</span>
+              </div>
             </DialogTitle>
+            <DialogDescription className="sr-only">تفاصيل الفاتورة الكاملة</DialogDescription>
           </DialogHeader>
           {selectedInvoice && (() => {
             const selectedFinancials = getInvoiceFinancials(selectedInvoice, true);
@@ -1667,7 +1747,7 @@ export default function Invoices() {
             const totalSypStr = formatCurrency(baseInvTotal * sypRateForInv, 'ل.س', 0);
 
             return (
-            <div className="space-y-4">
+            <div className="space-y-4 p-5 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">{t('invoices.invoiceNumber')}:</span>
@@ -1827,10 +1907,16 @@ export default function Invoices() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium" onClick={() => handleShare(selectedInvoice)}>
+              <div className="pt-2">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all"
+                  onClick={() => {
+                    setShowViewDialog(false);
+                    handleShare(selectedInvoice);
+                  }}
+                >
                   <Share2 className="w-4 h-4 ml-2" />
-                  {t('common.share') || 'مشاركة الفاتورة كصورة'}
+                  <span>{t('common.share') || 'مشاركة الفاتورة'}</span>
                 </Button>
               </div>
             </div>
@@ -1839,11 +1925,115 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
 
-      {/* Refund Confirmation Dialog */}
+      {/* Share Bottom Sheet */}
+      <Dialog open={showShareSheet} onOpenChange={setShowShareSheet}>
+        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-md mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-background p-0 max-h-[85vh] flex flex-col overflow-hidden shadow-2xl laser-sheet-content">
+          {/* Laser Lead Line */}
+          <div className="laser-lead-line h-[2.5px] w-full" />
+
+          {/* Drawer Drag Handle */}
+          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2.5" />
+
+          <DialogHeader className="px-5 pb-3 pt-0 text-right flex flex-row items-center justify-between border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-primary" />
+              <DialogTitle className="text-sm font-bold">
+                مشاركة الفاتورة {invoiceToShare?.id}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="sr-only">نافذة مشاركة الفاتورة</DialogDescription>
+          </DialogHeader>
+
+          {invoiceToShare && (() => {
+            const shareFin = getInvoiceFinancials(invoiceToShare, true);
+            return (
+              <div className="p-4 space-y-4 overflow-y-auto">
+                {/* Invoice Snapshot Card */}
+                <div className="bg-muted/40 border border-border/60 rounded-2xl p-3.5 space-y-2 text-xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-border/40">
+                    <span className="font-bold text-foreground text-sm">{invoiceToShare.customerName}</span>
+                    <Badge variant={invoiceToShare.type === 'sale' ? 'default' : 'secondary'} className="text-[10px]">
+                      {invoiceToShare.type === 'sale' ? 'مبيعات' : 'صيانة'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>رقم الفاتورة:</span>
+                    <span className="font-mono text-foreground font-semibold">{invoiceToShare.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>التاريخ:</span>
+                    <span>{formatDateTime(new Date(invoiceToShare.createdAt))}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-border/40">
+                    <span className="font-semibold text-foreground">الإجمالي:</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-bold text-base text-primary">
+                        {formatCurrency(shareFin.displayTotal, shareFin.symbol, shareFin.decimals)}
+                      </span>
+                      {shareFin.code !== 'USD' && (
+                        <span className="text-xs text-muted-foreground" dir="ltr">
+                          ({formatCurrency(invoiceToShare.total || 0, '$', 2)})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Share Actions */}
+                <div className="space-y-2 pt-1">
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all"
+                    disabled={isGeneratingShare}
+                    onClick={() => executeShareInvoice(invoiceToShare, 'image')}
+                  >
+                    {isGeneratingShare ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                        <span>جاري استخراج ومشاركة الصورة...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-4 h-4 ml-2" />
+                        <span>مشاركة كصورة (واتساب / تطبيقات)</span>
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-11 rounded-xl text-xs gap-1.5"
+                      disabled={isGeneratingShare}
+                      onClick={() => executeShareInvoice(invoiceToShare, 'text')}
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      مشاركة كنص
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-11 rounded-xl text-xs gap-1.5"
+                      disabled={isGeneratingShare}
+                      onClick={() => handleCopyShareText(invoiceToShare)}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      نسخ التفاصيل
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Refund Confirmation Dialog (Bottom Sheet) */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="p-6 pb-2 text-right">
-            <DialogTitle className="text-orange-600 flex items-center justify-between gap-2 text-lg">
+        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-xl mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-background p-0 max-h-[92vh] flex flex-col overflow-hidden shadow-2xl bottom-sheet-content">
+          {/* Drawer Drag Handle */}
+          <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2.5" />
+
+          <DialogHeader className="px-6 pb-3 pt-0 text-right border-b border-border/40">
+            <DialogTitle className="text-orange-600 flex items-center justify-between gap-2 text-base font-bold">
               <div className="flex items-center gap-2">
                 <Undo2 className="w-5 h-5" />
                 <span>استرداد الفاتورة {invoiceToRefund?.id}</span>
