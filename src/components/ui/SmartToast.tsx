@@ -99,6 +99,7 @@ interface ParsedToastDetails {
   itemCount?: number;
   price?: string;
   stockQuantity?: number;
+  invoiceNumber?: string;
   note?: string;
 }
 
@@ -117,10 +118,11 @@ function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
       operationName: toast.operation,
       category: cat,
       itemName: toast.itemName,
-      isMultiple: toast.isMultiple ?? (toast.itemCount !== undefined && toast.itemCount > 1),
+      isMultiple: toast.isMultiple !== undefined ? toast.isMultiple : (toast.itemCount !== undefined ? toast.itemCount > 1 : false),
       itemCount: toast.itemCount,
       price: toast.price ? String(toast.price) : undefined,
       stockQuantity: toast.stockQuantity,
+      invoiceNumber: toast.invoiceNumber,
       note: toast.subtitle,
     };
   }
@@ -146,11 +148,14 @@ function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
   if (combined.includes('فاتورة') || combined.includes('مزامنة') || combined.includes('مزامنتها')) {
     const isDebt = combined.includes('آجل') || combined.includes('دين');
     const priceMatch = combined.match(/([$₺€][\d,.]+|[\d,.]+\s*[$₺€]|[\d,.]+\s*(?:ل\.س|SP|TRY|USD))/i);
+    const invoiceNumMatch = combined.match(/#(?:INV-[\w-]+|\d+)/i);
     return {
       operationName: isDebt ? 'فاتورة بيع آجل' : 'فاتورة مكتملة',
       category: 'invoice',
       price: priceMatch ? priceMatch[0] : undefined,
-      isMultiple: true,
+      invoiceNumber: toast.invoiceNumber || (invoiceNumMatch ? invoiceNumMatch[0].replace('#', '') : undefined),
+      isMultiple: toast.isMultiple !== undefined ? toast.isMultiple : (toast.itemCount !== undefined ? toast.itemCount > 1 : false),
+      itemCount: toast.itemCount,
       note: subtitle !== title ? subtitle : undefined,
     };
   }
@@ -664,9 +669,16 @@ export function SmartToast() {
 
               {/* اسم العملية وحالة الوقت / التجميد */}
               <div className="min-w-0 flex-1">
-                <h4 className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">
-                  {details.operationName}
-                </h4>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">
+                    {details.operationName}
+                  </h4>
+                  {details.invoiceNumber && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted font-mono font-bold text-foreground border border-border/40 shrink-0">
+                      #{details.invoiceNumber}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {isPaused ? (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 dark:text-amber-400">
@@ -704,6 +716,16 @@ export function SmartToast() {
 
           {/* كتلة تفاصيل العملية المباشرة - معروضة كلياً وفورياً */}
           <div className="p-2.5 rounded-2xl bg-foreground/[0.03] dark:bg-white/[0.04] border border-border/40 space-y-1.5 text-xs">
+            {/* سطر رقم الفاتورة الصريح إذا وُجد */}
+            {details.invoiceNumber && (
+              <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/25">
+                <span className="text-[11px] text-muted-foreground font-medium">رقم الفاتورة:</span>
+                <span className="font-mono font-extrabold text-xs text-foreground bg-muted/60 px-2 py-0.5 rounded-lg border border-border/30">
+                  #{details.invoiceNumber}
+                </span>
+              </div>
+            )}
+
             {/* سطر القطعة أو الوحدات المتعددة */}
             {details.isMultiple ? (
               <div className="flex items-center justify-between gap-2">

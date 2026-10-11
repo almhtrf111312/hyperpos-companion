@@ -94,7 +94,7 @@ export const saveInvoices = (invoices: Invoice[]): boolean => {
 // Fix #14: Sequential invoice numbering
 const INVOICE_COUNTER_KEY = 'hyperpos_invoice_counter_v1';
 
-const getNextInvoiceNumber = (): string => {
+export const getNextInvoiceNumber = (): string => {
   try {
     const year = new Date().getFullYear();
     const counterData = localStorage.getItem(INVOICE_COUNTER_KEY);

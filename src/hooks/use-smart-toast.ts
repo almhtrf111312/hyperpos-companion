@@ -23,6 +23,7 @@ export interface SmartToastData {
   currency?: string;
   stockQuantity?: number;
   statusBadge?: string;
+  invoiceNumber?: string;
 }
 
 // Global emitter

@@ -101,6 +101,7 @@ export const useCurrency = () => {
       currencyCode: code,
       currencySymbol: symbol,
       exchangeRate: rate,
+      exchangeRates: rates,
       enabledCurrencies: enabled,
     };
   }, [settingsRev]);

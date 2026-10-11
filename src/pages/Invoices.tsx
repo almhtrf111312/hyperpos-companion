@@ -60,6 +60,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
+import { useCurrency } from '@/hooks/use-currency';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
@@ -138,30 +139,32 @@ export default function Invoices() {
   const { isOnline } = useCloudSyncContext();
   const { user, profile } = useAuth();
 
+  const {
+    currencyCode,
+    currencySymbol,
+    exchangeRate,
+    exchangeRates,
+    enabledCurrencies
+  } = useCurrency();
+
+  const [displayCurrencyFilter, setDisplayCurrencyFilter] = useState<'stored' | 'TRY' | 'SYP' | 'USD'>('stored');
+
   // Debt Payment Dialog State
   const [showDebtPaymentDialog, setShowDebtPaymentDialog] = useState(false);
   const [selectedDebtForPayment, setSelectedDebtForPayment] = useState<Debt | null>(null);
-  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>('USD');
+  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => {
+    if (enabledCurrencies.USD === false) {
+      if (enabledCurrencies.TRY) return 'TRY';
+      if (enabledCurrencies.SYP) return 'SYP';
+    }
+    return 'USD';
+  });
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const paymentBusyRef = useRef(false);
   const paymentOpIdRef = useRef(`debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
-  const exchangeRates = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('hyperpos_settings_v1');
-      if (raw) {
-        const settings = JSON.parse(raw);
-        return {
-          TRY: Number(settings.exchangeRates?.TRY) || 34,
-          SYP: Number(settings.exchangeRates?.SYP) || 14500,
-        };
-      }
-    } catch {}
-    return { TRY: 34, SYP: 14500 };
-  }, []);
-
-  const currentRate = paymentCurrency === 'USD' ? 1 : exchangeRates[paymentCurrency];
+  const currentRate = paymentCurrency === 'USD' ? 1 : (exchangeRates[paymentCurrency] || 1);
 
   const amountUSD = useMemo(() => {
     const val = parseFloat(paymentAmountInput) || 0;
@@ -175,6 +178,86 @@ export default function Invoices() {
     if (paymentCurrency === 'USD') return selectedDebtForPayment.remainingDebt;
     return Math.round(selectedDebtForPayment.remainingDebt * currentRate * 100) / 100;
   }, [selectedDebtForPayment, paymentCurrency, currentRate]);
+
+  // Helper for computing display financial values for an invoice
+  const getInvoiceFinancials = (inv: Invoice) => {
+    let code: 'USD' | 'TRY' | 'SYP';
+    let rate: number;
+    let symbol: string;
+
+    const target = displayCurrencyFilter;
+
+    if (target !== 'stored') {
+      code = target;
+      if (code === 'TRY') {
+        rate = exchangeRates.TRY || 34;
+        symbol = '₺';
+      } else if (code === 'SYP') {
+        rate = exchangeRates.SYP || 14500;
+        symbol = 'ل.س';
+      } else {
+        rate = 1;
+        symbol = '$';
+      }
+    } else {
+      // 'stored': use the invoice's stored currency if present and valid
+      const invCurr = (inv.currency || '').toUpperCase();
+      const hasStoredForeign = invCurr === 'TRY' || invCurr === 'SYP';
+
+      if (hasStoredForeign) {
+        code = invCurr as 'TRY' | 'SYP';
+        rate = (inv.exchangeRate && inv.exchangeRate > 0)
+          ? inv.exchangeRate
+          : (code === 'TRY' ? (exchangeRates.TRY || 34) : (exchangeRates.SYP || 14500));
+        symbol = inv.currencySymbol || (code === 'TRY' ? '₺' : 'ل.س');
+      } else if (currencyCode !== 'USD' && (enabledCurrencies.USD === false || !inv.currency || inv.currency === 'USD')) {
+        // System default is foreign (e.g. TRY) and either USD is disabled or invoice has no specific foreign currency
+        code = currencyCode;
+        rate = exchangeRate;
+        symbol = currencySymbol;
+      } else {
+        code = 'USD';
+        rate = 1;
+        symbol = inv.currencySymbol || '$';
+      }
+    }
+
+    const decimals = code === 'SYP' ? 0 : 2;
+
+    // Display total
+    let displayTotal: number;
+    if (target === 'stored' && code === (inv.currency as any) && inv.totalInCurrency) {
+      displayTotal = inv.totalInCurrency;
+    } else {
+      displayTotal = roundCurrency(inv.total * rate);
+    }
+
+    // Display profit (stored as USD base, converted by rate)
+    const baseProfit = inv.profit || 0;
+    const displayProfit = roundCurrency(baseProfit * rate);
+
+    return {
+      code,
+      rate,
+      symbol,
+      decimals,
+      displayTotal,
+      displayProfit,
+      baseProfit,
+    };
+  };
+
+  const statCurrencyCode = displayCurrencyFilter !== 'stored'
+    ? displayCurrencyFilter
+    : currencyCode;
+  const statExchangeRate = statCurrencyCode === 'USD' ? 1 : (exchangeRates[statCurrencyCode] || 1);
+  const statCurrencySymbol = statCurrencyCode === 'USD' ? '$' : (statCurrencyCode === 'TRY' ? '₺' : 'ل.س');
+  const statDecimals = statCurrencyCode === 'SYP' ? 0 : 2;
+
+  const todaySalesDisplay = roundCurrency(stats.todaySales * statExchangeRate);
+  const totalProfitDisplay = roundCurrency(stats.totalProfit * statExchangeRate);
+
+  const refundFinancials = invoiceToRefund ? getInvoiceFinancials(invoiceToRefund) : null;
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -860,20 +943,21 @@ export default function Invoices() {
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
     const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
 
+    const printFinancials = getInvoiceFinancials(invoice);
     // ✅ جميع القيم المُدخَلة من المستخدم تمر عبر escapeHtml() لمنع XSS
     const itemsHtml = invoice.type === 'sale'
       ? invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => `
           <tr>
             <td style="padding: 5px; border-bottom: 1px solid #eee;">${escapeHtml(item.name)}</td>
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total)}</td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</td>
           </tr>
         `).join('')
       : `<tr><td colspan="3" style="padding: 10px;">
           <div style="margin-bottom: 5px;"><strong>وصف الخدمة:</strong> ${escapeHtml(invoice.serviceDescription) || 'صيانة'}</div>
-          ${invoice.partsCost ? `<div style="margin-bottom: 5px;"><strong>تكلفة القطع:</strong> ${formatCurrency(invoice.partsCost)}</div>` : ''}
-          <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(invoice.total)}</div>
-          ${invoice.profit ? `<div style="color: green;"><strong>صافي الربح:</strong> ${formatCurrency(invoice.profit)}</div>` : ''}
+          ${invoice.partsCost ? `<div style="margin-bottom: 5px;"><strong>تكلفة القطع:</strong> ${formatCurrency(invoice.partsCost * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
+          <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals)}</div>
+          ${printFinancials.displayProfit > 0 ? `<div style="color: green;"><strong>صافي الربح:</strong> ${formatCurrency(printFinancials.displayProfit, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
         </td></tr>`;
 
     const printContent = `
@@ -1055,10 +1139,10 @@ export default function Invoices() {
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount)}</div>` : ''}
-          ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount)}</div>` : ''}
+          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
+          ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${formatCurrency(invoice.totalInCurrency || invoice.total, invoice.currencySymbol || '$')}
+            الإجمالي: ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals)}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -1087,8 +1171,9 @@ export default function Invoices() {
 
     const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
 
-    const rate = invoice.exchangeRate || 1;
-    const currencySymbol = invoice.currencySymbol || '$';
+    const shareFinancials = getInvoiceFinancials(invoice);
+    const rate = shareFinancials.rate;
+    const currencySymbol = shareFinancials.symbol;
     
     // تحضير بيانات المشاركة
     const shareData: InvoiceShareData = {
@@ -1106,7 +1191,7 @@ export default function Invoices() {
       })),
       subtotal: invoice.subtotal * rate,
       discount: invoice.discount * rate,
-      total: invoice.totalInCurrency || (invoice.total * rate),
+      total: shareFinancials.displayTotal,
       currencySymbol,
       paymentType: invoice.paymentType,
       downPayment: invoice.debtPaid ? invoice.debtPaid * rate : undefined,
@@ -1184,7 +1269,14 @@ export default function Invoices() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.todaySales')}</p>
-                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all">{formatCurrency(stats.todaySales)}</p>
+                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all">
+                  {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
+                </p>
+                {statCurrencyCode !== 'USD' && enabledCurrencies.USD !== false && (
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    (${formatNumber(stats.todaySales, 2)})
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -1210,7 +1302,14 @@ export default function Invoices() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] leading-tight text-muted-foreground">{t('invoices.totalProfit')}</p>
-                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all">{formatCurrency(stats.totalProfit)}</p>
+                <p className="text-sm sm:text-base leading-tight font-bold tabular-nums break-all text-success">
+                  {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
+                </p>
+                {statCurrencyCode !== 'USD' && enabledCurrencies.USD !== false && (
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    (${formatNumber(stats.totalProfit, 2)})
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -1228,7 +1327,7 @@ export default function Invoices() {
             className="h-9 pr-8 text-sm"
           />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
           <div className="min-w-0 space-y-0.5">
             <span className="text-[10px] font-medium text-muted-foreground">نوع الفاتورة</span>
             <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
@@ -1269,6 +1368,18 @@ export default function Invoices() {
             </div>
           </div>
           <div className="min-w-0 space-y-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">عملة العرض</span>
+            <Select value={displayCurrencyFilter} onValueChange={(v: any) => setDisplayCurrencyFilter(v)}>
+              <SelectTrigger className="h-8 px-2 text-[11px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="stored">حسب الفاتورة</SelectItem>
+                {enabledCurrencies.TRY && <SelectItem value="TRY">₺ ليرة تركية</SelectItem>}
+                {enabledCurrencies.SYP && <SelectItem value="SYP">ل.س ليرة سورية</SelectItem>}
+                {enabledCurrencies.USD !== false && <SelectItem value="USD">$ دولار أمريكي</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-0 space-y-0.5 col-span-2 sm:col-span-1">
             <span className="text-[10px] font-medium text-muted-foreground">المرتجعات</span>
             <Button
               type="button"
@@ -1314,7 +1425,9 @@ export default function Invoices() {
             </CardContent>
           </Card>
         ) : (
-          filteredInvoices.map((invoice) => (
+          filteredInvoices.map((invoice) => {
+            const financials = getInvoiceFinancials(invoice);
+            return (
             <Card key={invoice.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-4">
@@ -1376,16 +1489,16 @@ export default function Invoices() {
                   <div className="flex items-center gap-3">
                     <div className="text-left">
                       <p className="font-bold text-lg">
-                        {formatCurrency(invoice.totalInCurrency || invoice.total, invoice.currencySymbol || '$')}
+                        {formatCurrency(financials.displayTotal, financials.symbol, financials.decimals)}
                       </p>
                       {invoice.paymentType === 'debt' && invoice.status === 'pending' && invoice.debtPaid !== undefined && invoice.debtPaid > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          المدفوع: {formatCurrency(invoice.debtPaid ? (invoice.debtPaid * (invoice.exchangeRate || 1)) : 0, invoice.currencySymbol || '$')} / المتبقي: {formatCurrency((invoice.debtRemainingInCurrency ?? ((invoice.debtRemaining || 0) * (invoice.exchangeRate || 1))), invoice.currencySymbol || '$')}
+                          المدفوع: {formatCurrency(invoice.debtPaid ? (invoice.debtPaid * financials.rate) : 0, financials.symbol, financials.decimals)} / المتبقي: {formatCurrency((invoice.debtRemainingInCurrency ?? ((invoice.debtRemaining || 0) * financials.rate)), financials.symbol, financials.decimals)}
                         </p>
                       )}
-                      {invoice.profit !== undefined && invoice.profit > 0 && (
-                        <p className="text-xs text-success">
-                          ربح: {formatCurrency(invoice.profit)}
+                      {financials.displayProfit > 0 && (
+                        <p className="text-xs text-success font-medium">
+                          صافي الربح: {formatCurrency(financials.displayProfit, financials.symbol, financials.decimals)}
                         </p>
                       )}
                     </div>
@@ -1436,7 +1549,8 @@ export default function Invoices() {
                 </div>
               </CardContent>
             </Card>
-          ))
+          );
+        })
         )}
       </div>
     </TabsContent>
@@ -1455,7 +1569,9 @@ export default function Invoices() {
               {t('invoices.details')}
             </DialogTitle>
           </DialogHeader>
-          {selectedInvoice && (
+          {selectedInvoice && (() => {
+            const selectedFinancials = getInvoiceFinancials(selectedInvoice);
+            return (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -1501,18 +1617,18 @@ export default function Invoices() {
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">المبلغ المقبوض:</span>
-                    <span className="font-medium">{formatCurrency(selectedInvoice.totalInCurrency || selectedInvoice.total, selectedInvoice.currencySymbol || '$')}</span>
+                    <span className="font-medium">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                   {selectedInvoice.partsCost !== undefined && selectedInvoice.partsCost > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">تكلفة القطع علينا:</span>
-                      <span className="font-medium text-destructive">{formatCurrency(selectedInvoice.partsCost)}</span>
+                      <span className="font-medium text-destructive">{formatCurrency((selectedInvoice.partsCost || 0) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                     </div>
                   )}
-                  {selectedInvoice.profit !== undefined && selectedInvoice.profit > 0 && (
+                  {selectedFinancials.displayProfit > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">صافي الربح:</span>
-                      <span className="font-medium text-success">{formatCurrency(selectedInvoice.profit)}</span>
+                      <span className="font-medium text-success">{formatCurrency(selectedFinancials.displayProfit, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                     </div>
                   )}
                 </div>
@@ -1541,8 +1657,8 @@ export default function Invoices() {
                               )}
                             </td>
                             <td className="w-[15%] px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="w-[20%] px-3 py-2 text-center">{formatCurrency(item.price * (selectedInvoice.exchangeRate || 1), selectedInvoice.currencySymbol || '$')}</td>
-                            <td className="w-[20%] px-3 py-2 text-left font-medium">{formatCurrency((item.refunded ? 0 : (item.price * item.quantity)) * (selectedInvoice.exchangeRate || 1), selectedInvoice.currencySymbol || '$')}</td>
+                            <td className="w-[20%] px-3 py-2 text-center">{formatCurrency(item.price * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
+                            <td className="w-[20%] px-3 py-2 text-left font-medium">{formatCurrency((item.refunded ? 0 : (item.price * item.quantity)) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1555,17 +1671,17 @@ export default function Invoices() {
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
-                    <span className="text-destructive">-{formatCurrency(selectedInvoice.discount * (selectedInvoice.exchangeRate || 1), selectedInvoice.currencySymbol || '$')}</span>
+                    <span className="text-destructive">-{formatCurrency(selectedInvoice.discount * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t('invoices.total')}:</span>
-                  <span className="text-primary">{formatCurrency(selectedInvoice.totalInCurrency || selectedInvoice.total, selectedInvoice.currencySymbol || '$')}</span>
+                  <span className="text-primary">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                 </div>
-                {selectedInvoice.profit !== undefined && (
+                {selectedFinancials.displayProfit > 0 && (
                   <div className="flex justify-between text-sm text-success">
-                    <span>{t('invoices.profit')}:</span>
-                    <span>{formatCurrency(selectedInvoice.profit)}</span>
+                    <span>{t('invoices.profit') || 'صافي الربح'}:</span>
+                    <span className="font-semibold">{formatCurrency(selectedFinancials.displayProfit, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
               </div>
@@ -1577,7 +1693,8 @@ export default function Invoices() {
                 </Button>
               </div>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -1626,18 +1743,18 @@ export default function Invoices() {
                 <div className="grid grid-cols-2 gap-2 py-1 bg-white/70 dark:bg-black/20 rounded p-2 text-xs">
                   <div>
                     <span className="text-muted-foreground">المسدد سابقاً: </span>
-                    <span className="font-bold text-success">{formatCurrency(invoiceToRefund.debtPaid || 0, invoiceToRefund.currency)}</span>
+                    <span className="font-bold text-success">{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">المتبقي بذمة العميل: </span>
-                    <span className="font-bold text-destructive">{formatCurrency(invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid || 0)), invoiceToRefund.currency)}</span>
+                    <span className="font-bold text-destructive">{formatCurrency((invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid || 0))) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                 </div>
                 <p className="leading-relaxed">
                   {refundMode === 'full' ? (
                     (invoiceToRefund.debtPaid || 0) > 0 ? (
                       <>
-                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency(invoiceToRefund.debtPaid || 0, invoiceToRefund.currency)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
+                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
                       </>
                     ) : (
                       'سيتم إلغاء وشطب الدين المتبقي في ذمة العميل بالكامل دون التأثير على درج الكاشير.'
@@ -1645,10 +1762,10 @@ export default function Invoices() {
                   ) : (
                     partialRefundStats.cashToReturn > 0 ? (
                       <>
-                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount, invoiceToRefund.currency)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund.currency)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
+                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
                       </>
                     ) : (
-                      `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction, invoiceToRefund.currency)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
+                      `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
                     )
                   )}
                 </p>
@@ -1664,7 +1781,7 @@ export default function Invoices() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">إجمالي الفاتورة:</span>
-                    <span className="font-bold">{formatCurrency(invoiceToRefund?.totalInCurrency || invoiceToRefund?.total || 0, invoiceToRefund?.currency)}</span>
+                    <span className="font-bold">{formatCurrency(refundFinancials ? refundFinancials.displayTotal : 0, refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">عدد العناصر والقطع:</span>
@@ -1699,7 +1816,7 @@ export default function Invoices() {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{item.name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                            <span>{formatCurrency(item.price, invoiceToRefund.currency)} للقطعة</span>
+                            <span>{formatCurrency(item.price * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} للقطعة</span>
                             <span>•</span>
                             <span>الكمية بالفاتورة: <strong className="text-foreground">{item.quantity}</strong></span>
                           </div>
@@ -1752,27 +1869,27 @@ export default function Invoices() {
                   </div>
                   <div className="flex justify-between items-center text-sm font-bold border-t pt-1.5">
                     <span>إجمالي قيمة المرتجع:</span>
-                    <span className="text-orange-600">{formatCurrency(partialRefundStats.totalRefundAmount, invoiceToRefund?.currency)}</span>
+                    <span className="text-orange-600">{formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   {invoiceToRefund?.paymentType === 'debt' ? (
                     <>
                       {partialRefundStats.debtReduction > 0 && (
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
                           <span>تخفيض من الدين المتبقي:</span>
-                          <span className="font-semibold text-destructive">-{formatCurrency(partialRefundStats.debtReduction, invoiceToRefund.currency)}</span>
+                          <span className="font-semibold text-destructive">-{formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                         </div>
                       )}
                       {partialRefundStats.cashToReturn > 0 && (
                         <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                           <span>يُعاد نقداً للعميل ومن الوردية:</span>
-                          <span>{formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund.currency)}</span>
+                          <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                       <span>يُعاد نقداً للعميل ومن الوردية:</span>
-                      <span>{formatCurrency(partialRefundStats.cashToReturn, invoiceToRefund?.currency)}</span>
+                      <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                     </div>
                   )}
                 </div>
@@ -1823,7 +1940,7 @@ export default function Invoices() {
                 <Layers className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
                 {refundGuard.isRunning
                   ? 'جاري الاسترداد...'
-                  : `تأكيد الاسترداد الجزئي (${formatCurrency(partialRefundStats.totalRefundAmount, invoiceToRefund?.currency)})`}
+                  : `تأكيد الاسترداد الجزئي (${formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)})`}
               </Button>
             )}
           </DialogFooter>
@@ -1874,61 +1991,67 @@ export default function Invoices() {
               {/* اختيار عملة السداد */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">عملة الدفع المستلمة</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    disabled={isSubmittingPayment}
-                    onClick={() => {
-                      setPaymentCurrency('USD');
-                      setPaymentAmountInput('');
-                    }}
-                    className={cn(
-                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
-                      isSubmittingPayment && "opacity-50 cursor-not-allowed",
-                      paymentCurrency === 'USD'
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                    )}
-                  >
-                    <span className="text-sm font-bold">💵 دولار</span>
-                    <span className="text-xs font-normal opacity-80">(USD)</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmittingPayment}
-                    onClick={() => {
-                      setPaymentCurrency('TRY');
-                      setPaymentAmountInput('');
-                    }}
-                    className={cn(
-                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
-                      isSubmittingPayment && "opacity-50 cursor-not-allowed",
-                      paymentCurrency === 'TRY'
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                    )}
-                  >
-                    <span className="text-sm font-bold">₺ تركي</span>
-                    <span className="text-xs font-normal opacity-80">(TRY)</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmittingPayment}
-                    onClick={() => {
-                      setPaymentCurrency('SYP');
-                      setPaymentAmountInput('');
-                    }}
-                    className={cn(
-                      "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
-                      isSubmittingPayment && "opacity-50 cursor-not-allowed",
-                      paymentCurrency === 'SYP'
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                    )}
-                  >
-                    <span className="text-sm font-bold">ل.س سوري</span>
-                    <span className="text-xs font-normal opacity-80">(SYP)</span>
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {enabledCurrencies.USD !== false && (
+                    <button
+                      type="button"
+                      disabled={isSubmittingPayment}
+                      onClick={() => {
+                        setPaymentCurrency('USD');
+                        setPaymentAmountInput('');
+                      }}
+                      className={cn(
+                        "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        isSubmittingPayment && "opacity-50 cursor-not-allowed",
+                        paymentCurrency === 'USD'
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                      )}
+                    >
+                      <span className="text-sm font-bold">💵 دولار</span>
+                      <span className="text-xs font-normal opacity-80">(USD)</span>
+                    </button>
+                  )}
+                  {enabledCurrencies.TRY && (
+                    <button
+                      type="button"
+                      disabled={isSubmittingPayment}
+                      onClick={() => {
+                        setPaymentCurrency('TRY');
+                        setPaymentAmountInput('');
+                      }}
+                      className={cn(
+                        "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        isSubmittingPayment && "opacity-50 cursor-not-allowed",
+                        paymentCurrency === 'TRY'
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                      )}
+                    >
+                      <span className="text-sm font-bold">₺ تركي</span>
+                      <span className="text-xs font-normal opacity-80">(TRY)</span>
+                    </button>
+                  )}
+                  {enabledCurrencies.SYP && (
+                    <button
+                      type="button"
+                      disabled={isSubmittingPayment}
+                      onClick={() => {
+                        setPaymentCurrency('SYP');
+                        setPaymentAmountInput('');
+                      }}
+                      className={cn(
+                        "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        isSubmittingPayment && "opacity-50 cursor-not-allowed",
+                        paymentCurrency === 'SYP'
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                      )}
+                    >
+                      <span className="text-sm font-bold">ل.س سوري</span>
+                      <span className="text-xs font-normal opacity-80">(SYP)</span>
+                    </button>
+                  )}
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">

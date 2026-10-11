@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/command";
 import { showToast } from '@/lib/toast-config';
 import { loadCustomers, Customer } from '@/lib/customers-store';
+import { getNextInvoiceNumber } from '@/lib/invoices-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
 import { useAuth } from '@/hooks/use-auth';
@@ -284,6 +285,7 @@ export function CartPanel({
     paymentType?: 'cash' | 'debt' | 'split';
     downPayment?: number;
     debtRemaining?: number;
+    invoiceNumber?: string;
   } | null>(null);
 
 
@@ -412,7 +414,8 @@ export function CartPanel({
     custName: string,
     paymentType: 'cash' | 'debt' | 'split' = 'cash',
     downPayment: number = 0,
-    debtRemaining: number = 0
+    debtRemaining: number = 0,
+    invoiceNum?: string
   ) => {
     setLastSale({
       cart: [...cartData],
@@ -428,6 +431,7 @@ export function CartPanel({
       paymentType,
       downPayment,
       debtRemaining,
+      invoiceNumber: invoiceNum,
     });
   };
 
@@ -575,13 +579,13 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
-    // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
-    (window as any).__posSuppressExitUntil = Date.now() + 2000;
+    // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
+    const invoiceNumber = getNextInvoiceNumber();
+    (window as any).__posSuppressExitUntil = Date.now() + 4000;
     setShowCashDialog(false);
     onClose?.();
-    saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash');
+    saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash', 0, 0, invoiceNumber);
     onClearCart();
-    showToast.info('جاري المعالجة والمزامنة...');
     startSync('جاري حفظ الفاتورة...', false);
 
     try {
@@ -727,9 +731,26 @@ export function CartPanel({
       recordActivity();
 
       playSaleComplete();
+
+      const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+      const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
+      const singleName = isSingle ? cartSnapshot[0].name : undefined;
+      const formattedTotal = `${activeReceivedCurrency.symbol}${formatNumber(receivedAmount || (totalSnapshot * (activeReceivedCurrency.rate || 1)), 2)}`;
+
+      // ✅ إشعار نهائي موحد وحيد لعملية البيع يوضح رقم الفاتورة والإجمالي بدقة
+      showToast.success('فاتورة مكتملة', {
+        operation: 'فاتورة مكتملة',
+        invoiceNumber,
+        itemName: singleName,
+        isMultiple: !isSingle,
+        itemCount: totalPieces,
+        price: formattedTotal,
+        currency: activeReceivedCurrency.symbol,
+      });
+
       startSync('جاري رفع الفاتورة للسحابة...', false);
 
-      // ✅ تشغيل المزامنة الفورية وربط الإشعار بالنتيجة الحقيقية بدقة
+      // ✅ تشغيل المزامنة الفورية بالخلفية بهدوء لتحديث المؤشر دون إشعارات مكررة
       (async () => {
         try {
           const syncPromise = syncImmediately();
@@ -739,63 +760,17 @@ export function CartPanel({
 
           const outcome = await Promise.race([syncPromise, timeoutPromise]);
 
-          const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
-          const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
-          const singleName = isSingle ? cartSnapshot[0].name : undefined;
-          const formattedTotal = `${activeReceivedCurrency.symbol}${formatNumber(receivedAmount || (totalSnapshot * (activeReceivedCurrency.rate || 1)), 2)}`;
-
           if ('timeout' in outcome) {
-            // استغرقت المزامنة وقتاً أطول على الشبكة، الفاتورة محفوظة محلياً وفي طريقها للسحابة
             completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
-            showToast.info('تم حفظ الفاتورة محلياً', {
-              operation: 'فاتورة مكتملة',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedTotal,
-              currency: activeReceivedCurrency.symbol,
-              description: 'محفوظة محلياً ✓ جاري المزامنة بالخلفية...',
-            });
           } else if (outcome.success) {
             completeSync('تمت المزامنة بنجاح ✓', 2000);
-            showToast.success('فاتورة مكتملة', {
-              operation: 'فاتورة مكتملة',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedTotal,
-              currency: activeReceivedCurrency.symbol,
-              description: 'تم حفظ الفاتورة ومزامنتها بنجاح ✓',
-            });
           } else if (outcome.failed > 0) {
             failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
-            showToast.warning('تم حفظ الفاتورة محلياً', {
-              operation: 'فاتورة مكتملة',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedTotal,
-              currency: activeReceivedCurrency.symbol,
-              description: 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً',
-            });
           } else {
             completeSync('تم حفظ الفاتورة ✓', 2000);
-            showToast.success('فاتورة مكتملة', {
-              operation: 'فاتورة مكتملة',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedTotal,
-              currency: activeReceivedCurrency.symbol,
-              description: 'تم تسجيل الفاتورة بنجاح ✓',
-            });
           }
         } catch {
           completeSync('محفوظة محلياً ✓', 2000);
-          showToast.info('تم حفظ الفاتورة محلياً', {
-            operation: 'فاتورة مكتملة',
-            description: 'سيتم رفعها للسحابة تلقائياً',
-          });
         }
       })();
 
@@ -844,8 +819,9 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
-    // 🚀 إغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
-    (window as any).__posSuppressExitUntil = Date.now() + 2000;
+    // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
+    const invoiceNumber = getNextInvoiceNumber();
+    (window as any).__posSuppressExitUntil = Date.now() + 4000;
     setShowDebtDialog(false);
     onClose?.();
     saveSaleSnapshot(
@@ -853,10 +829,10 @@ export function CartPanel({
       customerNameSnapshot,
       downPaymentSnapshot > 0 ? 'split' : 'debt',
       downPaymentSnapshot,
-      debtRemainingSnapshot
+      debtRemainingSnapshot,
+      invoiceNumber
     );
     onClearCart();
-    showToast.info('جاري المعالجة والمزامنة...');
     startSync(
       downPaymentSnapshot > 0 
         ? 'جاري حفظ البيع المركب...' 
@@ -1038,7 +1014,38 @@ export function CartPanel({
         playDebtRecorded();
       }
 
-      // ✅ تشغيل المزامنة الفورية وربط الإشعار بالنتيجة الحقيقية بدقة
+      const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+      const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
+      const singleName = isSingle ? cartSnapshot[0].name : undefined;
+      const totalDebtSale = downPaymentSnapshot + debtRemainingSnapshot;
+      const formattedDebtPrice = `${selectedCurrency.symbol}${formatNumber(totalDebtSale * (selectedCurrency.rate || 1), 2)}`;
+
+      // ✅ إشعار نهائي موحد وحيد لعملية البيع المؤجل أو المركب
+      if (downPaymentSnapshot > 0) {
+        showToast.success('فاتورة بيع مركب', {
+          operation: 'فاتورة بيع مركب',
+          invoiceNumber,
+          itemName: singleName,
+          isMultiple: !isSingle,
+          itemCount: totalPieces,
+          price: formattedDebtPrice,
+          currency: selectedCurrency.symbol,
+          description: `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), 2)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), 2)}`,
+        });
+      } else {
+        showToast.success('فاتورة بيع مؤجل', {
+          operation: 'فاتورة بيع مؤجل',
+          invoiceNumber,
+          itemName: singleName,
+          isMultiple: !isSingle,
+          itemCount: totalPieces,
+          price: formattedDebtPrice,
+          currency: selectedCurrency.symbol,
+          description: `العميل: ${customerNameSnapshot}`,
+        });
+      }
+
+      // ✅ تشغيل المزامنة الفورية بالخلفية بهدوء لتحديث المؤشر دون إشعارات مكررة
       (async () => {
         try {
           const syncPromise = syncImmediately();
@@ -1048,70 +1055,17 @@ export function CartPanel({
 
           const outcome = await Promise.race([syncPromise, timeoutPromise]);
 
-          const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
-          const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
-          const singleName = isSingle ? cartSnapshot[0].name : undefined;
-          const totalDebtSale = downPaymentSnapshot + debtRemainingSnapshot;
-          const formattedDebtPrice = `$${formatNumber(totalDebtSale, 2)}`;
-
           if ('timeout' in outcome) {
             completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
-            showToast.info('تم حفظ الفاتورة محلياً', {
-              operation: 'فاتورة بيع آجل',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedDebtPrice,
-              description: 'محفوظة محلياً ✓ جاري المزامنة بالخلفية...',
-            });
           } else if (outcome.success) {
             completeSync('تمت المزامنة بنجاح ✓', 2000);
-            if (downPaymentSnapshot > 0) {
-              showToast.success('فاتورة بيع مركب', {
-                operation: 'فاتورة بيع مركب',
-                itemName: singleName,
-                isMultiple: !isSingle,
-                itemCount: totalPieces,
-                price: formattedDebtPrice,
-                description: `نقدي: $${formatNumber(downPaymentSnapshot, 2)} + دين: $${formatNumber(debtRemainingSnapshot, 2)}`,
-              });
-            } else {
-              showToast.success('فاتورة بيع مؤجل', {
-                operation: 'فاتورة بيع مؤجل',
-                itemName: singleName,
-                isMultiple: !isSingle,
-                itemCount: totalPieces,
-                price: formattedDebtPrice,
-                description: 'تم حفظ فاتورة البيع ومزامنتها بنجاح ✓',
-              });
-            }
           } else if (outcome.failed > 0) {
             failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
-            showToast.warning('تم حفظ الفاتورة محلياً', {
-              operation: 'فاتورة بيع آجل',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedDebtPrice,
-              description: 'فشلت المزامنة المؤقتة وسيتم رفعها تلقائياً',
-            });
           } else {
             completeSync('تم حفظ الفاتورة ✓', 2000);
-            showToast.success('فاتورة بيع آجل', {
-              operation: downPaymentSnapshot > 0 ? 'فاتورة بيع مركب' : 'فاتورة بيع مؤجل',
-              itemName: singleName,
-              isMultiple: !isSingle,
-              itemCount: totalPieces,
-              price: formattedDebtPrice,
-              description: 'تم تسجيل الفاتورة بنجاح ✓',
-            });
           }
         } catch {
           completeSync('محفوظة محلياً ✓', 2000);
-          showToast.info('تم حفظ الفاتورة محلياً', {
-            operation: 'فاتورة بيع آجل',
-            description: 'سيتم رفعها للسحابة تلقائياً',
-          });
         }
       })();
 
@@ -1293,6 +1247,7 @@ export function CartPanel({
             ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
           </div>
           <div class="invoice-info">
+            ${data?.invoiceNumber ? `<div><strong>رقم الفاتورة:</strong> #${data.invoiceNumber}</div>` : ''}
             <div><strong>التاريخ:</strong> ${currentDate} - ${currentTime}</div>
             <div><strong>العميل:</strong> ${printCustomerName || 'عميل نقدي'}</div>
           </div>
@@ -1347,7 +1302,7 @@ export function CartPanel({
 
     // تحضير بيانات الفاتورة للمشاركة
     const shareData: InvoiceShareData = {
-      id: `POS-${Date.now()}`,
+      id: data?.invoiceNumber ? `#${data.invoiceNumber}` : `POS-${Date.now()}`,
       storeName: store.name,
       storePhone: store.phone,
       customerName: shareCustName || 'عميل نقدي',

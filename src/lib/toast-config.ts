@@ -70,6 +70,7 @@ export interface ToastOptions {
   currency?: string;
   stockQuantity?: number;
   statusBadge?: string;
+  invoiceNumber?: string;
   primaryAction?: {
     label: string;
     onClick: () => void;
@@ -92,6 +93,7 @@ function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
     currency: optionsOrDesc.currency,
     stockQuantity: optionsOrDesc.stockQuantity,
     statusBadge: optionsOrDesc.statusBadge,
+    invoiceNumber: optionsOrDesc.invoiceNumber,
     primaryAction: optionsOrDesc.primaryAction,
     duration: optionsOrDesc.duration,
   };
