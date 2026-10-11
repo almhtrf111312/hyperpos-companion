@@ -389,7 +389,7 @@ export default function Settings() {
 
   // Enabled currencies state
   const [enabledCurrencies, setEnabledCurrencies] = useState({
-    USD: true,
+    USD: persisted?.enabledCurrencies?.USD !== false,
     TRY: persisted?.enabledCurrencies?.TRY ?? true,
     SYP: persisted?.enabledCurrencies?.SYP ?? true,
   });
@@ -747,9 +747,9 @@ export default function Settings() {
 
         const rawEC = (syncObj as any)?.enabledCurrencies || persisted?.enabledCurrencies;
         const freshEnabledCurrencies = {
-          USD: true,
-          TRY: rawEC?.TRY ?? true,
-          SYP: rawEC?.SYP ?? true,
+          USD: rawEC?.USD !== false,
+          TRY: rawEC?.TRY !== false,
+          SYP: rawEC?.SYP !== false,
         };
         setEnabledCurrencies(freshEnabledCurrencies);
 

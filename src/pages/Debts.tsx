@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
+import { loadDefaultCurrencyCode, loadEnabledCurrencies } from '@/hooks/use-currency';
 import { EVENTS, emitEvent } from '@/lib/events';
 import {
   loadDebtsCloud,
@@ -97,8 +98,9 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>('USD');
+  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => loadDefaultCurrencyCode());
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
+  const enabledCurrencies = useMemo(() => loadEnabledCurrencies(), []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debtItems, setDebtItems] = useState<InvoiceItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
@@ -300,7 +302,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     } catch { /* use cached */ }
     paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     setSelectedDebt(fresh);
-    setPaymentCurrency('USD');
+    setPaymentCurrency(loadDefaultCurrencyCode());
     setPaymentAmountInput('');
     setPaymentAmount(0);
     setShowPaymentDialog(true);
@@ -851,61 +853,67 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               {/* اختيار عملة السداد */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">عملة الدفع المستلمة</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      setPaymentCurrency('USD');
-                      setPaymentAmountInput('');
-                    }}
-                    className={cn(
-                      "min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
-                      isSubmitting && "opacity-50 cursor-not-allowed",
-                      paymentCurrency === 'USD'
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                    )}
-                  >
-                    <span className="text-xs font-bold">💵 دولار</span>
-                    <span className="text-[10px] opacity-80">(USD)</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      setPaymentCurrency('TRY');
-                      setPaymentAmountInput('');
-                    }}
-                    className={cn(
-                      "min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
-                      isSubmitting && "opacity-50 cursor-not-allowed",
-                      paymentCurrency === 'TRY'
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                    )}
-                  >
-                    <span className="text-xs font-bold">₺ تركي</span>
-                    <span className="text-[10px] opacity-80">(TRY)</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      setPaymentCurrency('SYP');
-                      setPaymentAmountInput('');
-                    }}
-                    className={cn(
-                      "min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
-                      isSubmitting && "opacity-50 cursor-not-allowed",
-                      paymentCurrency === 'SYP'
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                    )}
-                  >
-                    <span className="text-xs font-bold">ل.س سوري</span>
-                    <span className="text-[10px] opacity-80">(SYP)</span>
-                  </button>
+                <div className="flex gap-2">
+                  {enabledCurrencies.USD !== false && (
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setPaymentCurrency('USD');
+                        setPaymentAmountInput('');
+                      }}
+                      className={cn(
+                        "flex-1 min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        isSubmitting && "opacity-50 cursor-not-allowed",
+                        paymentCurrency === 'USD'
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                      )}
+                    >
+                      <span className="text-xs font-bold">💵 دولار</span>
+                      <span className="text-[10px] opacity-80">(USD)</span>
+                    </button>
+                  )}
+                  {enabledCurrencies.TRY && (
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setPaymentCurrency('TRY');
+                        setPaymentAmountInput('');
+                      }}
+                      className={cn(
+                        "flex-1 min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        isSubmitting && "opacity-50 cursor-not-allowed",
+                        paymentCurrency === 'TRY'
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                      )}
+                    >
+                      <span className="text-xs font-bold">₺ تركي</span>
+                      <span className="text-[10px] opacity-80">(TRY)</span>
+                    </button>
+                  )}
+                  {enabledCurrencies.SYP && (
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setPaymentCurrency('SYP');
+                        setPaymentAmountInput('');
+                      }}
+                      className={cn(
+                        "flex-1 min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        isSubmitting && "opacity-50 cursor-not-allowed",
+                        paymentCurrency === 'SYP'
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                      )}
+                    >
+                      <span className="text-xs font-bold">ل.س سوري</span>
+                      <span className="text-[10px] opacity-80">(SYP)</span>
+                    </button>
+                  )}
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
