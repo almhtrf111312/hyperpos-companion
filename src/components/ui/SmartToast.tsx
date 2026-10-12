@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSmartToastListener, hideSmartToast, SmartToastData } from '@/hooks/use-smart-toast';
 import { cn } from '@/lib/utils';
+import { getCurrentLanguage } from '@/lib/i18n';
 
 // =========================================================================
 // محرك المؤثرات الصوتية الخفيفة المدمج بواسطة Web Audio API (Native Feel)
@@ -731,9 +732,11 @@ export function SmartToast() {
               <div className="flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-primary/20 text-primary font-bold text-xs">
                   <span>📦</span>
-                  <span>وحدات متعددة</span>
+                  <span>{getCurrentLanguage() === 'en' ? 'Multiple items' : 'وحدات متعددة'}</span>
                   {details.itemCount && (
-                    <span className="font-mono text-[11px] opacity-80">({details.itemCount} قطع)</span>
+                    <span className="font-mono text-[11px] opacity-80">
+                      ({details.itemCount} {getCurrentLanguage() === 'en' ? (details.itemCount > 1 ? 'pcs' : 'pc') : 'قطع'})
+                    </span>
                   )}
                 </span>
                 {details.price && (

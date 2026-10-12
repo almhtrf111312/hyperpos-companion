@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit } from '@/lib/product-units';
 
 interface VariantProduct {
   id: string;
@@ -38,7 +39,7 @@ export function VariantPickerDialog({
   products,
   onSelect,
 }: VariantPickerDialogProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -46,7 +47,7 @@ export function VariantPickerDialog({
         <DialogHeader className="p-5 border-b border-border/40 bg-muted/30">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
-            اختر المنتج المطلوب
+            {language === 'en' ? 'Select Product Variant' : 'اختر المنتج المطلوب'}
           </DialogTitle>
         </DialogHeader>
 
@@ -78,7 +79,9 @@ export function VariantPickerDialog({
                 )}
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                   <span className="font-bold text-foreground text-sm">${product.price}</span>
-                  <span>متوفر: {product.quantity}</span>
+                  <span>
+                    {language === 'en' ? 'Available:' : 'متوفر:'} {product.quantity} {getLocalizedUnit(product.smallUnit, false, language)}
+                  </span>
                 </div>
               </div>
             </button>

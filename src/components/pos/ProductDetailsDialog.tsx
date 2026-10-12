@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import { ProductImage } from '@/components/products/ProductImage';
 import { loadAllWarehouseStocksLocalFirst } from '@/lib/cloud/warehouses-cloud';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit } from '@/lib/product-units';
 
 export interface Product {
   id: string;
@@ -55,6 +57,7 @@ export function ProductDetailsDialog({
   onClose,
   onAddToCart,
 }: ProductDetailsDialogProps) {
+  const { language } = useLanguage();
   // تبويبان فقط: الأسعار والمخزون
   const [activeTab, setActiveTab] = useState<'pricing' | 'inventory'>('pricing');
   const [qty, setQty] = useState(1);
@@ -254,7 +257,7 @@ export function ProductDetailsDialog({
               )}
             >
               <DollarSign className="w-3.5 h-3.5" />
-              <span>الأسعار</span>
+              <span>{language === 'en' ? 'Pricing' : 'الأسعار'}</span>
             </button>
             <button
               type="button"
@@ -267,7 +270,7 @@ export function ProductDetailsDialog({
               )}
             >
               <Package className="w-3.5 h-3.5" />
-              <span>المخزون</span>
+              <span>{language === 'en' ? 'Inventory' : 'المخزون'}</span>
             </button>
           </div>
         </div>
@@ -318,18 +321,20 @@ export function ProductDetailsDialog({
               <div className="grid grid-cols-2 gap-2.5">
                 {/* بطاقة الكمية المتوفرة بالمحل */}
                 <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
-                  <span className="text-xs text-muted-foreground block mb-1">الكمية المتوفرة بالمحل:</span>
+                  <span className="text-xs text-muted-foreground block mb-1">
+                    {language === 'en' ? 'Available in Store:' : 'الكمية المتوفرة بالمحل:'}
+                  </span>
                   <p className={cn("text-base md:text-lg font-black font-mono my-0.5", stock > 0 ? "text-foreground" : "text-destructive")}>
-                    {stock} {product.smallUnit || 'قطعة'}
+                    {stock} {getLocalizedUnit(product.smallUnit, false, language)}
                   </p>
                   <div>
                     {stock > 0 ? (
                       <span className="inline-flex items-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        ✓ متوفر للبيع الفوري
+                        {language === 'en' ? '✓ In stock' : '✓ متوفر للبيع الفوري'}
                       </span>
                     ) : (
                       <span className="inline-flex items-center text-[11px] font-bold text-destructive">
-                        نفد المخزون
+                        {language === 'en' ? 'Out of stock' : 'نفد المخزون'}
                       </span>
                     )}
                   </div>
@@ -337,11 +342,15 @@ export function ProductDetailsDialog({
 
                 {/* بطاقة حد إعادة الطلب */}
                 <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
-                  <span className="text-xs text-muted-foreground block mb-1">حد إعادة الطلب:</span>
+                  <span className="text-xs text-muted-foreground block mb-1">
+                    {language === 'en' ? 'Reorder Level:' : 'حد إعادة الطلب:'}
+                  </span>
                   <p className="text-base md:text-lg font-black text-rose-500 font-mono my-0.5">
-                    {minStock !== null ? `${minStock} ${product.smallUnit || 'قطعة'}` : 'لا يوجد'}
+                    {minStock !== null ? `${minStock} ${getLocalizedUnit(product.smallUnit, false, language)}` : (language === 'en' ? 'None' : 'لا يوجد')}
                   </p>
-                  <span className="text-[11px] text-muted-foreground">تنبيه عند الاقتراب</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {language === 'en' ? 'Low stock alert' : 'تنبيه عند الاقتراب'}
+                  </span>
                 </div>
               </div>
 
@@ -349,28 +358,40 @@ export function ProductDetailsDialog({
               <div className="grid grid-cols-2 gap-2.5">
                 {/* بطاقة الصنف */}
                 <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
-                  <span className="text-xs text-muted-foreground block mb-1">الصنف:</span>
-                  <p className="text-xs md:text-sm font-bold text-foreground my-0.5 truncate" title={product.category || 'عام'}>
-                    {product.category || 'عام'}
+                  <span className="text-xs text-muted-foreground block mb-1">
+                    {language === 'en' ? 'Category:' : 'الصنف:'}
+                  </span>
+                  <p className="text-xs md:text-sm font-bold text-foreground my-0.5 truncate" title={product.category || (language === 'en' ? 'General' : 'عام')}>
+                    {product.category || (language === 'en' ? 'General' : 'عام')}
                   </p>
-                  <span className="text-[11px] text-muted-foreground">القسم الفعلي للمنتج</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {language === 'en' ? 'Classification' : 'القسم الفعلي للمنتج'}
+                  </span>
                 </div>
 
                 {/* بطاقة فترة الضمان */}
                 <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex flex-col justify-between text-right">
-                  <span className="text-xs text-muted-foreground block mb-1">فترة الضمان:</span>
+                  <span className="text-xs text-muted-foreground block mb-1">
+                    {language === 'en' ? 'Warranty:' : 'فترة الضمان:'}
+                  </span>
                   <p className="text-xs md:text-sm font-bold text-foreground my-0.5 truncate">
-                    {product.warranty ? product.warranty : 'لا يوجد'}
+                    {product.warranty ? product.warranty : (language === 'en' ? 'None' : 'لا يوجد')}
                   </p>
-                  <span className="text-[11px] text-muted-foreground">الضمان المعتمد للمنتج</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {language === 'en' ? 'Official warranty' : 'الضمان المعتمد للمنتج'}
+                  </span>
                 </div>
               </div>
 
               {/* بطاقة المستودع إن وجد رصيد إضافي */}
               {warehouseStockQty > 0 && (
                 <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">المستودع الرئيسي:</span>
-                  <span className="font-bold text-foreground font-mono">{warehouseStockQty} قطعة إضافية</span>
+                  <span className="text-muted-foreground">
+                    {language === 'en' ? 'Main Warehouse:' : 'المستودع الرئيسي:'}
+                  </span>
+                  <span className="font-bold text-foreground font-mono">
+                    {warehouseStockQty} {language === 'en' ? 'extra pcs' : 'قطعة إضافية'}
+                  </span>
                 </div>
               )}
             </div>
@@ -411,7 +432,7 @@ export function ProductDetailsDialog({
             >
               <div className="flex items-center gap-1.5">
                 <Plus className="h-4 w-4" />
-                <span>إضافة للفاتورة</span>
+                <span>{language === 'en' ? 'Add to Invoice' : 'إضافة للفاتورة'}</span>
               </div>
               <span className="px-2.5 py-0.5 rounded-xl bg-white/20 text-white font-mono font-bold text-xs">
                 ${(salePrice * qty).toFixed(2)}
@@ -422,7 +443,7 @@ export function ProductDetailsDialog({
           <div className="shrink-0 px-5 pb-6 pt-2">
             <div className="rounded-2xl bg-destructive/10 py-3 text-center text-xs md:text-sm font-bold text-destructive border border-destructive/20 flex items-center justify-center gap-2">
               <AlertTriangle className="w-4 h-4" />
-              <span>هذا الصنف غير متوفر حالياً بالمخزون</span>
+              <span>{language === 'en' ? 'This item is currently out of stock' : 'هذا الصنف غير متوفر حالياً بالمخزون'}</span>
             </div>
           </div>
         )}

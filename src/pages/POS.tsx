@@ -21,6 +21,7 @@ import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit } from '@/lib/product-units';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
 import { App } from '@capacitor/app';
@@ -187,7 +188,7 @@ let memoryPosCategoriesCache: string[] = [];
 export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
-  const { t, tDynamic } = useLanguage();
+  const { t, tDynamic, language } = useLanguage();
   const { profile } = useAuth();
   const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -471,8 +472,8 @@ export default function POS() {
         barcode2: p.barcode2,
         barcode3: p.barcode3,
         variantLabel: p.variantLabel,
-        bulkUnit: p.bulkUnit || t('products.unitCarton'),
-        smallUnit: p.smallUnit || t('products.unitPiece'),
+        bulkUnit: getLocalizedUnit(p.bulkUnit, true, language),
+        smallUnit: getLocalizedUnit(p.smallUnit, false, language),
         conversionFactor: p.conversionFactor || 1,
         bulkSalePrice: p.bulkSalePrice || 0,
         costPrice: p.costPrice,
@@ -482,7 +483,7 @@ export default function POS() {
         expiryDate: p.expiryDate,
         batchNumber: p.batchNumber,
       }));
-  }, [t]);
+  }, [language]);
 
   // Load products and categories from cloud with retry logic
   // ✅ تحميل فوري من الكاش المحلي المسبق ثم مزامنة سحابية هادئة في الخلفية دون وميض أو قفزة بالواجهة
@@ -713,7 +714,9 @@ export default function POS() {
 
     if (!isNoInventoryMode() && totalCartPieces + additionalPieces > product.quantity) {
       const maxAvailable = unit === 'bulk' && product.conversionFactor ? Math.floor(product.quantity / product.conversionFactor) : product.quantity;
-      const unitLabel = unit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
+      const unitLabel = unit === 'bulk'
+        ? getLocalizedUnit(product.bulkUnit, true, language)
+        : getLocalizedUnit(product.smallUnit, false, language);
       showToast.error(`الكمية المطلوبة غير متوفرة. المتاح: ${maxAvailable} ${unitLabel}`);
       return;
     }
@@ -925,7 +928,9 @@ export default function POS() {
 
           if (totalCartPieces + additionalPieces > product.quantity) {
             const maxAvailable = targetUnit === 'bulk' && product.conversionFactor ? Math.floor(product.quantity / product.conversionFactor) : product.quantity;
-            const unitLabel = targetUnit === 'bulk' ? (product.bulkUnit || t('products.unitCarton')) : (product.smallUnit || t('products.unitPiece'));
+            const unitLabel = targetUnit === 'bulk'
+              ? getLocalizedUnit(product.bulkUnit, true, language)
+              : getLocalizedUnit(product.smallUnit, false, language);
             showToast.error(`الكمية المطلوبة غير متوفرة. المتاح: ${maxAvailable} ${unitLabel}`);
             return;
           }

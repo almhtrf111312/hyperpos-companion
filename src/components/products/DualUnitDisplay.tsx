@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Boxes } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit } from '@/lib/product-units';
 
 interface DualUnitDisplayProps {
   /** إجمالي القطع (الوحدة الصغرى) */
@@ -27,13 +29,17 @@ interface DualUnitDisplayProps {
 export function DualUnitDisplay({
   totalPieces,
   conversionFactor,
-  bulkUnit = 'كرتونة',
-  smallUnit = 'قطعة',
+  bulkUnit,
+  smallUnit,
   showTotal = true,
   size = 'md',
   direction = 'horizontal',
   showIcon = false,
 }: DualUnitDisplayProps) {
+  const { language } = useLanguage();
+  const locSmall = getLocalizedUnit(smallUnit, false, language, { count: totalPieces });
+  const locBulk = getLocalizedUnit(bulkUnit, true, language);
+
   // إذا لم يكن هناك معامل تحويل (أو = 1)، نعرض القطع فقط
   if (!conversionFactor || conversionFactor <= 1) {
     return (
@@ -44,7 +50,7 @@ export function DualUnitDisplay({
             "font-semibold text-foreground",
             size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm'
           )}>
-            {totalPieces} {smallUnit}
+            {totalPieces} {locSmall}
           </span>
         </div>
       </div>
@@ -70,7 +76,7 @@ export function DualUnitDisplay({
       )}>
         {showIcon && <Boxes className="w-3 h-3" />}
         <span>{fullBulkUnits}</span>
-        <span className="font-normal opacity-80">{bulkUnit}</span>
+        <span className="font-normal opacity-80">{locBulk}</span>
       </div>
 
       {/* خانة القطع المتبقية */}
@@ -82,7 +88,9 @@ export function DualUnitDisplay({
             badgeSize
           )}>
             <span>{remainingPieces}</span>
-            <span className="font-normal text-muted-foreground">{smallUnit}</span>
+            <span className="font-normal text-muted-foreground">
+              {getLocalizedUnit(smallUnit, false, language, { count: remainingPieces })}
+            </span>
           </div>
         </>
       )}
@@ -94,7 +102,7 @@ export function DualUnitDisplay({
           totalSize,
           direction === 'horizontal' ? 'basis-full mt-0.5' : 'mt-0.5'
         )}>
-          المجموع: {totalPieces} {smallUnit}
+          {language === 'en' ? 'Total' : 'المجموع'}: {totalPieces} {locSmall}
         </div>
       )}
     </div>
@@ -107,14 +115,18 @@ export function DualUnitDisplay({
 export function DualUnitDisplayCompact({
   totalPieces,
   conversionFactor,
-  bulkUnit = 'كرتونة',
-  smallUnit = 'قطعة',
+  bulkUnit,
+  smallUnit,
 }: Pick<DualUnitDisplayProps, 'totalPieces' | 'conversionFactor' | 'bulkUnit' | 'smallUnit'>) {
+  const { language } = useLanguage();
+  const locSmall = getLocalizedUnit(smallUnit, false, language, { count: totalPieces, short: true });
+  const locBulk = getLocalizedUnit(bulkUnit, true, language, { count: Math.floor(totalPieces / (conversionFactor || 1)) });
+
   // No conversion factor or factor=1: show pieces directly
   if (!conversionFactor || conversionFactor <= 1) {
     return (
       <span className="text-[10px] md:text-xs text-muted-foreground">
-        {totalPieces} {smallUnit}
+        {totalPieces} {locSmall}
       </span>
     );
   }
@@ -126,7 +138,7 @@ export function DualUnitDisplayCompact({
   if (fullBulkUnits === 0) {
     return (
       <span className="text-[10px] md:text-xs text-muted-foreground">
-        {totalPieces} {smallUnit}
+        {totalPieces} {locSmall}
       </span>
     );
   }
@@ -134,7 +146,7 @@ export function DualUnitDisplayCompact({
   return (
     <div className="flex flex-wrap items-center gap-1 text-[10px] md:text-xs">
       <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-        {fullBulkUnits} {bulkUnit}
+        {fullBulkUnits} {locBulk}
       </span>
       {remainingPieces > 0 && (
         <span className="text-muted-foreground">

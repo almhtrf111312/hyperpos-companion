@@ -48,6 +48,7 @@ import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
 import { recordActivity } from '@/lib/auto-backup';
 import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit } from '@/lib/product-units';
 import {
   loadCustomersCloud,
   addCustomerCloud,
@@ -228,7 +229,7 @@ export function CartPanel({
   lastAddedItemId,
 }: CartPanelProps) {
   const { user, profile } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { activeWarehouse } = useWarehouse();
   // المستودع الرئيسي يخزن كمياته في المنتج نفسه وليس في جدول مخزون المستودعات
   const stockWarehouseId = activeWarehouse && activeWarehouse.type !== 'main' ? activeWarehouse.id : undefined;
@@ -1546,14 +1547,16 @@ export function CartPanel({
                             ? "bg-primary/20 text-primary"
                             : "bg-muted text-muted-foreground"
                         )}>
-                          {item.unit === 'bulk' ? (item.bulkUnit || 'كرتونة') : (item.smallUnit || 'قطعة')}
+                          {item.unit === 'bulk'
+                            ? getLocalizedUnit(item.bulkUnit, true, language)
+                            : getLocalizedUnit(item.smallUnit, false, language)}
                         </span>
                         {onToggleUnit && (
                           <button
                             type="button"
                             onClick={() => onToggleUnit(item.id, item.unit)}
                             className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                            title="تبديل الوحدة"
+                            title={language === 'en' ? 'Switch Unit' : 'تبديل الوحدة'}
                           >
                             <Repeat className="w-2.5 h-2.5" />
                           </button>

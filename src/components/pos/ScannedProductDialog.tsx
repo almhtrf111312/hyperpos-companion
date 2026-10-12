@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit } from '@/lib/product-units';
 import { getCurrentStoreType } from '@/lib/store-type-config';
 
 // POS Product type matching the one used in POS.tsx (not from localStorage)
@@ -41,7 +42,7 @@ export function ScannedProductDialog({
   onAddToCart,
   onLoan,
 }: ScannedProductDialogProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isBookstore = getCurrentStoreType() === 'bookstore';
   
   if (!product) return null;
@@ -91,7 +92,9 @@ export function ScannedProductDialog({
           <div className="bg-muted/40 border border-border/40 rounded-xl p-4 mb-5 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t('scannedProduct.availableStock')}:</span>
-              <span className="font-semibold text-foreground">{product.quantity} {t('scannedProduct.piece')}</span>
+              <span className="font-semibold text-foreground">
+                {product.quantity} {getLocalizedUnit(product.smallUnit, false, language)}
+              </span>
             </div>
             {product.barcode && (
               <div className="flex justify-between text-sm mt-1">

@@ -98,6 +98,7 @@ import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fie
 import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config';
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
+import { getLocalizedUnit as localizeProductUnit } from '@/lib/product-units';
 import { useCamera } from '@/hooks/use-camera';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
@@ -134,7 +135,7 @@ export default function Products() {
   };
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  const { t, tDynamic, isRTL } = useLanguage();
+  const { t, tDynamic, isRTL, language } = useLanguage();
   const { isBoss, isAdmin, isCashier } = useUserRole();
   const noInventory = isNoInventoryMode();
   const isRestaurant = getCurrentStoreType() === 'restaurant';
@@ -1342,32 +1343,7 @@ export default function Products() {
 
   // دالة توحيد وترجمة الوحدات حسب لغة النظام
   const getLocalizedUnit = (rawUnit: string | undefined, isBulk: boolean = false): string => {
-    if (!rawUnit) {
-      return isBulk ? t('products.unitCarton') : t('products.unitPiece');
-    }
-    const normalized = rawUnit.trim().toLowerCase();
-    // فحص الكرتونة ومشتقاتها (Carton, Cartony, Karton, Koli, كرتونة, كرتون)
-    if (
-      isBulk ||
-      normalized.includes('carton') ||
-      normalized.includes('karton') ||
-      normalized.includes('koli') ||
-      normalized.includes('كرتون')
-    ) {
-      return t('products.unitCarton');
-    }
-    // فحص القطعة ومشتقاتها (Piece, Pieces, Adet, قطعة, حبة)
-    if (
-      normalized.includes('piece') ||
-      normalized.includes('adet') ||
-      normalized.includes('قطعة') ||
-      normalized.includes('حبه') ||
-      normalized.includes('حبة')
-    ) {
-      return t('products.unitPiece');
-    }
-    // وحدة مخصصة (كغ، لتر، متر…) تُعرض كما هي
-    return rawUnit;
+    return localizeProductUnit(rawUnit, isBulk, language);
   };
 
   return (
