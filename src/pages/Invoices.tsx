@@ -409,16 +409,46 @@ export default function Invoices() {
   const handleRefund = (invoice: Invoice) => {
     // ✅ منع الاسترداد المزدوج من الواجهة
     if (invoice.status === 'refunded') {
-      toast.warning(t('invoices.alreadyRefunded') || (language === 'en' ? 'This invoice is already refunded' : language === 'ku' ? 'ئەم فاکتۆڕە پێشتر گەڕێندراوەتەوە' : 'هذه الفاتورة مستردة بالفعل'));
+      toast.warning(
+        language === 'en'
+          ? 'This invoice is already refunded'
+          : language === 'tr'
+          ? 'Bu fatura zaten iade edildi'
+          : language === 'ku'
+          ? 'ئەم فاکتۆڕە پێشتر گەڕێندراوەتەوە'
+          : language === 'fa'
+          ? 'این فاکتور قبلاً مرجوع شده است'
+          : 'هذه الفاتورة مستردة بالفعل'
+      );
       return;
     }
     // ✅ فحص دور المستخدم — الكاشير لا يملك صلاحية الاسترداد (يحتاج إذن مشرف)
     getCurrentUserRole().then(role => {
       if (role === 'cashier') {
-        toast.error(language === 'en' ? 'You do not have permission to refund' : language === 'ku' ? 'دەسەڵاتی ئەنجامدانی گەڕاندنەوەت نییە' : 'ليس لديك صلاحية تنفيذ الاسترداد', {
-          description: language === 'en' ? 'This action requires supervisor or manager permissions. Contact the store owner.' : language === 'ku' ? 'ئەم کردارە پێویستی بە دەسەڵاتی سەرپەرشتیار یان بەڕێوەبەر هەیە. پەیوەندی بە خاوەنی فرۆشگاوە بکە.' : 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
-          duration: 5000,
-        });
+        toast.error(
+          language === 'en'
+            ? 'You do not have permission to refund'
+            : language === 'tr'
+            ? 'İade işlemi için yetkiniz bulunmamaktadır'
+            : language === 'ku'
+            ? 'دەسەڵاتی ئەنجامدانی گەڕاندنەوەت نییە'
+            : language === 'fa'
+            ? 'شما مجوز انجام مرجوعی را ندارید'
+            : 'ليس لديك صلاحية تنفيذ الاسترداد',
+          {
+            description:
+              language === 'en'
+                ? 'This action requires supervisor or manager permissions. Contact the store owner.'
+                : language === 'tr'
+                ? 'Bu işlem yönetici veya müdür yetkisi gerektirir. Mağaza sahibiyle iletişime geçin.'
+                : language === 'ku'
+                ? 'ئەم کردارە پێویستی بە دەسەڵاتی سەرپەرشتیار یان بەڕێوەبەر هەیە. پەیوەندی بە خاوەنی فرۆشگاوە بکە.'
+                : language === 'fa'
+                ? 'این عملیات نیاز به مجوز سرپرست یا مدیر دارد. با مالک فروشگاه تماس بگیرید.'
+                : 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
+            duration: 5000,
+          }
+        );
         return;
       }
       // لديه صلاحية — نفتح نافذة الاسترداد
