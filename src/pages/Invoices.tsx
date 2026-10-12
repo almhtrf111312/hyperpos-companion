@@ -114,7 +114,127 @@ const getLocalDateString = (d: Date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-export type DateQuickFilter = 'today' | 'week' | 'month' | 'all' | 'custom';
+export type DateQuickFilter = 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
+
+/**
+ * فحص مطابقة تاريخ الفاتورة مع تاريخ اليوم بمعالجة فروق التوقيت المحلي وUTC ومنتصف الليل
+ */
+export function isInvoiceToday(createdAt?: string | null): boolean {
+  if (!createdAt) return false;
+  try {
+    const invDate = new Date(createdAt);
+    if (isNaN(invDate.getTime())) return false;
+    const now = new Date();
+
+    // 1. مطابقة التاريخ المحلي (نفس اليوم والشهر والسنة في توقيت جهاز المستخدم)
+    if (
+      invDate.getFullYear() === now.getFullYear() &&
+      invDate.getMonth() === now.getMonth() &&
+      invDate.getDate() === now.getDate()
+    ) {
+      return true;
+    }
+
+    // 2. مطابقة نص التاريخ المحلي toDateString
+    if (invDate.toDateString() === now.toDateString()) {
+      return true;
+    }
+
+    // 3. مطابقة تاريخ UTC (لتغطية أي فارق توقيت بين خادم Supabase وجهاز المستخدم حول منتصف الليل)
+    if (
+      invDate.getUTCFullYear() === now.getUTCFullYear() &&
+      invDate.getUTCMonth() === now.getUTCMonth() &&
+      invDate.getUTCDate() === now.getUTCDate()
+    ) {
+      return true;
+    }
+
+    // 4. مطابقة البادئة النصية (YYYY-MM-DD)
+    const localToday = getLocalDateString(now);
+    const utcToday = now.toISOString().slice(0, 10);
+    if (createdAt.startsWith(localToday) || createdAt.startsWith(utcToday)) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * فحص مطابقة تاريخ الفاتورة خلال آخر 7 أيام
+ */
+export function isInvoiceThisWeek(createdAt?: string | null): boolean {
+  if (!createdAt) return false;
+  try {
+    const invDate = new Date(createdAt);
+    if (isNaN(invDate.getTime())) return false;
+    const now = new Date();
+    const diffMs = now.getTime() - invDate.getTime();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    if (diffMs >= -86400000 && diffMs <= sevenDaysMs) {
+      return true;
+    }
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    weekAgo.setHours(0, 0, 0, 0);
+    if (invDate >= weekAgo) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * فحص مطابقة تاريخ الفاتورة للشهر الحالي
+ */
+export function isInvoiceThisMonth(createdAt?: string | null): boolean {
+  if (!createdAt) return false;
+  try {
+    const invDate = new Date(createdAt);
+    if (isNaN(invDate.getTime())) return false;
+    const now = new Date();
+    if (invDate.getFullYear() === now.getFullYear() && invDate.getMonth() === now.getMonth()) {
+      return true;
+    }
+    if (invDate.getUTCFullYear() === now.getUTCFullYear() && invDate.getUTCMonth() === now.getUTCMonth()) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * فحص مطابقة تاريخ الفاتورة للسنة الحالية
+ */
+export function isInvoiceThisYear(createdAt?: string | null): boolean {
+  if (!createdAt) return false;
+  try {
+    const invDate = new Date(createdAt);
+    if (isNaN(invDate.getTime())) return false;
+    const now = new Date();
+    if (invDate.getFullYear() === now.getFullYear()) {
+      return true;
+    }
+    if (invDate.getUTCFullYear() === now.getUTCFullYear()) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * فحص مطابقة تاريخ الفاتورة مع تاريخ مخصص محدد
+ */
+export function isInvoiceCustomDate(createdAt?: string | null, targetDate?: string): boolean {
+  if (!createdAt || !targetDate) return true;
+  try {
+    if (createdAt.startsWith(targetDate)) return true;
+    const invDate = new Date(createdAt);
+    if (isNaN(invDate.getTime())) return false;
+    if (getLocalDateString(invDate) === targetDate) return true;
+    if (invDate.toISOString().slice(0, 10) === targetDate) return true;
+  } catch {}
+  return false;
+}
 
 export default function Invoices() {
   const { t, language } = useLanguage();
@@ -287,7 +407,14 @@ export default function Invoices() {
   const statCurrencySymbol = statCurrencyCode === 'USD' ? '$' : (statCurrencyCode === 'TRY' ? '₺' : 'ل.س');
   const statDecimals = statCurrencyCode === 'SYP' ? 0 : 2;
 
-  const todaySalesDisplay = roundCurrency(stats.todaySales * statExchangeRate);
+  // مواءمة مبيعات اليوم مع فواتير اليوم الفعلية المعروضة لمنع أي تفاوت عند منتصف الليل
+  const computedTodaySales = useMemo(() => {
+    const todayInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceToday(inv.createdAt));
+    return todayInvs.reduce((sum, inv) => sum + (inv.total || 0), 0);
+  }, [invoices]);
+
+  const effectiveTodaySales = computedTodaySales > 0 ? computedTodaySales : stats.todaySales;
+  const todaySalesDisplay = roundCurrency(effectiveTodaySales * statExchangeRate);
   const totalProfitDisplay = roundCurrency(stats.totalProfit * statExchangeRate);
 
   const refundFinancials = invoiceToRefund ? getInvoiceFinancials(invoiceToRefund) : null;
@@ -398,21 +525,19 @@ export default function Invoices() {
 
     // Date filtering (Quick filters + Custom date picker)
     if (dateQuickFilter === 'today') {
-      result = result.filter(inv => inv.createdAt && inv.createdAt.startsWith(todayStr));
+      result = result.filter(inv => isInvoiceToday(inv.createdAt));
     } else if (dateQuickFilter === 'week') {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekAgoStr = getLocalDateString(weekAgo);
-      result = result.filter(inv => inv.createdAt && inv.createdAt.slice(0, 10) >= weekAgoStr);
+      result = result.filter(inv => isInvoiceThisWeek(inv.createdAt));
     } else if (dateQuickFilter === 'month') {
-      const monthPrefix = todayStr.slice(0, 7);
-      result = result.filter(inv => inv.createdAt && inv.createdAt.startsWith(monthPrefix));
+      result = result.filter(inv => isInvoiceThisMonth(inv.createdAt));
+    } else if (dateQuickFilter === 'year') {
+      result = result.filter(inv => isInvoiceThisYear(inv.createdAt));
     } else if (dateQuickFilter === 'custom' && dateFilter) {
-      result = result.filter(inv => inv.createdAt && inv.createdAt.startsWith(dateFilter));
+      result = result.filter(inv => isInvoiceCustomDate(inv.createdAt, dateFilter));
     }
 
     return result;
-  }, [invoices, debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, todayStr, showRefunded, refundMeta]);
+  }, [invoices, debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, showRefunded, refundMeta]);
 
   // KPI Card Filter Handlers
   const handleKpiTotal = () => {
@@ -457,6 +582,9 @@ export default function Invoices() {
     for (const inv of invoices) {
       if (inv.status !== 'refunded' && inv.createdAt) {
         dates.add(inv.createdAt.slice(0, 10));
+        try {
+          dates.add(getLocalDateString(new Date(inv.createdAt)));
+        } catch {}
       }
     }
     return Array.from(dates);
@@ -1551,10 +1679,11 @@ export default function Invoices() {
             {/* Quick Date Filter Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
               {[
-                { id: 'today', label: t('common.today') || 'اليوم' },
-                { id: 'week', label: t('common.thisWeek') || 'هذا الأسبوع' },
-                { id: 'month', label: t('common.thisMonth') || 'هذا الشهر' },
-                { id: 'all', label: t('invoices.allInvoices') || 'كل الفواتير' },
+                { id: 'today' as const, key: 'reports.today', fallback: 'اليوم' },
+                { id: 'week' as const, key: 'reports.thisWeek', fallback: 'هذا الأسبوع' },
+                { id: 'month' as const, key: 'reports.thisMonth', fallback: 'هذا الشهر' },
+                { id: 'year' as const, key: 'reports.thisYear', fallback: 'هذا العام' },
+                { id: 'all' as const, key: 'invoices.allInvoices', fallback: 'كل الفواتير' },
               ].map((pill) => {
                 const isActive = dateQuickFilter === pill.id;
                 return (
@@ -1574,6 +1703,10 @@ export default function Invoices() {
                         setDateQuickFilter('month');
                         setDateFilter('');
                         setActiveKpi(null);
+                      } else if (pill.id === 'year') {
+                        setDateQuickFilter('year');
+                        setDateFilter('');
+                        setActiveKpi(null);
                       } else {
                         setDateQuickFilter('all');
                         setDateFilter('');
@@ -1587,7 +1720,7 @@ export default function Invoices() {
                         : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                   >
-                    {pill.label}
+                    {t(pill.key as any) || pill.fallback}
                   </button>
                 );
               })}
