@@ -1129,7 +1129,7 @@ export default function POS() {
           {/* Products/Maintenance Area */}
           <div data-tour="product-grid" className={cn(
             "flex-1 flex flex-col h-full overflow-hidden",
-            !isMobile && "border-l border-border"
+            !isMobile && (isRTL ? "border-l border-border" : "border-r border-border")
           )}>
             {activeMode === 'products' || hideMaintenanceSection ? (
               <ProductGrid
@@ -1154,7 +1154,10 @@ export default function POS() {
 
           {/* Cart Panel - Desktop Only (not tablet) */}
           {!isMobile && (
-            <div className="w-[340px] md:w-[350px] lg:w-[390px] flex-shrink-0 p-2 md:p-3 pl-0 flex flex-col h-full" data-tour="cart-panel">
+            <div className={cn(
+              "w-[340px] md:w-[350px] lg:w-[390px] flex-shrink-0 p-2 md:p-3 flex flex-col h-full",
+              isRTL ? "pl-0" : "pr-0"
+            )} data-tour="cart-panel">
               <CartPanel
                 cart={cart}
                 currencies={currencies}

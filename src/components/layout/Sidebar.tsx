@@ -72,7 +72,7 @@ const navItems: NavItem[] = [
   { icon: Wallet, translationKey: 'nav.cashShifts', path: '/cash-shifts', tourId: 'cash-shifts', tooltipKey: 'tooltip.cashShifts' as TranslationKey },
   // FROZEN (warehouses/stock-transfer disabled): { icon: Package, translationKey: 'nav.warehouses', path: '/warehouses', adminOnly: true, hideInNoInventory: true, tourId: 'warehouses', tooltipKey: 'tooltip.warehouses' as TranslationKey },
   // FROZEN (warehouses/stock-transfer disabled): { icon: Package, translationKey: 'nav.stockTransfer', path: '/stock-transfer', adminOnly: true, hideInNoInventory: true, tourId: 'stock-transfer', tooltipKey: 'tooltip.stockTransfer' as TranslationKey },
-  { icon: LayoutDashboard, translationKey: 'nav.reports', labelOverride: 'لوحة التقارير والتحكم', path: '/reports', adminOnly: true, tourId: 'reports', tooltipKey: 'tooltip.reports' as TranslationKey },
+  { icon: LayoutDashboard, translationKey: 'nav.reports', path: '/reports', adminOnly: true, tourId: 'reports', tooltipKey: 'tooltip.reports' as TranslationKey },
   { icon: Palette, translationKey: 'settings.theme', path: '/appearance', tourId: 'appearance', tooltipKey: 'tooltip.appearance' as TranslationKey },
   { icon: HelpCircle, translationKey: 'nav.help', path: '/help', tourId: 'help', tooltipKey: 'tooltip.help' as TranslationKey },
   { icon: MessageCircle, translationKey: 'license.contactDeveloper' as TranslationKey, path: '/contact', requiresContactSidebar: true, tourId: 'contact', tooltipKey: 'license.contactDeveloper' as TranslationKey },
@@ -363,7 +363,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                       <>
                         <span className="text-sm truncate select-none">{item.labelOverride || (item.dynamicKey ? tDynamic(item.dynamicKey as any) : t(item.translationKey))}</span>
                         {!!item.badge && (
-                          <span className="mr-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full select-none">
+                          <span className="ms-auto bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full select-none">
                             {item.badge}
                           </span>
                         )}

@@ -1546,7 +1546,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   archiveFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
                 )}
               >
@@ -1564,7 +1564,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('out_of_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   archiveFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
                 )}
               >
@@ -1582,7 +1582,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('manual_archived')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   archiveFilter === 'manual_archived' ? "border-warning ring-2 ring-warning/20" : "border-border"
                 )}
               >
@@ -1600,7 +1600,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   archiveFilter === 'all' ? "border-success ring-2 ring-success/20" : "border-border"
                 )}
               >
@@ -1620,7 +1620,7 @@ export default function Products() {
               <button
                 onClick={() => setStatusFilter('all')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
                 )}
               >
@@ -1637,7 +1637,7 @@ export default function Products() {
               <button
                 onClick={() => setStatusFilter('in_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
                 )}
               >
@@ -1654,7 +1654,7 @@ export default function Products() {
               <button
                 onClick={() => setStatusFilter('low_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
                 )}
               >
@@ -1671,7 +1671,7 @@ export default function Products() {
               <button
                 onClick={() => setStatusFilter('out_of_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-right transition-all hover:shadow-md",
+                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
                   statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
                 )}
               >
@@ -2652,7 +2652,7 @@ export default function Products() {
                 )}
                 {(!noInventory || isRepairMode) && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? `تكلفة القطعة (${currencySymbol})` : `سعر الشراء (${currencySymbol})`}</label>
+                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? `${t('products.pieceCost')} (${currencySymbol})` : `${t('products.costPrice')} (${currencySymbol})`}</label>
                     <Input
                       type="text"
                       inputMode="decimal"

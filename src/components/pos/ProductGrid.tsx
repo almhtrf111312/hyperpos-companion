@@ -241,7 +241,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border/60 flex flex-col"
+                className="pos-item text-start fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border/60 flex flex-col"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
                 {/* الصورة بإطار متناسق واحتواء كامل مع شارة المخزون العلوية */}
@@ -264,12 +264,12 @@ export function ProductGrid({
 
                 {/* جسم البطاقة المستغل للمساحة بالكامل لاسم المنتج والسعر */}
                 <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 w-full">
-                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 leading-snug min-h-[2.5rem] w-full text-right" title={product.name}>
+                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 leading-snug min-h-[2.5rem] w-full text-start" title={product.name}>
                     {product.name}
                   </h3>
 
                   {/* السطر السفلي: السعر بكامل العرض لمنع أي قص أو التفاف */}
-                  <div className="w-full pt-1 border-t border-border/30 mt-auto text-right">
+                  <div className="w-full pt-1 border-t border-border/30 mt-auto text-start">
                     <span className="text-primary font-black text-xs md:text-sm block truncate w-full">
                       {formatDisplayPrice(product.price)}
                     </span>
@@ -287,7 +287,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-all"
+                className="pos-item text-start fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-all"
                 style={{ animationDelay: `${index * 15}ms` }}
               >
                 <div className="w-full aspect-square bg-muted/20 p-1.5 rounded-lg overflow-hidden mb-1.5 relative flex items-center justify-center">
@@ -307,10 +307,10 @@ export function ProductGrid({
                   />
                 </div>
                 <div className="space-y-1 w-full">
-                  <h4 className="font-bold text-[11px] text-foreground line-clamp-2 leading-tight min-h-[2rem] w-full text-right" title={product.name}>
+                  <h4 className="font-bold text-[11px] text-foreground line-clamp-2 leading-tight min-h-[2rem] w-full text-start" title={product.name}>
                     {product.name}
                   </h4>
-                  <div className="w-full pt-0.5 border-t border-border/30 text-right">
+                  <div className="w-full pt-0.5 border-t border-border/30 text-start">
                     <span className="font-black text-primary text-[11px] block truncate w-full">
                       {formatDisplayPrice(product.price)}
                     </span>
@@ -328,7 +328,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in group flex items-center bg-white dark:bg-zinc-900 rounded-[20px] p-2 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-black/5 dark:border-white/5"
+                className="pos-item text-start fade-in group flex items-center bg-white dark:bg-zinc-900 rounded-[20px] p-2 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-black/5 dark:border-white/5"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex-shrink-0 overflow-hidden relative">
@@ -362,10 +362,10 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-right fade-in group flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 border border-black/5 dark:border-white/5"
+                className="pos-item text-start fade-in group flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 border border-black/5 dark:border-white/5"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="flex-1 pe-2 overflow-hidden text-right">
+                <div className="flex-1 pe-2 overflow-hidden text-start">
                   <h3 className="font-bold text-xs text-foreground truncate">{product.name}</h3>
                   <p className="text-primary font-bold text-xs mt-0.5">{formatDisplayPrice(product.price)}</p>
                 </div>
