@@ -1279,7 +1279,8 @@ export default function Invoices() {
         console.error('Failed to load store settings for share:', error);
       }
 
-      const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
+      const localeMap: Record<string, string> = { en: 'en-US', tr: 'tr-TR', fa: 'fa-IR', ku: 'ckb-IQ', ar: 'ar-SA' };
+      const date = new Date(invoice.createdAt).toLocaleDateString(localeMap[language] || 'ar-SA');
       const shareFinancials = getInvoiceFinancials(invoice, true);
       const rate = shareFinancials.rate;
       const currencySymbol = shareFinancials.symbol;
@@ -1348,7 +1349,8 @@ export default function Invoices() {
         }
       } catch (e) {}
 
-      const date = new Date(invoice.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'ar-SA');
+      const localeMap: Record<string, string> = { en: 'en-US', tr: 'tr-TR', fa: 'fa-IR', ku: 'ckb-IQ', ar: 'ar-SA' };
+      const date = new Date(invoice.createdAt).toLocaleDateString(localeMap[language] || 'ar-SA');
       const shareFinancials = getInvoiceFinancials(invoice, true);
       const rate = shareFinancials.rate;
 

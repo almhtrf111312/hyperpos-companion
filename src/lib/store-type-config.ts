@@ -25,6 +25,8 @@ interface TerminologySet {
   ar: Record<TerminologyKey, string>;
   en: Record<TerminologyKey, string>;
   tr: Record<TerminologyKey, string>;
+  fa?: Record<TerminologyKey, string>;
+  ku?: Record<TerminologyKey, string>;
 }
 
 const terminologyMap: Record<string, TerminologySet> = {
@@ -83,6 +85,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Ürün Yönetimi',
       pageSubtitle: 'Ürün stok ve fiyat yönetimi',
     },
+    fa: {
+      product: 'محصول',
+      products: 'محصولات',
+      addProduct: 'افزودن محصول',
+      editProduct: 'ویرایش محصول',
+      category: 'دسته‌بندی',
+      categories: 'دسته‌بندی‌ها',
+      barcode: 'بارکد / IMEI',
+      maintenance: 'تعمیرات',
+      productSearch: 'جستجوی محصول یا بارکد...',
+      productCount: 'تعداد کل محصولات',
+      lowStockAlert: 'هشدارهای موجودی',
+      topProducts: 'پرفروش‌ترین محصولات',
+      newProduct: 'محصول جدید',
+      newProductDesc: 'افزودن محصول به انبار',
+      pageTitle: 'مدیریت محصولات',
+      pageSubtitle: 'مدیریت موجودی کالاها و قیمت‌ها',
+    },
   },
   grocery: {
     ar: {
@@ -138,6 +158,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Stoğa ürün ekle',
       pageTitle: 'Ürün Yönetimi',
       pageSubtitle: 'Market stok ve fiyat yönetimi',
+    },
+    fa: {
+      product: 'کالا',
+      products: 'کالاها',
+      addProduct: 'افزودن کالا',
+      editProduct: 'ویرایش کالا',
+      category: 'بخش',
+      categories: 'بخش‌ها',
+      barcode: 'بارکد کالا',
+      maintenance: 'خدمات',
+      productSearch: 'جستجوی کالا یا بارکد...',
+      productCount: 'تعداد کل کالاها',
+      lowStockAlert: 'هشدارهای کسری موجودی',
+      topProducts: 'کالاهای پرفروش',
+      newProduct: 'کالای جدید',
+      newProductDesc: 'افزودن کالا به فروشگاه',
+      pageTitle: 'مدیریت کالاها',
+      pageSubtitle: 'مدیریت موجودی قفسه‌ها و قیمت‌ها',
     },
   },
   pharmacy: {
@@ -195,6 +233,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'İlaç Yönetimi',
       pageSubtitle: 'İlaç stok ve fiyat yönetimi',
     },
+    fa: {
+      product: 'دارو / محصول',
+      products: 'داروها و محصولات',
+      addProduct: 'افزودن دارو',
+      editProduct: 'ویرایش دارو',
+      category: 'دسته‌بندی درمانی',
+      categories: 'دسته‌بندی‌های درمانی',
+      barcode: 'بارکد دارو',
+      maintenance: 'خدمات',
+      productSearch: 'جستجوی دارو، نام علمی یا بارکد...',
+      productCount: 'تعداد کل داروها',
+      lowStockAlert: 'هشدارهای موجودی و انقضا',
+      topProducts: 'داروهای پرمصرف',
+      newProduct: 'داروی جدید',
+      newProductDesc: 'ثبت داروی جدید در داروخانه',
+      pageTitle: 'مدیریت داروها و تجهیزات',
+      pageSubtitle: 'پیگیری موجودی داروها و تاریخ انقضا',
+    },
   },
   clothing: {
     ar: {
@@ -250,6 +306,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Stoğa ürün ekle',
       pageTitle: 'Ürün Yönetimi',
       pageSubtitle: 'Giyim stok ve fiyat yönetimi',
+    },
+    fa: {
+      product: 'پوشاک / مدل',
+      products: 'پوشاک و اجناس',
+      addProduct: 'افزودن مدل جدید',
+      editProduct: 'ویرایش مشخصات لباس',
+      category: 'بخش پوشاک',
+      categories: 'بخش‌های پوشاک',
+      barcode: 'بارکد لباس',
+      maintenance: 'دوخت و تعمیرات',
+      productSearch: 'جستجوی لباس با نام یا بارکد...',
+      productCount: 'تعداد کل مدل‌ها',
+      lowStockAlert: 'هشدارهای اتمام سایز یا رنگ',
+      topProducts: 'مدل‌های پرطرفدار',
+      newProduct: 'مدل جدید',
+      newProductDesc: 'ثبت مدل جدید در انبار',
+      pageTitle: 'مدیریت پوشاک و مد',
+      pageSubtitle: 'مدیریت موجودی سایزها، رنگ‌ها و قیمت‌ها',
     },
   },
   restaurant: {
@@ -307,6 +381,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Menü Yönetimi',
       pageSubtitle: 'Yemek ve fiyat yönetimi',
     },
+    fa: {
+      product: 'غذا / نوشیدنی',
+      products: 'منوی رستوران',
+      addProduct: 'افزودن غذای جدید',
+      editProduct: 'ویرایش غذا',
+      category: 'بخش منو',
+      categories: 'بخش‌های منو',
+      barcode: 'کد آیتم',
+      maintenance: 'سرویس و تحویل',
+      productSearch: 'جستجو در منو...',
+      productCount: 'تعداد آیتم‌های منو',
+      lowStockAlert: 'هشدارهای مواد اولیه',
+      topProducts: 'غذاهای پرطرفدار',
+      newProduct: 'غذای جدید',
+      newProductDesc: 'افزودن غذای جدید به منو',
+      pageTitle: 'مدیریت منوی رستوران',
+      pageSubtitle: 'تنظیم اقلام منو، قیمت‌ها و بخش‌ها',
+    },
   },
   bakery: {
     ar: {
@@ -362,6 +454,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Listeye ürün ekle',
       pageTitle: 'Fırın Yönetimi',
       pageSubtitle: 'Satış, alış ve gider takibi',
+    },
+    fa: {
+      product: 'نان / شیرینی',
+      products: 'محصولات قنادی و نانوایی',
+      addProduct: 'افزودن محصول جدید',
+      editProduct: 'ویرایش محصول',
+      category: 'نوع پخت',
+      categories: 'انواع پخت',
+      barcode: 'کد محصول',
+      maintenance: 'سفارشات ویژه',
+      productSearch: 'جستجوی نان یا شیرینی...',
+      productCount: 'تعداد کل محصولات',
+      lowStockAlert: 'هشدارهای کمبود تولید',
+      topProducts: 'محصولات پرفروش روز',
+      newProduct: 'محصول جدید',
+      newProductDesc: 'ثبت محصول جدید برای پخت',
+      pageTitle: 'مدیریت محصولات قنادی',
+      pageSubtitle: 'مدیریت محصولات پخت روز و قیمت‌ها',
     },
   },
   repair: {
@@ -419,6 +529,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Bakım Atölyesi',
       pageSubtitle: 'Bakım öğeleri ve maliyet yönetimi',
     },
+    fa: {
+      product: 'قطعه / خدمات',
+      products: 'قطعات و خدمات تعمیر',
+      addProduct: 'افزودن قطعه یا خدمت',
+      editProduct: 'ویرایش قطعه / خدمت',
+      category: 'نوع تعمیر / قطعه',
+      categories: 'انواع تعمیرات و قطعات',
+      barcode: 'کد قطعه',
+      maintenance: 'کارگاه تعمیرات',
+      productSearch: 'جستجوی قطعه یدکی یا خدمت...',
+      productCount: 'تعداد قطعات و خدمات',
+      lowStockAlert: 'هشدارهای قطعات یدکی رو به اتمام',
+      topProducts: 'خدمات و قطعات پرتقاضا',
+      newProduct: 'قطعه / خدمت جدید',
+      newProductDesc: 'افزودن قطعه یا خدمات جدید به کارگاه',
+      pageTitle: 'مدیریت کارگاه و قطعات',
+      pageSubtitle: 'پیگیری قطعات یدکی، خدمات و قیمت‌ها',
+    },
   },
   bookstore: {
     ar: {
@@ -475,6 +603,24 @@ const terminologyMap: Record<string, TerminologySet> = {
       pageTitle: 'Kitap Yönetimi',
       pageSubtitle: 'Kitap stok ve fiyat yönetimi',
     },
+    fa: {
+      product: 'کتاب / لوازم‌التحریر',
+      products: 'کتاب‌ها و لوازم‌التحریر',
+      addProduct: 'افزودن کتاب',
+      editProduct: 'ویرایش مشخصات کتاب',
+      category: 'موضوع / بخش',
+      categories: 'موضوعات و بخش‌ها',
+      barcode: 'شابک (ISBN) / بارکد',
+      maintenance: 'صحافی و خدمات',
+      productSearch: 'جستجوی کتاب با نام، نویسنده یا شابک...',
+      productCount: 'تعداد کل عناوین',
+      lowStockAlert: 'عناوین رو به اتمام',
+      topProducts: 'کتاب‌های پرفروش',
+      newProduct: 'کتاب جدید',
+      newProductDesc: 'ثبت کتاب یا کالای جدید در کتابفروشی',
+      pageTitle: 'مدیریت کتابفروشی',
+      pageSubtitle: 'مدیریت عناوین، موجودی انبار و قیمت‌ها',
+    },
   },
   general: {
     ar: {
@@ -530,6 +676,42 @@ const terminologyMap: Record<string, TerminologySet> = {
       newProductDesc: 'Stoğa ürün ekle',
       pageTitle: 'Ürün Yönetimi',
       pageSubtitle: 'Ürün stok ve fiyat yönetimi',
+    },
+    fa: {
+      product: 'محصول',
+      products: 'محصولات',
+      addProduct: 'افزودن محصول',
+      editProduct: 'ویرایش محصول',
+      category: 'دسته‌بندی',
+      categories: 'دسته‌بندی‌ها',
+      barcode: 'بارکد',
+      maintenance: 'خدمات',
+      productSearch: 'جستجوی محصول یا بارکد...',
+      productCount: 'تعداد کل محصولات',
+      lowStockAlert: 'هشدارهای موجودی',
+      topProducts: 'پرفروش‌ترین محصولات',
+      newProduct: 'محصول جدید',
+      newProductDesc: 'افزودن محصول به سیستم',
+      pageTitle: 'مدیریت محصولات',
+      pageSubtitle: 'مدیریت موجودی کالاها و قیمت‌ها',
+    },
+    ku: {
+      product: 'بەرهەم',
+      products: 'بەرهەمەکان',
+      addProduct: 'زیادکردنی بەرهەم',
+      editProduct: 'دەستکاریکردنی بەرهەم',
+      category: 'پۆلێن',
+      categories: 'پۆلێنەکان',
+      barcode: 'بارکۆد',
+      maintenance: 'خزمەتگوزارییەکان',
+      productSearch: 'گەڕان بۆ بەرهەم یان بارکۆد...',
+      productCount: 'کۆی گشتی بەرهەمەکان',
+      lowStockAlert: 'ئاگادارییەکانی کەمبوونەوەی کۆگا',
+      topProducts: 'پڕفرۆشترین بەرهەمەکان',
+      newProduct: 'بەرهەمی نوێ',
+      newProductDesc: 'زیادکردنی بەرهەمی نوێ بۆ سیستەم',
+      pageTitle: 'بەڕێوەبردنی بەرهەمەکان',
+      pageSubtitle: 'بەڕێوەبردنی کۆگا و نرخەکان',
     },
   },
 };
@@ -594,8 +776,23 @@ export const getDefaultCategories = (storeType: string): string[] => {
 // Get terminology for a specific store type and language
 export const getTerminology = (storeType: string, key: TerminologyKey, language: string): string => {
   const config = terminologyMap[storeType] || terminologyMap.general;
-  const langTerms = language === 'ar' ? config.ar : (language === 'tr' ? config.tr : config.en);
-  return langTerms[key] || terminologyMap.general[language === 'ar' ? 'ar' : (language === 'tr' ? 'tr' : 'en')][key];
+  const langTerms =
+    language === 'ar'
+      ? config.ar
+      : language === 'tr'
+      ? config.tr
+      : language === 'fa' && config.fa
+      ? config.fa
+      : language === 'ku' && config.ku
+      ? config.ku
+      : config.en;
+  return (
+    langTerms?.[key] ||
+    (language === 'fa' && terminologyMap.general.fa ? terminologyMap.general.fa[key] : undefined) ||
+    (language === 'ku' && terminologyMap.general.ku ? terminologyMap.general.ku[key] : undefined) ||
+    terminologyMap.general[language === 'ar' ? 'ar' : language === 'tr' ? 'tr' : 'en']?.[key] ||
+    key
+  );
 };
 
 // Check if the store type operates without inventory tracking (e.g., bakery, repair/workshop)
