@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FileText, Download } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   icon: ReactNode;
@@ -35,6 +36,8 @@ export function ReportShell({
   hideExportToolbar = false,
   hideHeaderCard = false
 }: Props) {
+  const { t } = useLanguage();
+
   return (
     <div className={cn('space-y-3', className)}>
       {/* Header card */}
@@ -62,12 +65,12 @@ export function ReportShell({
         <div className="flex items-center gap-2 sticky top-0 z-10 bg-background/85 backdrop-blur py-1.5">
           {onExportPDF && (
             <Button variant="outline" size="sm" onClick={onExportPDF} disabled={exportDisabled} className="h-9 text-xs rounded-xl gap-1.5 flex-1 max-w-[160px]">
-              <FileText className="w-4 h-4" /> تصدير PDF
+              <FileText className="w-4 h-4" /> {t('reports.exportPDF') || 'تصدير PDF'}
             </Button>
           )}
           {onExportExcel && (
             <Button variant="outline" size="sm" onClick={onExportExcel} disabled={exportDisabled} className="h-9 text-xs rounded-xl gap-1.5 flex-1 max-w-[160px]">
-              <Download className="w-4 h-4" /> تصدير Excel
+              <Download className="w-4 h-4" /> {t('reports.exportExcel') || 'تصدير Excel'}
             </Button>
           )}
         </div>

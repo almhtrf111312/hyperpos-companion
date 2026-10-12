@@ -7,6 +7,7 @@ import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideInternalExport = false }: Props) {
+  const { t } = useLanguage();
 
   const data = useMemo(() => {
     const filtered = invoices.filter(inv => {
@@ -127,29 +129,29 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
         <div className="bg-card rounded-xl border border-border p-4">
           <Users className="w-5 h-5 text-primary mb-2" />
           <p className="text-2xl font-bold">{data.length}</p>
-          <p className="text-xs text-muted-foreground">عدد الكاشيرات</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalActiveCashiers') || 'عدد الكاشيرات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <ShoppingCart className="w-5 h-5 text-blue-500 mb-2" />
           <p className="text-2xl font-bold">{totalInvoices}</p>
-          <p className="text-xs text-muted-foreground">إجمالي الفواتير</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalInvoices') || 'إجمالي الفواتير'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-green-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(totalSales)}</p>
-          <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalSales') || 'إجمالي المبيعات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <TrendingUp className="w-5 h-5 text-emerald-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(totalProfit)}</p>
-          <p className="text-xs text-muted-foreground">إجمالي الأرباح</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalProfit') || 'إجمالي الأرباح'}</p>
         </div>
       </div>
 
       {data.length === 0 ? (
         <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
           <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-          <p className="text-muted-foreground">لا توجد بيانات في الفترة المحددة</p>
+          <p className="text-muted-foreground">{t('reports.noData') || 'لا توجد بيانات في الفترة المحددة'}</p>
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -158,13 +160,13 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-right">#</th>
-                  <th className="p-3 text-right">الكاشير</th>
-                  <th className="p-3 text-center">الفواتير</th>
-                  <th className="p-3 text-center">المبيعات</th>
-                  <th className="p-3 text-center">الربح</th>
-                  <th className="p-3 text-center">متوسط الفاتورة</th>
-                  <th className="p-3 text-center">نقدي</th>
-                  <th className="p-3 text-center">آجل</th>
+                  <th className="p-3 text-right">{t('reports.cashiersUnit') || 'الكاشير'}</th>
+                  <th className="p-3 text-center">{t('reports.invoicesUnit') || 'الفواتير'}</th>
+                  <th className="p-3 text-center">{t('reports.sales') || 'المبيعات'}</th>
+                  <th className="p-3 text-center">{t('reports.profitLabel') || 'الربح'}</th>
+                  <th className="p-3 text-center">{t('reports.avgInvoice') || 'متوسط الفاتورة'}</th>
+                  <th className="p-3 text-center">{t('reports.cashSales') || 'نقدي'}</th>
+                  <th className="p-3 text-center">{t('reports.creditSales') || 'آجل'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,7 +185,7 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
               </tbody>
               <tfoot className="bg-muted/30 font-bold">
                 <tr>
-                  <td className="p-3" colSpan={2}>الإجمالي</td>
+                  <td className="p-3" colSpan={2}>{t('invoices.total') || 'الإجمالي'}</td>
                   <td className="p-3 text-center">{totalInvoices}</td>
                   <td className="p-3 text-center">{formatCurrency(totalSales)}</td>
                   <td className="p-3 text-center text-green-600">{formatCurrency(totalProfit)}</td>

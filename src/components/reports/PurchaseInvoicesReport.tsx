@@ -7,6 +7,7 @@ import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function PurchaseInvoicesReport({ dateRange, hideInternalExport = false }: Props) {
+  const { t } = useLanguage();
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -120,29 +122,29 @@ export function PurchaseInvoicesReport({ dateRange, hideInternalExport = false }
         <div className="bg-card rounded-xl border border-border p-4">
           <Package className="w-5 h-5 text-primary mb-2" />
           <p className="text-2xl font-bold">{stats.count}</p>
-          <p className="text-xs text-muted-foreground">عدد الفواتير</p>
+          <p className="text-xs text-muted-foreground">{t('reports.purchaseInvoicesCount') || 'عدد الفواتير'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-blue-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(stats.total)}</p>
-          <p className="text-xs text-muted-foreground">الإجمالي الفعلي</p>
+          <p className="text-xs text-muted-foreground">{t('invoices.total') || 'الإجمالي الفعلي'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <CheckCircle className="w-5 h-5 text-green-500 mb-2" />
           <p className="text-2xl font-bold">{stats.finalized}</p>
-          <p className="text-xs text-muted-foreground">فواتير مؤكدة</p>
+          <p className="text-xs text-muted-foreground">{t('invoices.confirmed') || 'فواتير مؤكدة'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <Clock className="w-5 h-5 text-amber-500 mb-2" />
           <p className="text-2xl font-bold">{stats.draft}</p>
-          <p className="text-xs text-muted-foreground">مسودات</p>
+          <p className="text-xs text-muted-foreground">{t('invoices.draft') || 'مسودات'}</p>
         </div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
           <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-          <p className="text-muted-foreground">لا توجد فواتير مشتريات في الفترة المحددة</p>
+          <p className="text-muted-foreground">{t('reports.noData') || 'لا توجد فواتير مشتريات في الفترة المحددة'}</p>
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">

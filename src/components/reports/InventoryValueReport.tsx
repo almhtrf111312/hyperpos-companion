@@ -6,12 +6,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { loadProductsLocalFirst, refreshProductsFromCloud, type Product } from '@/lib/cloud/products-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props { dateRange: { from: string; to: string } }
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
 export function InventoryValueReport({ dateRange }: Props) {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,11 +50,11 @@ export function InventoryValueReport({ dateRange }: Props) {
 
   const handleExport = (kind: 'pdf' | 'excel') => {
     const opts = {
-      title: 'تقرير قيمة العهدة',
-      subtitle: `${dateRange.from} إلى ${dateRange.to}`,
+      title: t('reports.custodyValue') || 'تقرير قيمة العهدة',
+      subtitle: `${dateRange.from} ${t('reports.to') || 'إلى'} ${dateRange.to}`,
       columns: [
-        { key: 'name', label: 'التصنيف' },
-        { key: 'value', label: 'قيمة العهدة (تكلفة)' },
+        { key: 'name', label: t('products.category') || 'التصنيف' },
+        { key: 'value', label: t('reports.custodyValue') || 'قيمة العهدة (تكلفة)' },
       ],
       rows: byCategory,
       summary: [
@@ -82,7 +84,7 @@ export function InventoryValueReport({ dateRange }: Props) {
   return (
     <ReportShell
       icon={<Wallet className="w-5 h-5" />}
-      title="تقرير قيمة العهدة"
+      title={t('reports.custodyValue') || 'تقرير قيمة العهدة'}
       subtitle="رأس المال المجمد في البضاعة، الربح الكامن، توزيع القيمة على التصنيفات"
       onExportPDF={() => handleExport('pdf')}
       onExportExcel={() => handleExport('excel')}

@@ -7,6 +7,7 @@ import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function MaintenanceReport({ dateRange, invoices, isLoading, hideInternalExport = false }: Props) {
+  const { t } = useLanguage();
 
   const data = useMemo(() => {
     return invoices.filter(inv => {
@@ -119,29 +121,29 @@ export function MaintenanceReport({ dateRange, invoices, isLoading, hideInternal
         <div className="bg-card rounded-xl border border-border p-4">
           <Wrench className="w-5 h-5 text-primary mb-2" />
           <p className="text-2xl font-bold">{stats.count}</p>
-          <p className="text-xs text-muted-foreground">عدد الخدمات</p>
+          <p className="text-xs text-muted-foreground">{t('reports.maintenanceInvoicesCount') || 'عدد الخدمات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-blue-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
-          <p className="text-xs text-muted-foreground">إجمالي الإيرادات</p>
+          <p className="text-xs text-muted-foreground">{t('reports.totalRevenue') || 'إجمالي الإيرادات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <TrendingUp className="w-5 h-5 text-green-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(stats.totalProfit)}</p>
-          <p className="text-xs text-muted-foreground">صافي الربح</p>
+          <p className="text-xs text-muted-foreground">{t('reports.netProfit') || 'صافي الربح'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <CheckCircle className="w-5 h-5 text-amber-500 mb-2" />
           <p className="text-2xl font-bold">{stats.cashCount} / {stats.debtCount}</p>
-          <p className="text-xs text-muted-foreground">نقدي / آجل</p>
+          <p className="text-xs text-muted-foreground">{t('reports.cashSales') || 'نقدي'} / {t('reports.creditSales') || 'آجل'}</p>
         </div>
       </div>
 
       {data.length === 0 ? (
         <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
           <Wrench className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-          <p className="text-muted-foreground">لا توجد خدمات صيانة في الفترة المحددة</p>
+          <p className="text-muted-foreground">{t('reports.noData') || 'لا توجد خدمات صيانة في الفترة المحددة'}</p>
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">

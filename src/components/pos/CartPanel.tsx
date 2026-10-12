@@ -1557,7 +1557,7 @@ export function CartPanel({
                             type="button"
                             onClick={() => onToggleUnit(item.id, item.unit)}
                             className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
-                            title={language === 'en' ? 'Switch Unit' : 'تبديل الوحدة'}
+                            title={t('pos.switchUnit') || 'تبديل الوحدة'}
                           >
                             <Repeat className="w-2.5 h-2.5" />
                           </button>

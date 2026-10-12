@@ -7,6 +7,7 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { exportGenericToPDF, exportGenericToExcel } from '@/lib/reports/dataset-builder';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   invoices: Invoice[];
@@ -29,6 +30,7 @@ export function SalesDetailedReport({
   hideExportToolbar = false,
   hideHeaderCard = false
 }: Props) {
+  const { t } = useLanguage();
   const [scope, setScope] = useState<ScopeMode>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -120,29 +122,29 @@ export function SalesDetailedReport({
 
   const handleExport = async (kind: 'pdf' | 'excel') => {
     if (rows.length === 0) { toast.error('لا توجد بيانات للتصدير'); return; }
-    const scopeLabel = scope === 'all' ? 'الكل' : selectedId || '';
+    const scopeLabel = scope === 'all' ? (t('reports.category.all') || 'الكل') : selectedId || '';
     const opts = {
-      title: 'تقرير المبيعات التفصيلي',
+      title: t('reports.salesDetailedTitle') || 'تقرير المبيعات التفصيلي',
       subtitle: `${dateRange.from} → ${dateRange.to} • ${scopeLabel}`,
-      sheetName: 'مبيعات',
+      sheetName: t('reports.sales') || 'مبيعات',
       columns: [
-        { key: 'number', label: 'رقم الفاتورة' },
-        { key: 'date', label: 'التاريخ' },
-        { key: 'customer', label: 'العميل' },
-        { key: 'cashier', label: 'الكاشير' },
-        { key: 'payment', label: 'الدفع' },
-        { key: 'items', label: 'الأصناف' },
-        { key: 'discount', label: 'الخصم' },
-        { key: 'profit', label: 'الربح' },
-        { key: 'total', label: 'الإجمالي' },
+        { key: 'number', label: t('invoices.invoiceNumber') || 'رقم الفاتورة' },
+        { key: 'date', label: t('common.date') || 'التاريخ' },
+        { key: 'customer', label: t('reports.customers') || 'العميل' },
+        { key: 'cashier', label: t('reports.cashiersUnit') || 'الكاشير' },
+        { key: 'payment', label: t('invoices.paymentMethod') || 'الدفع' },
+        { key: 'items', label: t('reports.itemsUnit') || 'الأصناف' },
+        { key: 'discount', label: t('invoices.discount') || 'الخصم' },
+        { key: 'profit', label: t('reports.profitLabel') || 'الربح' },
+        { key: 'total', label: t('invoices.total') || 'الإجمالي' },
       ],
       rows,
       totals: { discount: stats.totalDiscount, profit: stats.totalProfit, total: stats.totalSales },
       summary: [
-        { label: 'عدد الفواتير', value: stats.count },
-        { label: 'إجمالي المبيعات', value: formatCurrency(stats.totalSales) },
-        { label: 'إجمالي الأرباح', value: formatCurrency(stats.totalProfit) },
-        { label: 'متوسط الفاتورة', value: formatCurrency(stats.avg) },
+        { label: t('reports.totalInvoices') || 'عدد الفواتير', value: stats.count },
+        { label: t('reports.totalSales') || 'إجمالي المبيعات', value: formatCurrency(stats.totalSales) },
+        { label: t('reports.totalProfit') || 'إجمالي الأرباح', value: formatCurrency(stats.totalProfit) },
+        { label: t('reports.avgInvoice') || 'متوسط الفاتورة', value: formatCurrency(stats.avg) },
       ],
       fileName: `sales_detailed_${dateRange.from}_${dateRange.to}.${kind === 'pdf' ? 'pdf' : 'xlsx'}`,
     };
@@ -155,8 +157,8 @@ export function SalesDetailedReport({
   return (
     <ReportShell
       icon={<ShoppingCart className="w-5 h-5" />}
-      title="تقرير المبيعات التفصيلي"
-      subtitle={`من ${dateRange.from} إلى ${dateRange.to}`}
+      title={t('reports.salesDetailedTitle') || 'تقرير المبيعات التفصيلي'}
+      subtitle={`${t('reports.from') || 'من'} ${dateRange.from} ${t('reports.to') || 'إلى'} ${dateRange.to}`}
       onExportPDF={() => handleExport('pdf')}
       onExportExcel={() => handleExport('excel')}
       exportDisabled={rows.length === 0}

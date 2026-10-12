@@ -7,6 +7,7 @@ import { listStockDiscrepancies, type StockDiscrepancy } from '@/lib/cloud/stock
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { cn, formatCurrency, formatNumber } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   search: string;
@@ -24,6 +25,7 @@ const columns = [
 ];
 
 export function StockDiscrepancyReport({ search, warehouseId }: Props) {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<StockDiscrepancy[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +68,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
   }));
 
   const exportOptions = {
-    title: 'كاشف فروقات المخزون',
+    title: t('reports.stockDiscrepancyTitle') || 'كاشف فروقات المخزون',
     subtitle: `المنتجات المختلفة: ${mismatches.length} — مجموع فرق الوحدات: ${formatNumber(totalUnits)}`,
     columns,
     rows: exportRows,
@@ -80,7 +82,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
   return (
     <ReportShell
       icon={<PackageSearch className="w-5 h-5" />}
-      title="كاشف فروقات المخزون"
+      title={t('reports.stockDiscrepancyTitle') || 'كاشف فروقات المخزون'}
       subtitle="يقارن الرصيد الفعلي بالرصيد المتوقع من سجل حركات المخزون"
       onExportPDF={filtered.length ? () => void exportGenericToPDF({ ...exportOptions, fileName: 'stock-discrepancies.pdf' }) : undefined}
       onExportExcel={filtered.length ? () => void exportGenericToExcel({ ...exportOptions, sheetName: 'فروقات المخزون', fileName: 'stock-discrepancies.xlsx' }) : undefined}

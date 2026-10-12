@@ -7,6 +7,7 @@ import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
+  const { t } = useLanguage();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -151,22 +153,22 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-red-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(stats.totalRemaining)}</p>
-          <p className="text-xs text-muted-foreground">الديون المتبقية</p>
+          <p className="text-xs text-muted-foreground">{t('debts.remaining') || 'الديون المتبقية'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <CheckCircle className="w-5 h-5 text-green-500 mb-2" />
           <p className="text-2xl font-bold">{formatCurrency(stats.totalPaid)}</p>
-          <p className="text-xs text-muted-foreground">المدفوع</p>
+          <p className="text-xs text-muted-foreground">{t('debts.paid') || 'المدفوع'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <AlertTriangle className="w-5 h-5 text-red-500 mb-2" />
           <p className="text-2xl font-bold">{stats.overdue}</p>
-          <p className="text-xs text-muted-foreground">متأخرة</p>
+          <p className="text-xs text-muted-foreground">{t('debts.overdue') || 'متأخرة'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <Clock className="w-5 h-5 text-amber-500 mb-2" />
           <p className="text-2xl font-bold">{stats.count}</p>
-          <p className="text-xs text-muted-foreground">إجمالي الديون</p>
+          <p className="text-xs text-muted-foreground">{t('debts.totalDebt') || 'إجمالي الديون'}</p>
         </div>
       </div>
 

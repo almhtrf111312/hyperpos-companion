@@ -11,10 +11,12 @@ import { saveStockCount, listStockCounts, type StockCount } from '@/lib/cloud/st
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props { dateRange: { from: string; to: string } }
 
 export function InventoryStockReport({ dateRange }: Props) {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [history, setHistory] = useState<StockCount[]>([]);
@@ -123,15 +125,15 @@ export function InventoryStockReport({ dateRange }: Props) {
       value: rows.reduce((s, r) => s + r.value, 0),
     };
     const opts = {
-      title: 'تقرير المخزون والجرد',
-      subtitle: `${dateRange.from} إلى ${dateRange.to}`,
+      title: t('reports.inventoryStockDiscrepancy') || 'تقرير المخزون والجرد',
+      subtitle: `${dateRange.from} ${t('reports.to') || 'إلى'} ${dateRange.to}`,
       columns: [
-        { key: 'name', label: 'المنتج' },
-        { key: 'barcode', label: 'الباركود' },
-        { key: 'category', label: 'التصنيف' },
-        { key: 'quantity', label: 'الرصيد' },
-        { key: 'cost', label: 'تكلفة الوحدة' },
-        { key: 'value', label: 'قيمة المخزون' },
+        { key: 'name', label: t('products.productName') || 'المنتج' },
+        { key: 'barcode', label: t('products.barcode') || 'الباركود' },
+        { key: 'category', label: t('products.category') || 'التصنيف' },
+        { key: 'quantity', label: t('products.stock') || 'الرصيد' },
+        { key: 'cost', label: t('reports.costLabel') || 'تكلفة الوحدة' },
+        { key: 'value', label: t('reports.inventoryValueCost') || 'قيمة المخزون' },
       ],
       rows, totals,
       fileName: `inventory-stock-${dateRange.to}.${kind === 'pdf' ? 'pdf' : 'xlsx'}`,
@@ -142,7 +144,7 @@ export function InventoryStockReport({ dateRange }: Props) {
   return (
     <ReportShell
       icon={<Boxes className="w-5 h-5" />}
-      title="تقرير المخزون والجرد"
+      title={t('reports.inventoryStockDiscrepancy') || 'تقرير المخزون والجرد'}
       subtitle="عرض الكميات الحالية وإجراء جرد فعلي مع تسوية تلقائية"
       onExportPDF={() => handleExport('pdf')}
       onExportExcel={() => handleExport('excel')}

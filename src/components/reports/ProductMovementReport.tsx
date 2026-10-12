@@ -9,6 +9,7 @@ import { listStockDamages, type StockDamage } from '@/lib/cloud/stock-damages-cl
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { toast } from 'sonner';
+import { useLanguage } from '@/hooks/use-language';
 
 interface MovementRow {
   date: string;
@@ -32,6 +33,7 @@ const TYPE_META: Record<MovementRow['type'], { label: string; icon: typeof Arrow
 };
 
 export function ProductMovementReport({ dateRange }: Props) {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [damages, setDamages] = useState<StockDamage[]>([]);
@@ -188,7 +190,7 @@ export function ProductMovementReport({ dateRange }: Props) {
   return (
     <ReportShell
       icon={<Activity className="w-5 h-5" />}
-      title="حركة منتج محدد"
+      title={t('reports.productMovement') || 'حركة منتج محدد'}
       subtitle="سجل كامل لعمليات الشراء، البيع، الإرجاع والإتلاف لمنتج معين"
       onExportPDF={product ? handleExportPDF : undefined}
       onExportExcel={product ? handleExportExcel : undefined}

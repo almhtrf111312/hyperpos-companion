@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
 import { formatNumber } from '@/lib/utils';
 import { shareReport } from '@/lib/native-share';
+import { useLanguage } from '@/hooks/use-language';
 
 interface DateRange {
   from: string;
@@ -50,6 +51,7 @@ interface DetailedProfitRow {
 }
 
 export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailedReportProps) {
+  const { t } = useLanguage();
   const [selectedPartner, setSelectedPartner] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortField, setSortField] = useState<'date' | 'amount' | 'category'>('date');
@@ -305,19 +307,19 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">إجمالي الأرباح</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('reports.totalProfit') || 'إجمالي الأرباح'}</p>
           <p className="text-xl font-bold text-foreground">${formatNumber(summary.totalProfit)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">عدد العمليات</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('reports.ordersCount') || 'عدد العمليات'}</p>
           <p className="text-xl font-bold text-foreground">{formatNumber(summary.totalTransactions)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">أرباح مؤكدة</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('invoices.confirmed') || 'أرباح مؤكدة'}</p>
           <p className="text-xl font-bold text-success">${formatNumber(summary.confirmedProfit)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
-          <p className="text-xs text-muted-foreground mb-1">أرباح معلقة</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('debts.pending') || 'أرباح معلقة'}</p>
           <p className="text-xl font-bold text-warning">${formatNumber(summary.pendingProfit)}</p>
         </div>
       </div>
@@ -327,13 +329,13 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold flex items-center gap-2">
             <Tag className="w-5 h-5 text-primary" />
-            ملخص الأرباح حسب الشريك والتصنيف
+            {t('reports.partnerDetailedReport') || 'ملخص الأرباح حسب الشريك والتصنيف'}
           </h3>
         </div>
 
         {aggregatedData.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            لا توجد بيانات للفترة المحددة
+            {t('reports.noData') || 'لا توجد بيانات للفترة المحددة'}
           </div>
         ) : (
           <div className="divide-y divide-border">

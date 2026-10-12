@@ -7,12 +7,14 @@ import { loadInvoicesCloud, type Invoice } from '@/lib/cloud/invoices-cloud';
 import { loadProductsLocalFirst, type Product } from '@/lib/cloud/products-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
 
 interface Props { dateRange: { from: string; to: string } }
 
 type Mode = 'qty' | 'revenue' | 'profit';
 
 export function TopProductsReport({ dateRange }: Props) {
+  const { t } = useLanguage();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [mode, setMode] = useState<Mode>('qty');
@@ -58,15 +60,15 @@ export function TopProductsReport({ dateRange }: Props) {
 
   const handleExport = (kind: 'pdf' | 'excel') => {
     const opts = {
-      title: `الأكثر ${mode === 'qty' ? 'مبيعاً' : mode === 'revenue' ? 'إيراداً' : 'ربحاً'}`,
-      subtitle: `${dateRange.from} إلى ${dateRange.to}`,
+      title: `${t('reports.topProducts') || 'الأكثر'} ${mode === 'qty' ? (t('reports.byQuantity') || 'كمية') : mode === 'revenue' ? (t('reports.byRevenue') || 'إيراداً') : (t('reports.byProfit') || 'ربحاً')}`,
+      subtitle: `${dateRange.from} ${t('reports.to') || 'إلى'} ${dateRange.to}`,
       columns: [
-        { key: 'name', label: 'المنتج' },
-        { key: 'qty', label: 'الكمية' },
-        { key: 'revenue', label: 'الإيراد' },
-        { key: 'cost', label: 'التكلفة' },
-        { key: 'profit', label: 'الربح' },
-        { key: 'margin', label: 'الهامش %' },
+        { key: 'name', label: t('products.productName') || 'المنتج' },
+        { key: 'qty', label: t('reports.quantityLabel') || 'الكمية' },
+        { key: 'revenue', label: t('reports.revenueLabel') || 'الإيراد' },
+        { key: 'cost', label: t('reports.costLabel') || 'التكلفة' },
+        { key: 'profit', label: t('reports.profitLabel') || 'الربح' },
+        { key: 'margin', label: t('reports.marginLabel') || 'الهامش %' },
       ],
       rows: ranking.map(r => ({
         ...r,
@@ -85,25 +87,25 @@ export function TopProductsReport({ dateRange }: Props) {
   return (
     <ReportShell
       icon={<Trophy className="w-5 h-5" />}
-      title="المنتجات الأكثر مبيعاً وربحية"
-      subtitle="ترتيب المنتجات حسب الكمية، الإيراد أو الربح خلال الفترة"
+      title={t('reports.topProductsRevenue') || 'المنتجات الأكثر مبيعاً وربحية'}
+      subtitle={t('reports.topProductsSubtitle') || 'ترتيب المنتجات حسب الكمية، الإيراد أو الربح خلال الفترة'}
       onExportPDF={() => handleExport('pdf')}
       onExportExcel={() => handleExport('excel')}
       exportDisabled={loading || ranking.length === 0}
       filters={
         <div className="flex gap-1.5">
           {([
-            { id: 'qty', label: 'الأكثر كمية' },
-            { id: 'revenue', label: 'الأكثر إيراداً' },
-            { id: 'profit', label: 'الأكثر ربحاً' },
-          ] as { id: Mode; label: string }[]).map(t => (
+            { id: 'qty', label: t('reports.byQuantity') || 'الأكثر كمية' },
+            { id: 'revenue', label: t('reports.byRevenue') || 'الأكثر إيراداً' },
+            { id: 'profit', label: t('reports.byProfit') || 'الأكثر ربحاً' },
+          ] as { id: Mode; label: string }[]).map(tBtn => (
             <Button
-              key={t.id}
-              variant={mode === t.id ? 'default' : 'outline'}
+              key={tBtn.id}
+              variant={mode === tBtn.id ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setMode(t.id)}
+              onClick={() => setMode(tBtn.id)}
               className="h-8 text-[11px] rounded-xl flex-1"
-            >{t.label}</Button>
+            >{tBtn.label}</Button>
           ))}
         </div>
       }
@@ -111,7 +113,7 @@ export function TopProductsReport({ dateRange }: Props) {
       {ranking.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
           <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          لا توجد مبيعات في هذه الفترة
+          {t('reports.noSalesInPeriod') || 'لا توجد مبيعات في هذه الفترة'}
         </CardContent></Card>
       ) : (
         <Card><CardContent className="p-0">
@@ -127,7 +129,7 @@ export function TopProductsReport({ dateRange }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate">{r.name}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      كمية: {formatNumber(r.qty)} • إيراد: {formatCurrency(r.revenue)}
+                      {t('reports.quantityLabel') || 'كمية'}: {formatNumber(r.qty)} • {t('reports.revenueLabel') || 'إيراد'}: {formatCurrency(r.revenue)}
                     </p>
                   </div>
                   <div className="text-left shrink-0">
