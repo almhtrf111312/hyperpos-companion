@@ -231,8 +231,18 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
           "fixed z-50 transition-all duration-300 ease-in-out flex flex-col",
           "bg-sidebar pt-[env(safe-area-inset-top)]",
           isMobile 
-            ? cn("top-0 h-screen border-sidebar-border start-0 border-e", "w-64", isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full")
-            : cn("top-2 rounded-2xl shadow-xl border border-sidebar-border/50 start-2", effectiveCollapsed ? "w-[72px]" : "w-56", "h-[calc(100vh-16px)]")
+            ? cn(
+                "top-0 h-screen w-64",
+                isRTL 
+                  ? "right-0 left-auto border-l border-sidebar-border" 
+                  : "left-0 right-auto border-r border-sidebar-border",
+                isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full"
+              )
+            : cn(
+                "top-2 rounded-2xl shadow-xl border border-sidebar-border/50 h-[calc(100vh-16px)]",
+                isRTL ? "right-2 left-auto" : "left-2 right-auto",
+                effectiveCollapsed ? "w-[72px]" : "w-56"
+              )
         )}
       >
         {/* Brand Header */}
@@ -443,10 +453,12 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className={cn(
         "fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-40 md:hidden",
-        "w-10 h-11 bg-background/95 backdrop-blur-md border-y border-e border-border",
-        "text-foreground flex items-center justify-center shadow-sm rounded-e-xl",
+        "w-10 h-11 bg-background/95 backdrop-blur-md",
+        "text-foreground flex items-center justify-center shadow-sm",
         "hover:bg-muted active:scale-95 transition-all duration-200",
-        "start-0"
+        isRTL 
+          ? "right-0 left-auto rounded-l-xl border-y border-l border-border" 
+          : "left-0 right-auto rounded-r-xl border-y border-r border-border"
       )}
     >
       <Menu className="w-5 h-5" />

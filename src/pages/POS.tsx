@@ -188,7 +188,7 @@ let memoryPosCategoriesCache: string[] = [];
 export default function POS() {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
-  const { t, tDynamic, language } = useLanguage();
+  const { t, tDynamic, language, isRTL } = useLanguage();
   const { profile } = useAuth();
   const { activeWarehouse, isLoading: isWarehouseLoading } = useWarehouse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1073,7 +1073,7 @@ export default function POS() {
       <div className={cn(
         "flex-1 flex flex-col overflow-hidden transition-all duration-300",
         // Account for collapsed sidebar width based on RTL
-        !isMobile && (document.documentElement.dir === 'rtl' ? "md:mr-20" : "md:ml-20")
+        !isMobile && (isRTL ? "md:mr-20 md:ml-0" : "md:ml-20 md:mr-0")
       )}>
         {/* Header */}
         <POSHeader

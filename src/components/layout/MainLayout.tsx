@@ -4,6 +4,7 @@ import { Sidebar, MobileMenuTrigger } from './Sidebar';
 import { useIsMobile, useIsTablet } from '@/hooks/use-mobile';
 import { useOrientationChange } from '@/hooks/use-app-lifecycle';
 import { useLanguage } from '@/hooks/use-language';
+import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -73,10 +74,15 @@ export function MainLayout({ children }: MainLayoutProps) {
         <MobileMenuTrigger onClick={openSidebar} />
       )}
 
-      {/* Main content - margin based on RTL/LTR using inline-start */}
-      <main className={`min-h-screen overflow-x-hidden max-w-full transition-all duration-300 pt-4 ${
-        isMobile ? 'ms-0' : isTablet ? 'ms-[calc(72px+16px)]' : 'ms-[calc(14rem+16px)]'
-      }`}>
+      {/* Main content - explicit physical margin based on RTL/LTR */}
+      <main className={cn(
+        "min-h-screen overflow-x-hidden max-w-full transition-all duration-300 pt-4",
+        isMobile 
+          ? "m-0" 
+          : isTablet 
+            ? (isRTL ? "mr-[calc(72px+16px)] ml-0" : "ml-[calc(72px+16px)] mr-0") 
+            : (isRTL ? "mr-[calc(14rem+16px)] ml-0" : "ml-[calc(14rem+16px)] mr-0")
+      )}>
         {children ?? <Outlet />}
       </main>
     </div>
