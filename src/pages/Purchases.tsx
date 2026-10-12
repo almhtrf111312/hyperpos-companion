@@ -56,21 +56,21 @@ export default function Purchases() {
           title={t('purchases.title')}
           subtitle={t('purchases.subtitle')}
           actions={
-            <div className="flex items-center gap-2 w-full sm:w-auto py-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto py-1">
               <Button
-                variant="outline"
-                onClick={() => setShowQuickDialog(true)}
-                className="flex-1 sm:flex-initial justify-center min-w-0 h-9 md:h-10 px-2.5 sm:px-3 text-xs md:text-sm font-medium shadow-sm"
-              >
-                <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
-                <span className="truncate">{t('purchases.quickAdd')}</span>
-              </Button>
-              <Button
-                className="flex-1 sm:flex-initial justify-center min-w-0 h-9 md:h-10 px-2.5 sm:px-3 text-xs md:text-sm font-semibold bg-primary hover:bg-primary/90 shadow-sm"
+                className="w-full sm:w-auto justify-center h-10 px-4 text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-xl transition-all"
                 onClick={() => setShowDialog(true)}
               >
                 <Plus className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
-                <span className="truncate">{t('purchases.addNew')}</span>
+                <span>{t('purchases.addNew')}</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowQuickDialog(true)}
+                className="w-full sm:w-auto justify-center h-9 sm:h-10 px-4 text-xs sm:text-sm font-semibold border-border/80 bg-background/80 hover:bg-muted shadow-2xs rounded-xl transition-all text-foreground"
+              >
+                <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0 text-primary" />
+                <span>{t('purchases.quickAdd')}</span>
               </Button>
             </div>
           }
