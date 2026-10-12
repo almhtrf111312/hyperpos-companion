@@ -409,14 +409,14 @@ export default function Invoices() {
   const handleRefund = (invoice: Invoice) => {
     // ✅ منع الاسترداد المزدوج من الواجهة
     if (invoice.status === 'refunded') {
-      toast.warning(t('invoices.alreadyRefunded') || (language === 'en' ? 'This invoice is already refunded' : 'هذه الفاتورة مستردة بالفعل'));
+      toast.warning(t('invoices.alreadyRefunded') || (language === 'en' ? 'This invoice is already refunded' : language === 'ku' ? 'ئەم فاکتۆڕە پێشتر گەڕێندراوەتەوە' : 'هذه الفاتورة مستردة بالفعل'));
       return;
     }
     // ✅ فحص دور المستخدم — الكاشير لا يملك صلاحية الاسترداد (يحتاج إذن مشرف)
     getCurrentUserRole().then(role => {
       if (role === 'cashier') {
-        toast.error(language === 'en' ? 'You do not have permission to refund' : 'ليس لديك صلاحية تنفيذ الاسترداد', {
-          description: language === 'en' ? 'This action requires supervisor or manager permissions. Contact the store owner.' : 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
+        toast.error(language === 'en' ? 'You do not have permission to refund' : language === 'ku' ? 'دەسەڵاتی ئەنجامدانی گەڕاندنەوەت نییە' : 'ليس لديك صلاحية تنفيذ الاسترداد', {
+          description: language === 'en' ? 'This action requires supervisor or manager permissions. Contact the store owner.' : language === 'ku' ? 'ئەم کردارە پێویستی بە دەسەڵاتی سەرپەرشتیار یان بەڕێوەبەر هەیە. پەیوەندی بە خاوەنی فرۆشگاوە بکە.' : 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
           duration: 5000,
         });
         return;
@@ -2173,6 +2173,10 @@ export default function Invoices() {
                         <>
                           ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> مشتری قبلاً <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> پرداخت کرده است. این مبلغ باید نقداً به مشتری پرداخت شود، <strong>و به طور خودکار از کشوی صندوق / شیفت فعلی کسر می‌شود</strong>، و باقیمانده بدهی کاملاً تسویه خواهد شد.
                         </>
+                      ) : language === 'ku' ? (
+                        <>
+                          ⚠️ <strong>گەڕاندنەوەی نەختینە بۆ کڕیار:</strong> کڕیار پێشتر بڕی <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong>ی داوە. پێویستە ئەم بڕە بە نەختینە بدرێتەوە بە کڕیار، <strong>و بە شێوەیەکی خۆکار لە سندووقی کاشێر / شیفتی ئێستا دەبڕدرێت</strong>، و تەواوی قەرزەکەی دەسڕدرێتەوە.
+                        </>
                       ) : (
                         <>
                           ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
@@ -2185,6 +2189,8 @@ export default function Invoices() {
                         ? 'Kalan müşteri borcu kasa çekmecesini etkilemeden tamamen iptal edilecektir.'
                         : language === 'fa'
                         ? 'بدهی باقیمانده مشتری بدون تأثیر بر کشوی صندوق به طور کامل لغو خواهد شد.'
+                        : language === 'ku'
+                        ? 'تەواوی قەرزی ماوەی کڕیار دەسڕدرێتەوە و پووچەڵ دەکرێتەوە بەبێ ئەوەی کاریگەری لەسەر سندووقی کاشێر هەبێت.'
                         : 'سيتم إلغاء وشطب الدين المتبقي في ذمة العميل بالكامل دون التأثير على درج الكاشير.'
                     )
                   ) : (
@@ -2201,6 +2207,10 @@ export default function Invoices() {
                         <>
                           ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> ارزش مرجوعی ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) از بدهی باقیمانده بیشتر است. بدهی تسویه شده و مابه‌التفاوت <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً به مشتری پرداخت و از شیفت فعلی کسر می‌شود</strong>.
                         </>
+                      ) : language === 'ku' ? (
+                        <>
+                          ⚠️ <strong>گەڕاندنەوەی نەختینە بۆ کڕیار:</strong> نرخی گەڕاوە ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) لە قەرزی ماوە زیاترە. قەرزەکە بە تەواوی پاکتاو دەکرێت و جیاوازییەکەی <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) بە نەختینە دەگەڕێنرێتەوە بۆ کڕیار و لە شیفتی ئێستا دەبڕدرێت</strong>.
+                        </>
                       ) : (
                         <>
                           ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
@@ -2213,6 +2223,8 @@ export default function Invoices() {
                         ? `Kalan müşteri borcundan ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} düşülecek, kasa etkilenmeyecektir.`
                         : language === 'fa'
                         ? `مبلغ ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} از بدهی باقیمانده کسر می‌شود بدون تأثیر بر کشوی صندوق.`
+                        : language === 'ku'
+                        ? `بڕی ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} لە باڵانسی قەرزی ماوەی کڕیار کەمدەکرێتەوە بەبێ کاریگەری لەسەر سندووقی کاشێر.`
                         : `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
                     )
                   )}
