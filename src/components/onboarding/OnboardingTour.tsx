@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '@/hooks/use-language';
+import { Language } from '@/lib/i18n';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserRole } from '@/hooks/use-user-role';
@@ -35,56 +36,344 @@ const tourSteps: TourStep[] = [
   // 0 — Welcome
   {
     id: 'welcome',
-    title: { ar: 'مرحباً بك في FlowPOS Pro', en: 'Welcome to FlowPOS Pro' },
-    desc: { ar: 'سنأخذك بجولة سريعة لاكتشاف أهم الميزات. يمكنك التخطي في أي وقت.', en: 'Quick tour of the most important features. You can skip anytime.' },
+    title: {
+      ar: 'مرحباً بك في FlowPOS Pro',
+      en: 'Welcome to FlowPOS Pro',
+      tr: "FlowPOS Pro'ya Hoş Geldiniz",
+      fa: 'به FlowPOS Pro خوش آمدید',
+      ku: 'بەخێربێیت بۆ FlowPOS Pro'
+    },
+    desc: {
+      ar: 'سنأخذك بجولة سريعة لاكتشاف أهم الميزات. يمكنك التخطي في أي وقت.',
+      en: 'Quick tour of the most important features. You can skip anytime.',
+      tr: 'En önemli özellikleri keşfetmeniz için kısa bir tur. İstediğiniz zaman atlayabilirsiniz.',
+      fa: 'تور سریعی برای آشنایی با مهم‌ترین ویژگی‌ها. در هر زمان می‌توانید رد شوید.',
+      ku: 'گەشتێکی خێرا بۆ ئاشنابوون بە گرنگترین تایبەتمەندییەکان. دەتوانیت لە هەر کاتێکدا تێپەڕیت.'
+    },
   },
 
   // 1 — Sidebar / Menu (mobile shows the trigger; desktop shows the sidebar)
   {
     id: 'menu-desktop',
     selector: '[data-tour="sidebar"]',
-    title: { ar: 'القائمة الجانبية', en: 'Sidebar' },
-    desc: { ar: 'كل أقسام التطبيق متاحة من هنا.', en: 'All sections of the app live here.' },
+    title: { ar: 'القائمة الجانبية', en: 'Sidebar', tr: 'Yan Menü', fa: 'منوی کناری', ku: 'مێنۆی لایەکی' },
+    desc: {
+      ar: 'كل أقسام التطبيق متاحة من هنا.',
+      en: 'All sections of the app live here.',
+      tr: 'Uygulamanın tüm bölümlerine buradan ulaşabilirsiniz.',
+      fa: 'تمامی بخش‌های برنامه از اینجا در دسترس هستند.',
+      ku: 'هەموو بەشەکانی بەرنامە لێرەوە بەردەستن.'
+    },
     desktopOnly: true,
     prefer: 'right',
   },
   {
     id: 'menu-mobile',
     selector: '[data-tour="mobile-menu-trigger"]',
-    title: { ar: 'زر القائمة', en: 'Menu Button' },
-    desc: { ar: 'اضغط هنا لفتح القائمة الجانبية والتنقل بين الأقسام.', en: 'Tap here to open the side menu.' },
+    title: { ar: 'زر القائمة', en: 'Menu Button', tr: 'Menü Butonu', fa: 'دکمه منو', ku: 'دوگمەی مێنۆ' },
+    desc: {
+      ar: 'اضغط هنا لفتح القائمة الجانبية والتنقل بين الأقسام.',
+      en: 'Tap here to open the side menu.',
+      tr: 'Yan menüyü açmak ve bölümler arasında gezinmek için buraya dokunun.',
+      fa: 'برای باز کردن منوی کناری و جابجایی بین بخش‌ها اینجا ضربه بزنید.',
+      ku: 'لێرە دابگرە بۆ کردنەوەی مێنۆی لایەکی و گەڕان لە بەشەکاندا.'
+    },
     mobileOnly: true,
     prefer: 'bottom',
   },
 
   // 2 — All tabs (these require sidebar to be open)
-  { id: 'pos', selector: '[data-tour="pos"]', title: { ar: 'نقطة البيع', en: 'POS' }, desc: { ar: 'الشاشة الرئيسية للبيع: أضف المنتجات إلى السلة وأتمم البيع.', en: 'Main sales screen: add to cart and complete the sale.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'dashboard', selector: '[data-tour="dashboard"]', title: { ar: 'لوحة التحكم', en: 'Dashboard' }, desc: { ar: 'إحصائيات المبيعات والأرباح والمنتجات الأكثر مبيعاً.', en: 'Sales, profit and top-product stats.' }, requireSidebar: true, adminOnly: true, prefer: 'right' },
-  { id: 'invoices', selector: '[data-tour="invoices"]', title: { ar: 'الفواتير', en: 'Invoices' }, desc: { ar: 'كل الفواتير: عرض، طباعة، مشاركة، إرجاع.', en: 'All invoices: view, print, share, refund.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'products', selector: '[data-tour="products"]', title: { ar: 'المنتجات', en: 'Products' }, desc: { ar: 'إدارة المخزون: إضافة، تعديل، أسعار، باركود.', en: 'Manage inventory, prices and barcodes.' }, requireSidebar: true, adminOnly: true, prefer: 'right' },
-  { id: 'purchases', selector: '[data-tour="purchases"]', title: { ar: 'المشتريات', en: 'Purchases' }, desc: { ar: 'فواتير شراء البضاعة من الموردين وتحديث المخزون.', en: 'Purchase invoices from suppliers, with stock updates.' }, requireSidebar: true, adminOnly: true, prefer: 'right' },
-  { id: 'customers', selector: '[data-tour="customers"]', title: { ar: 'العملاء والديون', en: 'Customers & Debts' }, desc: { ar: 'بيانات العملاء ومتابعة الديون والمدفوعات.', en: 'Customer profiles, debts and payments.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'library', selector: '[data-tour="library"]', title: { ar: 'المكتبة', en: 'Library' }, desc: { ar: 'أعضاء المكتبة وإعارة الكتب (يظهر في وضع المكتبات).', en: 'Library members and book loans (bookstore mode).' }, requireSidebar: true, prefer: 'right' },
-  { id: 'services', selector: '[data-tour="services"]', title: { ar: 'الصيانة', en: 'Maintenance' }, desc: { ar: 'تسجيل ومتابعة أوامر الصيانة والإصلاحات.', en: 'Track repair and maintenance orders.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'expenses', selector: '[data-tour="expenses"]', title: { ar: 'المصروفات', en: 'Expenses' }, desc: { ar: 'تسجيل المصاريف اليومية لحساب صافي الربح.', en: 'Track expenses to compute net profit.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'cash-shifts', selector: '[data-tour="cash-shifts"]', title: { ar: 'الورديات', en: 'Cash Shifts' }, desc: { ar: 'فتح/إغلاق الوردية وحساب الصندوق نهاية اليوم.', en: 'Open/close shifts and reconcile the cash box at end of day.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'reports', selector: '[data-tour="reports"]', title: { ar: 'التقارير', en: 'Reports' }, desc: { ar: 'تقارير شاملة للمبيعات والأرباح والمخزون والديون.', en: 'Comprehensive sales, profit, inventory and debt reports.' }, requireSidebar: true, adminOnly: true, prefer: 'right' },
-  { id: 'appearance', selector: '[data-tour="appearance"]', title: { ar: 'المظهر', en: 'Appearance' }, desc: { ar: 'تخصيص الألوان والثيم واللغة.', en: 'Customize colors, theme and language.' }, requireSidebar: true, prefer: 'right' },
-  { id: 'settings', selector: '[data-tour="settings"]', title: { ar: 'الإعدادات', en: 'Settings' }, desc: { ar: 'كل إعدادات التطبيق: المتجر، المستخدمين، الطباعة، النسخ الاحتياطي.', en: 'All app settings: store, users, printing, backups.' }, requireSidebar: true, adminOnly: true, prefer: 'right' },
+  {
+    id: 'pos',
+    selector: '[data-tour="pos"]',
+    title: { ar: 'نقطة البيع', en: 'POS', tr: 'Satış Noktası', fa: 'صندوق و فروش', ku: 'خاڵی فرۆشتن' },
+    desc: {
+      ar: 'الشاشة الرئيسية للبيع: أضف المنتجات إلى السلة وأتمم البيع.',
+      en: 'Main sales screen: add to cart and complete the sale.',
+      tr: 'Ana satış ekranı: sepete ürün ekleyin ve satışı tamamlayın.',
+      fa: 'صفحه اصلی فروش: کالاها را به سبد اضافه کرده و فروش را نهایی کنید.',
+      ku: 'شاشەی سەرەکی فرۆشتن: کاڵاکان بخەرە سەبەتە و فرۆشتن تەواو بکە.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'dashboard',
+    selector: '[data-tour="dashboard"]',
+    title: { ar: 'لوحة التحكم', en: 'Dashboard', tr: 'Kontrol Paneli', fa: 'داشبورد مدیریتی', ku: 'داشبۆرد' },
+    desc: {
+      ar: 'إحصائيات المبيعات والأرباح والمنتجات الأكثر مبيعاً.',
+      en: 'Sales, profit and top-product stats.',
+      tr: 'Satış, kâr ve en çok satan ürün istatistikleri.',
+      fa: 'آمار فروش، سودآوری و پرفروش‌ترین کالاها.',
+      ku: 'ئامارەکانی فرۆشتن، قازانج و پڕفرۆشترین بەرهەمەکان.'
+    },
+    requireSidebar: true,
+    adminOnly: true,
+    prefer: 'right'
+  },
+  {
+    id: 'invoices',
+    selector: '[data-tour="invoices"]',
+    title: { ar: 'الفواتير', en: 'Invoices', tr: 'Faturalar', fa: 'فاکتورها', ku: 'پسوولەکان' },
+    desc: {
+      ar: 'كل الفواتير: عرض، طباعة، مشاركة، إرجاع.',
+      en: 'All invoices: view, print, share, refund.',
+      tr: 'Tüm faturalar: görüntüleme, yazdırma, paylaşma, iade.',
+      fa: 'تمامی فاکتورها: مشاهده، چاپ، اشتراک‌گذاری، مرجوعی.',
+      ku: 'هەموو پسوولەکان: پیشاندان، چاپ، هاوبەشکردن، گەڕاندنەوە.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'products',
+    selector: '[data-tour="products"]',
+    title: { ar: 'المنتجات', en: 'Products', tr: 'Ürünler', fa: 'کالاها و انبار', ku: 'بەرهەمەکان' },
+    desc: {
+      ar: 'إدارة المخزون: إضافة، تعديل، أسعار، باركود.',
+      en: 'Manage inventory, prices and barcodes.',
+      tr: 'Envanter yönetimi: ekleme, düzenleme, fiyatlar, barkodlar.',
+      fa: 'مدیریت موجودی انبار: افزودن، ویرایش، قیمت‌گذاری و بارکدها.',
+      ku: 'بەڕێوەبردنی کۆگا: زیادکردن، دەستکاریکردن، نرخەکان و بارکۆدەکان.'
+    },
+    requireSidebar: true,
+    adminOnly: true,
+    prefer: 'right'
+  },
+  {
+    id: 'purchases',
+    selector: '[data-tour="purchases"]',
+    title: { ar: 'المشتريات', en: 'Purchases', tr: 'Satın Almalar', fa: 'خریدها', ku: 'کڕینەکان' },
+    desc: {
+      ar: 'فواتير شراء البضاعة من الموردين وتحديث المخزون.',
+      en: 'Purchase invoices from suppliers, with stock updates.',
+      tr: 'Tedarikçilerden ürün alım faturaları ve stok güncellemeleri.',
+      fa: 'فاکتورهای خرید کالا از تأمین‌کنندگان و به‌روزرسانی موجودی انبار.',
+      ku: 'پسوولەکانی کڕینی کاڵا لە دابینکەرانەوە لەگەڵ نوێکردنەوەی کۆگا.'
+    },
+    requireSidebar: true,
+    adminOnly: true,
+    prefer: 'right'
+  },
+  {
+    id: 'customers',
+    selector: '[data-tour="customers"]',
+    title: { ar: 'العملاء والديون', en: 'Customers & Debts', tr: 'Müşteriler ve Borçlar', fa: 'مشتریان و مطالبات', ku: 'کڕیاران و قەرزەکان' },
+    desc: {
+      ar: 'بيانات العملاء ومتابعة الديون والمدفوعات.',
+      en: 'Customer profiles, debts and payments.',
+      tr: 'Müşteri profilleri, borç takibi ve ödemeler.',
+      fa: 'اطلاعات مشتریان، پیگیری بدهی‌ها و دریافت اقساط.',
+      ku: 'پڕۆفایلی کڕیاران و بەدواداچوونی قەرز و پارەدانەکان.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'library',
+    selector: '[data-tour="library"]',
+    title: { ar: 'المكتبة', en: 'Library', tr: 'Kütüphane', fa: 'کتابخانه', ku: 'کتێبخانە' },
+    desc: {
+      ar: 'أعضاء المكتبة وإعارة الكتب (يظهر في وضع المكتبات).',
+      en: 'Library members and book loans (bookstore mode).',
+      tr: 'Kütüphane üyeleri ve kitap ödünç verme (kitapçı modu).',
+      fa: 'اعضای کتابخانه و امانت کتاب (در حالت کتابفروشی).',
+      ku: 'ئەندامانی کتێبخانە و بەخشینی کتێب بە شێوەی ئەمانەت.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'services',
+    selector: '[data-tour="services"]',
+    title: { ar: 'الصيانة', en: 'Maintenance', tr: 'Teknik Servis', fa: 'تعمیرات و خدمات', ku: 'چاککردنەوە' },
+    desc: {
+      ar: 'تسجيل ومتابعة أوامر الصيانة والإصلاحات.',
+      en: 'Track repair and maintenance orders.',
+      tr: 'Onarım ve teknik servis siparişlerini takip edin.',
+      fa: 'ثبت و پیگیری سفارش‌های تعمیرات و خدمات فنی.',
+      ku: 'تۆمارکردن و بەدواداچوونی فەرمانەکانی چاککردنەوە.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'expenses',
+    selector: '[data-tour="expenses"]',
+    title: { ar: 'المصروفات', en: 'Expenses', tr: 'Giderler', fa: 'هزینه‌ها', ku: 'خەرجییەکان' },
+    desc: {
+      ar: 'تسجيل المصاريف اليومية لحساب صافي الربح.',
+      en: 'Track expenses to compute net profit.',
+      tr: 'Net kârı hesaplamak için günlük giderleri kaydedin.',
+      fa: 'ثبت هزینه‌های روزانه و ثابت برای محاسبه سود خالص.',
+      ku: 'تۆمارکردنی خەرجییە ڕۆژانەکان بۆ حیسابکردنی قازانجی پاک.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'cash-shifts',
+    selector: '[data-tour="cash-shifts"]',
+    title: { ar: 'الورديات', en: 'Cash Shifts', tr: 'Vardiyalar', fa: 'شیفت‌های کاری', ku: 'دەوامەکان' },
+    desc: {
+      ar: 'فتح/إغلاق الوردية وحساب الصندوق نهاية اليوم.',
+      en: 'Open/close shifts and reconcile the cash box at end of day.',
+      tr: 'Vardiya açma/kapama ve gün sonunda kasa mutabakatı.',
+      fa: 'باز و بسته کردن شیفت و مطابقت صندوق در پایان روز.',
+      ku: 'کردنەوە/داخستنی دەوام و هاوتاکردنی سندوق لە کۆتایی ڕۆژدا.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'reports',
+    selector: '[data-tour="reports"]',
+    title: { ar: 'التقارير', en: 'Reports', tr: 'Raporlar', fa: 'گزارش‌ها', ku: 'ڕاپۆرتەکان' },
+    desc: {
+      ar: 'تقارير شاملة للمبيعات والأرباح والمخزون والديون.',
+      en: 'Comprehensive sales, profit, inventory and debt reports.',
+      tr: 'Satış, kâr, envanter ve borçlara ilişkin kapsamlı raporlar.',
+      fa: 'گزارش‌های جامع مالی، فروش، سود، موجودی و دیون.',
+      ku: 'ڕاپۆرتی گشتگیر بۆ فرۆشتن، قازانج، کۆگا و قەرزەکان.'
+    },
+    requireSidebar: true,
+    adminOnly: true,
+    prefer: 'right'
+  },
+  {
+    id: 'appearance',
+    selector: '[data-tour="appearance"]',
+    title: { ar: 'المظهر', en: 'Appearance', tr: 'Görünüm', fa: 'ظاهر و پوسته', ku: 'ڕووکار' },
+    desc: {
+      ar: 'تخصيص الألوان والثيم واللغة.',
+      en: 'Customize colors, theme and language.',
+      tr: 'Renkleri, temayı ve dili özelleştirin.',
+      fa: 'شخصی‌سازی رنگ‌ها، پوسته و زبان برنامه.',
+      ku: 'تایبەتمەندکردنی ڕەنگەکان، تێما و زمان.'
+    },
+    requireSidebar: true,
+    prefer: 'right'
+  },
+  {
+    id: 'settings',
+    selector: '[data-tour="settings"]',
+    title: { ar: 'الإعدادات', en: 'Settings', tr: 'Ayarlar', fa: 'تنظیمات', ku: 'ڕێکخستنەکان' },
+    desc: {
+      ar: 'كل إعدادات التطبيق: المتجر، المستخدمين، الطباعة، النسخ الاحتياطي.',
+      en: 'All app settings: store, users, printing, backups.',
+      tr: 'Tüm uygulama ayarları: mağaza, kullanıcılar, yazdırma, yedekleme.',
+      fa: 'کلیه تنظیمات برنامه: فروشگاه، کاربران، چاپ و پشتیبان‌گیری.',
+      ku: 'هەموو ڕێکخستنەکانی بەرنامە: فرۆشگا، بەکارهێنەران، چاپکردن، کۆپی یەدەگ.'
+    },
+    requireSidebar: true,
+    adminOnly: true,
+    prefer: 'right'
+  },
 
   // 3 — Inside POS
-  { id: 'pos-search', selector: '[data-tour="search-bar"]', title: { ar: 'البحث والتصنيفات', en: 'Search & Categories' }, desc: { ar: 'ابحث عن المنتجات بالاسم أو الباركود أو حسب التصنيف.', en: 'Search products by name, barcode, or category.' }, route: '/' },
-  { id: 'pos-grid', selector: '[data-tour="product-grid"]', title: { ar: 'شبكة المنتجات', en: 'Product Grid' }, desc: { ar: 'اضغط على أي منتج لإضافته إلى السلة.', en: 'Tap any product to add it to the cart.' }, route: '/' },
-  { id: 'cart-desktop', selector: '[data-tour="cart-panel"]', title: { ar: 'سلة المشتريات', en: 'Cart' }, desc: { ar: 'السلة ومجاميعها وخيارات الدفع.', en: 'Cart, totals, and payment options.' }, desktopOnly: true, route: '/' },
-  { id: 'cart-mobile', selector: '[data-tour="cart-fab"]', title: { ar: 'زر السلة', en: 'Cart Button' }, desc: { ar: 'اضغط هنا لفتح السلة على الجوال.', en: 'Tap to open the cart on mobile.' }, mobileOnly: true, route: '/' },
-  { id: 'cash-btn', selector: '[data-tour="cash-btn"]', title: { ar: 'الدفع النقدي', en: 'Cash Payment' }, desc: { ar: 'تأكيد البيع نقداً وحفظ الفاتورة مباشرة.', en: 'Confirm a cash sale and save instantly.' }, route: '/', prefer: 'top', requireCart: true },
-  { id: 'debt-btn', selector: '[data-tour="debt-btn"]', title: { ar: 'البيع المؤجل', en: 'Deferred Sale' }, desc: { ar: 'تسجيل المبلغ كمستحق على العميل ومتابعة دفعاته.', en: 'Record the amount as due from the customer and track payments.' }, route: '/', prefer: 'top', requireCart: true },
+  {
+    id: 'pos-search',
+    selector: '[data-tour="search-bar"]',
+    title: { ar: 'البحث والتصنيفات', en: 'Search & Categories', tr: 'Arama ve Kategoriler', fa: 'جستجو و دسته‌بندی‌ها', ku: 'گەڕان و بەشەکان' },
+    desc: {
+      ar: 'ابحث عن المنتجات بالاسم أو الباركود أو حسب التصنيف.',
+      en: 'Search products by name, barcode, or category.',
+      tr: 'Ürünleri isme, barkoda veya kategoriye göre arayın.',
+      fa: 'کالاها را بر اساس نام، بارکد یا دسته‌بندی جستجو کنید.',
+      ku: 'گەڕان بەدوای بەرهەمەکان بەپێی ناو، بارکۆد یان بەش.'
+    },
+    route: '/'
+  },
+  {
+    id: 'pos-grid',
+    selector: '[data-tour="product-grid"]',
+    title: { ar: 'شبكة المنتجات', en: 'Product Grid', tr: 'Ürün Tablosu', fa: 'شبکه کالاها', ku: 'تۆڕی بەرهەمەکان' },
+    desc: {
+      ar: 'اضغط على أي منتج لإضافته إلى السلة.',
+      en: 'Tap any product to add it to the cart.',
+      tr: 'Sepete eklemek için herhangi bir ürüne dokunun.',
+      fa: 'روی هر کالا ضربه بزنید تا به سبد خرید اضافه شود.',
+      ku: 'کلیک لەسەر هەر بەرهەمێک بکە بۆ خستنە ناو سەبەتە.'
+    },
+    route: '/'
+  },
+  {
+    id: 'cart-desktop',
+    selector: '[data-tour="cart-panel"]',
+    title: { ar: 'سلة المشتريات', en: 'Cart', tr: 'Sepet', fa: 'سبد خرید', ku: 'سەبەتە' },
+    desc: {
+      ar: 'السلة ومجاميعها وخيارات الدفع.',
+      en: 'Cart, totals, and payment options.',
+      tr: 'Sepet, toplamlar ve ödeme seçenekleri.',
+      fa: 'سبد خرید، مبالغ کل و روش‌های پرداخت.',
+      ku: 'سەبەتە، کۆی گشتی و بژاردەکانی پارەدان.'
+    },
+    desktopOnly: true,
+    route: '/'
+  },
+  {
+    id: 'cart-mobile',
+    selector: '[data-tour="cart-fab"]',
+    title: { ar: 'زر السلة', en: 'Cart Button', tr: 'Sepet Butonu', fa: 'دکمه سبد خرید', ku: 'دوگمەی سەبەتە' },
+    desc: {
+      ar: 'اضغط هنا لفتح السلة على الجوال.',
+      en: 'Tap to open the cart on mobile.',
+      tr: 'Mobilde sepeti açmak için buraya dokunun.',
+      fa: 'برای باز کردن سبد خرید در موبایل اینجا ضربه بزنید.',
+      ku: 'لێرە دابگرە بۆ کردنەوەی سەبەتە لە مۆبایل.'
+    },
+    mobileOnly: true,
+    route: '/'
+  },
+  {
+    id: 'cash-btn',
+    selector: '[data-tour="cash-btn"]',
+    title: { ar: 'الدفع النقدي', en: 'Cash Payment', tr: 'Nakit Ödeme', fa: 'پرداخت نقدی', ku: 'پارەدانی نەختینە' },
+    desc: {
+      ar: 'تأكيد البيع نقداً وحفظ الفاتورة مباشرة.',
+      en: 'Confirm a cash sale and save instantly.',
+      tr: 'Nakit satışı onaylayın ve faturayı anında kaydedin.',
+      fa: 'تأیید فروش نقدی و ثبت آنی فاکتور در سیستم.',
+      ku: 'پەسەندکردنی فرۆشتنی نەختینە و پاشەکەوتکردنی دەستبەجێ.'
+    },
+    route: '/',
+    prefer: 'top',
+    requireCart: true
+  },
+  {
+    id: 'debt-btn',
+    selector: '[data-tour="debt-btn"]',
+    title: { ar: 'البيع المؤجل', en: 'Deferred Sale', tr: 'Veresiye Satış', fa: 'فروش نسیه', ku: 'فرۆشتنی قەرز' },
+    desc: {
+      ar: 'تسجيل المبلغ كمستحق على العميل ومتابعة دفعاته.',
+      en: 'Record the amount as due from the customer and track payments.',
+      tr: 'Tutarı müşteriden alacak olarak kaydedin ve ödemeleri takip edin.',
+      fa: 'ثبت مبلغ به عنوان طلب از مشتری و پیگیری دریافت‌ها.',
+      ku: 'تۆمارکردنی بڕەکە وەک قەرز لەسەر کڕیار و بەدواداچوونی پارەدان.'
+    },
+    route: '/',
+    prefer: 'top',
+    requireCart: true
+  },
 
   // Finish
   {
     id: 'done',
-    title: { ar: 'انتهت الجولة 🎉', en: 'Tour complete 🎉' },
-    desc: { ar: 'يمكنك إعادة الجولة في أي وقت من صفحة المساعدة.', en: 'You can replay this tour anytime from the Help page.' },
+    title: {
+      ar: 'انتهت الجولة 🎉',
+      en: 'Tour complete 🎉',
+      tr: 'Tur Tamamlandı 🎉',
+      fa: 'پایان تور 🎉',
+      ku: 'گەشتەکە تەواو بوو 🎉'
+    },
+    desc: {
+      ar: 'يمكنك إعادة الجولة في أي وقت من صفحة المساعدة.',
+      en: 'You can replay this tour anytime from the Help page.',
+      tr: 'Bu turu dilediğiniz zaman Yardım sayfasından tekrarlayabilirsiniz.',
+      fa: 'می‌توانید در هر زمان از صفحه راهنما این تور را دوباره مشاهده کنید.',
+      ku: 'دەتوانیت هەر کاتێک بتەوێت لە پەڕەی یارمەتییەوە ئەم گەشتە دووبارە بکەیتەوە.'
+    },
   },
 ];
 
@@ -371,7 +660,7 @@ export function OnboardingTour() {
             <Sparkles className="w-3 h-3 text-primary" />
           </div>
           <h3 className="font-bold text-[13px] text-foreground truncate">
-            {step.title[lang]}
+            {step.title[lang] || step.title.ar}
           </h3>
         </div>
         <button
@@ -384,7 +673,7 @@ export function OnboardingTour() {
       </div>
 
       <p className="px-3 pb-2 text-xs text-muted-foreground leading-relaxed">
-        {step.desc[lang]}
+        {step.desc[lang] || step.desc.ar}
       </p>
 
       <div className="px-3 pb-1.5">
