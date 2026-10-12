@@ -22,6 +22,7 @@ const previewBg: Record<ThemeColor, { bg: string; card: string; muted: string; f
   lime: { bg: 'hsl(85,35%,99%)', card: 'hsl(85,22%,99%)', muted: 'hsl(85,22%,91%)', fg: 'hsl(85,45%,10%)', mutedFg: 'hsl(85,18%,38%)', border: 'hsl(85,18%,80%)' },
   magenta: { bg: 'hsl(310,38%,99%)', card: 'hsl(310,24%,99%)', muted: 'hsl(310,22%,92%)', fg: 'hsl(310,45%,12%)', mutedFg: 'hsl(310,18%,40%)', border: 'hsl(310,18%,81%)' },
   coffee: { bg: 'hsl(60,33%,98%)', card: 'hsl(60,33%,99%)', muted: 'hsl(42,31%,94%)', fg: 'hsl(26,43%,21%)', mutedFg: 'hsl(26,30%,42%)', border: 'hsl(42,25%,85%)' },
+  silver: { bg: 'hsl(210,20%,98%)', card: 'hsl(210,20%,99%)', muted: 'hsl(215,18%,93%)', fg: 'hsl(215,25%,15%)', mutedFg: 'hsl(215,15%,42%)', border: 'hsl(215,16%,82%)' },
 };
 
 export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLivePreviewProps) {

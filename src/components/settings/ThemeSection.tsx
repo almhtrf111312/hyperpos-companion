@@ -129,30 +129,30 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
           <Palette className="w-4 h-4" />
           {t('settings.colorTheme')}
         </h3>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
           {colorOptions.map(([key, value]) => (
             <button
               key={key}
               onClick={() => handleColorChange(key)}
               className={cn(
-                "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                "relative flex flex-col items-center gap-2 p-2.5 sm:p-3 rounded-xl border-2 transition-all",
                 pendingColor === key
-                  ? "border-primary bg-primary/10"
+                  ? "border-primary bg-primary/10 shadow-sm"
                   : "border-border bg-muted hover:bg-muted/80"
               )}
               title={isRTL ? value.nameAr : value.name}
             >
               <div
-                className="w-10 h-10 rounded-full shadow-lg"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full shadow-md shrink-0"
                 style={{
                   background: `linear-gradient(135deg, hsl(${value.primary}), hsl(${value.accent}))`
                 }}
               />
-              <span className="text-xs font-medium text-foreground truncate w-full text-center hidden md:block">
+              <span className="text-[11px] sm:text-xs font-medium text-foreground truncate w-full text-center">
                 {isRTL ? value.nameAr : value.name}
               </span>
               {pendingColor === key && (
-                <div className="absolute top-1 left-1">
+                <div className="absolute top-1 left-1 rtl:left-auto rtl:right-1">
                   <Check className="w-4 h-4 text-primary" />
                 </div>
               )}

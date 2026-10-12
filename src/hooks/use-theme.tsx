@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark';
-export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta' | 'coffee';
+export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta' | 'coffee' | 'silver';
 
 interface ThemeContextType {
   mode: ThemeMode;
@@ -88,8 +88,14 @@ export const themeColors: Record<ThemeColor, { name: string; nameAr: string; pri
   coffee: {
     name: 'Coffee',
     nameAr: 'القهوة',
-    primary: '28 80% 60%',
-    accent: '26 43% 35%',
+    primary: '28 80% 58%',
+    accent: '24 48% 32%',
+  },
+  silver: {
+    name: 'Silver Gray',
+    nameAr: 'الفضي الرصاصي',
+    primary: '215 16% 50%',
+    accent: '217 25% 32%',
   },
 };
 
@@ -230,6 +236,19 @@ const lightPalettes: Record<ThemeColor, LightPalette> = {
     sidebar: '60 33% 98%', sidebarForeground: '26 43% 21%',
     sidebarAccent: '42 31% 94%', sidebarAccentForeground: '28 80% 50%', sidebarBorder: '42 25% 85%',
     posGrid: '42 25% 96%', posItem: '60 33% 99%', posItemHover: '42 31% 94%', posCart: '60 33% 98%',
+  },
+  silver: {
+    background: '210 20% 98%',         // Soft Silvery Off-White #F8FAFC
+    foreground: '215 25% 15%',         // Dark Slate Graphite #1E293B
+    card: '210 20% 99%', cardForeground: '215 25% 15%',
+    popover: '0 0% 100%', popoverForeground: '215 25% 15%',
+    secondary: '215 18% 93%',          // Subtle cool gray #E2E8F0
+    secondaryForeground: '215 25% 18%',
+    muted: '215 16% 92%', mutedForeground: '215 15% 42%',
+    border: '215 16% 82%', input: '215 16% 82%',
+    sidebar: '210 20% 97%', sidebarForeground: '215 25% 15%',
+    sidebarAccent: '215 18% 92%', sidebarAccentForeground: '215 25% 20%', sidebarBorder: '215 16% 84%',
+    posGrid: '215 16% 96%', posItem: '210 20% 99%', posItemHover: '215 18% 93%', posCart: '210 18% 98%',
   },
 };
 

@@ -486,15 +486,17 @@ input, textarea {
 
   /* Theme: Coffee Brown + Apricot Orange */
   .theme-coffee {
-    --primary: 28 80% 60%;
-    /* Warm Apricot Orange #EB964B */
+    --primary: 28 80% 58%;
+    /* Warm Apricot / Caramel #EB964B */
     --primary-foreground: 0 0% 100%;
-    --accent: 26 43% 35%;
-    /* Dark Coffee Accent */
+    --accent: 24 48% 32%;
+    /* Dark Roasted Coffee Accent #783F27 */
     --accent-foreground: 0 0% 100%;
-    --ring: 28 80% 60%;
-    --sidebar-primary: 28 80% 60%;
-    --pos-total: 28 80% 60%;
+    --ring: 28 80% 58%;
+    --sidebar-primary: 28 80% 58%;
+    --pos-total: 28 80% 58%;
+    --gradient-primary: linear-gradient(135deg, hsl(28 80% 58%), hsl(24 48% 32%));
+    --shadow-glow: 0 0 40px -10px hsl(28 80% 58% / 0.35);
   }
 
   .light.theme-coffee {
@@ -528,6 +530,49 @@ input, textarea {
     /* Primary adjustment for light readability */
     --primary: 28 80% 55%;
     --ring: 28 80% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(28 80% 55%), hsl(24 48% 32%));
+    --shadow-glow: 0 0 40px -10px hsl(28 80% 55% / 0.35);
+  }
+
+  /* Theme: Silver Gray (فضي رصاصي هادئ) */
+  .theme-silver {
+    --primary: 215 16% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 217 25% 32%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 215 16% 50%;
+    --sidebar-primary: 215 16% 50%;
+    --pos-total: 215 16% 50%;
+    --gradient-primary: linear-gradient(135deg, hsl(215 16% 50%), hsl(217 25% 32%));
+    --shadow-glow: 0 0 40px -10px hsl(215 16% 50% / 0.3);
+  }
+
+  .light.theme-silver {
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
+    --card: 210 20% 99%;
+    --card-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+    --secondary: 215 18% 93%;
+    --secondary-foreground: 215 25% 18%;
+    --muted: 215 16% 92%;
+    --muted-foreground: 215 15% 42%;
+    --border: 215 16% 82%;
+    --input: 215 16% 82%;
+    --sidebar-background: 210 20% 97%;
+    --sidebar-foreground: 215 25% 15%;
+    --sidebar-accent: 215 18% 92%;
+    --sidebar-accent-foreground: 215 25% 20%;
+    --sidebar-border: 215 16% 84%;
+    --pos-grid: 215 16% 96%;
+    --pos-item: 210 20% 99%;
+    --pos-item-hover: 215 18% 93%;
+    --pos-cart: 210 18% 98%;
+    --primary: 215 16% 47%;
+    --ring: 215 16% 47%;
+    --gradient-primary: linear-gradient(135deg, hsl(215 16% 47%), hsl(217 25% 32%));
+    --shadow-glow: 0 0 40px -10px hsl(215 16% 47% / 0.3);
   }
 }
 
@@ -886,10 +931,34 @@ input, textarea {
   color: hsl(var(--foreground));
 }
 
-/* أزرار primary تحتفظ بلونها الأبيض */
-.light button[class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]),
-.light [class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]) {
+/* ── أزرار primary الرئيسية - التدرج اللوني الفخم والظل الملون التفاعلي ── */
+button[class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]),
+[role="button"][class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]),
+button.bg-gradient-primary,
+[role="button"].bg-gradient-primary,
+.btn-primary {
+  background-image: var(--gradient-primary) !important;
   color: hsl(var(--primary-foreground)) !important;
+  box-shadow: 0 4px 14px -2px hsl(var(--primary) / 0.32);
+}
+
+button[class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]):hover,
+[role="button"][class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]):hover,
+button.bg-gradient-primary:hover,
+[role="button"].bg-gradient-primary:hover,
+.btn-primary:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 6px 20px -2px hsl(var(--primary) / 0.42);
+}
+
+button[class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]):active,
+[role="button"][class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]):active,
+button.bg-gradient-primary:active,
+[role="button"].bg-gradient-primary:active,
+.btn-primary:active {
+  transform: scale(0.98);
+  filter: brightness(0.96);
+  box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.28);
 }
 
 /* أزرار destructive (الصلبة فقط - تمنع تبييض أو إخفاء أيقونات ونصوص الأزرار الشفافة مثل bg-destructive/10) */
@@ -1054,11 +1123,11 @@ input, textarea {
   background-color: hsl(var(--background) / 0.75) !important;
 }
 
-.light [role="tab"][data-state="active"] {
+[role="tab"][data-state="active"] {
   background-image: var(--gradient-primary) !important;
   color: hsl(var(--primary-foreground)) !important;
   font-weight: 700;
-  box-shadow: 0 8px 18px hsl(var(--primary) / 0.28);
+  box-shadow: 0 8px 18px hsl(var(--primary) / 0.32);
 }
 
 /* ── الحدود العامة ── */
