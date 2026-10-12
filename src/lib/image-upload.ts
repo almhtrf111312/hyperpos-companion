@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * ضغط الصورة تلقائياً
  */
-async function compressImage(
+export async function compressImage(
   base64Image: string,
   maxSizeKB: number = 30,
   maxWidth: number = 400,

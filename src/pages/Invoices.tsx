@@ -107,6 +107,15 @@ import { PageHeader } from '@/components/layout/PageHeader';
 const refundKey = (item: { productId?: string; name: string }): string =>
   item.productId || (item as unknown as { id?: string }).id || item.name;
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export type DateQuickFilter = 'today' | 'week' | 'month' | 'all' | 'custom';
+
 export default function Invoices() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -117,7 +126,11 @@ export default function Invoices() {
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | InvoiceType>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
-  const [dateFilter, setDateFilter] = useState('');
+
+  const todayStr = useMemo(() => getLocalDateString(), []);
+  const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilter>('today');
+  const [dateFilter, setDateFilter] = useState<string>(() => getLocalDateString());
+  const [activeKpi, setActiveKpi] = useState<'total' | 'debt' | 'today' | 'profit' | null>('today');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
@@ -383,12 +396,60 @@ export default function Invoices() {
       result = result.filter(inv => inv.paymentType === filterPayment);
     }
 
-    if (dateFilter) {
-      result = result.filter(inv => inv.createdAt.startsWith(dateFilter));
+    // Date filtering (Quick filters + Custom date picker)
+    if (dateQuickFilter === 'today') {
+      result = result.filter(inv => inv.createdAt && inv.createdAt.startsWith(todayStr));
+    } else if (dateQuickFilter === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoStr = getLocalDateString(weekAgo);
+      result = result.filter(inv => inv.createdAt && inv.createdAt.slice(0, 10) >= weekAgoStr);
+    } else if (dateQuickFilter === 'month') {
+      const monthPrefix = todayStr.slice(0, 7);
+      result = result.filter(inv => inv.createdAt && inv.createdAt.startsWith(monthPrefix));
+    } else if (dateQuickFilter === 'custom' && dateFilter) {
+      result = result.filter(inv => inv.createdAt && inv.createdAt.startsWith(dateFilter));
     }
 
     return result;
-  }, [invoices, debouncedSearch, filterType, filterPayment, dateFilter, showRefunded, refundMeta]);
+  }, [invoices, debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, todayStr, showRefunded, refundMeta]);
+
+  // KPI Card Filter Handlers
+  const handleKpiTotal = () => {
+    setActiveKpi('total');
+    setFilterType('all');
+    setFilterPayment('all');
+    setDateQuickFilter('all');
+    setDateFilter('');
+    setShowRefunded(false);
+  };
+
+  const handleKpiDebt = () => {
+    setActiveKpi('debt');
+    setFilterPayment('debt');
+    setFilterType('all');
+    setDateQuickFilter('all');
+    setDateFilter('');
+    setShowRefunded(false);
+  };
+
+  const handleKpiToday = () => {
+    setActiveKpi('today');
+    setDateQuickFilter('today');
+    setDateFilter(todayStr);
+    setFilterType('all');
+    setFilterPayment('all');
+    setShowRefunded(false);
+  };
+
+  const handleKpiProfit = () => {
+    setActiveKpi('profit');
+    setDateQuickFilter('today');
+    setDateFilter(todayStr);
+    setFilterType('sale');
+    setFilterPayment('all');
+    setShowRefunded(false);
+  };
 
   // استخراج تواريخ الأيام التي تحتوي على فواتير فعلية لتمييزها في التقويم
   const salesInvoiceDates = useMemo(() => {
@@ -1421,36 +1482,117 @@ export default function Invoices() {
 
       <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
         <TabsContent value="sales" className="space-y-3 m-0">
-          {/* Compact Stats Strip (Compressed 4-Metric Grid saving significant vertical space) */}
+          {/* Interactive KPI Cards Strip */}
           <div className="grid grid-cols-4 gap-1.5 text-center select-none">
             {/* إجمالي الفواتير */}
-            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <button
+              type="button"
+              onClick={handleKpiTotal}
+              className={cn(
+                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                activeKpi === 'total'
+                  ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
+                  : "bg-card border-border hover:border-primary/40 shadow-xs"
+              )}
+            >
               <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalInvoices')}</span>
               <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
-            </div>
+            </button>
             {/* مؤجلة معلقة */}
-            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <button
+              type="button"
+              onClick={handleKpiDebt}
+              className={cn(
+                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                activeKpi === 'debt'
+                  ? "bg-orange-500/10 border-orange-500 ring-2 ring-orange-500/40 shadow-xs"
+                  : "bg-card border-border hover:border-orange-500/40 shadow-xs"
+              )}
+            >
               <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('invoices.pendingDeferred')}</span>
               <span className="text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums">{stats.pendingDebts}</span>
-            </div>
+            </button>
             {/* مبيعات اليوم */}
-            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <button
+              type="button"
+              onClick={handleKpiToday}
+              className={cn(
+                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                activeKpi === 'today'
+                  ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs"
+                  : "bg-card border-border hover:border-emerald-500/40 shadow-xs"
+              )}
+            >
               <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.todaySales')}</span>
               <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                 {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
               </span>
-            </div>
+            </button>
             {/* إجمالي الأرباح */}
-            <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <button
+              type="button"
+              onClick={handleKpiProfit}
+              className={cn(
+                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                activeKpi === 'profit'
+                  ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
+                  : "bg-card border-border hover:border-primary/40 shadow-xs"
+              )}
+            >
               <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalProfits')}</span>
               <span className="text-xs font-black text-primary font-mono whitespace-nowrap">
                 {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
               </span>
-            </div>
+            </button>
           </div>
 
-          {/* Filters */}
-          <div className="space-y-1.5">
+          {/* Filters & Quick Date Pills */}
+          <div className="space-y-2">
+            {/* Quick Date Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              {[
+                { id: 'today', label: t('common.today') || 'اليوم' },
+                { id: 'week', label: t('common.thisWeek') || 'هذا الأسبوع' },
+                { id: 'month', label: t('common.thisMonth') || 'هذا الشهر' },
+                { id: 'all', label: t('invoices.allInvoices') || 'كل الفواتير' },
+              ].map((pill) => {
+                const isActive = dateQuickFilter === pill.id;
+                return (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    onClick={() => {
+                      if (pill.id === 'today') {
+                        setDateQuickFilter('today');
+                        setDateFilter(todayStr);
+                        setActiveKpi('today');
+                      } else if (pill.id === 'week') {
+                        setDateQuickFilter('week');
+                        setDateFilter('');
+                        setActiveKpi(null);
+                      } else if (pill.id === 'month') {
+                        setDateQuickFilter('month');
+                        setDateFilter('');
+                        setActiveKpi(null);
+                      } else {
+                        setDateQuickFilter('all');
+                        setDateFilter('');
+                        setActiveKpi('total');
+                      }
+                    }}
+                    className={cn(
+                      "px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer",
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    )}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
@@ -1462,7 +1604,13 @@ export default function Invoices() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <div className="min-w-0">
-                <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
+                <Select
+                  value={filterType}
+                  onValueChange={(v: 'all' | InvoiceType) => {
+                    setFilterType(v);
+                    setActiveKpi(null);
+                  }}
+                >
                   <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.invoiceType')} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('invoices.allTypes')}</SelectItem>
@@ -1472,7 +1620,13 @@ export default function Invoices() {
                 </Select>
               </div>
               <div className="min-w-0">
-                <Select value={filterPayment} onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}>
+                <Select
+                  value={filterPayment}
+                  onValueChange={(v: 'all' | 'cash' | 'debt') => {
+                    setFilterPayment(v);
+                    setActiveKpi(null);
+                  }}
+                >
                   <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.paymentMethod')} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('invoices.cashAndCredit')}</SelectItem>
@@ -1495,13 +1649,31 @@ export default function Invoices() {
               <div className="min-w-0 flex items-center gap-1">
                 <DatePicker
                   value={dateFilter}
-                  onChange={setDateFilter}
+                  onChange={(val) => {
+                    setDateFilter(val);
+                    if (val) {
+                      setDateQuickFilter('custom');
+                      setActiveKpi(null);
+                    } else {
+                      setDateQuickFilter('all');
+                      setActiveKpi('total');
+                    }
+                  }}
                   placeholder={t('common.allDates')}
                   className="w-full min-w-0 h-8 px-2 text-[11px] bg-card border-border rounded-xl gap-1 [&_svg]:size-3"
                   highlightedDates={salesInvoiceDates}
                 />
                 {dateFilter && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => setDateFilter('')}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 flex-shrink-0"
+                    onClick={() => {
+                      setDateFilter('');
+                      setDateQuickFilter('all');
+                      setActiveKpi('total');
+                    }}
+                  >
                     <X className="w-3.5 h-3.5" />
                   </Button>
                 )}
@@ -1723,7 +1895,7 @@ export default function Invoices() {
                       </span>
                     </div>
 
-                    {/* Symmetrical Compact 3-Currency Box (Grid 2 cols: السعر + صافي الربح) */}
+                    {/* Symmetrical Compact Dynamic Currency Box (Grid 2 cols: السعر + صافي الربح) */}
                     <div className="mt-1.5 pt-1.5 border-t border-dashed border-border/80">
                       <div className="grid grid-cols-2 rounded-lg bg-muted/40 p-1.5 border border-border/70 relative">
                         
@@ -1737,37 +1909,31 @@ export default function Invoices() {
                             <span className="text-[8px] font-bold text-muted-foreground font-mono">({t('common.total')})</span>
                           </div>
 
-                          {/* سوري */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight">
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0"></span>
-                              <span>{t('currencies.syp')}:</span>
-                            </span>
-                            <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
-                              {formatNumber(sypTotal, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
-                            </span>
-                          </div>
-
-                          {/* دولار */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight">
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0"></span>
-                              <span>{t('currencies.usd')}:</span>
-                            </span>
-                            <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[10.5px] whitespace-nowrap">
-                              ${formatNumber(invUsdTotal, 2)}
-                            </span>
-                          </div>
-
-                          {/* تركي */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight">
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <span className="w-1 h-1 rounded-full bg-sky-500 shrink-0"></span>
-                              <span>{t('currencies.try')}:</span>
-                            </span>
-                            <span className="font-black text-sky-700 dark:text-sky-400 font-mono text-[10.5px] whitespace-nowrap">
-                              {formatNumber(tryTotal, tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
-                            </span>
+                          {/* العملة المباعة وما يعادلها بالدولار */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight pt-0.5">
+                            {invUpper === 'TRY' ? (
+                              <>
+                                <span className="font-black text-sky-700 dark:text-sky-400 font-mono text-[10.5px] whitespace-nowrap">
+                                  {formatNumber(tryTotal, tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
+                                </span>
+                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
+                                  (${formatNumber(invUsdTotal, 2)})
+                                </span>
+                              </>
+                            ) : invUpper === 'SYP' ? (
+                              <>
+                                <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
+                                  {formatNumber(sypTotal, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
+                                </span>
+                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
+                                  (${formatNumber(invUsdTotal, 2)})
+                                </span>
+                              </>
+                            ) : (
+                              <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[11px] whitespace-nowrap">
+                                ${formatNumber(invUsdTotal, 2)}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1781,37 +1947,31 @@ export default function Invoices() {
                             <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">({t('invoices.profits') || 'الأرباح'})</span>
                           </div>
 
-                          {/* سوري */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight">
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0"></span>
-                              <span>{t('currencies.syp')}:</span>
-                            </span>
-                            <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
-                              {formatNumber(sypProfit, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
-                            </span>
-                          </div>
-
-                          {/* دولار */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight">
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0"></span>
-                              <span>{t('currencies.usd')}:</span>
-                            </span>
-                            <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                              ${formatNumber(invUsdProfit, 2)}
-                            </span>
-                          </div>
-
-                          {/* تركي */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight">
-                            <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
-                              <span className="w-1 h-1 rounded-full bg-sky-500 shrink-0"></span>
-                              <span>{t('currencies.try')}:</span>
-                            </span>
-                            <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", tryProfit >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-600 dark:text-rose-400")}>
-                              {formatNumber(tryProfit, tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
-                            </span>
+                          {/* صافي الربح بالعملة المباعة وما يعادلها بالدولار */}
+                          <div className="flex items-center justify-between text-[10px] leading-tight pt-0.5">
+                            {invUpper === 'TRY' ? (
+                              <>
+                                <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", tryProfit >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-600 dark:text-rose-400")}>
+                                  {formatNumber(tryProfit, tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
+                                </span>
+                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
+                                  (${formatNumber(invUsdProfit, 2)})
+                                </span>
+                              </>
+                            ) : invUpper === 'SYP' ? (
+                              <>
+                                <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", invUsdProfit >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400")}>
+                                  {formatNumber(sypProfit, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
+                                </span>
+                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
+                                  (${formatNumber(invUsdProfit, 2)})
+                                </span>
+                              </>
+                            ) : (
+                              <span className={cn("font-black font-mono text-[11px] whitespace-nowrap", invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                ${formatNumber(invUsdProfit, 2)}
+                              </span>
+                            )}
                           </div>
                         </div>
 
