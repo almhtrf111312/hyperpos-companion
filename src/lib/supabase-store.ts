@@ -328,6 +328,11 @@ export const TABLE_ALLOWED_COLUMNS: Record<string, string[]> = {
   ],
   warehouse_stock: [
     'id', 'warehouse_id', 'product_id', 'quantity', 'last_updated', 'created_at'
+  ],
+  recurring_expenses: [
+    'id', 'user_id', 'name', 'expense_type', 'custom_type', 'amount', 'description',
+    'interval', 'interval_days', 'next_due_date', 'last_paid_date', 'auto_pay',
+    'notes', 'is_active', 'created_at', 'updated_at'
   ]
 };
 

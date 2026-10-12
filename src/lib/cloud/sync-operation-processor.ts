@@ -108,6 +108,22 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
       const { saveStoreSettingsDirect } = await import('@/lib/supabase-store');
       return saveStoreSettingsDirect(data as Record<string, unknown>);
     }
+    case 'recurring_expense_create': {
+      const ownerId = await getOwnerIdForInsert();
+      if (!ownerId) throw new Error('No owner id');
+      const cleanData = filterTablePayload('recurring_expenses', data);
+      return assertSuccess(sb.from('recurring_expenses').upsert({ ...cleanData, user_id: ownerId }, { onConflict: 'id', ignoreDuplicates: true }));
+    }
+    case 'recurring_expense_update': {
+      const { id, ...updates } = data;
+      if (!id) throw new Error('Missing recurring expense id');
+      const cleanUpdates = filterTablePayload('recurring_expenses', updates);
+      return assertSuccess(sb.from('recurring_expenses').update(cleanUpdates).eq('id', String(id)));
+    }
+    case 'recurring_expense_delete': {
+      if (!data.id) throw new Error('Missing recurring expense id');
+      return assertSuccess(sb.from('recurring_expenses').delete().eq('id', String(data.id)));
+    }
     default:
       throw new Error(`Unsupported sync operation: ${operation.type}`);
   }

@@ -69,9 +69,10 @@ import {
 } from '@/lib/cloud/expenses-cloud';
 import {
   loadRecurringExpenses,
-  addRecurringExpense,
-  updateRecurringExpense,
-  deleteRecurringExpense,
+  loadRecurringExpensesCloud,
+  addRecurringExpenseCloud,
+  updateRecurringExpenseCloud,
+  deleteRecurringExpenseCloud,
   getDueExpenses,
   payRecurringExpense,
   skipRecurringExpense,
@@ -134,26 +135,33 @@ export default function Expenses() {
     autoPay: false,
   });
 
-  // Load expenses from cloud
+  // Load expenses and recurring expenses from cloud
   useEffect(() => {
     const loadData = async () => {
-      const [expensesData, statsData] = await Promise.all([
+      const [expensesData, statsData, recurringData] = await Promise.all([
         loadExpensesCloud(),
-        getExpenseStatsCloud()
+        getExpenseStatsCloud(),
+        loadRecurringExpensesCloud(),
       ]);
       setExpenses(expensesData);
       setStats(statsData);
+      setRecurringExpenses(recurringData);
+      setDueExpenses(getDueExpenses());
     };
     loadData();
 
     const handleUpdate = () => loadData();
-    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
-    window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, () => {
-      setRecurringExpenses(loadRecurringExpenses());
+    const handleRecurringUpdate = async () => {
+      const recurringData = await loadRecurringExpensesCloud();
+      setRecurringExpenses(recurringData);
       setDueExpenses(getDueExpenses());
-    });
+    };
+
+    window.addEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleRecurringUpdate);
     return () => {
       window.removeEventListener(EVENTS.EXPENSES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleRecurringUpdate);
     };
   }, []);
 
@@ -250,50 +258,56 @@ export default function Expenses() {
       return;
     }
 
-    const newExpense = addRecurringExpense({
-      name: recurringForm.name,
-      type: recurringForm.type,
-      customType: recurringForm.customType,
-      amount: recurringForm.amount,
-      intervalDays: recurringForm.intervalDays,
-      startDate: recurringForm.startDate,
-      notes: recurringForm.notes,
-      autoPay: recurringForm.autoPay,
-    });
-
-    if (recurringForm.payImmediately) {
-      const todayStr = toLocalDateString(new Date());
-      await addExpenseCloud({
+    try {
+      const newExpense = await addRecurringExpenseCloud({
+        name: recurringForm.name,
         type: recurringForm.type,
-        customType: recurringForm.customType || recurringForm.name,
+        customType: recurringForm.customType,
         amount: recurringForm.amount,
-        notes: `${recurringForm.name} - دفعة سداد فوري لمصروف ثابت`,
-        date: todayStr,
+        intervalDays: recurringForm.intervalDays,
+        startDate: recurringForm.startDate,
+        notes: recurringForm.notes,
+        autoPay: recurringForm.autoPay,
       });
 
-      processExpense(recurringForm.amount, recurringForm.type);
+      if (recurringForm.payImmediately) {
+        const todayStr = toLocalDateString(new Date());
+        await addExpenseCloud({
+          type: recurringForm.type,
+          customType: recurringForm.customType || recurringForm.name,
+          amount: recurringForm.amount,
+          notes: `${recurringForm.name} - دفعة سداد فوري لمصروف ثابت`,
+          date: todayStr,
+        });
 
-      const nextDate = new Date(recurringForm.startDate || todayStr);
-      nextDate.setDate(nextDate.getDate() + (recurringForm.intervalDays || 30));
-      updateRecurringExpense(newExpense.id, {
-        lastPaidDate: todayStr,
-        nextDueDate: toLocalDateString(nextDate),
-      });
+        processExpense(recurringForm.amount, recurringForm.type);
 
-      emitEvent(EVENTS.EXPENSES_UPDATED, null);
+        const nextDate = new Date(recurringForm.startDate || todayStr);
+        nextDate.setDate(nextDate.getDate() + (recurringForm.intervalDays || 30));
+        await updateRecurringExpenseCloud(newExpense.id, {
+          lastPaidDate: todayStr,
+          nextDueDate: toLocalDateString(nextDate),
+        });
+
+        emitEvent(EVENTS.EXPENSES_UPDATED, null);
+      }
+
+      const [expensesData, statsData, recurringData] = await Promise.all([
+        loadExpensesCloud(),
+        getExpenseStatsCloud(),
+        loadRecurringExpensesCloud(),
+      ]);
+      setExpenses(expensesData);
+      setStats(statsData);
+      setRecurringExpenses(recurringData);
+      setDueExpenses(getDueExpenses());
+      setShowRecurringDialog(false);
+      resetRecurringForm();
+      toast.success(t('expenses.fixedExpenseAdded'));
+    } catch (err) {
+      console.error('[Expenses] Error adding recurring expense:', err);
+      toast.error('فشل في إضافة المصروف الثابت');
     }
-
-    const [expensesData, statsData] = await Promise.all([
-      loadExpensesCloud(),
-      getExpenseStatsCloud()
-    ]);
-    setExpenses(expensesData);
-    setStats(statsData);
-    setRecurringExpenses(loadRecurringExpenses());
-    setDueExpenses(getDueExpenses());
-    setShowRecurringDialog(false);
-    resetRecurringForm();
-    toast.success(t('expenses.fixedExpenseAdded'));
   };
 
   const handleOpenEditRecurring = (expense: RecurringExpense) => {
@@ -310,7 +324,7 @@ export default function Expenses() {
     setShowEditRecurringDialog(true);
   };
 
-  const handleUpdateRecurringExpense = () => {
+  const handleUpdateRecurringExpense = async () => {
     if (!editingRecurring) return;
     if (!editRecurringForm.name || editRecurringForm.amount <= 0) {
       toast.error(t('expenses.fillAllFields'));
@@ -319,22 +333,28 @@ export default function Expenses() {
 
     const intervalInfo = recurringIntervals.find(i => i.value === editRecurringForm.intervalDays) || recurringIntervals[1];
 
-    updateRecurringExpense(editingRecurring.id, {
-      name: editRecurringForm.name,
-      type: editRecurringForm.type,
-      customType: editRecurringForm.customType,
-      amount: editRecurringForm.amount,
-      interval: intervalInfo.interval,
-      intervalDays: editRecurringForm.intervalDays,
-      notes: editRecurringForm.notes,
-      autoPay: editRecurringForm.autoPay,
-    });
+    try {
+      await updateRecurringExpenseCloud(editingRecurring.id, {
+        name: editRecurringForm.name,
+        type: editRecurringForm.type,
+        customType: editRecurringForm.customType,
+        amount: editRecurringForm.amount,
+        interval: intervalInfo.interval,
+        intervalDays: editRecurringForm.intervalDays,
+        notes: editRecurringForm.notes,
+        autoPay: editRecurringForm.autoPay,
+      });
 
-    setRecurringExpenses(loadRecurringExpenses());
-    setDueExpenses(getDueExpenses());
-    setShowEditRecurringDialog(false);
-    setEditingRecurring(null);
-    toast.success('تم تعديل المصروف الثابت بنجاح');
+      const recurringData = await loadRecurringExpensesCloud();
+      setRecurringExpenses(recurringData);
+      setDueExpenses(getDueExpenses());
+      setShowEditRecurringDialog(false);
+      setEditingRecurring(null);
+      toast.success('تم تعديل المصروف الثابت بنجاح');
+    } catch (err) {
+      console.error('[Expenses] Error updating recurring expense:', err);
+      toast.error('فشل في تعديل المصروف الثابت');
+    }
   };
 
   const handleReverseExpense = async (expenseToReverse?: Expense) => {
@@ -375,16 +395,18 @@ export default function Expenses() {
   const handleQuickPayRecurring = async (expense: RecurringExpense) => {
     try {
       await payRecurringExpense(expense.id);
-      const [expensesData, statsData] = await Promise.all([
+      const [expensesData, statsData, recurringData] = await Promise.all([
         loadExpensesCloud(),
-        getExpenseStatsCloud()
+        getExpenseStatsCloud(),
+        loadRecurringExpensesCloud(),
       ]);
       setExpenses(expensesData);
       setStats(statsData);
-      setRecurringExpenses(loadRecurringExpenses());
+      setRecurringExpenses(recurringData);
       setDueExpenses(getDueExpenses());
       toast.success(`تم صرف مصروف: ${expense.name}`);
     } catch (err) {
+      console.error('[Expenses] Error quick paying recurring expense:', err);
       toast.error('فشل في تنفيذ عملية الصرف');
     }
   };
@@ -396,18 +418,30 @@ export default function Expenses() {
     setSelectedRecurring(null);
   };
 
-  const handleSkipRecurring = (expense: RecurringExpense) => {
-    skipRecurringExpense(expense.id);
-    setRecurringExpenses(loadRecurringExpenses());
-    setDueExpenses(getDueExpenses());
-    toast.info(t('expenses.paymentSkipped'));
+  const handleSkipRecurring = async (expense: RecurringExpense) => {
+    try {
+      skipRecurringExpense(expense.id);
+      const recurringData = await loadRecurringExpensesCloud();
+      setRecurringExpenses(recurringData);
+      setDueExpenses(getDueExpenses());
+      toast.info(t('expenses.paymentSkipped'));
+    } catch (err) {
+      console.error('[Expenses] Error skipping recurring expense:', err);
+      toast.error('فشل في تأجيل المصروف');
+    }
   };
 
-  const handleDeleteRecurring = (id: string) => {
-    deleteRecurringExpense(id);
-    setRecurringExpenses(loadRecurringExpenses());
-    setDueExpenses(getDueExpenses());
-    toast.success(t('expenses.fixedExpenseDeleted'));
+  const handleDeleteRecurring = async (id: string) => {
+    try {
+      await deleteRecurringExpenseCloud(id);
+      const recurringData = await loadRecurringExpensesCloud();
+      setRecurringExpenses(recurringData);
+      setDueExpenses(getDueExpenses());
+      toast.success(t('expenses.fixedExpenseDeleted'));
+    } catch (err) {
+      console.error('[Expenses] Error deleting recurring expense:', err);
+      toast.error('فشل في حذف المصروف الثابت');
+    }
   };
 
   const openDeleteDialog = (expense: Expense) => {

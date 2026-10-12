@@ -2,8 +2,24 @@ import { emitEvent, EVENTS } from './events';
 import { addExpenseCloud, ExpenseType } from './cloud/expenses-cloud';
 import { processExpense } from './unified-transactions';
 import { toLocalDateString } from './date-utils';
+import {
+  RECURRING_EXPENSES_KEY,
+  loadRecurringExpensesLocally,
+  saveRecurringExpensesLocally,
+  loadRecurringExpensesCloud,
+  addRecurringExpenseCloud,
+  updateRecurringExpenseCloud,
+  deleteRecurringExpenseCloud,
+  invalidateRecurringExpensesCache,
+} from './cloud/recurring-expenses-cloud';
 
-const RECURRING_EXPENSES_KEY = 'hyperpos_recurring_expenses_v1';
+export {
+  loadRecurringExpensesCloud,
+  addRecurringExpenseCloud,
+  updateRecurringExpenseCloud,
+  deleteRecurringExpenseCloud,
+  invalidateRecurringExpensesCache,
+};
 
 export type RecurringInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly';
 
@@ -34,27 +50,12 @@ export const recurringIntervals: { value: number; label: string; interval: Recur
 ];
 
 export function loadRecurringExpenses(): RecurringExpense[] {
-  try {
-    const stored = localStorage.getItem(RECURRING_EXPENSES_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return [];
+  return loadRecurringExpensesLocally();
 }
 
 export function saveRecurringExpenses(expenses: RecurringExpense[]) {
-  try {
-    localStorage.setItem(RECURRING_EXPENSES_KEY, JSON.stringify(expenses));
-    emitEvent(EVENTS.RECURRING_EXPENSES_UPDATED, expenses);
-  } catch {
-    // ignore
-  }
+  saveRecurringExpensesLocally(expenses);
+  emitEvent(EVENTS.RECURRING_EXPENSES_UPDATED, expenses);
 }
 
 export function addRecurringExpense(data: {
@@ -68,9 +69,10 @@ export function addRecurringExpense(data: {
   autoPay?: boolean;
 }): RecurringExpense {
   const intervalInfo = recurringIntervals.find(i => i.value === data.intervalDays) || recurringIntervals[1];
+  const newId = crypto.randomUUID();
   
   const newExpense: RecurringExpense = {
-    id: `REC-${Date.now()}`,
+    id: newId,
     name: data.name,
     type: data.type,
     customType: data.customType,
@@ -87,6 +89,9 @@ export function addRecurringExpense(data: {
   const expenses = loadRecurringExpenses();
   expenses.unshift(newExpense);
   saveRecurringExpenses(expenses);
+
+  // Trigger cloud sync
+  addRecurringExpenseCloud(data).catch(console.error);
   
   return newExpense;
 }
@@ -99,6 +104,10 @@ export function updateRecurringExpense(id: string, updates: Partial<RecurringExp
   
   expenses[index] = { ...expenses[index], ...updates };
   saveRecurringExpenses(expenses);
+
+  // Trigger cloud sync
+  updateRecurringExpenseCloud(id, updates).catch(console.error);
+
   return true;
 }
 
@@ -109,6 +118,10 @@ export function deleteRecurringExpense(id: string): boolean {
   if (filtered.length === expenses.length) return false;
   
   saveRecurringExpenses(filtered);
+
+  // Trigger cloud sync
+  deleteRecurringExpenseCloud(id).catch(console.error);
+
   return true;
 }
 
@@ -135,7 +148,7 @@ export async function payRecurringExpense(id: string): Promise<boolean> {
   
   const todayStr = toLocalDateString(new Date());
 
-  // Add as regular cloud expense
+  // 1. Add as regular cloud expense
   await addExpenseCloud({
     type: expense.type,
     customType: expense.customType || expense.name,
@@ -144,19 +157,21 @@ export async function payRecurringExpense(id: string): Promise<boolean> {
     date: todayStr,
   });
 
-  // خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
+  // 2. خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
   processExpense(expense.amount, expense.type);
   emitEvent(EVENTS.EXPENSES_UPDATED, null);
   
-  // Calculate next due date
+  // 3. Calculate next due date
   const nextDate = new Date(expense.nextDueDate || todayStr);
   nextDate.setDate(nextDate.getDate() + (expense.intervalDays || 30));
+  const nextDueDateStr = toLocalDateString(nextDate);
   
-  // Update the recurring expense
-  expense.lastPaidDate = todayStr;
-  expense.nextDueDate = toLocalDateString(nextDate);
+  // 4. Update the recurring expense in Supabase and local cache
+  await updateRecurringExpenseCloud(id, {
+    lastPaidDate: todayStr,
+    nextDueDate: nextDueDateStr,
+  });
   
-  saveRecurringExpenses(expenses);
   return true;
 }
 
@@ -169,10 +184,12 @@ export function skipRecurringExpense(id: string): boolean {
   // Calculate next due date without paying
   const baseDate = new Date(expense.nextDueDate || toLocalDateString(new Date()));
   baseDate.setDate(baseDate.getDate() + (expense.intervalDays || 30));
+  const nextDueDateStr = toLocalDateString(baseDate);
   
-  expense.nextDueDate = toLocalDateString(baseDate);
+  updateRecurringExpenseCloud(id, {
+    nextDueDate: nextDueDateStr,
+  }).catch(console.error);
   
-  saveRecurringExpenses(expenses);
   return true;
 }
 
@@ -209,4 +226,3 @@ export async function executeAutoPayRecurringExpenses(): Promise<number> {
 
   return paidCount;
 }
-

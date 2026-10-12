@@ -529,7 +529,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               key !== 'hyperpos_session_cache' &&
               key !== 'hyperpos_setup_complete' &&
               key !== 'hyperpos_privacy_accepted' &&
-              key !== 'hyperpos_privacy_version') {
+              key !== 'hyperpos_privacy_version' &&
+              key !== 'hyperpos_recurring_expenses_v1') {
             keysToRemove.push(key);
           }
         }
@@ -640,7 +641,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           key !== 'hyperpos_last_user_id' &&
           key !== 'hyperpos_setup_complete' &&
           key !== 'hyperpos_privacy_accepted' &&
-          key !== 'hyperpos_privacy_version') {
+          key !== 'hyperpos_privacy_version' &&
+          key !== 'hyperpos_recurring_expenses_v1') {
         keysToRemove.push(key);
       }
     }

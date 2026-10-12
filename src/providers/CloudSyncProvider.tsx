@@ -188,7 +188,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           key !== LAST_USER_KEY &&
           key !== 'hyperpos_stay_logged_in' &&
           key !== 'hyperpos_session_cache' &&
-          key !== 'hyperpos_theme') {
+          key !== 'hyperpos_theme' &&
+          key !== 'hyperpos_recurring_expenses_v1') {
         keysToRemove.push(key);
       }
     }
@@ -202,7 +203,11 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     setIsSyncing(true);
 
     try {
-      // Fetch store settings from cloud
+      // Fetch recurring expenses and store settings from cloud
+      import('@/lib/cloud/recurring-expenses-cloud').then(({ loadRecurringExpensesCloud }) => {
+        loadRecurringExpensesCloud().catch(() => {});
+      });
+
       const cloudSettings = await fetchStoreSettings();
       
       if (cloudSettings) {

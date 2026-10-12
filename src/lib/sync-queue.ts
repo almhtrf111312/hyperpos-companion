@@ -37,7 +37,10 @@ export type OperationType =
   | 'purchase_invoice'  // Full purchase invoice with items
   | 'invoice_refund'    // Offline invoice refund (restores stock + reverses profit)
   | 'invoice_refund_partial' // Offline partial invoice refund
-  | 'store_settings_update'; // Offline store & print settings update
+  | 'store_settings_update' // Offline store & print settings update
+  | 'recurring_expense_create'
+  | 'recurring_expense_update'
+  | 'recurring_expense_delete';
 
 export interface QueuedOperation {
   id: string;
