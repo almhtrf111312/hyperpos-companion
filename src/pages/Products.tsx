@@ -2005,498 +2005,111 @@ export default function Products() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24">
-        {/* Products Grid - Mobile */}
+        {/* Products Display (3 Modes: Grid / Large, List / Medium, Compact / Small) */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-start gap-3 mb-3">
-                  <Skeleton className="w-12 h-12 rounded-xl" />
+          <div className={cn(
+            "gap-3",
+            viewMode === 'grid'
+              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : viewMode === 'list'
+              ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5"
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
+          )}>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="bg-card rounded-2xl border border-border p-3 space-y-3">
+                <div className="flex items-start gap-3">
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-1/2" />
                   </div>
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="w-20 h-20 rounded-2xl" />
                 </div>
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  <Skeleton className="h-10" />
-                  <Skeleton className="h-10" />
-                  <Skeleton className="h-10" />
-                </div>
-                <div className="flex justify-between pt-3 border-t border-border">
-                  <Skeleton className="h-4 w-20" />
-                  <div className="flex gap-1">
-                    <Skeleton className="h-10 w-10 rounded" />
-                    <Skeleton className="h-10 w-10 rounded" />
-                  </div>
-                </div>
+                <Skeleton className="h-8 w-full rounded-xl" />
               </div>
             ))}
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="bg-card rounded-2xl p-8 text-center border border-border text-muted-foreground space-y-2">
+            <span className="text-3xl block">🔍</span>
+            <p className="font-bold text-xs">{t('products.noProductsFound') || 'لا توجد منتجات مطابقة للبحث أو التصنيف'}</p>
+          </div>
         ) : (
           <div className={cn(
-            "lg:hidden gap-3",
-            viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2" : "flex flex-col"
+            viewMode === 'grid'
+              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+              : viewMode === 'list'
+              ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5"
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
           )}>
             {filteredProducts.map((product, index) => {
               const status = statusConfig[product.status];
               const profit = product.salePrice - product.costPrice;
 
-              // Compact view - text only rows
+              // 1. Compact View (الوضع الأصغر)
               if (viewMode === 'compact') {
                 return (
                   <div
                     key={product.id}
-                    className="flex items-center justify-between py-2.5 px-3 bg-card rounded-lg border border-border fade-in"
-                    style={{ animationDelay: `${index * 15}ms` }}
+                    className="bg-card rounded-xl p-2.5 border border-border shadow-2xs hover:border-border/80 transition-all text-xs space-y-1.5 fade-in"
+                    style={{ animationDelay: `${index * 10}ms` }}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
-                        <span className={cn("px-1.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap", status.color)}>
-                          {status.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                        <span>{formatPrice(product.salePrice)}</span>
-                        {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
-                        {!noInventory && <span>{product.quantity} {product.smallUnit || t('products.unitPiece')}</span>}
-                        {noInventory && product.wholesalePrice > 0 && <span>{t('products.wholesalePrice')}: {formatPrice(product.wholesalePrice)}</span>}
-                        {fieldsConfig.sizeColor && product.size && <span className="text-primary">{product.size}</span>}
-                        {fieldsConfig.sizeColor && product.color && <span>{product.color}</span>}
-                      </div>
-                    </div>
-                    {canAddProducts && (
-                      <div className="flex gap-0.5 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(product)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => openDeleteDialog(product)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // List view - horizontal rows with small images
-              if (viewMode === 'list') {
-                return (
-                  <div
-                    key={product.id}
-                    className="flex items-center gap-3 p-3 bg-card rounded-xl border border-border fade-in"
-                    style={{ animationDelay: `${index * 20}ms` }}
-                  >
-                    <ProductImage
-                      imageUrl={product.image}
-                      alt={product.name}
-                      className="w-12 h-12 rounded-lg flex-shrink-0"
-                      iconClassName="w-6 h-6"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-foreground text-sm truncate">{product.name}</h3>
-                        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap", status.color)}>
-                          {status.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
-                        {!noInventory && <span className="text-foreground/80 font-medium">{formatPrice(product.costPrice)}</span>}
-                        <span className="font-semibold text-primary">{formatPrice(product.salePrice)}</span>
-                        {!noInventory && <span className="text-success">${formatNumber(profit, 2)}</span>}
-                        {noInventory && product.wholesalePrice > 0 && <span className="text-muted-foreground">{t('products.wholesalePrice')}: {formatPrice(product.wholesalePrice)}</span>}
-                        {!noInventory && (
-                          <DualUnitDisplay
-                            totalPieces={product.quantity}
-                            conversionFactor={product.conversionFactor || 1}
-                            bulkUnit={product.bulkUnit}
-                            smallUnit={product.smallUnit}
-                            showTotal={false}
-                            size="sm"
-                          />
-                        )}
-                        {fieldsConfig.sizeColor && product.size && <span className="text-primary text-[10px] bg-primary/10 px-1.5 py-0.5 rounded">{product.size}</span>}
-                        {fieldsConfig.sizeColor && product.color && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{product.color}</span>}
-                      </div>
-                    </div>
-                    {canAddProducts && (
-                      <div className="flex gap-0.5 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditDialog(product)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => openDeleteDialog(product)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // Grid view - البطاقة المطورة بالأحجام المكبرة والوحدات المعربة
-              return (
-                <div
-                  key={product.id}
-                  className="bg-card rounded-2xl border border-border/70 p-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 fade-in group relative overflow-hidden"
-                  style={{ animationDelay: `${index * 25}ms` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                  {/* القسم العلوي: أزرار + شارة الوحدة + البيانات + الصورة المكبرة */}
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    {/* 1. أزرار التحكم المكبرة + شارة الوحدة المترجمة بجانبهم */}
-                    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                      {canAddProducts && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-11 w-11 text-foreground/80 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all active:scale-95 border border-border/40"
-                            onClick={() => openDeleteDialog(product)}
-                            title="حذف المنتج"
-                          >
-                            <Trash2 className="w-5 h-5 text-destructive/80" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-11 w-11 text-foreground/80 hover:text-primary hover:bg-muted rounded-xl transition-all active:scale-95 border border-border/40"
-                            onClick={() => openEditDialog(product)}
-                            title="تعديل المنتج"
-                          >
-                            <Edit className="w-5 h-5 text-primary/80" />
-                          </Button>
-                        </>
-                      )}
-                      {/* شارة الوحدة المترجمة ديناميكياً */}
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-bold rounded-lg bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
-                        {(product.conversionFactor && product.conversionFactor > 1)
-                          ? getLocalizedUnit(product.bulkUnit, true)
-                          : getLocalizedUnit(product.smallUnit, false)}
-                      </span>
-                    </div>
-
-                    {/* 2. اسم المنتج + الباركود والشارة في المنتصف */}
-                    <div className="flex-1 min-w-0 text-right">
+                    {/* Line 1: Full Product Name + Action Buttons on Left */}
+                    <div className="flex items-start justify-between gap-2">
                       <h3
-                        className="font-bold text-foreground text-sm sm:text-base line-clamp-1 leading-snug cursor-pointer hover:text-primary transition-colors"
+                        className="font-black text-foreground text-xs leading-snug break-words flex-1 min-w-0 cursor-pointer hover:text-primary transition-colors"
                         title={product.name}
                         onClick={() => openEditDialog(product)}
                       >
                         {product.name}
                       </h3>
 
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap justify-end">
-                        {/* شارة التوفر */}
-                        {!noInventory && (
-                          <span className={cn("px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap", status.color)}>
-                            {status.label}
-                          </span>
-                        )}
-                        {/* شريحة الباركود القابلة للنسخ */}
-                        {(product.barcode || product.category) && (
+                      {/* Compact Quick Actions */}
+                      {canAddProducts && (
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
-                            onClick={() => {
-                              if (product.barcode) {
-                                navigator.clipboard.writeText(product.barcode);
-                                toast.success(`تم نسخ الباركود: ${product.barcode}`);
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted/50 hover:bg-muted border border-border/80 text-[11px] font-mono text-muted-foreground transition-colors"
-                            title="انقر لنسخ الباركود"
+                            onClick={() => openEditDialog(product)}
+                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all"
+                            title="تعديل"
                           >
-                            <span className="truncate max-w-[110px]">{product.barcode || product.category}</span>
-                            {product.barcode && <Copy className="w-3 h-3 text-muted-foreground/70 flex-shrink-0" />}
+                            <Edit className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-
-                      {/* Size/Color badges */}
-                      {fieldsConfig.sizeColor && (product.size || product.color) && (
-                        <div className="flex flex-wrap gap-1 mt-1 justify-end">
-                          {product.size && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">{product.size}</span>}
-                          {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{product.color}</span>}
+                          <button
+                            type="button"
+                            onClick={() => openDeleteDialog(product)}
+                            className="p-1 rounded-md text-destructive/70 hover:text-destructive hover:bg-destructive/10 active:scale-90 transition-all"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       )}
                     </div>
 
-                    {/* 3. صورة المنتج مكبرة (96px → 112px) بدون بادج معلق */}
-                    <div className="flex-shrink-0">
-                      <ProductImage
-                        imageUrl={product.image}
-                        alt={product.name}
-                        className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-muted/40 border border-border/60 object-cover shadow-sm"
-                        iconClassName="w-10 h-10 text-muted-foreground/40"
-                      />
-                    </div>
-                  </div>
-
-                  {/* خط فاصل + القسم السفلي */}
-                  <div className="border-t border-border/60 pt-2.5">
-                    {noInventory ? (
-                      <div className={cn("grid gap-2 text-center", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
-                        {isRepairMode ? (
-                          <>
-                            <div>
-                              <p className="text-[14px] text-muted-foreground font-medium">تكلفة القطعة</p>
-                              <p className="font-bold text-base text-foreground">{formatPrice(product.costPrice)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[14px] text-muted-foreground font-medium">تكلفة العمالة</p>
-                              <p className="font-bold text-base text-foreground">${formatNumber(product.laborCost || 0, 2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[14px] text-muted-foreground font-medium">المجموع</p>
-                              <p className="font-bold text-base text-primary">{formatPrice(product.costPrice + (product.laborCost || 0))}</p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              <p className="text-[14px] text-muted-foreground font-medium">البيع</p>
-                              <p className="font-bold text-base text-primary">{formatPrice(product.salePrice)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[14px] text-muted-foreground font-medium">{t('products.wholesalePrice')}</p>
-                              <p className="font-bold text-base text-foreground">{formatPrice(product.wholesalePrice || 0)}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      // شبكة الأربعة أعمدة: الشراء، البيع، الربح، المخزون
-                      <div className="grid grid-cols-4 gap-1 text-center divide-x divide-x-reverse divide-border/40">
-                        <div className="px-1">
-                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">الشراء</p>
-                          <p className="font-bold text-sm sm:text-base text-foreground">
-                            {formatPriceRaw(product.costPrice)}
-                          </p>
-                        </div>
-                        <div className="px-1">
-                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">البيع</p>
-                          <p className="font-bold text-sm sm:text-base text-primary">
-                            {formatPriceRaw(product.salePrice)}
-                          </p>
-                        </div>
-                        <div className="px-1">
-                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">الربح</p>
-                          <p className={cn(
-                            "font-bold text-sm sm:text-base",
-                            profit > 0 ? "text-emerald-600 dark:text-emerald-400" : profit < 0 ? "text-destructive" : "text-muted-foreground"
-                          )}>
-                            {profit > 0 ? `+$${formatNumber(profit, 2)}` : `$${formatNumber(profit, 2)}`}
-                          </p>
-                        </div>
-                        <div className="px-1">
-                          <p className="text-[14px] text-muted-foreground font-medium mb-0.5">المخزون</p>
-                          {/* بدون لون أبيض يخفي نص DualUnitDisplay */}
-                          <div className="font-bold text-sm sm:text-base">
-                            <DualUnitDisplay
-                              totalPieces={product.quantity}
-                              conversionFactor={product.conversionFactor || 1}
-                              bulkUnit={product.bulkUnit}
-                              smallUnit={product.smallUnit}
-                              showTotal={false}
-                              size="sm"
-                            />
-                          </div>
+                    {/* Line 2: Stock on Right + Clean Buy & Sell Price Badges on Left */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-dashed border-border text-[11px]">
+                      {/* Stock Count (Aligned to Right) */}
+                      {!noInventory ? (
+                        <div className="flex items-center gap-1 text-muted-foreground font-bold">
+                          <span className="text-muted-foreground/70 text-[10px]">المخزون:</span>
+                          <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
+                          <span className="text-muted-foreground/70 text-[10px] font-sans">
+                            {product.conversionFactor && product.conversionFactor > 1
+                              ? getLocalizedUnit(product.bulkUnit, true)
+                              : getLocalizedUnit(product.smallUnit, false)}
+                          </span>
                           {(() => {
                             const custodyQty = getCustodyQuantity(product.id);
+                            const breakdown = getCustodyBreakdown(product.id);
                             if (custodyQty > 0) {
-                              return (
-                                <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                  <Truck className="w-2.5 h-2.5 text-primary" />
-                                  <span className="text-[10px] text-primary font-medium">{custodyQty} عهدة</span>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Products Table - Desktop */}
-        <div className="hidden lg:block bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.name')}</th>
-                  <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.category')}</th>
-                  {isRepairMode ? (
-                    <>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">تكلفة القطعة</th>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">تكلفة العمالة</th>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">المجموع</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.salePrice')}</th>
-                      {noInventory && (
-                        <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('products.wholesalePrice')}</th>
-                      )}
-                    </>
-                  )}
-                  {!noInventory && (
-                    <>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">{t('invoices.profit')}</th>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Boxes className="w-4 h-4" />
-                          {t('products.stock')}
-                        </div>
-                      </th>
-                      <th className="text-right py-3 px-3 text-sm font-medium text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Truck className="w-4 h-4" />
-                          العهدة
-                        </div>
-                      </th>
-                    </>
-                  )}
-                  <th className="text-center py-3 px-3 text-sm font-medium text-muted-foreground">{t('common.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map((product, index) => {
-                  const status = statusConfig[product.status];
-                  const profit = product.salePrice - product.costPrice;
-                  const profitPercentage = product.costPrice > 0 ? ((profit / product.costPrice) * 100).toFixed(0) : '0';
-
-                  return (
-                    <tr
-                      key={product.id}
-                      className="border-b border-border/50 hover:bg-muted/30 transition-colors fade-in"
-                      style={{ animationDelay: `${index * 30}ms` }}
-                    >
-                      {/* المنتج + الباركود */}
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          <ProductImage
-                            imageUrl={product.image}
-                            alt={product.name}
-                            className="w-10 h-10 rounded-lg flex-shrink-0"
-                            iconClassName="w-5 h-5"
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-foreground text-sm truncate">{product.name}</span>
-                            {!noInventory && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Barcode className="w-3 h-3 flex-shrink-0" />
-                                <span className="font-mono truncate">{product.barcode}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* التصنيف */}
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground whitespace-nowrap">
-                          {product.category}
-                        </span>
-                      </td>
-
-                      {/* الأسعار */}
-                      {isRepairMode ? (
-                        <>
-                          <td className="py-3 px-3">
-                            <span className="text-sm text-foreground">{formatPrice(product.costPrice)}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="text-sm text-foreground">${formatNumber(product.laborCost || 0, 2)}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-semibold text-primary text-sm">{formatPrice(product.costPrice + (product.laborCost || 0))}</span>
-                          </td>
-                        </>
-                      ) : (
-                        <td className="py-3 px-3">
-                          {noInventory ? (
-                            <span className="font-semibold text-foreground text-sm">{formatPrice(product.salePrice)}</span>
-                          ) : (
-                            <div className="flex flex-col text-sm">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-foreground/80">{t('products.costPrice')}:</span>
-                                <span className="text-foreground/80 font-medium">{formatPrice(product.costPrice)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-foreground/80">{t('products.salePrice')}:</span>
-                                <span className="font-semibold text-foreground">{formatPrice(product.salePrice)}</span>
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                      )}
-
-                      {noInventory && !isRepairMode && (
-                        <td className="py-3 px-3">
-                          <span className="text-sm text-foreground/90 font-medium">{formatPrice(product.wholesalePrice || 0)}</span>
-                        </td>
-                      )}
-
-                      {!noInventory && (
-                        <>
-                          {/* الربح */}
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-success text-sm">${formatNumber(profit, 2)}</span>
-                              <span className="text-xs text-foreground/80">{profitPercentage}%</span>
-                            </div>
-                          </td>
-
-                          {/* المخزون + الحالة */}
-                          <td className="py-3 px-3">
-                            <div className="flex flex-col gap-1.5">
-                              <DualUnitDisplay
-                                totalPieces={product.quantity}
-                                conversionFactor={product.conversionFactor || 1}
-                                bulkUnit={product.bulkUnit}
-                                smallUnit={product.smallUnit}
-                                showTotal={product.conversionFactor && product.conversionFactor > 1}
-                                size="sm"
-                              />
-                              <span className={cn(
-                                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium w-fit",
-                                status.color
-                              )}>
-                                <status.icon className="w-2.5 h-2.5" />
-                                {status.label}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* العهدة (كمية المستودعات الفرعية) */}
-                          <td className="py-3 px-3">
-                            {(() => {
-                              const custodyQty = getCustodyQuantity(product.id);
-                              const breakdown = getCustodyBreakdown(product.id);
-
-                              if (custodyQty === 0) {
-                                return (
-                                  <span className="text-xs text-foreground/80">-</span>
-                                );
-                              }
-
                               return (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="flex items-center gap-1 cursor-help">
-                                        <Truck className="w-3.5 h-3.5 text-primary" />
-                                        <span className="font-medium text-sm text-primary">{custodyQty}</span>
-                                        <span className="text-xs text-foreground/80">
-                                          {product.smallUnit || t('products.unitPiece')}
-                                        </span>
-                                      </div>
+                                      <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mr-1 cursor-help">
+                                        <Truck className="w-2.5 h-2.5" />
+                                        {custodyQty} عهدة
+                                      </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="max-w-xs">
                                       <div className="text-xs space-y-1">
@@ -2512,39 +2125,383 @@ export default function Products() {
                                   </Tooltip>
                                 </TooltipProvider>
                               );
-                            })()}
-                          </td>
-                        </>
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-muted-foreground">
+                          {product.category}
+                        </div>
                       )}
 
-                      {/* الإجراءات (فوق بعض) */}
-                      <td className="py-3 px-3">
-                        <div className="flex flex-col items-center gap-1">
-                          {canAddProducts && (<>
-                            <button
-                              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                              onClick={() => openEditDialog(product)}
-                              title={t('products.editTitle')}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive"
-                              onClick={() => openDeleteDialog(product)}
-                              title={t('products.deleteTitle')}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>)}
+                      {/* Buy & Sell Pricing (Aligned to Left) */}
+                      <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] shrink-0">
+                        {!noInventory && (
+                          <div className="flex items-center gap-1 bg-muted/40 px-2 py-0.5 rounded-lg border border-border shadow-2xs">
+                            <span className="text-[9px] font-sans text-muted-foreground font-medium">شراء:</span>
+                            <span className="text-foreground">{formatPrice(product.costPrice)}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 shadow-2xs text-primary">
+                          <span className="text-[9px] font-sans text-primary/80 font-medium">بيع:</span>
+                          <span className="text-foreground font-black">{formatPrice(product.salePrice)}</span>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 2. Medium View (الوضع المتوسط)
+              if (viewMode === 'list') {
+                return (
+                  <div
+                    key={product.id}
+                    className="bg-card rounded-2xl p-2.5 border border-border shadow-2xs hover:border-border/80 transition-all fade-in"
+                    style={{ animationDelay: `${index * 15}ms` }}
+                  >
+                    {/* Top Section */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      {/* Right: Product Thumbnail Image */}
+                      <div className="w-14 h-14 rounded-xl bg-muted/40 overflow-hidden border border-border shrink-0 aspect-square flex items-center justify-center shadow-2xs">
+                        <ProductImage
+                          imageUrl={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          iconClassName="w-6 h-6 text-muted-foreground/40"
+                        />
+                      </div>
+
+                      {/* Middle: Full Name + Status + Stock */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-start gap-1.5 flex-wrap">
+                          <h3
+                            className="font-black text-foreground text-xs sm:text-sm leading-snug break-words cursor-pointer hover:text-primary transition-colors"
+                            title={product.name}
+                            onClick={() => openEditDialog(product)}
+                          >
+                            {product.name}
+                          </h3>
+                          {!noInventory && (
+                            <span className={cn(
+                              "border text-[8.5px] font-black px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap",
+                              product.status === 'out_of_stock'
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                : product.status === 'low_stock'
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            )}>
+                              {status.label}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Stock Count */}
+                        {!noInventory ? (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
+                            <span className="text-muted-foreground/70 text-[10px]">المخزون:</span>
+                            <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
+                            <span className="bg-muted text-muted-foreground text-[9.5px] px-1.5 py-0.5 rounded font-bold">
+                              {product.conversionFactor && product.conversionFactor > 1
+                                ? getLocalizedUnit(product.bulkUnit, true)
+                                : getLocalizedUnit(product.smallUnit, false)}
+                            </span>
+                            {(() => {
+                              const custodyQty = getCustodyQuantity(product.id);
+                              const breakdown = getCustodyBreakdown(product.id);
+                              if (custodyQty > 0) {
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mr-1 cursor-help">
+                                          <Truck className="w-2.5 h-2.5" />
+                                          {custodyQty} عهدة
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-xs">
+                                        <div className="text-xs space-y-1">
+                                          <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                          {breakdown.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between gap-3">
+                                              <span>{item.warehouseName}:</span>
+                                              <span className="font-medium">{item.quantity}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground">
+                            {product.category}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Top-Left Corner: Vertically Stacked Actions (Edit top, Delete directly below) */}
+                      {canAddProducts && (
+                        <div className="flex flex-col gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => openEditDialog(product)}
+                            className="p-1.5 rounded-lg bg-muted text-foreground/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs"
+                            title="تعديل"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteDialog(product)}
+                            className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-90 transition-all shadow-2xs"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Section: Lowered Buy & Sell Prices Only (Balanced 2-Column Boxes, No profit) */}
+                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-dashed border-border text-center">
+                      {/* سعر الشراء */}
+                      <div className="bg-muted/40 py-1.5 px-2.5 rounded-xl border border-border/80 flex items-center justify-between shadow-2xs">
+                        <span className="text-[9.5px] text-muted-foreground font-bold">سعر الشراء:</span>
+                        <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.costPrice)}</span>
+                      </div>
+
+                      {/* سعر البيع */}
+                      <div className="bg-primary/5 py-1.5 px-2.5 rounded-xl border border-primary/20 flex items-center justify-between shadow-2xs">
+                        <span className="text-[9.5px] text-primary font-bold">سعر البيع:</span>
+                        <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.salePrice)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // 3. Large View (الوضع الكبير - الافتراضي)
+              return (
+                <div
+                  key={product.id}
+                  className="bg-card rounded-2xl p-3 border border-border shadow-2xs relative hover:border-border/80 transition-all fade-in"
+                  style={{ animationDelay: `${index * 20}ms` }}
+                >
+                  {/* Main Body: Right Info, Center Square Image, Left Stacked Actions */}
+                  <div className="flex items-center justify-between gap-2.5">
+                    {/* Right Column: Name, Barcode + Status, and Stock */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      {/* Product Name */}
+                      <h3
+                        className="font-black text-foreground text-sm leading-tight truncate cursor-pointer hover:text-primary transition-colors"
+                        title={product.name}
+                        onClick={() => openEditDialog(product)}
+                      >
+                        {product.name}
+                      </h3>
+
+                      {/* Barcode + Status (Spaced out with ample room) */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Barcode Box */}
+                        {product.barcode && (
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(product.barcode);
+                              toast.success(`تم نسخ الباركود: ${product.barcode}`);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(product.barcode);
+                                toast.success(`تم نسخ الباركود: ${product.barcode}`);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 bg-muted hover:bg-muted/80 px-2 py-1 rounded-lg cursor-pointer transition-colors text-muted-foreground shadow-2xs"
+                            title="انقر لنسخ الباركود"
+                          >
+                            <Copy className="w-3 h-3 text-muted-foreground/70 flex-shrink-0" />
+                            <span className="font-mono text-[10px] font-bold tracking-wider">{product.barcode}</span>
+                          </div>
+                        )}
+
+                        {/* Status Badge next to Barcode */}
+                        {!noInventory && (
+                          <span className={cn(
+                            "border text-[9.5px] font-black px-2 py-0.5 rounded-full whitespace-nowrap",
+                            product.status === 'out_of_stock'
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                              : product.status === 'low_stock'
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          )}>
+                            {status.label}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Stock Information (Aligned on the right) */}
+                      {!noInventory ? (
+                        <div className="flex items-center gap-1.5 text-xs text-foreground/80 font-bold">
+                          <span>المخزون:</span>
+                          <span className="font-mono text-sm text-foreground font-black">{product.quantity}</span>
+                          <span className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-md font-bold">
+                            {product.conversionFactor && product.conversionFactor > 1
+                              ? getLocalizedUnit(product.bulkUnit, true)
+                              : getLocalizedUnit(product.smallUnit, false)}
+                          </span>
+                          {(() => {
+                            const custodyQty = getCustodyQuantity(product.id);
+                            const breakdown = getCustodyBreakdown(product.id);
+                            if (custodyQty > 0) {
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mr-1 cursor-help">
+                                        <Truck className="w-2.5 h-2.5" />
+                                        {custodyQty} عهدة
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                      <div className="text-xs space-y-1">
+                                        <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                        {breakdown.map((item, idx) => (
+                                          <div key={idx} className="flex justify-between gap-3">
+                                            <span>{item.warehouseName}:</span>
+                                            <span className="font-medium">{item.quantity}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          {product.category}
+                        </div>
+                      )}
+
+                      {/* Size/Color badges if enabled */}
+                      {fieldsConfig.sizeColor && (product.size || product.color) && (
+                        <div className="flex flex-wrap gap-1">
+                          {product.size && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">{product.size}</span>}
+                          {product.color && <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{product.color}</span>}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Center: Enlarged Square Image */}
+                    <div className="w-24 h-24 rounded-2xl bg-muted/40 overflow-hidden border border-border shrink-0 aspect-square shadow-2xs flex items-center justify-center">
+                      <ProductImage
+                        imageUrl={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        iconClassName="w-10 h-10 text-muted-foreground/40"
+                      />
+                    </div>
+
+                    {/* Left Column: Vertically Stacked Actions (Delete directly below Edit) */}
+                    {canAddProducts && (
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openEditDialog(product)}
+                          className="p-2 rounded-xl bg-muted text-foreground/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs"
+                          title="تعديل"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDeleteDialog(product)}
+                          className="p-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-90 transition-all shadow-2xs"
+                          title="حذف"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom 3-Metric Price Row (الشراء | البيع | الربح) */}
+                  {noInventory ? (
+                    <div className={cn("grid gap-1.5 text-center bg-muted/40 p-1.5 rounded-xl border border-border/80 mt-2.5", isRepairMode ? "grid-cols-3" : "grid-cols-2")}>
+                      {isRepairMode ? (
+                        <>
+                          <div className="bg-card p-1 rounded-lg border border-border/70">
+                            <span className="text-[9px] text-muted-foreground font-bold block">تكلفة القطعة</span>
+                            <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.costPrice)}</span>
+                          </div>
+                          <div className="bg-card p-1 rounded-lg border border-border/70">
+                            <span className="text-[9px] text-muted-foreground font-bold block">تكلفة العمالة</span>
+                            <span className="text-xs font-black text-foreground font-mono">${formatNumber(product.laborCost || 0, 2)}</span>
+                          </div>
+                          <div className="bg-card p-1 rounded-lg border border-border/70">
+                            <span className="text-[9px] text-muted-foreground font-bold block">المجموع</span>
+                            <span className="text-xs font-black text-primary font-mono">{formatPrice(product.costPrice + (product.laborCost || 0))}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="bg-card p-1 rounded-lg border border-border/70">
+                            <span className="text-[9px] text-muted-foreground font-bold block">البيع</span>
+                            <span className="text-xs font-black text-primary font-mono">{formatPrice(product.salePrice)}</span>
+                          </div>
+                          <div className="bg-card p-1 rounded-lg border border-border/70">
+                            <span className="text-[9px] text-muted-foreground font-bold block">{t('products.wholesalePrice')}</span>
+                            <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.wholesalePrice || 0)}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-1.5 text-center bg-muted/40 p-1.5 rounded-xl border border-border/80 mt-2.5">
+                      {/* الشراء */}
+                      <div className="bg-card p-1 rounded-lg border border-border/70">
+                        <span className="text-[9px] text-muted-foreground font-bold block">الشراء</span>
+                        <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.costPrice)}</span>
+                      </div>
+                      {/* البيع */}
+                      <div className="bg-card p-1 rounded-lg border border-border/70">
+                        <span className="text-[9px] text-muted-foreground font-bold block">البيع</span>
+                        <span className="text-xs font-black text-primary font-mono">{formatPrice(product.salePrice)}</span>
+                      </div>
+                      {/* الربح */}
+                      <div className={cn(
+                        "p-1 rounded-lg border",
+                        profit > 0
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : profit < 0
+                          ? "bg-destructive/10 text-destructive border-destructive/20"
+                          : "bg-card border-border/70 text-muted-foreground"
+                      )}>
+                        <span className="text-[9px] font-bold block">{profit >= 0 ? "الربح" : "الخسارة"}</span>
+                        <span className="text-xs font-black font-mono">
+                          {profit > 0 ? `+$${formatNumber(profit, 2)}` : profit < 0 ? `-$${formatNumber(Math.abs(profit), 2)}` : `$0.00`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          </div>
+        )}
         </div>
       )}
 
