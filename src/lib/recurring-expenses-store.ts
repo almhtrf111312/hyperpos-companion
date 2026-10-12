@@ -125,13 +125,19 @@ export function deleteRecurringExpense(id: string): boolean {
   return true;
 }
 
+const payingLocks = new Set<string>();
+
 export function getDueExpenses(): RecurringExpense[] {
   const expenses = loadRecurringExpenses();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = toLocalDateString(new Date());
   
   return expenses.filter(expense => {
     if (!expense.isActive) return false;
+    
+    // Strict Idempotency: If already paid today, NOT due today!
+    if (expense.lastPaidDate === todayStr) return false;
     
     const dueDate = new Date(expense.nextDueDate);
     dueDate.setHours(0, 0, 0, 0);
@@ -141,38 +147,63 @@ export function getDueExpenses(): RecurringExpense[] {
 }
 
 export async function payRecurringExpense(id: string): Promise<boolean> {
-  const expenses = loadRecurringExpenses();
-  const expense = expenses.find(e => e.id === id);
-  
-  if (!expense) return false;
-  
-  const todayStr = toLocalDateString(new Date());
+  if (payingLocks.has(id)) {
+    console.warn(`[payRecurringExpense] Payment already in progress for ${id}`);
+    return false;
+  }
+  payingLocks.add(id);
 
-  // 1. Add as regular cloud expense
-  await addExpenseCloud({
-    type: expense.type,
-    customType: expense.customType || expense.name,
-    amount: expense.amount,
-    notes: `${expense.name} - مصروف ثابت متكرر`,
-    date: todayStr,
-  });
+  try {
+    const expenses = loadRecurringExpenses();
+    const expense = expenses.find(e => e.id === id);
+    
+    if (!expense) return false;
+    
+    const todayStr = toLocalDateString(new Date());
 
-  // 2. خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
-  processExpense(expense.amount, expense.type);
-  emitEvent(EVENTS.EXPENSES_UPDATED, null);
-  
-  // 3. Calculate next due date
-  const nextDate = new Date(expense.nextDueDate || todayStr);
-  nextDate.setDate(nextDate.getDate() + (expense.intervalDays || 30));
-  const nextDueDateStr = toLocalDateString(nextDate);
-  
-  // 4. Update the recurring expense in Supabase and local cache
-  await updateRecurringExpenseCloud(id, {
-    lastPaidDate: todayStr,
-    nextDueDate: nextDueDateStr,
-  });
-  
-  return true;
+    // Strict Idempotency check: Don't double pay if already paid today!
+    if (expense.lastPaidDate === todayStr) {
+      console.warn(`[payRecurringExpense] Expense ${id} was already paid today (${todayStr})`);
+      return false;
+    }
+
+    // 1. Add as regular cloud expense
+    await addExpenseCloud({
+      type: expense.type,
+      customType: expense.customType || expense.name,
+      amount: expense.amount,
+      notes: `${expense.name} - مصروف ثابت متكرر`,
+      date: todayStr,
+    });
+
+    // 2. خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
+    processExpense(expense.amount, expense.type);
+    emitEvent(EVENTS.EXPENSES_UPDATED, null);
+    
+    // 3. Calculate next due date strictly into the future
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const currentDueDate = new Date(expense.nextDueDate || todayStr);
+    currentDueDate.setHours(0, 0, 0, 0);
+
+    const baseTime = Math.max(currentDueDate.getTime(), todayDate.getTime());
+    const nextDate = new Date(baseTime);
+    nextDate.setDate(nextDate.getDate() + (expense.intervalDays || 30));
+    const nextDueDateStr = toLocalDateString(nextDate);
+    
+    // 4. Update the recurring expense in Supabase and local cache
+    await updateRecurringExpenseCloud(id, {
+      lastPaidDate: todayStr,
+      nextDueDate: nextDueDateStr,
+    });
+    
+    return true;
+  } finally {
+    // Release lock after debounce delay to prevent rapid double-clicks
+    setTimeout(() => {
+      payingLocks.delete(id);
+    }, 1000);
+  }
 }
 
 export function skipRecurringExpense(id: string): boolean {

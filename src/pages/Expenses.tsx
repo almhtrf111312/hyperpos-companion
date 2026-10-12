@@ -19,6 +19,7 @@ import {
   Pencil,
   RotateCcw,
   MoreVertical,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -92,6 +93,7 @@ export default function Expenses() {
   const [dueExpenses, setDueExpenses] = useState<RecurringExpense[]>(() => getDueExpenses());
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const savingRef = useRef(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -174,6 +176,20 @@ export default function Expenses() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+  // Auto-open pay confirmation dialog from URL param (e.g., from SyncStatusMenu)
+  useEffect(() => {
+    const payId = searchParams.get('payRecurringId');
+    if (payId && recurringExpenses.length > 0) {
+      const target = recurringExpenses.find(e => e.id === payId);
+      if (target) {
+        setSelectedRecurring(target);
+        setShowPayConfirmDialog(true);
+      }
+      searchParams.delete('payRecurringId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, recurringExpenses]);
 
   const filteredExpenses = expenses.filter(expense =>
     expense.typeLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -391,31 +407,39 @@ export default function Expenses() {
 
   const handleDeleteExpense = () => handleReverseExpense();
 
-  // الدفع الفوري بنقرة واحدة دون فتح نافذة تأكيد ثانية
-  const handleQuickPayRecurring = async (expense: RecurringExpense) => {
-    try {
-      await payRecurringExpense(expense.id);
-      const [expensesData, statsData, recurringData] = await Promise.all([
-        loadExpensesCloud(),
-        getExpenseStatsCloud(),
-        loadRecurringExpensesCloud(),
-      ]);
-      setExpenses(expensesData);
-      setStats(statsData);
-      setRecurringExpenses(recurringData);
-      setDueExpenses(getDueExpenses());
-      toast.success(`تم صرف مصروف: ${expense.name}`);
-    } catch (err) {
-      console.error('[Expenses] Error quick paying recurring expense:', err);
-      toast.error(t('expenses.payExpenseError') || 'فشل في تنفيذ عملية الصرف');
-    }
+  // فتح نافذة التأكيد قبل الدفع لضمان عدم السداد المكرر العرضي
+  const handleQuickPayRecurring = (expense: RecurringExpense) => {
+    openPayConfirmDialog(expense);
   };
 
   const handlePayRecurring = async () => {
-    if (!selectedRecurring) return;
-    await handleQuickPayRecurring(selectedRecurring);
-    setShowPayConfirmDialog(false);
-    setSelectedRecurring(null);
+    if (!selectedRecurring || isPaying) return;
+    setIsPaying(true);
+    try {
+      const success = await payRecurringExpense(selectedRecurring.id);
+      if (success) {
+        const [expensesData, statsData, recurringData] = await Promise.all([
+          loadExpensesCloud(),
+          getExpenseStatsCloud(),
+          loadRecurringExpensesCloud(),
+        ]);
+        setExpenses(expensesData);
+        setStats(statsData);
+        setRecurringExpenses(recurringData);
+        setDueExpenses(getDueExpenses());
+        emitEvent(EVENTS.RECURRING_EXPENSES_UPDATED, null);
+        toast.success(t('expenses.payExpenseSuccess') || `تم صرف مصروف: ${selectedRecurring.name}`);
+      } else {
+        toast.error(t('expenses.alreadyPaidToday') || 'هذا المصروف تم سداده اليوم بالفعل أو قيد المعالجة');
+      }
+    } catch (err) {
+      console.error('[Expenses] Error paying recurring expense:', err);
+      toast.error(t('expenses.payExpenseError') || 'فشل في تنفيذ عملية الصرف');
+    } finally {
+      setIsPaying(false);
+      setShowPayConfirmDialog(false);
+      setSelectedRecurring(null);
+    }
   };
 
   const handleSkipRecurring = async (expense: RecurringExpense) => {
@@ -969,48 +993,91 @@ export default function Expenses() {
             {recurringExpenses.length === 0 ? (
               <p className="text-center text-muted-foreground py-8 text-xs">{t('expenses.noFixedExpenses')}</p>
             ) : (
-              recurringExpenses.map(expense => (
-                <div key={expense.id} className="flex items-center justify-between bg-muted/40 border border-border/50 rounded-2xl p-3 gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-xs truncate text-foreground">{expense.name}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">
-                      <span className="font-bold text-foreground">{formatCurrency(expense.amount)}</span> - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {t('expenses.nextDue')}: {expense.nextDueDate}
-                    </p>
+              recurringExpenses.map(expense => {
+                const todayStr = toLocalDateString(new Date());
+                const isPaidToday = expense.lastPaidDate === todayStr;
+                const dueDate = new Date(expense.nextDueDate || todayStr);
+                dueDate.setHours(0, 0, 0, 0);
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                const isDue = (dueDate <= todayDate || !expense.nextDueDate) && !isPaidToday && (expense.isActive !== false);
+
+                return (
+                  <div key={expense.id} className="flex items-center justify-between bg-muted/40 border border-border/50 rounded-2xl p-3 gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-xs truncate text-foreground">{expense.name}</p>
+                        {isPaidToday && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                            {t('expenses.paidTodayBadge')}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground font-mono">
+                        <span className="font-bold text-foreground">{formatCurrency(expense.amount)}</span> - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5">
+                        <span>{t('expenses.nextDue')}: {expense.nextDueDate}</span>
+                        {expense.lastPaidDate && (
+                          <span className="text-muted-foreground/80">({t('expenses.lastPaid')}: {expense.lastPaidDate})</span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isPaidToday ? (
+                        <Button
+                          size="sm"
+                          disabled
+                          className="h-8 text-xs bg-muted text-muted-foreground gap-1 px-2.5 rounded-xl font-bold cursor-not-allowed opacity-60"
+                          title={t('expenses.paidTodayBadge')}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          {t('expenses.paidTodayBadge')}
+                        </Button>
+                      ) : !isDue ? (
+                        <Button
+                          size="sm"
+                          disabled
+                          variant="outline"
+                          className="h-8 text-xs text-muted-foreground gap-1 px-2.5 rounded-xl font-medium cursor-not-allowed opacity-50"
+                          title={t('expenses.notDueYet')}
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          {t('expenses.notDueYet')}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 rounded-xl font-bold shadow-sm"
+                          onClick={() => openPayConfirmDialog(expense)}
+                          title={t('expenses.payNow')}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          {t('expenses.pay')}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-xl"
+                        onClick={() => handleOpenEditRecurring(expense)}
+                        title={t('common.edit')}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-xl"
+                        onClick={() => handleDeleteRecurring(expense.id)}
+                        title={t('common.delete')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 rounded-xl font-bold"
-                      onClick={() => handleQuickPayRecurring(expense)}
-                      title={t('expenses.payNow')}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      {t('expenses.pay')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-xl"
-                      onClick={() => handleOpenEditRecurring(expense)}
-                      title={t('common.edit')}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-xl"
-                      onClick={() => handleDeleteRecurring(expense.id)}
-                      title={t('common.delete')}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           <div className="p-3 bg-muted/20 border-t border-border flex justify-end">
@@ -1147,13 +1214,24 @@ export default function Expenses() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground pt-2">
               {t('expenses.payExpenseConfirm').replace('{name}', selectedRecurring?.name || '').replace('{amount}', formatNumber(selectedRecurring?.amount || 0))}
+              <span className="block mt-2 font-medium text-emerald-600 dark:text-emerald-400">
+                💰 {t('expenses.confirmDeductFromCashbox')}
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-2 pt-3">
-            <AlertDialogCancel className="flex-1 h-9 rounded-xl text-xs">{t('expenses.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handlePayRecurring} className="flex-1 h-9 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">
-              <Check className="w-3.5 h-3.5 ml-1.5" />
-              {t('expenses.payNow')}
+            <AlertDialogCancel disabled={isPaying} className="flex-1 h-9 rounded-xl text-xs">{t('expenses.cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handlePayRecurring} 
+              disabled={isPaying}
+              className="flex-1 h-9 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+            >
+              {isPaying ? (
+                <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5 ml-1.5" />
+              )}
+              {isPaying ? t('common.loading') : t('expenses.payNow')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { getDueExpenses, RecurringExpense } from '@/lib/recurring-expenses-store';
 import { useLanguage } from '@/hooks/use-language';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
@@ -34,6 +35,8 @@ export function SyncStatusMenu() {
   const [queueStatus, setQueueStatus] = useState<SyncQueueStatus>(getQueueStatus());
   const [history, setHistory] = useState<SyncHistoryItem[]>(loadHistory());
   const [recentBackups, setRecentBackups] = useState<LocalBackup[]>(loadRecentBackups());
+  const [isOpen, setIsOpen] = useState(false);
+  const [dueExpenses, setDueExpenses] = useState<RecurringExpense[]>(() => getDueExpenses());
 
   useEffect(() => {
     const handleQueueUpdate = () => setQueueStatus(getQueueStatus());
@@ -49,6 +52,8 @@ export function SyncStatusMenu() {
     window.addEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleQueueUpdate);
     window.addEventListener(SYNC_HISTORY_UPDATED, handleHistoryUpdate);
     window.addEventListener(BACKUP_UPDATED_EVENT, handleBackupUpdate);
+    const handleRecurringUpdate = () => setDueExpenses(getDueExpenses());
+    window.addEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleRecurringUpdate);
 
     const cleanup = setInterval(cleanupSyncedItems, 5 * 60 * 1000);
 
@@ -56,6 +61,7 @@ export function SyncStatusMenu() {
       window.removeEventListener(EVENTS.SYNC_QUEUE_UPDATED, handleQueueUpdate);
       window.removeEventListener(SYNC_HISTORY_UPDATED, handleHistoryUpdate);
       window.removeEventListener(BACKUP_UPDATED_EVENT, handleBackupUpdate);
+      window.removeEventListener(EVENTS.RECURRING_EXPENSES_UPDATED, handleRecurringUpdate);
       clearInterval(cleanup);
     };
   }, []);
@@ -169,7 +175,7 @@ export function SyncStatusMenu() {
   });
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -177,14 +183,16 @@ export function SyncStatusMenu() {
           className={cn("relative h-9 w-9", config.color)}
         >
           <StatusIcon className={cn("h-4.5 w-4.5", config.animate)} />
-          {(pendingCount > 0 || hasIssues) && (
+          {(pendingCount > 0 || hasIssues || dueExpenses.length > 0) && (
             <span className={cn(
               "absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center",
               hasIssues
                 ? "bg-destructive text-destructive-foreground"
+                : dueExpenses.length > 0
+                ? "bg-amber-500 text-white animate-pulse"
                 : "bg-warning text-warning-foreground"
             )}>
-              {hasIssues ? queueStatus.failedCount : pendingCount}
+              {hasIssues ? queueStatus.failedCount : dueExpenses.length > 0 ? dueExpenses.length : pendingCount}
             </span>
           )}
         </Button>
@@ -235,6 +243,44 @@ export function SyncStatusMenu() {
         )}
 
         {/* Stuck operations with recovery actions */}
+        {/* Due Recurring Expenses Alert Card */}
+        {dueExpenses.length > 0 && (
+          <div className="p-3 bg-amber-500/10 border-b border-amber-500/25">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs">
+                <Clock className="h-3.5 w-3.5" />
+                <span>{t('expenses.dueTodayTitle')} ({dueExpenses.length})</span>
+              </div>
+              <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400 text-[10px] px-1.5 py-0 font-mono">
+                {formatCurrency(dueExpenses.reduce((sum, e) => sum + e.amount, 0))}
+              </Badge>
+            </div>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {dueExpenses.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between bg-card/90 border border-amber-500/20 rounded-xl p-2 gap-2 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-xs truncate text-foreground">{expense.name}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      <span className="font-bold text-foreground">{formatCurrency(expense.amount)}</span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shrink-0 gap-1"
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate(`/expenses?payRecurringId=${expense.id}`);
+                    }}
+                  >
+                    <Check className="h-3 w-3" />
+                    <span>{t('expenses.payNowButton')}</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <StuckOperationsList />
 
         {/* History List */}

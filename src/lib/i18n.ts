@@ -20,6 +20,7 @@ export type TranslationKey = keyof typeof translations.ar;
 
 export const translations = {
   ar: {
+
     'dashboard.unifiedTitle': 'لوحة التقارير والمؤشرات الموحدة',
     'dashboard.syncedOffline': 'نظام أوفلاين متزامن',
     'dashboard.filterToday': 'اليوم',
@@ -2426,8 +2427,15 @@ export const translations = {
     'reports.partnersUnit': 'شريك',
     'reports.cashiersUnit': 'كاشير',
     'reports.vouchersUnit': 'سند',
+    'expenses.dueTodayTitle': 'مصاريف مستحقة السداد اليوم',
+    'expenses.payNowButton': 'سداد الآن',
+    'expenses.paidTodayBadge': 'تم السداد اليوم',
+    'expenses.notDueYet': 'غير مستحق بعد',
+    'expenses.lastPaid': 'آخر سداد',
+    'expenses.confirmDeductFromCashbox': 'سيتم تسجيل هذا المصروف وخصم المبلغ تلقائياً من درج الكاشير / الصندوق الحالي.',
   },
   en: {
+
     'dashboard.unifiedTitle': 'Unified Reports & KPI Dashboard',
     'dashboard.syncedOffline': 'Synced Offline System',
     'dashboard.filterToday': 'Today',
@@ -4843,9 +4851,16 @@ export const translations = {
     'reports.partnersUnit': 'partners',
     'reports.cashiersUnit': 'cashiers',
     'reports.vouchersUnit': 'vouchers',
+    'expenses.dueTodayTitle': 'Expenses Due Today',
+    'expenses.payNowButton': 'Pay Now',
+    'expenses.paidTodayBadge': 'Paid Today',
+    'expenses.notDueYet': 'Not Due Yet',
+    'expenses.lastPaid': 'Last Paid',
+    'expenses.confirmDeductFromCashbox': 'This expense will be recorded and automatically deducted from the current cash drawer / shift.',
   },
 
   tr: {
+
     'dashboard.unifiedTitle': 'Birleşik Raporlar ve KPI Paneli',
     'dashboard.syncedOffline': 'Senkronize Çevrimdışı Sistem',
     'dashboard.filterToday': 'Bugün',
@@ -7265,8 +7280,15 @@ export const translations = {
     'reports.partnersUnit': 'ortak',
     'reports.cashiersUnit': 'kasiyer',
     'reports.vouchersUnit': 'fiş',
+    'expenses.dueTodayTitle': 'Bugün Vadesi Gelen Giderler',
+    'expenses.payNowButton': 'Şimdi Öde',
+    'expenses.paidTodayBadge': 'Bugün Ödendi',
+    'expenses.notDueYet': 'Henüz Vadesi Gelmedi',
+    'expenses.lastPaid': 'Son Ödeme',
+    'expenses.confirmDeductFromCashbox': 'Bu gider kaydedilecek ve mevcut kasadan / vardiyadan otomatik olarak düşülecektir.',
   },
   fa: {
+
     'dashboard.unifiedTitle': 'داشبورد یکپارچه گزارش‌ها و شاخص‌ها',
     'dashboard.syncedOffline': 'سیستم همگام‌آفلاین',
     'dashboard.filterToday': 'امروز',
@@ -10141,9 +10163,16 @@ export const translations = {
     'reports.partnersUnit': 'شریک',
     'reports.cashiersUnit': 'صندوقدار',
     'reports.vouchersUnit': 'سند',
+    'expenses.dueTodayTitle': 'هزینه‌های سررسید شده امروز',
+    'expenses.payNowButton': 'پرداخت اکنون',
+    'expenses.paidTodayBadge': 'امروز پرداخت شد',
+    'expenses.notDueYet': 'هنوز سررسید نشده',
+    'expenses.lastPaid': 'آخرین پرداخت',
+    'expenses.confirmDeductFromCashbox': 'این هزینه ثبت شده و به طور خودکار از صندوق / شیفت فعلی کسر خواهد شد.',
   },
 
   ku: {
+
     'recentInvoices.actions': 'إجراءات',
     'recentInvoices.viewDetails': 'عرض التفاصيل',
     'recentInvoices.copyNumber': 'نسخ الرقم',
@@ -12494,6 +12523,12 @@ export const translations = {
     'reports.partnersUnit': 'هاوبەش',
     'reports.cashiersUnit': 'کاشێر',
     'reports.vouchersUnit': 'پسوولە',
+    'expenses.dueTodayTitle': 'خەرجییە پێویستەکانی ئەمڕۆ',
+    'expenses.payNowButton': 'ئێستا پارە بدە',
+    'expenses.paidTodayBadge': 'ئەمڕۆ دراوە',
+    'expenses.notDueYet': 'هێشتا کاتی نەهاتووە',
+    'expenses.lastPaid': 'دواین پارەدان',
+    'expenses.confirmDeductFromCashbox': 'ئەم خەرجییە تۆمار دەکرێت و خۆکارانە لە سندووقی کاشێر / نۆرەی ئێستا لێدەبڕدرێت.',
   },
   en_backup: {
     // Navigation
