@@ -1355,31 +1355,33 @@ export function CartPanel({
               />
               {/* Wholesale Toggle */}
               <button
+                type="button"
                 onClick={() => {
                   setWholesaleMode(!wholesaleMode);
                   if (!wholesaleMode) setReceivedAmount(0);
                 }}
                 className={cn(
-                  "text-xs font-bold px-2.5 py-1 rounded-lg transition-all",
+                  "text-xs font-bold px-2 py-1 rounded-lg transition-all inline-flex items-center gap-1 shrink-0",
                   wholesaleMode
                     ? "bg-orange-500 text-white shadow-md"
                     : "bg-muted text-foreground hover:bg-muted/80"
                 )}
               >
-                <Package className="w-3.5 h-3.5 inline-block ml-1" />
-                {wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.retail') || 'مفرق')}
+                <Package className="w-3.5 h-3.5 shrink-0" />
+                <span>{wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.retail') || 'مفرق')}</span>
               </button>
               {cart.length > 0 && (
                 <button
+                  type="button"
                   onClick={onClearCart}
-                  className="text-xs md:text-sm text-destructive hover:text-destructive/80"
+                  className="text-xs font-semibold text-destructive hover:bg-destructive/10 px-2 py-1 rounded-lg shrink-0 transition-colors"
                 >
                   {t('pos.clear')}
                 </button>
               )}
               {isMobile && onClose && (
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 rounded-full bg-muted/60 hover:bg-destructive/10">
-                  <X className="w-5 h-5" />
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full bg-muted/60 hover:bg-destructive/10 shrink-0">
+                  <X className="w-4 h-4" />
                 </Button>
               )}
             </div>
@@ -1940,7 +1942,7 @@ export function CartPanel({
 
       {/* Cash Sale Dialog */}
       <Dialog open={showCashDialog} onOpenChange={setShowCashDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[94vw] max-w-md p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Banknote className="w-5 h-5 text-success" />
@@ -1960,9 +1962,11 @@ export function CartPanel({
                 <span>{t('pos.customer') || 'العميل'}:</span>
                 <span className="font-semibold">{customerName || t('pos.cashCustomer')}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>{t('pos.total') || 'الإجمالي'}:</span>
-                <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
+              <div className="flex justify-between items-center text-lg font-bold border-t border-border pt-2 mt-2 gap-2">
+                <span className="shrink-0">{t('pos.total') || 'الإجمالي'}:</span>
+                <span className="text-primary font-mono text-base sm:text-lg shrink-0" dir="ltr">
+                  {formatCurrency(totalInCurrency, selectedCurrency.symbol)}
+                </span>
               </div>
               {receivedAmount > 0 && (
                 <div className="space-y-1.5 border-t border-border/50 pt-2 text-sm">

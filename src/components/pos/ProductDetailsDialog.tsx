@@ -399,7 +399,14 @@ export function ProductDetailsDialog({
         </div>
 
         {/* شريط الإجراء السفلي: عداد كمية مستقل + زر إضافة عريض بحساب ديناميكي */}
-        {onAddToCart && stock > 0 ? (
+        {stock <= 0 ? (
+          <div className="shrink-0 px-5 pb-6 pt-2">
+            <div className="rounded-2xl bg-destructive/10 py-3 text-center text-xs md:text-sm font-bold text-destructive border border-destructive/20 flex items-center justify-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              <span>{language === 'en' ? 'This item is currently out of stock' : 'هذا الصنف غير متوفر حالياً بالمخزون'}</span>
+            </div>
+          </div>
+        ) : onAddToCart ? (
           <div className="shrink-0 flex items-center gap-3 border-t border-border bg-card/95 backdrop-blur-sm px-5 py-3.5 pb-6">
             {/* عداد كمية أملس داخل كبسولة مستقلة */}
             <div className="flex items-center gap-1.5 rounded-2xl bg-muted/60 px-2.5 py-1.5 border border-border/70 shadow-2xs">
@@ -441,10 +448,13 @@ export function ProductDetailsDialog({
           </div>
         ) : (
           <div className="shrink-0 px-5 pb-6 pt-2">
-            <div className="rounded-2xl bg-destructive/10 py-3 text-center text-xs md:text-sm font-bold text-destructive border border-destructive/20 flex items-center justify-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              <span>{language === 'en' ? 'This item is currently out of stock' : 'هذا الصنف غير متوفر حالياً بالمخزون'}</span>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-2xl bg-muted py-2.5 text-center text-xs md:text-sm font-bold text-foreground hover:bg-muted/80 transition"
+            >
+              {language === 'en' ? 'Close' : 'إغلاق'}
+            </button>
           </div>
         )}
       </DialogContent>

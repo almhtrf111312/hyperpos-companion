@@ -44,7 +44,8 @@ interface ProductGridProps {
   selectedCategory: string;
   onSearchChange: (query: string) => void;
   onCategoryChange: (category: string) => void;
-  onProductClick: (product: Product) => void;
+  onProductClick: (product: Product, quantity?: number) => void;
+  onAddToCart?: (product: Product, quantity: number) => void;
   onBarcodeScan?: (barcode: string) => void;
   selectedCurrency?: { code: string; symbol: string; rate: number };
 }
@@ -59,6 +60,7 @@ export function ProductGrid({
   onSearchChange,
   onCategoryChange,
   onProductClick,
+  onAddToCart,
   onBarcodeScan,
   selectedCurrency,
 }: ProductGridProps) {
@@ -406,6 +408,13 @@ export function ProductGrid({
           onClose={() => {
             setDetailsDialogOpen(false);
             setSelectedProduct(null);
+          }}
+          onAddToCart={(product, qty) => {
+            if (onAddToCart) {
+              onAddToCart(product, qty);
+            } else {
+              onProductClick(product, qty);
+            }
           }}
         />
       )}

@@ -688,7 +688,7 @@ export default function POS() {
     } catch {}
   }, [customerName]);
 
-  const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
+  const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece', quantityToAdd: number = 1) => {
     if (!isNoInventoryMode() && (product.quantity <= 0 || product.archived)) {
       showToast.warning(t('pos.productArchived') || "المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
       return; // Don't add out-of-stock items
@@ -710,7 +710,7 @@ export default function POS() {
     const totalCartPieces = cart
       .filter(item => item.id === product.id)
       .reduce((sum, item) => sum + item.quantity * (item.unit === 'bulk' ? (item.conversionFactor || 1) : 1), 0);
-    const additionalPieces = unit === 'bulk' ? (product.conversionFactor || 1) : 1;
+    const additionalPieces = unit === 'bulk' ? (product.conversionFactor || 1) * quantityToAdd : quantityToAdd;
 
     if (!isNoInventoryMode() && totalCartPieces + additionalPieces > product.quantity) {
       const maxAvailable = unit === 'bulk' && product.conversionFactor ? Math.floor(product.quantity / product.conversionFactor) : product.quantity;
@@ -726,7 +726,7 @@ export default function POS() {
       if (existing) {
         return prev.map(item =>
           item.id === product.id && item.unit === unit
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + quantityToAdd }
             : item
         );
       }
@@ -734,7 +734,7 @@ export default function POS() {
         id: product.id,
         name: product.name,
         price: priceForUnit,
-        quantity: 1,
+        quantity: quantityToAdd,
         category: product.category,
         unit,
         bulkUnit: product.bulkUnit,
@@ -1139,7 +1139,8 @@ export default function POS() {
                 selectedCategory={selectedCategory}
                 onSearchChange={handleSearchChange}
                 onCategoryChange={setSelectedCategory}
-                onProductClick={(product) => addToCart(product, 'piece')}
+                onProductClick={(product, qty) => addToCart(product, 'piece', qty || 1)}
+                onAddToCart={(product, qty) => addToCart(product, 'piece', qty || 1)}
                 onBarcodeScan={handleBarcodeScan}
                 selectedCurrency={selectedCurrency}
               />

@@ -56,21 +56,21 @@ export default function Purchases() {
           title={t('purchases.title')}
           subtitle={t('purchases.subtitle')}
           actions={
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            <div className="flex items-center gap-2 w-full sm:w-auto py-1">
               <Button
                 variant="outline"
                 onClick={() => setShowQuickDialog(true)}
-                className="min-w-fit h-9 md:h-10 px-3 text-xs md:text-sm font-medium whitespace-nowrap shadow-sm flex-shrink-0"
+                className="flex-1 sm:flex-initial justify-center min-w-0 h-9 md:h-10 px-2.5 sm:px-3 text-xs md:text-sm font-medium shadow-sm"
               >
                 <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
-                <span>{t('purchases.quickAdd')}</span>
+                <span className="truncate">{t('purchases.quickAdd')}</span>
               </Button>
               <Button
-                className="min-w-fit h-9 md:h-10 px-3 text-xs md:text-sm font-semibold bg-primary hover:bg-primary/90 whitespace-nowrap shadow-sm flex-shrink-0"
+                className="flex-1 sm:flex-initial justify-center min-w-0 h-9 md:h-10 px-2.5 sm:px-3 text-xs md:text-sm font-semibold bg-primary hover:bg-primary/90 shadow-sm"
                 onClick={() => setShowDialog(true)}
               >
                 <Plus className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
-                <span>{t('purchases.addNew')}</span>
+                <span className="truncate">{t('purchases.addNew')}</span>
               </Button>
             </div>
           }
