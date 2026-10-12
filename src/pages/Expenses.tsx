@@ -498,10 +498,10 @@ export default function Expenses() {
             </div>
             <div className="min-w-0">
               <span className="font-bold text-xs text-foreground block truncate">
-                {dueExpenses.length} {t('expenses.dueToday') || 'مصروف مستحق الدفع اليوم'}
+                {dueExpenses.length} {t('expenses.dueToday')}
               </span>
               <p className="text-[11px] text-muted-foreground font-mono">
-                {t('common.total') || 'المجموع'}: <span className="font-bold text-foreground">{formatCurrency(dueExpenses.reduce((sum, e) => sum + e.amount, 0))}</span>
+                {t('common.total')}: <span className="font-bold text-foreground">{formatCurrency(dueExpenses.reduce((sum, e) => sum + e.amount, 0))}</span>
               </p>
             </div>
           </div>
@@ -511,7 +511,7 @@ export default function Expenses() {
             className="border-amber-500/40 hover:bg-amber-500/15 text-xs font-bold h-8 px-3 rounded-xl shrink-0 text-amber-700 dark:text-amber-300"
             onClick={() => setShowRecurringListDialog(true)}
           >
-            {t('expenses.reviewAndPay') || 'مراجعة وسداد'}
+            {t('expenses.reviewAndPay')}
           </Button>
         </div>
       )}
@@ -528,7 +528,7 @@ export default function Expenses() {
           </span>
           <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] md:text-[10px] text-muted-foreground">
             <TrendingDown className="w-3 h-3 text-destructive shrink-0" />
-            <span className="truncate">{t('expenses.expense') || 'المصروف'}</span>
+            <span className="truncate">{t('expenses.expense')}</span>
           </div>
         </div>
 
@@ -542,7 +542,7 @@ export default function Expenses() {
           </span>
           <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] md:text-[10px] text-muted-foreground">
             <Receipt className="w-3 h-3 text-warning shrink-0" />
-            <span className="truncate">{t('expenses.operations') || 'عملية'}</span>
+            <span className="truncate">{t('expenses.operations')}</span>
           </div>
         </div>
 
@@ -556,7 +556,7 @@ export default function Expenses() {
           </span>
           <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] md:text-[10px] text-muted-foreground">
             <DollarSign className="w-3 h-3 text-info shrink-0" />
-            <span className="truncate">{t('expenses.total') || 'الإجمالي'}</span>
+            <span className="truncate">{t('expenses.total')}</span>
           </div>
         </div>
 
@@ -564,7 +564,7 @@ export default function Expenses() {
         <div
           className="bg-card border border-border rounded-xl md:rounded-2xl p-2 md:p-3 text-center relative overflow-hidden cursor-pointer hover:bg-muted/40 transition-colors"
           onClick={() => setShowRecurringListDialog(true)}
-          title={t('expenses.manageRecurring') || 'عرض المصاريف الثابتة وإدارتها'}
+          title={t('expenses.manageRecurring')}
         >
           <span className="text-[10px] md:text-xs text-muted-foreground block truncate font-medium">
             {t('expenses.fixedExpenses')}
@@ -574,7 +574,7 @@ export default function Expenses() {
           </span>
           <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] md:text-[10px] text-primary">
             <RefreshCw className="w-3 h-3 shrink-0" />
-            <span className="truncate font-semibold">{t('expenses.manage') || 'إدارة'}</span>
+            <span className="truncate font-semibold">{t('expenses.manage')}</span>
           </div>
         </div>
       </div>
@@ -584,7 +584,7 @@ export default function Expenses() {
         <div className="bg-card border border-border rounded-2xl p-2.5 md:p-3 space-y-1.5">
           <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground px-0.5">
             <span>{t('expenses.monthlyDistribution')}</span>
-            <span className="text-[11px] font-mono">{Object.keys(stats.byType).length} {t('expenses.categories') || 'أقسام'}</span>
+            <span className="text-[11px] font-mono">{Object.keys(stats.byType).length} {t('expenses.categories')}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(stats.byType).map(([type, amount]) => (
@@ -630,7 +630,7 @@ export default function Expenses() {
                   <DropdownMenuTrigger asChild>
                     <button
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                      title={t('common.options') || 'خيارات'}
+                      title={t('common.options')}
                     >
                       <MoreVertical className="w-4 h-4" />
                     </button>
@@ -642,7 +642,7 @@ export default function Expenses() {
                       className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400 focus:text-amber-700 focus:bg-amber-500/10 rounded-xl cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      <span>{expense.is_reversed ? (t('expenses.alreadyReversed') || 'تم الاسترداد مسبقاً') : (t('expenses.reverseExpense') || 'استرداد / تراجع')}</span>
+                      <span>{expense.is_reversed ? t('expenses.alreadyReversed') : t('expenses.reverseExpense')}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -659,7 +659,7 @@ export default function Expenses() {
                       <h3 className="font-bold text-xs md:text-sm text-foreground truncate">{expense.typeLabel}</h3>
                       {expense.is_reversed && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
-                          {t('expenses.reversed') || 'مسترد'}
+                          {t('expenses.reversed')}
                         </span>
                       )}
                     </div>
@@ -805,7 +805,7 @@ export default function Expenses() {
             </Button>
             <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddExpense} disabled={isSaving}>
               <Save className="w-3.5 h-3.5 ml-1.5" />
-              {isSaving ? 'جاري الحفظ...' : t('expenses.save')}
+              {isSaving ? t('common.saving') : t('expenses.save')}
             </Button>
           </div>
         </DialogContent>
@@ -919,7 +919,7 @@ export default function Expenses() {
                 htmlFor="payToday"
                 className="text-xs font-medium leading-none cursor-pointer select-none text-foreground"
               >
-                {t('expenses.payTodayImmediately') || 'تسجيل دفعة اليوم فوراً'}
+                {t('expenses.payTodayImmediately')}
               </label>
             </div>
 
@@ -933,7 +933,7 @@ export default function Expenses() {
                 htmlFor="autoPay"
                 className="text-xs font-medium leading-none cursor-pointer select-none text-foreground"
               >
-                {t('expenses.autoPayDescription') || 'دفع تلقائي (خصم من الصندوق والوردية تلقائياً عند موعد الاستحقاق)'}
+                {t('expenses.autoPayDescription')}
               </label>
             </div>
           </div>
@@ -961,7 +961,7 @@ export default function Expenses() {
                 <span>{t('expenses.manageFixed')}</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mr-10">
-                {t('expenses.recurringSubtitle') || 'إدارة المصاريف الدورية وجدول السداد'}
+                {t('expenses.recurringSubtitle')}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -985,17 +985,17 @@ export default function Expenses() {
                       size="sm"
                       className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 rounded-xl font-bold"
                       onClick={() => handleQuickPayRecurring(expense)}
-                      title={t('expenses.payNow') || 'سداد فوري وخصم من الصندوق'}
+                      title={t('expenses.payNow')}
                     >
                       <Check className="w-3.5 h-3.5" />
-                      {t('expenses.pay') || 'سداد'}
+                      {t('expenses.pay')}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-xl"
                       onClick={() => handleOpenEditRecurring(expense)}
-                      title={t('common.edit') || 'تعديل'}
+                      title={t('common.edit')}
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
@@ -1004,7 +1004,7 @@ export default function Expenses() {
                       size="sm"
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-xl"
                       onClick={() => handleDeleteRecurring(expense.id)}
-                      title={t('common.delete') || 'حذف'}
+                      title={t('common.delete')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -1015,7 +1015,7 @@ export default function Expenses() {
           </div>
           <div className="p-3 bg-muted/20 border-t border-border flex justify-end">
             <Button variant="outline" className="h-9 px-4 rounded-xl text-xs" onClick={() => setShowRecurringListDialog(false)}>
-              {t('common.close') || 'إغلاق'}
+              {t('common.close')}
             </Button>
           </div>
         </DialogContent>
@@ -1030,10 +1030,10 @@ export default function Expenses() {
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <Pencil className="w-4 h-4" />
                 </div>
-                <span>{t('expenses.editRecurring') || 'تعديل المصروف الثابت'}</span>
+                <span>{t('expenses.editRecurring')}</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mr-10">
-                {t('expenses.editRecurringDesc') || 'تعديل بيانات المصروف الثابت ومبلغ السداد ودورية التكرار'}
+                {t('expenses.editRecurringDesc')}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -1119,7 +1119,7 @@ export default function Expenses() {
                 htmlFor="editAutoPay"
                 className="text-xs font-medium leading-none cursor-pointer select-none text-foreground"
               >
-                {t('expenses.autoPayDescription') || 'دفع تلقائي (خصم من الصندوق والوردية تلقائياً عند موعد الاستحقاق)'}
+                {t('expenses.autoPayDescription')}
               </label>
             </div>
           </div>
@@ -1129,7 +1129,7 @@ export default function Expenses() {
             </Button>
             <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleUpdateRecurringExpense}>
               <Save className="w-3.5 h-3.5 ml-1.5" />
-              {t('expenses.saveChanges') || 'حفظ التعديلات'}
+              {t('expenses.saveChanges')}
             </Button>
           </div>
         </DialogContent>
@@ -1167,19 +1167,19 @@ export default function Expenses() {
               <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <RotateCcw className="w-4 h-4" />
               </div>
-              <span>{t('expenses.reverseExpense') || 'استرداد وتراجع عن المصروف'}</span>
+              <span>{t('expenses.reverseExpense')}</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground pt-2">
               {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', formatNumber(selectedExpense?.amount || 0))}
               <span className="block mt-2 font-medium text-emerald-600 dark:text-emerald-400">
-                💰 {t('expenses.reverseExpenseNote') || 'سيتم استرداد هذا المبلغ وإعادته تلقائياً إلى رصيد الصندوق والوردية الحالية.'}
+                💰 {t('expenses.reverseExpenseNote')}
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-2 pt-3">
             <AlertDialogCancel className="flex-1 h-9 rounded-xl text-xs">{t('expenses.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteExpense} className="flex-1 h-9 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white">
-              {t('expenses.confirmReverse') || 'تأكيد الاسترداد والتراجع'}
+              {t('expenses.confirmReverse')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -406,12 +406,12 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
           actions={
             loadError ? (
               <button onClick={() => loadStats()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs font-medium text-destructive">
-                إعادة المحاولة
+                {t('common.retry') || (isRTL ? 'إعادة المحاولة' : 'Retry')}
               </button>
             ) : isLoading ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted border border-border">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-medium text-muted-foreground">{hasData ? 'تحديث...' : 'جاري التحميل...'}</span>
+                <span className="text-xs font-medium text-muted-foreground">{hasData ? t('common.updating') : t('common.loading')}</span>
               </div>
             ) : undefined
           }
@@ -433,7 +433,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
           sparklineData={stats.dailySales}
         />
         <StatCard
-          title="مبيعات الأسبوع"
+          title={t('dashboard.weekSales')}
           value={formatCurrency(stats.weekSales)}
           icon={<Calendar />}
           variant="info"
@@ -441,7 +441,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
           sparklineData={stats.weekDailySales}
         />
         <StatCard
-          title="مبيعات الشهر"
+          title={t('dashboard.monthSales')}
           value={formatCurrency(stats.monthSales)}
           icon={<BarChart3 />}
           variant="purple"
@@ -486,7 +486,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
           {noInventory ? (
             <StatCard
-              title="إجمالي المشتريات"
+              title={t('dashboard.totalPurchases')}
               value={formatCurrency(stats.totalPurchases)}
               icon={<ShoppingCart />}
               variant="purple"
@@ -497,7 +497,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
             <StatCard
               title={t('dashboard.inventoryValue')}
               value={formatCurrency(stats.inventoryValue)}
-              subtitle="بسعر التكلفة"
+              subtitle={t('dashboard.atCostPrice')}
               icon={<Package />}
               variant="purple"
               linkTo="/products"
@@ -507,7 +507,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
           <StatCard
             title={t('dashboard.totalCapital')}
             value={formatCurrency(stats.totalCapital)}
-            subtitle={stats.storeInitialCapital > 0 ? `رأس مال المتجر: ${formatCurrency(stats.storeInitialCapital)}` : undefined}
+            subtitle={stats.storeInitialCapital > 0 ? `${t('dashboard.storeCapital')} ${formatCurrency(stats.storeInitialCapital)}` : undefined}
             icon={<Wallet />}
             variant="success"
             linkTo="/partners"
@@ -518,8 +518,8 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
             value={formatCurrency(stats.liquidCapital)}
             subtitle={
               stats.deficit > 0
-                ? `عجز سيولة: ${formatCurrency(stats.deficit)} (${stats.deficitPercentage.toFixed(1)}%)`
-                : 'رصيد الخزينة والنقد الفعلي'
+                ? `${t('dashboard.liquidityDeficit')} ${formatCurrency(stats.deficit)} (${stats.deficitPercentage.toFixed(1)}%)`
+                : t('dashboard.treasuryAndCash')
             }
             icon={<Banknote />}
             variant={stats.liquidCapital < 0 ? 'danger' : 'info'}
@@ -531,7 +531,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
         <div className="grid grid-cols-2 gap-2 md:gap-3">
           {noInventory ? (
             <StatCard
-              title="إجمالي المشتريات"
+              title={t('dashboard.totalPurchases')}
               value={formatCurrency(stats.totalPurchases)}
               icon={<ShoppingCart />}
               variant="purple"
@@ -542,7 +542,7 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
             <StatCard
               title={t('dashboard.inventoryValue')}
               value={formatCurrency(stats.inventoryValue)}
-              subtitle="بسعر التكلفة"
+              subtitle={t('dashboard.atCostPrice')}
               icon={<Package />}
               variant="purple"
               linkTo="/products"
@@ -550,9 +550,9 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
             />
           )}
           <StatCard
-            title="مصاريف اليوم"
+            title={t('dashboard.todayExpenses')}
             value={formatCurrency(stats.todayExpenses)}
-            subtitle="المصروفات التشغيلية اليومية"
+            subtitle={t('dashboard.operatingExpensesDaily')}
             icon={<Receipt />}
             variant="warning"
             linkTo="/expenses"
@@ -564,18 +564,18 @@ export default function Dashboard({ embedded }: { embedded?: boolean }) {
       {/* Refund Stats Row */}
       <div className="grid grid-cols-2 gap-2 md:gap-3">
         <StatCard
-          title="مسترجعة اليوم"
+          title={t('dashboard.refundedToday')}
           value={stats.todayRefundedCount.toString()}
-          subtitle="فاتورة مستردة"
+          subtitle={t('dashboard.refundedInvoice')}
           icon={<RotateCcw />}
           variant="warning"
           linkTo="/invoices"
           sparklineData={stats.dailyRefunds}
         />
         <StatCard
-          title="إجمالي المسترجع (الشهر)"
+          title={t('dashboard.monthRefundedTotal')}
           value={formatCurrency(stats.monthRefundedAmount)}
-          subtitle="فواتير مستردة هذا الشهر"
+          subtitle={t('dashboard.refundedThisMonth')}
           icon={<TrendingDown />}
           variant="warning"
           linkTo="/invoices"

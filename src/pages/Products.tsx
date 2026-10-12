@@ -1015,7 +1015,7 @@ export default function Products() {
           'product_added',
           user.id,
           profile?.full_name || user.email || t('products.defaultUser'),
-          `تم إضافة منتج جديد: ${formData.name}`,
+          `تم {t('products.addProductTitle')}: ${formData.name}`,
           { productId: newProduct.id, name: formData.name, barcode: formData.barcode }
         );
       }
@@ -1230,7 +1230,7 @@ export default function Products() {
     }
   });
 
-  // حذف نهائي قطعي للمنتج المؤرشف من السحابة والذاكرة وقاعدة البيانات
+  // {t('products.permanentDeleteTitle')} المؤرشف من السحابة والذاكرة وقاعدة البيانات
   const handleHardDeleteArchived = () => deleteGuard.run(async () => {
     if (!archivedProductToDelete) return;
     const target = archivedProductToDelete;
@@ -1356,12 +1356,12 @@ export default function Products() {
           icon={<Package className="w-5 h-5" />}
           title={
             mainTab === 'archive'
-              ? 'أرشيف المنتجات'
+              ? t('products.archiveTitle')
               : tDynamic('pageTitle')
           }
           subtitle={
             mainTab === 'archive'
-              ? 'إدارة واسترداد المنتجات المؤرشفة والمنتهية من المخزون'
+              ? t('products.archiveSubtitle')
               : tDynamic('pageSubtitle')
           }
           actions={
@@ -1391,7 +1391,7 @@ export default function Products() {
                   )}
                 >
                   <Package className="w-3.5 h-3.5 ml-1 shrink-0" />
-                  <span>المنتجات النشطة</span>
+                  <span>{t('products.activeProducts')}</span>
                 </button>
                 <button
                   type="button"
@@ -1407,7 +1407,7 @@ export default function Products() {
                   )}
                 >
                   <Archive className="w-3.5 h-3.5 ml-1 shrink-0" />
-                  <span>الأرشيف</span>
+                  <span>{t('products.archive')}</span>
                   {mergedArchivedProducts.length > 0 && (
                     <span className={cn(
                       "mr-1 px-1.5 py-0.2 text-[10px] rounded-full font-bold",
@@ -1452,7 +1452,7 @@ export default function Products() {
                 )}
               >
                 <Package className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">النشطة</span>
+                <span className="truncate">{t('products.active')}</span>
               </button>
               <button
                 type="button"
@@ -1468,7 +1468,7 @@ export default function Products() {
                 )}
               >
                 <Archive className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">الأرشيف</span>
+                <span className="truncate">{t('products.archive')}</span>
                 {mergedArchivedProducts.length > 0 && (
                   <span className="mr-0.5 px-1 py-0.2 text-[9px] bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full font-bold">
                     {mergedArchivedProducts.length}
@@ -1498,7 +1498,7 @@ export default function Products() {
             {!noInventory && (
               <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowPurchaseInvoiceDialog(true)}>
                 <FileText className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
-                <span className="truncate">فاتورة شراء</span>
+                <span className="truncate">{t('products.purchaseInvoice')}</span>
               </Button>
             )}
             <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowCategoryManager(true)}>
@@ -1556,7 +1556,7 @@ export default function Products() {
                   </div>
                   <div>
                     <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.total}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">إجمالي الأرشيف</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.totalArchive')}</p>
                   </div>
                 </div>
               </button>
@@ -1574,7 +1574,7 @@ export default function Products() {
                   </div>
                   <div>
                     <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.outOfStock}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">نفاد المخزون</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
                   </div>
                 </div>
               </button>
@@ -1592,7 +1592,7 @@ export default function Products() {
                   </div>
                   <div>
                     <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.manualArchived}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">مؤرشف يدوياً</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.manuallyArchived')}</p>
                   </div>
                 </div>
               </button>
@@ -1610,7 +1610,7 @@ export default function Products() {
                   </div>
                   <div>
                     <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.total}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">جاهز للاسترداد</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.readyToRestore')}</p>
                   </div>
                 </div>
               </button>
@@ -1698,7 +1698,7 @@ export default function Products() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder={mainTab === 'archive' ? "بحث في الأرشيف (الاسم، الباركود 1، 2، 3، التصنيف)..." : t('products.searchPlaceholder')}
+                placeholder={mainTab === 'archive' ? t('products.searchArchivePlaceholder') : t('products.searchPlaceholder')}
                 value={mainTab === 'archive' ? archiveSearchQuery : searchQuery}
                 onChange={(e) => mainTab === 'archive' ? setArchiveSearchQuery(e.target.value) : setSearchQuery(e.target.value)}
                 className="pr-9 md:pr-10 bg-muted border-0"
@@ -1724,7 +1724,7 @@ export default function Products() {
                   try { localStorage.setItem('hyperpos_scan_target', mainTab === 'archive' ? 'archive' : 'search'); } catch { /* ignore */ }
                   setScannerOpen(true);
                 }}
-                title={mainTab === 'archive' ? "مسح باركود للبحث في الأرشيف" : undefined}
+                title={mainTab === 'archive' ? t('products.scanBarcodeArchive') : undefined}
               >
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
@@ -1771,7 +1771,7 @@ export default function Products() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                الكل ({archiveStats.total})
+                {t('common.all')} ({archiveStats.total})
               </button>
               <button
                 type="button"
@@ -1783,7 +1783,7 @@ export default function Products() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                نفاد المخزون ({archiveStats.outOfStock})
+                {t('products.outOfStock')} ({archiveStats.outOfStock})
               </button>
               <button
                 type="button"
@@ -1795,12 +1795,12 @@ export default function Products() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                مؤرشف يدوياً ({archiveStats.manualArchived})
+                {t('products.manuallyArchived')} ({archiveStats.manualArchived})
               </button>
               <div className="h-6 w-px bg-border mx-1 self-center" />
               <div className="px-3 py-1 rounded-full text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap flex items-center gap-1.5">
                 <Archive className="w-3.5 h-3.5" />
-                <span>أرشيف السحابة والمخزون</span>
+                <span>{t('products.cloudArchive')}</span>
               </div>
             </div>
           ) : (
@@ -1832,7 +1832,7 @@ export default function Products() {
                 )}
               >
                 <Boxes className="w-3.5 h-3.5" />
-                متعدد الوحدات ({stats.multiUnit})
+                {t('products.multiUnit')} ({stats.multiUnit})
               </button>
             </div>
           )}
@@ -1846,7 +1846,7 @@ export default function Products() {
           {isArchiveLoading && mergedArchivedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">جاري تحميل أرشيف المنتجات...</p>
+              <p className="text-sm text-muted-foreground">{t('products.loadingArchive')}</p>
             </div>
           ) : filteredArchivedProducts.length === 0 ? (
             <div className="bg-card rounded-xl border border-dashed border-border p-10 text-center space-y-3">
@@ -1854,7 +1854,7 @@ export default function Products() {
                 <Archive className="w-6 h-6" />
               </div>
               <h3 className="text-base font-semibold text-foreground">
-                {archiveSearchQuery ? 'لا توجد نتائج مطابقة في الأرشيف' : 'أرشيف المنتجات فارغ'}
+                {archiveSearchQuery ? t('products.noArchiveResults') : t('products.archiveEmpty')}
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 {archiveSearchQuery
@@ -1863,7 +1863,7 @@ export default function Products() {
               </p>
               {archiveSearchQuery && (
                 <Button variant="outline" size="sm" onClick={() => setArchiveSearchQuery('')}>
-                  مسح نص البحث
+                  {t('products.clearSearch')}
                 </Button>
               )}
             </div>
@@ -1904,7 +1904,7 @@ export default function Products() {
                             ? "bg-destructive/15 text-destructive"
                             : "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold"
                         )}>
-                          {product.archived ? 'مؤرشف' : 'نفد المخزون'}
+                          {product.archived ? t('products.archived') : t('products.outOfStock')}
                         </span>
                       </div>
 
@@ -1921,27 +1921,27 @@ export default function Products() {
                         )}
                         {product.barcode2 && (
                           <p className="font-mono text-[10px] truncate text-muted-foreground/80" dir="ltr">
-                            باركود 2: {product.barcode2}
+                            {t('products.barcode2')}: {product.barcode2}
                           </p>
                         )}
                         {product.barcode3 && (
                           <p className="font-mono text-[10px] truncate text-muted-foreground/80" dir="ltr">
-                            باركود 3: {product.barcode3}
+                            {t('products.barcode3')}: {product.barcode3}
                           </p>
                         )}
                       </div>
 
                       <div className="grid grid-cols-3 gap-1 mt-2.5 pt-2 border-t border-border/40 text-center">
                         <div className="bg-muted/40 p-1 rounded">
-                          <span className="text-[10px] text-muted-foreground block">سعر البيع</span>
+                          <span className="text-[10px] text-muted-foreground block">{t('products.salePrice')}</span>
                           <span className="font-bold text-xs text-foreground">{formatPrice(product.salePrice)}</span>
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
-                          <span className="text-[10px] text-muted-foreground block">سعر الشراء</span>
+                          <span className="text-[10px] text-muted-foreground block">{t('products.costPrice')}</span>
                           <span className="text-xs text-foreground/80">{formatPrice(product.costPrice)}</span>
                         </div>
                         <div className="bg-muted/40 p-1 rounded">
-                          <span className="text-[10px] text-muted-foreground block">الرصيد الحالي</span>
+                          <span className="text-[10px] text-muted-foreground block">{t('products.currentStock')}</span>
                           <span className={cn("text-xs font-bold", product.quantity <= 0 ? "text-destructive" : "text-muted-foreground")}>
                             {formatNumber(product.quantity)}
                           </span>
@@ -1983,7 +1983,7 @@ export default function Products() {
                         title="حذف نهائي قطعي للمنتج وسجلاته من السحابة"
                       >
                         <Trash2 className="w-3.5 h-3.5 ml-1" />
-                        حذف نهائي
+                        {t('products.permanentDelete')}
                       </Button>
                     ) : (
                       <Button
@@ -1994,7 +1994,7 @@ export default function Products() {
                         title="أرشفة المنتج يدوياً"
                       >
                         <Archive className="w-3.5 h-3.5 ml-1" />
-                        أرشفة
+                        {t('products.archiveAction')}
                       </Button>
                     )}
                   </div>
@@ -2442,15 +2442,15 @@ export default function Products() {
                       {isRepairMode ? (
                         <>
                           <div className="bg-card p-1 rounded-lg border border-border/70">
-                            <span className="text-[9px] text-muted-foreground font-bold block">تكلفة القطعة</span>
+                            <span className="text-[9px] text-muted-foreground font-bold block">{t('products.pieceCost')}</span>
                             <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.costPrice)}</span>
                           </div>
                           <div className="bg-card p-1 rounded-lg border border-border/70">
-                            <span className="text-[9px] text-muted-foreground font-bold block">تكلفة العمالة</span>
+                            <span className="text-[9px] text-muted-foreground font-bold block">{t('products.laborCost')}</span>
                             <span className="text-xs font-black text-foreground font-mono">${formatNumber(product.laborCost || 0, 2)}</span>
                           </div>
                           <div className="bg-card p-1 rounded-lg border border-border/70">
-                            <span className="text-[9px] text-muted-foreground font-bold block">المجموع</span>
+                            <span className="text-[9px] text-muted-foreground font-bold block">{t('common.total')}</span>
                             <span className="text-xs font-black text-primary font-mono">{formatPrice(product.costPrice + (product.laborCost || 0))}</span>
                           </div>
                         </>
@@ -2517,7 +2517,7 @@ export default function Products() {
                   إضافة منتج جديد
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground mt-1">
-                  أدخل بيانات وتفاصيل المنتج لإضافته إلى المخزون.
+                  {t('products.addProductDesc')}
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -2612,18 +2612,18 @@ export default function Products() {
                     )}
                     {/* Variant Label */}
                     <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">المتغير / الوصف</label>
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.variantLabel')}</label>
                       <Input
-                        placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
+                        placeholder={t('products.variantPlaceholder')}
                         value={formData.variantLabel}
                         onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
                       />
-                      <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('products.variantHint')}</p>
                     </div>
                   </>
                 )}
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">التصنيف</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
                   <select
                     className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
                     value={formData.category}
@@ -2636,7 +2636,7 @@ export default function Products() {
                 </div>
                 {!noInventory && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">الكمية</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -2668,7 +2668,7 @@ export default function Products() {
                 )}
                 {isRepairMode && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">تكلفة العمالة ({currencySymbol})</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.laborCost')} ({currencySymbol})</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -2680,12 +2680,12 @@ export default function Products() {
                       onBlur={() => handleNumericBlur('laborCost', 0)}
                       onFocus={(e) => e.target.select()}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">تكلفة ساعة العمل أو الخدمة</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('products.laborCostHint')}</p>
                   </div>
                 )}
                 {!isRepairMode && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">سعر البيع ({currencySymbol})</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ({currencySymbol})</label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -2708,7 +2708,7 @@ export default function Products() {
                         <Button variant="outline" className="w-full justify-between" type="button">
                           <span className="flex items-center gap-2">
                             <Boxes className="w-4 h-4" />
-                            إعدادات الوحدات (كرتونة / قطعة)
+                            {t('products.unitSettings')}
                           </span>
                           <span className="text-xs text-foreground/80">
                             {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
@@ -2924,7 +2924,7 @@ export default function Products() {
                 )}
                 {fieldsConfig.minStockLevel && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.minStock')}</label>
                     <Input
                       type="number"
                       dir="ltr"
@@ -2966,7 +2966,7 @@ export default function Products() {
                   </div>
                 ))}
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.productImage')}</label>
                   <div className="flex flex-col gap-3">
                     {(imagePreviewBase64 || formData.image) ? (
                       <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
@@ -3016,7 +3016,7 @@ export default function Products() {
                         ) : (
                           <Camera className="w-4 h-4 ml-2" />
                         )}
-                        التقاط صورة
+                        {t('products.captureImage')}
                       </Button>
                       <Button
                         type="button"
@@ -3026,7 +3026,7 @@ export default function Products() {
                         disabled={isCameraLoading}
                       >
                         <ImageIcon className="w-4 h-4 ml-2" />
-                        اختيار صورة
+                        {t('products.chooseImage')}
                       </Button>
                     </div>
                   </div>
@@ -3064,11 +3064,11 @@ export default function Products() {
                   )}
                 </div>
                 <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
-                  {selectedProduct?.archived ? 'استرداد وتعديل المنتج المؤرشف' : tDynamic('editProduct')}
+                  {selectedProduct?.archived ? t('products.restoreAndEditProduct') : tDynamic('editProduct')}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground mt-1">
                   {selectedProduct?.archived
-                    ? 'أدخل الكمية المتوفرة حالياً وحدّث بيانات المنتج لإعادته لقائمة المنتجات النشطة وشاشة البيع.'
+                    ? t('products.restoreAndEditDesc')
                     : tDynamic('pageSubtitle')}
                 </DialogDescription>
               </DialogHeader>
@@ -3164,13 +3164,13 @@ export default function Products() {
                 )}
                 {/* Variant Label */}
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">المتغير / الوصف</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.variantLabel')}</label>
                   <Input
-                    placeholder="مثال: فقط شاحن، مع وصلة Type-C، مع وصلة iPhone"
+                    placeholder={t('products.variantPlaceholder')}
                     value={formData.variantLabel}
                     onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">للتمييز بين منتجات بنفس الباركود (اختياري)</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('products.variantHint')}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
@@ -3234,7 +3234,7 @@ export default function Products() {
                       <Button variant="outline" className="w-full justify-between" type="button">
                         <span className="flex items-center gap-2">
                           <Boxes className="w-4 h-4" />
-                          إعدادات الوحدات (كرتونة / قطعة)
+                          {t('products.unitSettings')}
                         </span>
                         <span className="text-xs text-foreground/80">
                           {showUnitSettings ? t('common.hide') : t('common.show')}
@@ -3449,7 +3449,7 @@ export default function Products() {
                 )}
                 {fieldsConfig.minStockLevel && (
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">الحد الأدنى للمخزون</label>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.minStock')}</label>
                     <Input
                       type="number"
                       dir="ltr"
@@ -3492,7 +3492,7 @@ export default function Products() {
                   </div>
                 ))}
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">صورة المنتج</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.productImage')}</label>
                   <div className="flex flex-col gap-3">
                     {(imagePreviewBase64 || formData.image) ? (
                       <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
@@ -3542,7 +3542,7 @@ export default function Products() {
                         ) : (
                           <Camera className="w-4 h-4 ml-2" />
                         )}
-                        التقاط صورة
+                        {t('products.captureImage')}
                       </Button>
                       <Button
                         type="button"
@@ -3576,7 +3576,7 @@ export default function Products() {
                   {selectedProduct?.archived ? (
                     <>
                       <RotateCcw className="w-4 h-4 ml-2" />
-                      استرداد وتعديل الكمية
+                      {t('products.restoreAndEditProduct')}
                     </>
                   ) : (
                     <>
@@ -3621,7 +3621,7 @@ export default function Products() {
                   هل أنت متأكد من حذف المنتج <strong className="text-foreground">"{archivedProductToDelete?.name}"</strong> نهائياً من قاعدة البيانات والسحابة؟
                 </p>
                 <p className="text-xs text-destructive font-medium bg-destructive/10 p-2.5 rounded-lg border border-destructive/20">
-                  تحذير: سيتم مسح هذا المنتج وسجلاته ومخزونه نهائياً وقطعياً من السحابة ولا يمكن استرداده بعد الحذف إطلاقاً.
+                  {t('products.permanentDeleteWarning')}
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -3632,7 +3632,7 @@ export default function Products() {
                 disabled={deleteGuard.isRunning}
                 className="bg-destructive hover:bg-destructive/90"
               >
-                {deleteGuard.isRunning ? 'جاري الحذف القطعي...' : 'حذف نهائي قطعي'}
+                {deleteGuard.isRunning ? t('products.permanentlyDeleting') : t('products.permanentDeleteButton')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -3708,10 +3708,10 @@ export default function Products() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Boxes className="w-5 h-5 text-emerald-600" />
-                إعادة تزويد / تعديل كمية المنتج
+                {t('products.restockTitle')}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                أدخل الكمية المتوفرة الجديدة ليعود المنتج تلقائياً إلى واجهة البيع (POS) والقوائم النشطة.
+                {t('products.restockDesc')}
               </DialogDescription>
             </DialogHeader>
 
@@ -3734,13 +3734,13 @@ export default function Products() {
                       {restockProduct.barcode && <span className="font-mono text-[11px]">{restockProduct.barcode}</span>}
                     </div>
                     <div className="text-xs text-destructive font-semibold mt-0.5">
-                      الرصيد الحالي: {restockProduct.quantity} (منتهي)
+                      {t('products.currentStock')}: {restockProduct.quantity} ({t('products.outOfStockBadge')})
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">الكمية الجديدة ({restockProduct.smallUnit || 'قطعة'})</label>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.newQuantity')} ({restockProduct.smallUnit || t('products.unitPiece')})</label>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -3780,7 +3780,7 @@ export default function Products() {
                     ) : (
                       <Save className="w-4 h-4 ml-2" />
                     )}
-                    تأكيد التزويد واستعادة المنتج للبيع
+                    {t('products.confirmRestock')}
                   </Button>
 
                   <Button
@@ -3795,7 +3795,7 @@ export default function Products() {
                     }}
                   >
                     <Edit className="w-3.5 h-3.5 ml-1" />
-                    تعديل كافة بيانات وسعر وتفاصيل المنتج بدلاً من ذلك
+                    {t('products.editAllDetailsInstead')}
                   </Button>
                 </div>
               </div>
@@ -3807,22 +3807,22 @@ export default function Products() {
         <Dialog open={!!previewImageUrl || previewLoading} onOpenChange={(open) => { if (!open) { setPreviewImageUrl(null); setPreviewLoading(false); } }}>
           <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:p-4 flex flex-col items-center justify-center">
             <DialogHeader className="sr-only">
-              <DialogTitle>عرض صورة المنتج</DialogTitle>
+              <DialogTitle>{t('products.viewProductImage')}</DialogTitle>
             </DialogHeader>
             {previewLoading ? (
               <div className="flex flex-col items-center gap-3 py-8">
                 <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">جارٍ تحميل الصورة...</p>
+                <p className="text-sm text-muted-foreground">{t('products.loadingImage')}</p>
               </div>
             ) : previewImageUrl ? (
               <img
                 src={previewImageUrl}
-                alt="صورة المنتج"
+                alt={t('products.productImage')}
                 className="max-w-full max-h-[80vh] object-contain rounded-lg"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   const msg = document.createElement('p');
-                  msg.textContent = 'تعذّر تحميل الصورة';
+                  msg.textContent = t('products.imageLoadError');
                   msg.className = 'text-muted-foreground text-sm py-8';
                   e.currentTarget.parentNode?.appendChild(msg);
                 }}

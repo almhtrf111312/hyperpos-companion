@@ -238,13 +238,13 @@ export default function Reports() {
 
   // Report Categories for modern, organized accounting navigation
   const REPORT_CATEGORIES = useMemo(() => [
-    { id: 'sales', label: 'المبيعات والأرباح', icon: ShoppingCart },
-    { id: 'inventory', label: 'المخزون والجرد', icon: Package },
-    { id: 'purchases', label: 'المشتريات والمصاريف', icon: FileText },
-    { id: 'debts', label: 'الديون والعملاء', icon: Banknote },
-    { id: 'admin', label: 'تقارير إدارية', icon: Activity },
-    { id: 'all', label: 'جميع التقارير', icon: BarChart3 },
-  ], []);
+    { id: 'sales', label: t('reports.category.sales'), icon: ShoppingCart },
+    { id: 'inventory', label: t('reports.category.inventory'), icon: Package },
+    { id: 'purchases', label: t('reports.category.purchases'), icon: FileText },
+    { id: 'debts', label: t('reports.category.debts'), icon: Banknote },
+    { id: 'admin', label: t('reports.category.admin'), icon: Activity },
+    { id: 'all', label: t('reports.category.all'), icon: BarChart3 },
+  ], [t]);
 
   // All available reports categorized and refined
   const allReports = useMemo(() => [
@@ -252,23 +252,23 @@ export default function Reports() {
     { id: 'partner-detailed', category: 'sales', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
 
     ...(!noInventory ? [
-      { id: 'inventory', category: 'inventory', label: 'المخزون وقيمته', icon: Package },
-      { id: 'product-movement', category: 'inventory', label: 'حركة منتج', icon: Activity },
-      { id: 'inventory-stock', category: 'inventory', label: 'الجرد وفروقات المخزون', icon: PackageSearch },
-      { id: 'top-products', category: 'inventory', label: 'الأكثر مبيعاً', icon: TrendingUp },
+      { id: 'inventory', category: 'inventory', label: t('reports.inventoryValueCost'), icon: Package },
+      { id: 'product-movement', category: 'inventory', label: t('reports.productMovement'), icon: Activity },
+      { id: 'inventory-stock', category: 'inventory', label: t('reports.inventoryStockDiscrepancy'), icon: PackageSearch },
+      { id: 'top-products', category: 'inventory', label: t('reports.topProducts'), icon: TrendingUp },
     ] : []),
 
-    { id: 'purchases', category: 'purchases', label: 'فواتير المشتريات', icon: FileText },
+    { id: 'purchases', category: 'purchases', label: t('reports.purchasesInvoices'), icon: FileText },
     { id: 'expenses', category: 'purchases', label: t('reports.expenses'), icon: Receipt },
 
-    { id: 'debts', category: 'debts', label: 'الديون والبيع المؤجل', icon: Banknote },
+    { id: 'debts', category: 'debts', label: t('reports.debtsDeferredSale'), icon: Banknote },
     { id: 'customers', category: 'debts', label: t('reports.customers'), icon: Users },
     { id: 'partners', category: 'debts', label: t('reports.partners'), icon: UsersRound },
 
-    { id: 'daily-closing', category: 'admin', label: 'الإغلاق اليومي', icon: Calendar },
-    { id: 'cashier-performance', category: 'admin', label: 'أداء الكاشير', icon: Users },
-    ...(visibleSections.maintenance ? [{ id: 'maintenance', category: 'admin', label: 'خدمات الصيانة', icon: ClipboardList }] : []),
-    ...(storeType === 'bookstore' ? [{ id: 'library', category: 'admin', label: 'تقرير المكتبة', icon: BookOpen }] : []),
+    { id: 'daily-closing', category: 'admin', label: t('reports.dailyClosing'), icon: Calendar },
+    { id: 'cashier-performance', category: 'admin', label: t('reports.cashierPerformance'), icon: Users },
+    ...(visibleSections.maintenance ? [{ id: 'maintenance', category: 'admin', label: t('reports.maintenanceServices'), icon: ClipboardList }] : []),
+    ...(storeType === 'bookstore' ? [{ id: 'library', category: 'admin', label: t('reports.libraryReport'), icon: BookOpen }] : []),
     ...(isDistributorStore ? [
       { id: 'distributor-inventory', category: 'admin', label: t('reports.distributorInventory'), icon: Truck },
       { id: 'custody-value', category: 'admin', label: t('reports.custodyValue'), icon: Wallet },
@@ -335,10 +335,10 @@ export default function Reports() {
         return { showSearch: true };
       case 'debts':
         return { showStatus: true, showSearch: true, statusOptions: [
-          { value: 'due', label: 'مستحق' },
-          { value: 'partially_paid', label: 'مسدد جزئياً' },
-          { value: 'fully_paid', label: 'مسدد' },
-          { value: 'overdue', label: 'متأخر' },
+          { value: 'due', label: t('reports.statusDue') },
+          { value: 'partially_paid', label: t('reports.statusPartiallyPaid') },
+          { value: 'fully_paid', label: t('reports.statusFullyPaid') },
+          { value: 'overdue', label: t('reports.statusOverdue') },
         ]};
       case 'maintenance':
         return { showPaymentType: true, showSearch: true };
@@ -744,7 +744,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(reportData.summary.totalSales),
-            label: 'إجمالي المبيعات',
+            label: t('reports.totalSales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: salesTrend.label,
@@ -752,15 +752,15 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(reportData.summary.totalProfit),
-            label: 'صافي الأرباح',
+            label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: `هامش ربح: ${profitMargin}%`,
           },
           {
             icon: ShoppingBag,
-            value: `${reportData.summary.totalOrders} طلب`,
-            label: 'عدد الطلبات',
+            value: `${reportData.summary.totalOrders} ${t('reports.ordersUnit')}`,
+            label: t('reports.ordersCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات',
@@ -768,7 +768,7 @@ export default function Reports() {
           {
             icon: Clock,
             value: formatCurrency(reportData.summary.avgOrderValue),
-            label: 'متوسط قيمة الطلب',
+            label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل بالفترة` : 'لكل طلب مسجل',
@@ -780,7 +780,7 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(reportData.summary.totalProfit),
-            label: 'إجمالي صافي الأرباح',
+            label: t('reports.totalNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'صافي الربح المحقق',
@@ -788,7 +788,7 @@ export default function Reports() {
           {
             icon: PieChart,
             value: `${profitMargin}%`,
-            label: 'نسبة هامش الربح',
+            label: t('reports.profitMarginRate'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'معدل الربحية العام',
@@ -796,7 +796,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(reportData.summary.totalSales),
-            label: 'المبيعات المولدة للربح',
+            label: t('reports.profitGeneratingSales'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'إجمالي إيراد المبيعات',
@@ -804,7 +804,7 @@ export default function Reports() {
           {
             icon: Coins,
             value: formatCurrency(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0),
-            label: 'متوسط الربح/فاتورة',
+            label: t('reports.avgProfitPerInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'متوسط عائد الفاتورة',
@@ -820,7 +820,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(costValue),
-            label: 'قيمة المخزون (بالتكلفة)',
+            label: t('reports.inventoryValueAtCost'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'سعر الشراء الفعلي',
@@ -828,23 +828,23 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(saleValue),
-            label: 'القيمة البيعية المتوقعة',
+            label: t('reports.expectedSalesValue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'عائد البيع المتوقع',
           },
           {
             icon: Package,
-            value: `${prods.length} صنف`,
-            label: 'إجمالي عدد الأصناف',
+            value: `${prods.length} ${t('reports.itemsUnit')}`,
+            label: t('reports.totalSkuCount'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'الأصناف المسجلة (SKU)',
           },
           {
             icon: ShoppingCart,
-            value: `${formatNumber(totalQty)} قطعة`,
-            label: 'إجمالي القطع المتوفرة',
+            value: `${formatNumber(totalQty)} ${t('reports.piecesUnit')}`,
+            label: t('reports.totalAvailablePieces'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'إجمالي الوحدات بالمخزن',
@@ -862,32 +862,32 @@ export default function Reports() {
         return [
           {
             icon: PackageSearch,
-            value: `${prods.length} صنف`,
-            label: 'إجمالي الأصناف المجرودة',
+            value: `${prods.length} ${t('reports.itemsUnit')}`,
+            label: t('reports.totalAuditedItems'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'أصناف مشمولة بالجرد',
           },
           {
             icon: Clock,
-            value: `${lowStock} صنف`,
-            label: 'أصناف قاربت على النفاذ',
+            value: `${lowStock} ${t('reports.itemsUnit')}`,
+            label: t('reports.lowStockItems'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'الكمية ≤ الحد الأدنى',
           },
           {
             icon: X,
-            value: `${outStock} صنف`,
-            label: 'أصناف نفدت بالكامل',
+            value: `${outStock} ${t('reports.itemsUnit')}`,
+            label: t('reports.outOfStockItems'),
             color: 'text-rose-600',
             bg: 'bg-rose-500/10',
             subtext: 'الرصيد بالمخزن = 0',
           },
           {
             icon: ShoppingBag,
-            value: `${formatNumber(totalQty)} قطعة`,
-            label: 'إجمالي كميات الجرد',
+            value: `${formatNumber(totalQty)} ${t('reports.piecesUnit')}`,
+            label: t('reports.totalAuditQuantities'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: `بقيمة: ${formatCurrency(costValue)}`,
@@ -904,8 +904,8 @@ export default function Reports() {
         return [
           {
             icon: ShoppingBag,
-            value: `${formatNumber(totalSold)} قطعة`,
-            label: 'إجمالي القطع المباعة',
+            value: `${formatNumber(totalSold)} ${t('reports.piecesUnit')}`,
+            label: t('reports.totalSoldPieces'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'حركة المبيعات بالفترة',
@@ -913,7 +913,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(totalRev),
-            label: 'عائد مبيعات المنتجات',
+            label: t('reports.productsSalesRevenue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'إجمالي إيراد الأصناف',
@@ -921,7 +921,7 @@ export default function Reports() {
           {
             icon: Flame,
             value: topQtyProd,
-            label: 'الصنف الأكثر طلباً',
+            label: t('reports.mostDemandedItem'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'الأعلى طلباً بالكمية',
@@ -929,7 +929,7 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: topProfitProd,
-            label: 'الصنف الأعلى ربحاً',
+            label: t('reports.highestProfitItem'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'الأعلى تحقيقاً للأرباح',
@@ -947,7 +947,7 @@ export default function Reports() {
           {
             icon: Banknote,
             value: formatCurrency(remDebt),
-            label: 'إجمالي الديون القائمة',
+            label: t('reports.totalOutstandingDebts'),
             color: 'text-rose-600',
             bg: 'bg-rose-500/10',
             subtext: 'مستحقات واجبة التحصيل',
@@ -955,7 +955,7 @@ export default function Reports() {
           {
             icon: UserCheck,
             value: formatCurrency(paidDebt),
-            label: 'إجمالي المسدد',
+            label: t('reports.totalPaid'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'دفعات تم تحصيلها',
@@ -963,15 +963,15 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(origDebt),
-            label: 'إجمالي أصل الدين',
+            label: t('reports.totalOriginalDebt'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'إجمالي المديونيات المسجلة',
           },
           {
             icon: Users,
-            value: `${debtorCount} عميل`,
-            label: 'عدد العملاء المدينين',
+            value: `${debtorCount} ${t('reports.customersUnit')}`,
+            label: t('reports.debtorCustomersCount'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'عملاء لديهم رصيد مستحق',
@@ -983,16 +983,16 @@ export default function Reports() {
         return [
           {
             icon: Users,
-            value: `${cloudCustomers.length} عميل`,
-            label: 'إجمالي عدد العملاء',
+            value: `${cloudCustomers.length} ${t('reports.customersUnit')}`,
+            label: t('reports.totalCustomersCount'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'مسجلين بالدليل',
           },
           {
             icon: UserCheck,
-            value: `${reportData.allCustomers.length} عميل`,
-            label: 'العملاء النشطون بالفترة',
+            value: `${reportData.allCustomers.length} ${t('reports.customersUnit')}`,
+            label: t('reports.activeCustomersInPeriod'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'أجروا طلبات خلال الفترة',
@@ -1000,7 +1000,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(reportData.summary.totalSales),
-            label: 'إجمالي مشتريات العملاء',
+            label: t('reports.totalCustomerPurchases'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'إيراد المبيعات بالفترة',
@@ -1008,7 +1008,7 @@ export default function Reports() {
           {
             icon: Sparkles,
             value: reportData.summary.topCustomer,
-            label: 'العميل الأكثر شراءً',
+            label: t('reports.topPurchasingCustomer'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'الأعلى إنفاقاً بالفترة',
@@ -1025,23 +1025,23 @@ export default function Reports() {
           {
             icon: FileText,
             value: formatCurrency(totalPurch),
-            label: 'إجمالي المشتريات',
+            label: t('reports.totalPurchases'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'إجمالي فواتير التوريد',
           },
           {
             icon: ShoppingCart,
-            value: `${purchCount} فاتورة`,
-            label: 'عدد فواتير الشراء',
+            value: `${purchCount} ${t('reports.invoicesUnit')}`,
+            label: t('reports.purchaseInvoicesCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'فواتير توريد مستلمة',
           },
           {
             icon: Truck,
-            value: `${suppCount} مورد`,
-            label: 'عدد الموردين',
+            value: `${suppCount} ${t('reports.suppliersUnit')}`,
+            label: t('reports.suppliersCount'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'تم التعامل معهم بالفترة',
@@ -1049,7 +1049,7 @@ export default function Reports() {
           {
             icon: Clock,
             value: formatCurrency(avgPurch),
-            label: 'متوسط قيمة الفاتورة',
+            label: t('reports.avgPurchaseInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'متوسط تكلفة التوريد',
@@ -1067,15 +1067,15 @@ export default function Reports() {
           {
             icon: Receipt,
             value: formatCurrency(totExp),
-            label: 'إجمالي المصاريف',
+            label: t('reports.totalExpenses'),
             color: 'text-destructive',
             bg: 'bg-destructive/10',
             subtext: 'إجمالي النفقات بالفترة',
           },
           {
             icon: FileText,
-            value: `${exps.length} سند`,
-            label: 'عدد سندات الصرف',
+            value: `${exps.length} ${t('reports.vouchersUnit')}`,
+            label: t('reports.expenseVouchersCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'سندات صرف مسجلة',
@@ -1083,7 +1083,7 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: topExp ? topExp.type : 'لا يوجد',
-            label: 'أكبر بند مصروف',
+            label: t('reports.largestExpenseItem'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: topExp ? `بقيمة: ${formatCurrency(topExp.amount)}` : 'لا توجد مصاريف',
@@ -1091,7 +1091,7 @@ export default function Reports() {
           {
             icon: Calendar,
             value: formatCurrency(avgDailyExp),
-            label: 'متوسط الصرف اليومي',
+            label: t('reports.avgDailyExpense'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'معدل الإنفاق اليومي',
@@ -1105,7 +1105,7 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(partnerReportData.summary.totalProfitInPeriod),
-            label: 'أرباح الشركاء بالفترة',
+            label: t('reports.partnersProfitInPeriod'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'صافي نصيب الشركاء',
@@ -1113,7 +1113,7 @@ export default function Reports() {
           {
             icon: Wallet,
             value: formatCurrency(partnerReportData.summary.totalCurrentBalance),
-            label: 'إجمالي الرصيد المستحق',
+            label: t('reports.totalDueBalance'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'أرصدة الشركاء الحالية',
@@ -1121,15 +1121,15 @@ export default function Reports() {
           {
             icon: Banknote,
             value: formatCurrency(partnerReportData.summary.totalWithdrawnInPeriod),
-            label: 'المسحوبات بالفترة',
+            label: t('reports.withdrawnInPeriod'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'دفعات مسحوبة للشركاء',
           },
           {
             icon: UsersRound,
-            value: `${partnerReportData.summary.partnersCount} شريك`,
-            label: 'عدد الشركاء',
+            value: `${partnerReportData.summary.partnersCount} ${t('reports.partnersUnit')}`,
+            label: t('reports.partnersCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'شركاء مسجلون بالنظام',
@@ -1147,7 +1147,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(dSales),
-            label: 'مبيعات اليوم',
+            label: t('reports.todaySales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: `تاريخ: ${targetDate}`,
@@ -1155,15 +1155,15 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(dProfit),
-            label: 'صافي أرباح اليوم',
+            label: t('reports.todayNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: dSales > 0 ? `هامش ربح: ${Math.round((dProfit / dSales) * 100)}%` : 'صافي ربح اليوم',
           },
           {
             icon: ShoppingBag,
-            value: `${dOrders} فاتورة`,
-            label: 'عدد فواتير اليوم',
+            value: `${dOrders} ${t('reports.invoicesUnit')}`,
+            label: t('reports.todayInvoicesCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'فواتير اليوم المسجلة',
@@ -1171,7 +1171,7 @@ export default function Reports() {
           {
             icon: Clock,
             value: formatCurrency(dAvg),
-            label: 'متوسط قيمة الفاتورة',
+            label: t('reports.avgDailyInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'متوسط الفاتورة اليومية',
@@ -1201,23 +1201,23 @@ export default function Reports() {
           {
             icon: UserCheck,
             value: topCName,
-            label: 'أعلى كاشير مبيعاً',
+            label: t('reports.topSalesCashier'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: topC ? `مبيعات: ${formatCurrency(topC[1].total)}` : 'لا توجد بيانات',
           },
           {
             icon: ShoppingBag,
-            value: `${topCOrders} فاتورة`,
-            label: 'فواتير الكاشير الأعلى',
+            value: `${topCOrders} ${t('reports.invoicesUnit')}`,
+            label: t('reports.topCashierInvoices'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: 'أعلى إنجاز مبيعات',
           },
           {
             icon: Users,
-            value: `${activeCCount} كاشير`,
-            label: 'إجمالي الكاشيرات النشطين',
+            value: `${activeCCount} ${t('reports.cashiersUnit')}`,
+            label: t('reports.totalActiveCashiers'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'باشروا البيع بالفترة',
@@ -1225,7 +1225,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(avgC),
-            label: 'متوسط المبيعات لكل كاشير',
+            label: t('reports.avgSalesPerCashier'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'معدل مبيعات الموظف',
@@ -1243,7 +1243,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(mTot),
-            label: 'إجمالي خدمات الصيانة',
+            label: t('reports.totalMaintenanceServices'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: 'عائد الصيانة بالفترة',
@@ -1251,15 +1251,15 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(mProf),
-            label: 'صافي أرباح الصيانة',
+            label: t('reports.maintenanceNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: mTot > 0 ? `هامش ربح: ${Math.round((mProf / mTot) * 100)}%` : 'أرباح الصيانة',
           },
           {
             icon: ShoppingBag,
-            value: `${mCount} فاتورة`,
-            label: 'عدد فواتير الصيانة',
+            value: `${mCount} ${t('reports.invoicesUnit')}`,
+            label: t('reports.maintenanceInvoicesCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: 'أجهزة مستلمة/مصلحة',
@@ -1267,7 +1267,7 @@ export default function Reports() {
           {
             icon: Clock,
             value: formatCurrency(mAvg),
-            label: 'متوسط فاتورة الصيانة',
+            label: t('reports.avgMaintenanceInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: 'متوسط تكلفة الخدمة',
@@ -1280,7 +1280,7 @@ export default function Reports() {
           {
             icon: DollarSign,
             value: formatCurrency(reportData.summary.totalSales),
-            label: 'إجمالي المبيعات',
+            label: t('reports.totalSales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
             subtext: salesTrend.label,
@@ -1288,15 +1288,15 @@ export default function Reports() {
           {
             icon: TrendingUp,
             value: formatCurrency(reportData.summary.totalProfit),
-            label: 'صافي الأرباح',
+            label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: `هامش ربح: ${profitMargin}%`,
           },
           {
             icon: ShoppingBag,
-            value: `${reportData.summary.totalOrders} طلب`,
-            label: 'عدد الطلبات',
+            value: `${reportData.summary.totalOrders} ${t('reports.ordersUnit')}`,
+            label: t('reports.ordersCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات',
@@ -1304,7 +1304,7 @@ export default function Reports() {
           {
             icon: Clock,
             value: formatCurrency(reportData.summary.avgOrderValue),
-            label: 'متوسط قيمة الطلب',
+            label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
             subtext: reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل بالفترة` : 'لكل طلب مسجل',
@@ -1997,31 +1997,31 @@ export default function Reports() {
 
   const ALL_REPORT_SECTIONS = [
     {
-      category: 'المخزون والمشتريات',
+      category: t('reports.category.inventory'),
       items: [
-        { id: 'top-products', name: 'الأكثر مبيعاً', icon: Flame, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
-        { id: 'product-movement', name: 'حركة منتج', icon: RefreshCw, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
-        { id: 'inventory-stock', name: 'الجرد وفروقات المخزون', icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
-        { id: 'purchases', name: 'فواتير المشتريات', icon: FileText, bg: 'bg-sky-100/70 dark:bg-sky-950/60 text-sky-600' },
+        { id: 'top-products', name: t('reports.topProducts'), icon: Flame, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
+        { id: 'product-movement', name: t('reports.productMovement'), icon: RefreshCw, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
+        { id: 'inventory-stock', name: t('reports.inventoryStockDiscrepancy'), icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
+        { id: 'purchases', name: t('reports.purchasesInvoices'), icon: FileText, bg: 'bg-sky-100/70 dark:bg-sky-950/60 text-sky-600' },
       ]
     },
     {
-      category: 'العملاء والشركاء',
+      category: t('reports.category.debts'),
       items: [
-        { id: 'customers', name: 'دليل العملاء', icon: Users, bg: 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-600' },
-        { id: 'partners', name: 'أرباح الشركاء', icon: UsersRound, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
+        { id: 'customers', name: t('reports.customers'), icon: Users, bg: 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-600' },
+        { id: 'partners', name: t('reports.partners'), icon: UsersRound, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
       ]
     },
     {
-      category: 'التقارير الإدارية والتشغيلية',
+      category: t('reports.category.admin'),
       items: [
-        { id: 'daily-closing', name: 'الإغلاق اليومي', icon: Lock, bg: 'bg-pink-100/70 dark:bg-pink-950/60 text-pink-600' },
-        { id: 'cashier-performance', name: 'أداء الكاشير', icon: UserCheck, bg: 'bg-teal-100/70 dark:bg-teal-950/60 text-teal-600' },
-        ...(visibleSections.maintenance ? [{ id: 'maintenance', name: 'خدمات الصيانة', icon: ClipboardList, bg: 'bg-violet-100/70 dark:bg-violet-950/60 text-violet-600' }] : []),
-        ...(storeType === 'bookstore' ? [{ id: 'library', name: 'تقرير المكتبة', icon: BookOpen, bg: 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-600' }] : []),
+        { id: 'daily-closing', name: t('reports.dailyClosing'), icon: Lock, bg: 'bg-pink-100/70 dark:bg-pink-950/60 text-pink-600' },
+        { id: 'cashier-performance', name: t('reports.cashierPerformance'), icon: UserCheck, bg: 'bg-teal-100/70 dark:bg-teal-950/60 text-teal-600' },
+        ...(visibleSections.maintenance ? [{ id: 'maintenance', name: t('reports.maintenanceServices'), icon: ClipboardList, bg: 'bg-violet-100/70 dark:bg-violet-950/60 text-violet-600' }] : []),
+        ...(storeType === 'bookstore' ? [{ id: 'library', name: t('reports.libraryReport'), icon: BookOpen, bg: 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-600' }] : []),
         ...(isDistributorStore ? [
-          { id: 'distributor-inventory', name: 'مخزون الموزع', icon: Truck, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
-          { id: 'custody-value', name: 'قيمة العهدة', icon: Wallet, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
+          { id: 'distributor-inventory', name: t('reports.distributorInventory'), icon: Truck, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
+          { id: 'custody-value', name: t('reports.custodyValue'), icon: Wallet, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
         ] : []),
       ]
     }
@@ -2034,7 +2034,7 @@ export default function Reports() {
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
         {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
-          <PageHeader title="التقارير المالية" className="mb-0 md:mb-0" />
+          <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
         </div>
 
         {/* Quick Access Pill Row — no horizontal scroll, always 2-per-row in compact layout */}
@@ -2053,7 +2053,7 @@ export default function Reports() {
             )}
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-            <span>المبيعات</span>
+            <span>{t('reports.sales')}</span>
           </button>
 
           <button
@@ -2069,7 +2069,7 @@ export default function Reports() {
             )}
           >
             <Package className="w-3.5 h-3.5 text-amber-600" />
-            <span>المخزون</span>
+            <span>{t('reports.category.inventory')}</span>
           </button>
 
           <button
@@ -2085,7 +2085,7 @@ export default function Reports() {
             )}
           >
             <Users className="w-3.5 h-3.5 text-blue-600" />
-            <span>الديون</span>
+            <span>{t('reports.category.debts')}</span>
           </button>
 
           <button
@@ -2101,7 +2101,7 @@ export default function Reports() {
             )}
           >
             <Banknote className="w-3.5 h-3.5 text-emerald-600" />
-            <span>المصاريف</span>
+            <span>{t('reports.expenses')}</span>
           </button>
 
           <button
@@ -2109,7 +2109,7 @@ export default function Reports() {
             onClick={() => setIsAllReportsModalOpen(true)}
             className="col-span-2 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm active:scale-95 w-full"
           >
-            <span>+ المزيد</span>
+            <span>{t('common.more') || (isRTL ? '+ المزيد' : '+ More')}</span>
           </button>
         </div>
 
@@ -2125,7 +2125,7 @@ export default function Reports() {
                 datePreset === 'today' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              اليوم
+              {t('dashboard.filterToday')}
             </button>
             <button
               type="button"
@@ -2135,7 +2135,7 @@ export default function Reports() {
                 datePreset === 'yesterday' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              أمس
+              {t('reports.yesterday') || (isRTL ? 'أمس' : 'Yesterday')}
             </button>
             <button
               type="button"
@@ -2145,7 +2145,7 @@ export default function Reports() {
                 datePreset === 'week' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              الأسبوع
+              {t('reports.week') || (isRTL ? 'الأسبوع' : 'Week')}
             </button>
             <button
               type="button"
@@ -2155,7 +2155,7 @@ export default function Reports() {
                 datePreset === 'month' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              هذا الشهر
+              {t('dashboard.filterMonth')}
             </button>
             <button
               type="button"
@@ -2165,7 +2165,7 @@ export default function Reports() {
                 datePreset === 'custom' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              مخصص
+              {t('reports.custom') || (isRTL ? 'مخصص' : 'Custom')}
             </button>
           </div>
 
@@ -2177,7 +2177,7 @@ export default function Reports() {
                 type="text"
                 value={filters.search}
                 onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                placeholder="بحث بالمنتج أو الرقم..."
+                placeholder={t('reports.searchPlaceholder') || (isRTL ? 'بحث بالمنتج أو الرقم...' : 'Search product or number...')}
                 className="w-full h-10 pr-9 pl-3 text-xs bg-background border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/70 transition-all"
               />
             </div>
@@ -2190,7 +2190,7 @@ export default function Reports() {
                 "h-10 w-10 rounded-xl border-border/80 shrink-0 shadow-sm transition-all",
                 showFilterDrawer && "border-primary bg-primary/10 text-primary"
               )}
-              title="تصفية إضافية"
+              title={t('reports.extraFilter')}
             >
               <Filter className="w-4 h-4 text-muted-foreground" />
             </Button>
@@ -2200,7 +2200,7 @@ export default function Reports() {
               onClick={handleExportExcel}
               disabled={isLoading}
               className="h-10 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shrink-0 shadow-sm transition-all active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
-              title="تصدير Excel"
+              title="Excel"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Excel</span>
@@ -2211,7 +2211,7 @@ export default function Reports() {
               onClick={handleExportPDF}
               disabled={isLoading}
               className="h-10 px-3 rounded-xl border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 shrink-0 shadow-sm transition-all active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
-              title="تصدير PDF"
+              title="PDF"
             >
               <FileText className="w-4 h-4" />
               <span>PDF</span>
@@ -2221,7 +2221,7 @@ export default function Reports() {
           {/* Sub-bar: Dates & Auto update badge */}
           <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
             <span className="font-medium text-emerald-600 dark:text-emerald-400">
-              ● محدث تلقائياً
+              ● {t('reports.autoUpdated')}
             </span>
             <div className="flex items-center gap-1.5 font-mono">
               <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
@@ -2236,21 +2236,21 @@ export default function Reports() {
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
               <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
                 <SlidersHorizontal className="w-4 h-4 text-primary" />
-                <span>تصفية إضافية للبيانات</span>
+                <span>{t('reports.extraFilterData')}</span>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setShowFilterDrawer(false)} className="h-7 px-2 text-xs">
-                إغلاق
+                {t('common.close')}
               </Button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">الكاشير:</label>
+                <label className="text-[11px] text-muted-foreground block mb-1">{t('reports.cashierFilter')}</label>
                 <Select value={filters.cashierId} onValueChange={v => setFilters(prev => ({ ...prev, cashierId: v }))}>
                   <SelectTrigger className="h-9 text-xs rounded-xl">
-                    <SelectValue placeholder="الكل" />
+                    <SelectValue placeholder={t('common.all')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">جميع موظفي الكاشير</SelectItem>
+                    <SelectItem value="all">{t('reports.allCashiers')}</SelectItem>
                     {uniqueCashiers.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
@@ -2258,30 +2258,30 @@ export default function Reports() {
                 </Select>
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">طريقة الدفع:</label>
+                <label className="text-[11px] text-muted-foreground block mb-1">{t('reports.paymentMethod')}</label>
                 <Select value={filters.paymentType} onValueChange={v => setFilters(prev => ({ ...prev, paymentType: v }))}>
                   <SelectTrigger className="h-9 text-xs rounded-xl">
-                    <SelectValue placeholder="الكل" />
+                    <SelectValue placeholder={t('common.all')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">جميع الطرق</SelectItem>
-                    <SelectItem value="cash">نقداً</SelectItem>
-                    <SelectItem value="card">شبكة / بطاقة</SelectItem>
-                    <SelectItem value="transfer">تحويل بنكي</SelectItem>
-                    <SelectItem value="debt">آجل / دين</SelectItem>
+                    <SelectItem value="all">{t('reports.allMethods')}</SelectItem>
+                    <SelectItem value="cash">{t('pos.cash')}</SelectItem>
+                    <SelectItem value="card">{t('pos.card')}</SelectItem>
+                    <SelectItem value="transfer">{t('pos.transfer')}</SelectItem>
+                    <SelectItem value="debt">{t('pos.debt')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground block mb-1">الحالة:</label>
+                <label className="text-[11px] text-muted-foreground block mb-1">{t('reports.statusFilter')}</label>
                 <Select value={filters.status} onValueChange={v => setFilters(prev => ({ ...prev, status: v }))}>
                   <SelectTrigger className="h-9 text-xs rounded-xl">
-                    <SelectValue placeholder="الكل" />
+                    <SelectValue placeholder={t('common.all')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">جميع الحالات</SelectItem>
-                    <SelectItem value="completed">مكتملة</SelectItem>
-                    <SelectItem value="pending">معلقة</SelectItem>
+                    <SelectItem value="all">{t('reports.allStatuses')}</SelectItem>
+                    <SelectItem value="completed">{t('invoices.completed')}</SelectItem>
+                    <SelectItem value="pending">{t('invoices.pending')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2344,7 +2344,7 @@ export default function Reports() {
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
-            ملخص بياني
+            {t('reports.chartSummary')}
           </button>
           <button
             type="button"
@@ -2359,7 +2359,7 @@ export default function Reports() {
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
-            كشف الفواتير
+            {t('reports.invoicesStatement')}
           </button>
           <button
             type="button"
@@ -2374,7 +2374,7 @@ export default function Reports() {
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
-            عرض شامل
+            {t('reports.comprehensiveView')}
           </button>
         </div>
 
@@ -2392,10 +2392,10 @@ export default function Reports() {
                 className="h-8 px-3 rounded-xl border-primary/30 bg-background text-primary font-bold text-xs gap-1.5 shadow-sm"
               >
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-0 ltr:rotate-180 text-primary" />
-                <span>العودة للملخص</span>
+                <span>{t('reports.backToSummary')}</span>
               </Button>
               <span className="text-xs font-black text-foreground">
-                التقرير المعروض: <span className="text-primary">{allReports.find(r => r.id === activeReport)?.label || activeReport}</span>
+                {t('reports.displayedReport')} <span className="text-primary">{allReports.find(r => r.id === activeReport)?.label || activeReport}</span>
               </span>
             </div>
           </div>
@@ -2617,8 +2617,8 @@ export default function Reports() {
                   <X className="w-4 h-4" />
                 </Button>
                 <div className="text-center flex-1 pr-8">
-                  <h2 className="text-base sm:text-lg font-black text-foreground">جميع أقسام وتقارير النظام</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">اختر القسم للوصول السريع إلى بياناته</p>
+                  <h2 className="text-base sm:text-lg font-black text-foreground">{t('reports.allSectionsAndReports')}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('reports.chooseSectionDesc')}</p>
                 </div>
               </div>
 
@@ -2668,14 +2668,14 @@ export default function Reports() {
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCustomDateModal(false)} />
             <div className="relative bg-card rounded-3xl border border-border p-5 max-w-sm w-full space-y-4 shadow-2xl z-10 animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between pb-2 border-b border-border/50">
-                <h3 className="font-bold text-sm text-foreground">تحديد الفترة الزمنية</h3>
+                <h3 className="font-bold text-sm text-foreground">{t('reports.selectTimePeriod')}</h3>
                 <Button variant="ghost" size="icon" className="w-7 h-7 rounded-full" onClick={() => setShowCustomDateModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground font-medium block mb-1">من تاريخ:</label>
+                  <label className="text-xs text-muted-foreground font-medium block mb-1">{t('reports.fromDate')}</label>
                   <input
                     type="date"
                     value={filters.dateRange.from}
@@ -2684,7 +2684,7 @@ export default function Reports() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground font-medium block mb-1">إلى تاريخ:</label>
+                  <label className="text-xs text-muted-foreground font-medium block mb-1">{t('reports.toDate')}</label>
                   <input
                     type="date"
                     value={filters.dateRange.to}
@@ -2699,7 +2699,7 @@ export default function Reports() {
                   setShowCustomDateModal(false);
                 }}
               >
-                تطبيق الفترة
+                {t('reports.applyPeriod')}
               </Button>
             </div>
           </div>

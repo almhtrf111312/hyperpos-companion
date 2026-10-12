@@ -66,7 +66,7 @@ export default function Appearance() {
         <div className="flex items-center justify-between p-3.5 rounded-2xl bg-primary text-primary-foreground shadow-md border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 shrink-0" />
-            <span className="text-xs sm:text-sm font-bold">لديك تعديلات معلقة في السمة والألوان</span>
+            <span className="text-xs sm:text-sm font-bold">{t('appearance.pendingChanges')}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -77,14 +77,14 @@ export default function Appearance() {
               className="h-8 px-3 rounded-xl font-bold gap-1 text-xs shadow-xs"
             >
               {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>حفظ السمة</span>
+              <span>{t('appearance.saveTheme')}</span>
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleUndoTheme}
               className="h-8 w-8 p-0 rounded-xl bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/20"
-              title="تراجع"
+              title={t('appearance.undo')}
             >
               <Undo2 className="w-3.5 h-3.5" />
             </Button>
@@ -94,10 +94,10 @@ export default function Appearance() {
       {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق بدون أي قص للنصوص أو النقاط */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 backdrop-blur-xl shadow-xs overflow-visible">
         {[
-          { id: 'theme' as AppearanceTab, label: isRTL ? 'السمات والألوان' : 'Themes & Colors', icon: Palette },
-          { id: 'fonts' as AppearanceTab, label: isRTL ? 'الخطوط' : 'Fonts', icon: Type },
-          { id: 'scale' as AppearanceTab, label: isRTL ? 'الحجم والمقياس' : 'UI Scale', icon: Maximize2 },
-          { id: 'layout' as AppearanceTab, label: isRTL ? 'المظهر العام' : 'Layout', icon: LayoutGrid },
+          { id: 'theme' as AppearanceTab, label: t('appearance.themeAndColors'), icon: Palette },
+          { id: 'fonts' as AppearanceTab, label: t('appearance.fonts'), icon: Type },
+          { id: 'scale' as AppearanceTab, label: t('appearance.uiScale'), icon: Maximize2 },
+          { id: 'layout' as AppearanceTab, label: t('appearance.layout'), icon: LayoutGrid },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -143,8 +143,8 @@ export default function Appearance() {
         {activeTab === 'layout' && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground">نمط لوحة التحكم والتقارير</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">اختر أسلوب عرض المؤشرات والرسوم البيانية في النظام</p>
+              <h3 className="text-sm sm:text-base font-bold text-foreground">{t('appearance.dashboardDesignTitle')}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('appearance.dashboardDesignDesc')}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
@@ -157,8 +157,8 @@ export default function Appearance() {
                     : "border-border/60 bg-muted/20 hover:bg-muted/40"
                 )}
               >
-                <div className="font-bold text-sm text-foreground">الافتراضي (Classic)</div>
-                <div className="text-xs text-muted-foreground mt-1">البطاقات القياسية السريعة والموجزة</div>
+                <div className="font-bold text-sm text-foreground">{t('appearance.classicStyle')}</div>
+                <div className="text-xs text-muted-foreground mt-1">{t('appearance.classicDesc')}</div>
               </button>
 
               <button
@@ -173,9 +173,9 @@ export default function Appearance() {
               >
                 <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>الموحد (Pro)</span>
+                  <span>{t('appearance.unifiedProStyle')}</span>
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">الرسوم البيانية التفاعلية الموحدة</div>
+                <div className="text-xs text-muted-foreground mt-1">{t('appearance.unifiedProDesc')}</div>
               </button>
             </div>
           </div>
@@ -191,13 +191,13 @@ export default function Appearance() {
             className="rounded-full shadow-lg h-11 px-5 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>حفظ السمة</span>
+            <span>{t('appearance.saveTheme')}</span>
           </Button>
           <Button
             variant="outline"
             onClick={handleUndoTheme}
             className="rounded-full shadow-md h-11 w-11 p-0 border-border/80 bg-background hover:bg-muted"
-            title="تراجع"
+            title={t('appearance.undo')}
           >
             <Undo2 className="w-4 h-4" />
           </Button>

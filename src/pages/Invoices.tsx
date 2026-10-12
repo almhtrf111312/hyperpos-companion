@@ -1370,7 +1370,7 @@ export default function Invoices() {
           )}
         >
           <ShoppingCart className="w-4 h-4" />
-          <span>فواتير المبيعات</span>
+          <span>{t('invoices.salesInvoices')}</span>
         </button>
         <button
           type="button"
@@ -1383,7 +1383,7 @@ export default function Invoices() {
           )}
         >
           <Truck className="w-4 h-4" />
-          <span>فواتير المشتريات</span>
+          <span>{t('invoices.purchaseInvoices')}</span>
         </button>
       </div>
 
@@ -1393,24 +1393,24 @@ export default function Invoices() {
           <div className="grid grid-cols-4 gap-1.5 text-center select-none">
             {/* إجمالي الفواتير */}
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
-              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">إجمالي الفواتير</span>
+              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalInvoices')}</span>
               <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
             </div>
             {/* مؤجلة معلقة */}
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
-              <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">مؤجلة معلقة</span>
+              <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('invoices.pendingDeferred')}</span>
               <span className="text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums">{stats.pendingDebts}</span>
             </div>
             {/* مبيعات اليوم */}
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
-              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">مبيعات اليوم</span>
+              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.todaySales')}</span>
               <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                 {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
               </span>
             </div>
             {/* إجمالي الأرباح */}
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
-              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">إجمالي الأرباح</span>
+              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalProfits')}</span>
               <span className="text-xs font-black text-primary font-mono whitespace-nowrap">
                 {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
               </span>
@@ -1422,7 +1422,7 @@ export default function Invoices() {
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
-                placeholder="بحث بالاسم أو رقم الفاتورة..."
+                placeholder={t('invoices.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-9 pr-9 text-xs bg-card border-border rounded-xl font-medium shadow-xs focus-visible:ring-1 focus-visible:ring-primary"
@@ -1431,9 +1431,9 @@ export default function Invoices() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <div className="min-w-0">
                 <Select value={filterType} onValueChange={(v: 'all' | InvoiceType) => setFilterType(v)}>
-                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder="نوع الفاتورة" /></SelectTrigger>
+                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.invoiceType')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">كل الأنواع</SelectItem>
+                    <SelectItem value="all">{t('invoices.allTypes')}</SelectItem>
                     <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
                     <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
                   </SelectContent>
@@ -1441,22 +1441,22 @@ export default function Invoices() {
               </div>
               <div className="min-w-0">
                 <Select value={filterPayment} onValueChange={(v: 'all' | 'cash' | 'debt') => setFilterPayment(v)}>
-                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder="طريقة البيع" /></SelectTrigger>
+                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.paymentMethod')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">نقدي ومؤجل</SelectItem>
-                    <SelectItem value="cash">نقدي</SelectItem>
-                    <SelectItem value="debt">بيع مؤجل</SelectItem>
+                    <SelectItem value="all">{t('invoices.cashAndCredit')}</SelectItem>
+                    <SelectItem value="cash">{t('invoices.cash')}</SelectItem>
+                    <SelectItem value="debt">{t('invoices.credit')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="min-w-0">
                 <Select value={displayCurrencyFilter} onValueChange={(v: any) => setDisplayCurrencyFilter(v)}>
-                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder="عملة العرض" /></SelectTrigger>
+                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.displayCurrency')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="stored">حسب الفاتورة</SelectItem>
-                    {enabledCurrencies.TRY && <SelectItem value="TRY">₺ ليرة تركية</SelectItem>}
-                    {enabledCurrencies.SYP && <SelectItem value="SYP">ل.س ليرة سورية</SelectItem>}
-                    {enabledCurrencies.USD !== false && <SelectItem value="USD">$ دولار أمريكي</SelectItem>}
+                    <SelectItem value="stored">{t('invoices.asInInvoice')}</SelectItem>
+                    {enabledCurrencies.TRY && <SelectItem value="TRY">₺ {t('currencies.try')}</SelectItem>}
+                    {enabledCurrencies.SYP && <SelectItem value="SYP">{t('currencies.syp')}</SelectItem>}
+                    {enabledCurrencies.USD !== false && <SelectItem value="USD">$ {t('currencies.usd')}</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
@@ -1464,7 +1464,7 @@ export default function Invoices() {
                 <DatePicker
                   value={dateFilter}
                   onChange={setDateFilter}
-                  placeholder="كل التواريخ"
+                  placeholder={t('common.allDates')}
                   className="w-full min-w-0 h-8 px-2 text-[11px] bg-card border-border rounded-xl gap-1 [&_svg]:size-3"
                   highlightedDates={salesInvoiceDates}
                 />
@@ -1489,7 +1489,7 @@ export default function Invoices() {
                 )}
               >
                 <Undo2 className="w-3.5 h-3.5" />
-                <span>فواتير مستردة</span>
+                <span>{t('invoices.refundedInvoices')}</span>
                 <span className={cn(
                   "text-[9px] px-1.5 py-0.2 rounded-full font-bold",
                   showRefunded ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -1499,7 +1499,7 @@ export default function Invoices() {
               </button>
 
               <span className="text-muted-foreground text-[10.5px] font-semibold">
-                {filteredInvoices.length} فواتير معروضة
+                {filteredInvoices.length} {t('invoices.displayedInvoices')}
               </span>
             </div>
           </div>
@@ -1581,18 +1581,18 @@ export default function Invoices() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-44 text-xs font-bold">
                           <DropdownMenuItem onClick={() => handleView(invoice)} className="justify-between cursor-pointer">
-                            <span>عرض</span>
+                            <span>{t('common.view')}</span>
                             <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleShare(invoice)} className="justify-between cursor-pointer">
-                            <span>مشاركة</span>
+                            <span>{t('common.share')}</span>
                             <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </DropdownMenuItem>
                           {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handlePayDebt(invoice)} className="justify-between cursor-pointer">
-                                <span>تسديد دفعة</span>
+                                <span>{t('invoices.payInstallment')}</span>
                                 <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleMarkPaid(invoice)} className="justify-between cursor-pointer">
@@ -1605,7 +1605,7 @@ export default function Invoices() {
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleRefund(invoice)} className="justify-between text-destructive cursor-pointer">
-                                <span>استرداد الفاتورة</span>
+                                <span>{t('invoices.refundInvoice')}</span>
                                 <Undo2 className="w-3.5 h-3.5 text-destructive" />
                               </DropdownMenuItem>
                             </>
@@ -1631,7 +1631,7 @@ export default function Invoices() {
                       {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
                         invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
                           <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded">
-                            مدفوع جزئياً
+                            {t('invoices.partiallyPaid')}
                           </span>
                         ) : (
                           <span className="bg-destructive text-destructive-foreground text-[8.5px] font-extrabold px-1.5 py-0.5 rounded">
@@ -1649,13 +1649,13 @@ export default function Invoices() {
                       {invoice.status === 'refunded' && (
                         <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                           <Undo2 className="w-2.5 h-2.5" />
-                          مسترجعة
+                          {t('invoices.refunded')}
                         </span>
                       )}
 
                       {refundMeta[invoice.id] && (
                         <span className="text-[8.5px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border font-medium">
-                          {refundMeta[invoice.id].condition === 'damaged' ? 'معيب' : 'سليم'}
+                          {refundMeta[invoice.id].condition === 'damaged' ? t('invoices.conditionDefective') : t('invoices.conditionGood')}
                         </span>
                       )}
 
@@ -1664,7 +1664,7 @@ export default function Invoices() {
                           "text-[8.5px] px-1.5 py-0.5 rounded border font-semibold",
                           invoice.sync_failed ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
                         )}>
-                          {invoice.sync_failed ? 'فشل المزامنة' : 'غير متزامنة'}
+                          {invoice.sync_failed ? t('invoices.syncFailed') : t('invoices.notSynced')}
                         </span>
                       )}
 
@@ -1687,7 +1687,7 @@ export default function Invoices() {
                       </span>
                       <span className="text-muted-foreground font-bold flex items-center gap-0.5 mr-auto bg-muted/60 px-1.5 py-0.5 rounded">
                         <span>🛒</span>
-                        <span>{itemCount} {itemCount === 1 ? 'صنف' : 'أصناف'}</span>
+                        <span>{itemCount} {t('invoices.items')}</span>
                       </span>
                     </div>
 
@@ -1700,16 +1700,16 @@ export default function Invoices() {
                           <div className="flex items-center justify-between pb-0.5 border-b border-border/50">
                             <span className="text-[9.5px] font-black text-foreground flex items-center gap-0.5">
                               <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-500" />
-                              <span>السعر:</span>
+                              <span>{t('invoices.price')}:</span>
                             </span>
-                            <span className="text-[8px] font-bold text-muted-foreground font-mono">(الإجمالي)</span>
+                            <span className="text-[8px] font-bold text-muted-foreground font-mono">({t('common.total')})</span>
                           </div>
 
                           {/* سوري */}
                           <div className="flex items-center justify-between text-[10px] leading-tight">
                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0"></span>
-                              <span>سوري:</span>
+                              <span>{t('currencies.syp')}:</span>
                             </span>
                             <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
                               {formatNumber(sypTotal, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
@@ -1720,7 +1720,7 @@ export default function Invoices() {
                           <div className="flex items-center justify-between text-[10px] leading-tight">
                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0"></span>
-                              <span>دولار:</span>
+                              <span>{t('currencies.usd')}:</span>
                             </span>
                             <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[10.5px] whitespace-nowrap">
                               ${formatNumber(invUsdTotal, 2)}
@@ -1731,7 +1731,7 @@ export default function Invoices() {
                           <div className="flex items-center justify-between text-[10px] leading-tight">
                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-sky-500 shrink-0"></span>
-                              <span>تركي:</span>
+                              <span>{t('currencies.try')}:</span>
                             </span>
                             <span className="font-black text-sky-700 dark:text-sky-400 font-mono text-[10.5px] whitespace-nowrap">
                               {formatNumber(tryTotal, tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
@@ -1753,7 +1753,7 @@ export default function Invoices() {
                           <div className="flex items-center justify-between text-[10px] leading-tight">
                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0"></span>
-                              <span>سوري:</span>
+                              <span>{t('currencies.syp')}:</span>
                             </span>
                             <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
                               {formatNumber(sypProfit, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
@@ -1764,7 +1764,7 @@ export default function Invoices() {
                           <div className="flex items-center justify-between text-[10px] leading-tight">
                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0"></span>
-                              <span>دولار:</span>
+                              <span>{t('currencies.usd')}:</span>
                             </span>
                             <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                               ${formatNumber(invUsdProfit, 2)}
@@ -1775,7 +1775,7 @@ export default function Invoices() {
                           <div className="flex items-center justify-between text-[10px] leading-tight">
                             <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-sky-500 shrink-0"></span>
-                              <span>تركي:</span>
+                              <span>{t('currencies.try')}:</span>
                             </span>
                             <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", tryProfit >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-600 dark:text-rose-400")}>
                               {formatNumber(tryProfit, tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
@@ -1879,7 +1879,7 @@ export default function Invoices() {
                   )}
                   {selectedFinancials.displayProfit > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">صافي الربح:</span>
+                      <span className="text-muted-foreground">{t('invoices.netProfit')}:</span>
                       <span className="font-medium text-success">{formatCurrency(selectedFinancials.displayProfit, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                     </div>
                   )}
@@ -1888,7 +1888,7 @@ export default function Invoices() {
 
               {selectedInvoice.items.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">{selectedInvoice.type === 'sale' ? t('invoices.products') : 'عناصر الفاتورة'}:</span>
+                  <span className="text-sm text-muted-foreground">{selectedInvoice.type === 'sale' ? t('invoices.products') : t('invoices.items')}:</span>
                   <div className="border rounded-lg overflow-x-auto">
                     <table className="w-full text-xs sm:text-sm">
                       <thead className="bg-muted/50">
@@ -2030,7 +2030,7 @@ export default function Invoices() {
                   <div className="flex justify-between items-center pb-2 border-b border-border/40">
                     <span className="font-bold text-foreground text-sm">{invoiceToShare.customerName}</span>
                     <Badge variant={invoiceToShare.type === 'sale' ? 'default' : 'secondary'} className="text-[10px]">
-                      {invoiceToShare.type === 'sale' ? 'مبيعات' : 'صيانة'}
+                      {invoiceToShare.type === 'sale' ? t('invoices.sales') : t('invoices.maintenance')}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center text-muted-foreground">
@@ -2042,7 +2042,7 @@ export default function Invoices() {
                     <span>{formatDateTime(new Date(invoiceToShare.createdAt))}</span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-border/40">
-                    <span className="font-semibold text-foreground">الإجمالي:</span>
+                    <span className="font-semibold text-foreground">{t('common.total')}:</span>
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-bold text-base text-primary">
                         {formatCurrency(shareFin.displayTotal, shareFin.symbol, shareFin.decimals)}
@@ -2117,7 +2117,7 @@ export default function Invoices() {
               </div>
               {invoiceToRefund && (
                 <Badge variant={invoiceToRefund.paymentType === 'cash' ? 'default' : 'destructive'} className="text-xs">
-                  {invoiceToRefund.paymentType === 'cash' ? 'نقدي' : 'دين / آجل'}
+                  {invoiceToRefund.paymentType === 'cash' ? t('invoices.cash') : t('invoices.debtCredit')}
                 </Badge>
               )}
             </DialogTitle>
@@ -2146,15 +2146,15 @@ export default function Invoices() {
               <div className="rounded-lg border border-amber-300 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-950/30 p-3.5 space-y-2 text-xs text-amber-900 dark:text-amber-200 text-right">
                 <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
                   <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span>تنبيه مالي مهم لفواتير الديون / الآجل:</span>
+                  <span>{t('invoices.debtAlertTitle')}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 py-1 bg-white/70 dark:bg-black/20 rounded p-2 text-xs">
                   <div>
-                    <span className="text-muted-foreground">المسدد سابقاً: </span>
+                    <span className="text-muted-foreground">{t('invoices.paidPreviously')} </span>
                     <span className="font-bold text-success">{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">المتبقي بذمة العميل: </span>
+                    <span className="text-muted-foreground">{t('invoices.remainingCustomerDebt')} </span>
                     <span className="font-bold text-destructive">{formatCurrency((invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid || 0))) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                 </div>
@@ -2192,18 +2192,18 @@ export default function Invoices() {
                     <span className="font-bold">{formatCurrency(refundFinancials ? refundFinancials.displayTotal : 0, refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">عدد العناصر والقطع:</span>
-                    <span>{invoiceToRefund?.items?.length || 0} صنف ({invoiceToRefund?.items?.reduce((s, i) => s + i.quantity, 0) || 0} قطعة)</span>
+                    <span className="text-muted-foreground">{t('invoices.itemsAndUnits')}</span>
+                    <span>{invoiceToRefund?.items?.length || 0} {t('invoices.itemsCount')} ({invoiceToRefund?.items?.reduce((s, i) => s + i.quantity, 0) || 0} {t('invoices.piecesCount')})</span>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground text-center">
-                  سيتم استرداد كامل الفاتورة، وإعادة جميع المنتجات لمخزون المستودع، وعكس الأرباح في تقارير اليوم.
+                  {t('invoices.fullRefundNotice')}
                 </p>
               </div>
             ) : (
               <div className="space-y-3 text-right">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-muted-foreground">حدد الكميات المراد إرجاعها للمخزون:</span>
+                  <span className="font-medium text-muted-foreground">{t('invoices.selectQuantitiesToReturn')}</span>
                   <div className="flex items-center gap-1.5">
                     <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2 text-primary" onClick={setAllPartialQtyMax}>
                       {t('invoices.selectAll') || 'تحديد الكل'}
@@ -2224,9 +2224,9 @@ export default function Invoices() {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{item.name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                            <span>{formatCurrency(item.price * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} للقطعة</span>
+                            <span>{formatCurrency(item.price * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} {t('common.perPiece')}</span>
                             <span>•</span>
-                            <span>الكمية بالفاتورة: <strong className="text-foreground">{item.quantity}</strong></span>
+                            <span>{t('invoices.qtyInInvoice')} <strong className="text-foreground">{item.quantity}</strong></span>
                           </div>
                         </div>
 
@@ -2261,7 +2261,7 @@ export default function Invoices() {
                             className={cn("h-7 px-2 text-xs", currentQty === item.quantity && "bg-primary text-primary-foreground")}
                             onClick={() => updatePartialQty(key, item.quantity - currentQty, item.quantity)}
                           >
-                            الكل
+                            {t('common.all')}
                           </Button>
                         </div>
                       </div>
@@ -2272,31 +2272,31 @@ export default function Invoices() {
                 {/* Partial summary box */}
                 <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-xs border">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">الأصناف المحددة:</span>
-                    <span className="font-semibold">{partialRefundStats.itemsCount} صنف ({partialRefundStats.unitsCount} قطعة)</span>
+                    <span className="text-muted-foreground">{t('invoices.selectedItems')}</span>
+                    <span className="font-semibold">{partialRefundStats.itemsCount} {t('invoices.itemsCount')} ({partialRefundStats.unitsCount} {t('invoices.piecesCount')})</span>
                   </div>
                   <div className="flex justify-between items-center text-sm font-bold border-t pt-1.5">
-                    <span>إجمالي قيمة المرتجع:</span>
+                    <span>{t('invoices.totalRefundValue')}</span>
                     <span className="text-orange-600">{formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   {invoiceToRefund?.paymentType === 'debt' ? (
                     <>
                       {partialRefundStats.debtReduction > 0 && (
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
-                          <span>تخفيض من الدين المتبقي:</span>
+                          <span>{t('invoices.debtDeduction')}</span>
                           <span className="font-semibold text-destructive">-{formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                         </div>
                       )}
                       {partialRefundStats.cashToReturn > 0 && (
                         <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                          <span>يُعاد نقداً للعميل ومن الوردية:</span>
+                          <span>{t('invoices.cashReturnToCustomer')}</span>
                           <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                      <span>يُعاد نقداً للعميل ومن الوردية:</span>
+                      <span>{t('invoices.cashReturnToCustomer')}</span>
                       <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                     </div>
                   )}
@@ -2416,7 +2416,7 @@ export default function Invoices() {
                           : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                       )}
                     >
-                      <span className="text-sm font-bold">💵 دولار</span>
+                      <span className="text-sm font-bold">💵 {t('currencies.usd')}</span>
                       <span className="text-xs font-normal opacity-80">(USD)</span>
                     </button>
                   )}
@@ -2436,7 +2436,7 @@ export default function Invoices() {
                           : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                       )}
                     >
-                      <span className="text-sm font-bold">₺ تركي</span>
+                      <span className="text-sm font-bold">₺ {t('currencies.try')}</span>
                       <span className="text-xs font-normal opacity-80">(TRY)</span>
                     </button>
                   )}
@@ -2456,7 +2456,7 @@ export default function Invoices() {
                           : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                       )}
                     >
-                      <span className="text-sm font-bold">ل.س سوري</span>
+                      <span className="text-sm font-bold">{t('currencies.syp')}</span>
                       <span className="text-xs font-normal opacity-80">(SYP)</span>
                     </button>
                   )}
@@ -2473,7 +2473,7 @@ export default function Invoices() {
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-sm font-medium">
-                    مبلغ الدفعة ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
+                    {t('invoices.paymentAmount')} ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
                   </label>
                   {paymentCurrency !== 'USD' && amountUSD > 0 && (
                     <span className="text-xs font-bold text-success font-mono">
