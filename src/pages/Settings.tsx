@@ -3,6 +3,7 @@ import { Coins, Undo2, Smartphone, UserCheck, ArrowLeft, ArrowRight, Sparkles } 
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
+  Search,
   Store,
   DollarSign,
   RefreshCw,
@@ -95,6 +96,11 @@ export interface SettingsTabItem {
   adminOnly?: boolean;
   bossOnly?: boolean;
   danger?: boolean;
+  description?: string;
+  category?: 'core' | 'operations' | 'support';
+  badge?: string;
+  color?: string;
+  keywords?: string[];
 }
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -208,6 +214,27 @@ export default function Settings() {
   const { users, isLoading: usersLoading, addUser, updateUserRole, updateUserProfile, deleteUser } = useUsersManagement();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab');
+
+  // Layout mode switcher state ('smart' | 'classic')
+  const [layoutMode, setLayoutMode] = useState<'smart' | 'classic'>(() => {
+    if (typeof window === 'undefined') return 'smart';
+    try {
+      return (localStorage.getItem('hyperpos_settings_layout_mode') as 'smart' | 'classic') || 'smart';
+    } catch {
+      return 'smart';
+    }
+  });
+
+  const handleSwitchLayoutMode = (mode: 'smart' | 'classic') => {
+    setLayoutMode(mode);
+    try {
+      localStorage.setItem('hyperpos_settings_layout_mode', mode);
+    } catch (e) {
+      console.warn('Failed to persist layout mode:', e);
+    }
+  };
+
+  const [searchQuery, setSearchQuery] = useState('');
   const setActiveTab = (tabId: string | null) => {
     if (tabId) {
       setSearchParams({ tab: tabId });
@@ -249,24 +276,164 @@ export default function Settings() {
   };
 
   const settingsTabs: SettingsTabItem[] = [
-    { id: 'profile', label: t('settings.profile'), icon: User },
-    { id: 'store', label: t('settings.store'), icon: Store },
-    { id: 'productFields', label: t('settings.productFields'), icon: Package },
-    { id: 'backup', label: t('settings.backupSync'), icon: Database, adminOnly: true },
-    { id: 'notifications', label: t('settings.notifications'), icon: Bell },
-    { id: 'printing', label: t('settings.printing'), icon: Printer },
-    { id: 'users', label: t('settings.users'), icon: User, adminOnly: true },
-    { id: 'activity', label: t('settings.activityLog'), icon: Activity, bossOnly: true },
-    
-    { id: 'license', label: t('settings.license'), icon: Key },
-    { id: 'contact', label: t('license.contactDeveloper'), icon: Phone, danger: true },
-    { id: 'licenses', label: t('settings.licenseManagement'), icon: Shield, bossOnly: true, danger: true },
-    
-    { id: 'partners', label: t('nav.partners'), icon: UserCheck, adminOnly: true },
-    { id: 'archive', label: t('archive.title'), icon: Archive },
-    { id: 'reset', label: t('settings.resetData'), icon: AlertTriangle, adminOnly: true, danger: true },
-    { id: 'about', label: isRTL ? 'حول البرنامج' : 'About', icon: FileText },
-    
+    {
+      id: 'profile',
+      label: t('settings.profile') || 'الملف الشخصي',
+      description: isRTL ? 'إدارة الحساب وكلمة المرور' : 'Account & password',
+      icon: User,
+      category: 'core',
+      color: 'rose',
+      badge: isBoss ? 'Boss 👑' : isOwnerAdmin ? 'Owner' : 'Cashier',
+      keywords: ['ملف', 'حساب', 'مستخدم', 'كلمة مرور', 'profile', 'user', 'account', 'password'],
+    },
+    {
+      id: 'store',
+      label: t('settings.store') || 'إعدادات المتجر والعملات',
+      description: isRTL ? 'الهوية، الضرائب وأسعار الصرف' : 'Identity, taxes & exchange rates',
+      icon: Store,
+      category: 'core',
+      color: 'amber',
+      badge: `${primaryCurrency} USD`,
+      keywords: ['متجر', 'محل', 'شعار', 'عملات', 'صرف', 'ضرائب', 'store', 'currencies', 'taxes', 'rates'],
+    },
+    {
+      id: 'backup',
+      label: t('settings.backupSync') || 'النسخ والمزامنة',
+      description: isRTL ? 'نسخ احتياطي محلي وسحابي' : 'Cloud sync & local backups',
+      icon: Database,
+      adminOnly: true,
+      category: 'core',
+      color: 'blue',
+      badge: syncSettings.lastSync ? (syncSettings.lastSync.includes(' ') ? syncSettings.lastSync.split(' ')[1] : syncSettings.lastSync) : (isRTL ? 'سحابي' : 'Cloud'),
+      keywords: ['نسخ', 'احتياطي', 'مزامنة', 'سحابي', 'تصدير', 'استيراد', 'backup', 'sync', 'cloud', 'import', 'export'],
+    },
+    {
+      id: 'notifications',
+      label: t('settings.notifications') || 'التنبيهات والإشعارات',
+      description: isRTL ? 'صوت، مبيعات ونفاد المخزون' : 'Sounds, sales & low stock alerts',
+      icon: Bell,
+      category: 'core',
+      color: 'purple',
+      badge: notificationPerm === 'granted' ? (isRTL ? 'مفعل 🔔' : 'Active 🔔') : (isRTL ? 'تنبيه' : 'Alert'),
+      keywords: ['إشعار', 'إشعارات', 'تنبيه', 'صوت', 'notifications', 'alerts', 'sound'],
+    },
+    {
+      id: 'productFields',
+      label: t('settings.productFields') || 'حقول المنتجات',
+      description: isRTL ? 'تخصيص بطاقة الأصناف ومواصفاتها' : 'Custom fields for product cards',
+      icon: Package,
+      category: 'core',
+      color: 'amber',
+      badge: isRTL ? 'تخصيص' : 'Custom',
+      keywords: ['حقول', 'منتجات', 'أصناف', 'بطاقة', 'fields', 'products'],
+    },
+    {
+      id: 'printing',
+      label: t('settings.printing') || 'الطباعة والمشاركة',
+      description: isRTL ? 'تخصيص الفواتير والبلوتوث' : 'Receipt design & thermal printers',
+      icon: Printer,
+      category: 'operations',
+      color: 'teal',
+      badge: printSettings.paperSize || '80mm',
+      keywords: ['طباعة', 'فاتورة', 'طابعة', 'بلوتوث', 'حرارية', 'printer', 'receipt', 'print'],
+    },
+    {
+      id: 'users',
+      label: t('settings.users') || 'المستخدمين والصلاحيات',
+      description: isRTL ? 'إدارة الكاشيرات وضبط الوصول' : 'Staff, cashiers & permissions',
+      icon: Users,
+      adminOnly: true,
+      category: 'operations',
+      color: 'indigo',
+      badge: `${users.length} ${isRTL ? 'مستخدم' : 'users'}`,
+      keywords: ['مستخدمين', 'كاشير', 'صلاحيات', 'وصول', 'users', 'roles', 'cashier'],
+    },
+    {
+      id: 'activity',
+      label: t('settings.activityLog') || 'سجل النشاط والعمليات',
+      description: isRTL ? 'تدقيق الحركات والمصروفات' : 'Audit operations & activity logs',
+      icon: Activity,
+      bossOnly: true,
+      category: 'operations',
+      color: 'emerald',
+      badge: isRTL ? 'تدقيق آمن' : 'Audit',
+      keywords: ['نشاط', 'سجل', 'تدقيق', 'عمليات', 'حركات', 'activity', 'log', 'audit'],
+    },
+    {
+      id: 'license',
+      label: t('settings.license') || 'الترخيص وتفعيل الجهاز',
+      description: isRTL ? 'كود الترخيص ونقل الرخصة' : 'Device license & activation',
+      icon: Key,
+      category: 'operations',
+      color: 'orange',
+      badge: isRTL ? 'نشط' : 'Active',
+      keywords: ['ترخيص', 'تفعيل', 'كود', 'رخصة', 'license', 'activation', 'key'],
+    },
+    {
+      id: 'licenses',
+      label: t('settings.licenseManagement') || 'إدارة التراخيص',
+      description: isRTL ? 'توليد الأكواد وإدارة الأجهزة' : 'Generate keys & manage devices',
+      icon: Shield,
+      bossOnly: true,
+      danger: true,
+      category: 'operations',
+      color: 'rose',
+      badge: 'Super Admin',
+      keywords: ['تراخيص', 'توليد', 'أجهزة', 'أكواد', 'licenses', 'management'],
+    },
+    {
+      id: 'partners',
+      label: t('nav.partners') || 'الشركاء ورأس المال',
+      description: isRTL ? 'حصص الأرباح والمسحوبات' : 'Partners & profit sharing',
+      icon: UserCheck,
+      adminOnly: true,
+      category: 'operations',
+      color: 'cyan',
+      badge: isRTL ? 'أرباح' : 'Profits',
+      keywords: ['شركاء', 'أرباح', 'رأس مال', 'مسحوبات', 'partners', 'capital'],
+    },
+    {
+      id: 'archive',
+      label: t('archive.title') || 'الأرشيف والمحذوفات',
+      description: isRTL ? 'استرجاع الفواتير والديون' : 'Restore deleted invoices & debts',
+      icon: Archive,
+      category: 'operations',
+      color: 'stone',
+      badge: isRTL ? 'محفوظ' : 'Saved',
+      keywords: ['أرشيف', 'محذوفات', 'استرجاع', 'فواتير', 'archive', 'deleted'],
+    },
+    {
+      id: 'reset',
+      label: t('settings.resetData') || 'تصفير البيانات',
+      description: isRTL ? 'تهيئة قاعدة البيانات من الصفر' : 'Reset & clear all system data',
+      icon: AlertTriangle,
+      adminOnly: true,
+      danger: true,
+      category: 'operations',
+      color: 'destructive',
+      badge: '⚠️',
+      keywords: ['تصفير', 'حذف', 'إعادة ضبط', 'بيانات', 'reset', 'clear', 'wipe'],
+    },
+    {
+      id: 'contact',
+      label: t('license.contactDeveloper') || 'التواصل مع المطور',
+      description: isRTL ? 'واتساب، تلكرام والدعم المباشر' : 'WhatsApp, Telegram & support',
+      icon: Phone,
+      category: 'support',
+      color: 'emerald',
+      badge: isRTL ? 'مباشر' : 'Live',
+      keywords: ['تواصل', 'مطور', 'دعم', 'واتساب', 'تلكرام', 'contact', 'support', 'developer'],
+    },
+    {
+      id: 'about',
+      label: isRTL ? 'حول البرنامج' : 'About',
+      description: isRTL ? 'الإصدار v1.0.68 وسجل التحديثات' : 'v1.0.68 release & updates',
+      icon: FileText,
+      category: 'support',
+      color: 'primary',
+      badge: 'v1.0.68',
+      keywords: ['حول', 'برنامج', 'إصدار', 'تحديث', 'نسخة', 'about', 'version'],
+    },
   ];
 
   const persisted = loadPersistedSettings();
@@ -2932,69 +3099,446 @@ export default function Settings() {
     <div className="p-4 md:p-6 space-y-6 overflow-x-hidden max-w-full">
       {activeTab === null ? (
         <>
-          {/* Header */}
+          {/* Header with Dual Layout Switcher */}
           <PageHeader
             title={t('settings.title')}
             subtitle={t('settings.subtitle')}
+            actions={
+              <div className="flex items-center bg-muted/80 p-1 rounded-xl border border-border/70 text-xs font-bold shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchLayoutMode('smart')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold cursor-pointer",
+                    layoutMode === 'smart'
+                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title={isRTL ? "النمط الذكي (Bento Hub)" : "Smart Bento Hub"}
+                >
+                  <span>✨</span>
+                  <span>{isRTL ? 'الذكي' : 'Smart'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchLayoutMode('classic')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold cursor-pointer",
+                    layoutMode === 'classic'
+                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title={isRTL ? "النمط الشبكي الكلاسيكي" : "Classic Grid"}
+                >
+                  <span>🔲</span>
+                  <span>{isRTL ? 'الكلاسيكي' : 'Classic'}</span>
+                </button>
+              </div>
+            }
           />
 
-          {/* Tabs Grid */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-w-full">
-            {settingsTabs
-              .filter(tab => {
-                if (isBoss) return true;
-                if (isOwnerAdmin && !tab.bossOnly) return true;
-                return !tab.adminOnly && !tab.bossOnly;
-              })
-              .map((tab) => {
-                const tooltipKey = (`tooltip.settings.${tab.id}`) as TranslationKey;
-                const tooltipText = t(tooltipKey);
-                const hasTooltip = tooltipText !== `tooltip.settings.${tab.id}`;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1 p-2 md:p-3 rounded-xl border-2 transition-all duration-200 group relative min-h-[88px] overflow-hidden min-w-0",
-                      tab.danger
-                        ? "border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 hover:scale-[1.01]"
-                        : "border-border bg-primary/5 hover:bg-muted hover:border-primary/50 hover:scale-[1.01]"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
-                      tab.danger
-                        ? "bg-red-100 text-red-600"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
-                    </div>
-                    <span
-                      className={cn(
-                        "font-medium text-[10px] md:text-[11px] text-center leading-[1.2] w-full",
-                        tab.danger ? "text-red-700" : "text-foreground"
-                      )}
-                      style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', hyphens: 'auto' }}
-                    >
-                      {tab.label}
-                    </span>
-                    {/* Tooltip on hover - desktop only */}
-                    {hasTooltip && (
-                      <div className={cn(
-                        "absolute -bottom-1 translate-y-full left-1/2 -translate-x-1/2",
-                        "px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50",
-                        "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
-                        "border border-border min-w-[160px] max-w-[220px] pointer-events-none hidden md:block"
-                      )}>
-                        <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                          {tooltipText}
-                        </p>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+          {/* Instant Search Bar */}
+          <div className="relative mb-3.5">
+            <Search className="w-4 h-4 text-muted-foreground absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Input
+              type="text"
+              id="settingsSearchInput"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isRTL ? "بحث سريع في الإعدادات، التراخيص، العملات..." : "Search settings, licenses, currencies..."}
+              className="bg-card border border-border/80 rounded-2xl h-10 ps-10 pe-9 text-xs font-semibold placeholder:text-muted-foreground/60 shadow-2xs focus-visible:ring-primary/20"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                title={isRTL ? "مسح البحث" : "Clear search"}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
+
+          {(() => {
+            const visibleTabs = settingsTabs.filter(tab => {
+              if (isBoss) return true;
+              if (isOwnerAdmin && !tab.bossOnly) return true;
+              return !tab.adminOnly && !tab.bossOnly;
+            });
+
+            const filteredTabs = visibleTabs.filter(tab => {
+              if (!searchQuery.trim()) return true;
+              const q = searchQuery.toLowerCase().trim();
+              const matchLabel = tab.label.toLowerCase().includes(q);
+              const matchDesc = (tab.description || '').toLowerCase().includes(q);
+              const matchKeywords = (tab.keywords || []).some(k => k.toLowerCase().includes(q));
+              return matchLabel || matchDesc || matchKeywords;
+            });
+
+            const getStoreTypeLabel = (type: string) => {
+              const map: Record<string, string> = {
+                phones: isRTL ? 'هواتف وإلكترونيات' : 'Phones & Electronics',
+                electronics: isRTL ? 'إلكترونيات' : 'Electronics',
+                clothing: isRTL ? 'ملابس وأزياء' : 'Clothing & Fashion',
+                grocery: isRTL ? 'بقالة ومواد غذائية' : 'Grocery & Food',
+                supermarket: isRTL ? 'سوبرماركت' : 'Supermarket',
+                perfumes: isRTL ? 'عطور ومستحضرات' : 'Perfumes & Cosmetics',
+                pharmacy: isRTL ? 'صيدلية' : 'Pharmacy',
+                bakery: isRTL ? 'مخبز وحلويات' : 'Bakery & Sweets',
+                bookstore: isRTL ? 'مكتبة وقرطاسية' : 'Bookstore & Stationery',
+                services: isRTL ? 'خدمات وصيانة' : 'Services & Maintenance',
+                restaurant: isRTL ? 'مطعم ومقهى' : 'Restaurant & Cafe',
+                general: isRTL ? 'نشاط تجاري عام' : 'General Store',
+              };
+              return map[type] || type;
+            };
+
+            const getTabColorClasses = (color?: string, danger?: boolean) => {
+              if (danger) {
+                return {
+                  bg: 'bg-destructive/10 text-destructive border-destructive/20',
+                  badge: 'bg-destructive/10 text-destructive border-destructive/25',
+                };
+              }
+              switch (color) {
+                case 'rose':
+                  return {
+                    bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+                    badge: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20',
+                  };
+                case 'amber':
+                  return {
+                    bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+                    badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+                  };
+                case 'blue':
+                  return {
+                    bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+                    badge: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20',
+                  };
+                case 'purple':
+                  return {
+                    bg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+                    badge: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20',
+                  };
+                case 'teal':
+                  return {
+                    bg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
+                    badge: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20',
+                  };
+                case 'indigo':
+                  return {
+                    bg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+                    badge: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20',
+                  };
+                case 'emerald':
+                  return {
+                    bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+                    badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+                  };
+                case 'orange':
+                  return {
+                    bg: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+                    badge: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20',
+                  };
+                case 'cyan':
+                  return {
+                    bg: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+                    badge: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20',
+                  };
+                default:
+                  return {
+                    bg: 'bg-primary/10 text-primary border-primary/20',
+                    badge: 'bg-muted text-muted-foreground border-border/50',
+                  };
+              }
+            };
+
+            // Empty search state
+            if (filteredTabs.length === 0) {
+              return (
+                <div className="py-12 text-center text-muted-foreground bg-card/50 rounded-2xl border border-dashed border-border/70 p-6 space-y-3">
+                  <Search className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                  <p className="text-sm font-bold text-foreground">
+                    {isRTL ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching settings found'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isRTL ? `لم نجد أي إعداد يطابق "${searchQuery}"` : `No setting matching "${searchQuery}"`}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="rounded-xl text-xs h-8">
+                    {isRTL ? 'مسح البحث' : 'Clear search'}
+                  </Button>
+                </div>
+              );
+            }
+
+            // Mode 1: Smart Bento Hub
+            if (layoutMode === 'smart') {
+              const coreTabs = filteredTabs.filter(t => t.category === 'core' && t.id !== 'store');
+              const opTabs = filteredTabs.filter(t => t.category === 'operations');
+              const supportTabs = filteredTabs.filter(t => t.category === 'support');
+              const isSearching = searchQuery.trim().length > 0;
+
+              return (
+                <div className="space-y-4">
+                  {/* Hero Store & Currencies Card (Always visible when not searching or when store matches) */}
+                  {(!isSearching || filteredTabs.some(t => t.id === 'store')) && (
+                    <div
+                      onClick={() => setActiveTab('store')}
+                      className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-primary/25 bg-gradient-to-r from-primary/95 via-primary to-primary/90 text-primary-foreground p-3.5 md:p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.99] group"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                          <div className="w-11 h-11 md:w-13 md:h-13 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-xl shrink-0 shadow-inner group-hover:scale-105 transition-transform overflow-hidden">
+                            {storeSettings.logo ? (
+                              <img src={storeSettings.logo} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
+                            ) : (
+                              <span>🏬</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-black text-sm md:text-base tracking-tight truncate">
+                                {storeSettings.name || (isRTL ? 'متجري' : 'My Store')}
+                              </span>
+                              <span className="bg-white/20 text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                {getStoreTypeLabel(storeSettings.type)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-primary-foreground/90 font-medium flex-wrap">
+                              <span className="bg-white/15 px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold">
+                                {isRTL ? `العملة الأساسية: ${primaryCurrency} $` : `Base: ${primaryCurrency} $`}
+                              </span>
+                              <span className="text-[10px] md:text-[11px] text-primary-foreground/85 font-mono">
+                                1$ = {exchangeRates.TRY} ₺ · 1$ = {exchangeRates.SYP} SYP
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          <span className="text-[11px] font-bold text-white/90 hidden sm:inline-block">
+                            {isRTL ? 'إدارة الهوية والعملات' : 'Manage Store & Rates'}
+                          </span>
+                          <div className="w-7 h-7 md:w-8 md:h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-xs font-bold group-hover:translate-x-[-2px] rtl:group-hover:translate-x-[2px] transition-transform">
+                            {isRTL ? '←' : '→'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* If searching, render all matches directly */}
+                  {isSearching ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {filteredTabs.map(tab => {
+                        const colors = getTabColorClasses(tab.color, tab.danger);
+                        return (
+                          <div
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={cn(
+                              "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[96px]",
+                              tab.danger && "hover:border-destructive/60"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                <tab.icon className="w-4 h-4" />
+                              </div>
+                              {tab.badge && (
+                                <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-md border", colors.badge)}>
+                                  {tab.badge}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-xs md:text-sm text-foreground leading-tight truncate group-hover:text-primary transition-colors">
+                                {tab.label}
+                              </h3>
+                              {tab.description && (
+                                <p className="text-[10px] md:text-[11px] text-muted-foreground font-medium mt-0.5 line-clamp-1">
+                                  {tab.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Section 1: Core Data & Account */}
+                      {coreTabs.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-extrabold text-muted-foreground px-1">
+                            <span>{isRTL ? 'البيانات الأساسية والحساب' : 'Core Data & Profile'}</span>
+                            <span className="text-primary text-[10px] font-bold">{coreTabs.length} {isRTL ? 'أقسام' : 'sections'}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                            {coreTabs.map(tab => {
+                              const colors = getTabColorClasses(tab.color, tab.danger);
+                              return (
+                                <div
+                                  key={tab.id}
+                                  onClick={() => setActiveTab(tab.id)}
+                                  className="bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[96px]"
+                                >
+                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                      <tab.icon className="w-4 h-4" />
+                                    </div>
+                                    {tab.badge && (
+                                      <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-md border", colors.badge)}>
+                                        {tab.badge}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-xs md:text-sm text-foreground leading-tight truncate group-hover:text-primary transition-colors">
+                                      {tab.label}
+                                    </h3>
+                                    {tab.description && (
+                                      <p className="text-[10px] md:text-[11px] text-muted-foreground font-medium mt-0.5 line-clamp-1">
+                                        {tab.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Section 2: Operations, Security & Licenses */}
+                      {opTabs.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-[11px] font-extrabold text-muted-foreground px-1">
+                            <span>{isRTL ? 'العمليات، الرخص وسجلات الأمان' : 'Operations, Licenses & Logs'}</span>
+                            <span className="text-primary text-[10px] font-bold">{opTabs.length} {isRTL ? 'أقسام' : 'sections'}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                            {opTabs.map(tab => {
+                              const colors = getTabColorClasses(tab.color, tab.danger);
+                              return (
+                                <div
+                                  key={tab.id}
+                                  onClick={() => setActiveTab(tab.id)}
+                                  className={cn(
+                                    "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[96px]",
+                                    tab.danger && "hover:border-destructive/60"
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between gap-2 mb-2">
+                                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                      <tab.icon className="w-4 h-4" />
+                                    </div>
+                                    {tab.badge && (
+                                      <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-md border", colors.badge)}>
+                                        {tab.badge}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-xs md:text-sm text-foreground leading-tight truncate group-hover:text-primary transition-colors">
+                                      {tab.label}
+                                    </h3>
+                                    {tab.description && (
+                                      <p className="text-[10px] md:text-[11px] text-muted-foreground font-medium mt-0.5 line-clamp-1">
+                                        {tab.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Section 3: Support & About */}
+                      {supportTabs.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {supportTabs.map(tab => {
+                              const colors = getTabColorClasses(tab.color, tab.danger);
+                              return (
+                                <div
+                                  key={tab.id}
+                                  onClick={() => setActiveTab(tab.id)}
+                                  className="bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-all duration-200 cursor-pointer relative group flex items-center gap-3 min-h-[72px]"
+                                >
+                                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                    <tab.icon className="w-4.5 h-4.5" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <h3 className="font-bold text-xs md:text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                                        {tab.label}
+                                      </h3>
+                                      {tab.badge && (
+                                        <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-md border shrink-0", colors.badge)}>
+                                          {tab.badge}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {tab.description && (
+                                      <p className="text-[10px] md:text-[11px] text-muted-foreground font-medium truncate mt-0.5">
+                                        {tab.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            }
+
+            // Mode 2: Classic Grid
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
+                {filteredTabs.map(tab => {
+                  const colors = getTabColorClasses(tab.color, tab.danger);
+                  return (
+                    <div
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 text-center flex flex-col items-center justify-between hover:border-primary/50 hover:shadow-md active:scale-95 transition-all duration-200 cursor-pointer min-h-[110px] md:min-h-[120px] group",
+                        tab.danger && "hover:border-destructive/60"
+                      )}
+                    >
+                      <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 border group-hover:scale-105 transition-transform mb-1.5", colors.bg)}>
+                        <tab.icon className="w-4.5 h-4.5 md:w-5 md:h-5" />
+                      </div>
+                      <div className="w-full">
+                        <span className="font-bold text-xs md:text-sm text-foreground leading-tight text-center line-clamp-1 block group-hover:text-primary transition-colors">
+                          {tab.label}
+                        </span>
+                        {tab.description && (
+                          <span className="text-[10px] text-muted-foreground font-medium text-center line-clamp-1 block mt-0.5">
+                            {tab.description}
+                          </span>
+                        )}
+                      </div>
+                      {tab.badge && (
+                        <span className={cn("text-[9px] font-bold px-1.5 py-0.2 rounded-full border mt-1 shrink-0", colors.badge)}>
+                          {tab.badge}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </>
       ) : (
         <>
