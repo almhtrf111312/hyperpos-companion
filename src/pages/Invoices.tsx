@@ -108,7 +108,7 @@ const refundKey = (item: { productId?: string; name: string }): string =>
   item.productId || (item as unknown as { id?: string }).id || item.name;
 
 export default function Invoices() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [activeMainTab, setActiveMainTab] = useState<'sales' | 'purchases'>('sales');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -409,14 +409,14 @@ export default function Invoices() {
   const handleRefund = (invoice: Invoice) => {
     // ✅ منع الاسترداد المزدوج من الواجهة
     if (invoice.status === 'refunded') {
-      toast.warning('هذه الفاتورة مستردة بالفعل');
+      toast.warning(t('invoices.alreadyRefunded') || (language === 'en' ? 'This invoice is already refunded' : 'هذه الفاتورة مستردة بالفعل'));
       return;
     }
     // ✅ فحص دور المستخدم — الكاشير لا يملك صلاحية الاسترداد (يحتاج إذن مشرف)
     getCurrentUserRole().then(role => {
       if (role === 'cashier') {
-        toast.error('ليس لديك صلاحية تنفيذ الاسترداد', {
-          description: 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
+        toast.error(language === 'en' ? 'You do not have permission to refund' : 'ليس لديك صلاحية تنفيذ الاسترداد', {
+          description: language === 'en' ? 'This action requires supervisor or manager permissions. Contact the store owner.' : 'هذه العملية تتطلب صلاحيات المشرف أو المدير. تواصل مع مالك المتجر.',
           duration: 5000,
         });
         return;
@@ -1285,13 +1285,13 @@ export default function Invoices() {
       if (mode === 'text') {
         const text = generateInvoiceShareText(shareData);
         await nativeShare({
-          title: `فاتورة رقم ${invoice.id}`,
+          title: `${t('invoices.invoiceNumber') || (language === 'en' ? 'Invoice #' : 'فاتورة رقم')} ${invoice.id}`,
           text,
-          dialogTitle: 'مشاركة نص الفاتورة',
+          dialogTitle: t('invoices.shareAsText') || (language === 'en' ? 'Share Invoice Text' : 'مشاركة نص الفاتورة'),
         });
         setShowShareSheet(false);
       } else {
-        toast.info('جاري إنشاء صورة الفاتورة للمشاركة...', { duration: 1500 });
+        toast.info(t('invoices.generatingShareImage') || (language === 'en' ? 'Generating invoice image for sharing...' : 'جاري إنشاء صورة الفاتورة للمشاركة...'), { duration: 1500 });
         const success = await shareInvoice(shareData);
         if (success) {
           setShowShareSheet(false);
@@ -1299,7 +1299,7 @@ export default function Invoices() {
       }
     } catch (err: any) {
       console.error('Error during invoice share:', err);
-      toast.error('تعذر مشاركة الفاتورة');
+      toast.error(t('invoices.invoiceShareFailed') || (language === 'en' ? 'Failed to share invoice' : 'تعذر مشاركة الفاتورة'));
     } finally {
       setIsGeneratingShare(false);
     }
@@ -1318,7 +1318,7 @@ export default function Invoices() {
         }
       } catch (e) {}
 
-      const date = new Date(invoice.createdAt).toLocaleDateString('ar-SA');
+      const date = new Date(invoice.createdAt).toLocaleDateString(language === 'en' ? 'en-US' : 'ar-SA');
       const shareFinancials = getInvoiceFinancials(invoice, true);
       const rate = shareFinancials.rate;
 
@@ -1343,9 +1343,9 @@ export default function Invoices() {
       };
       const text = generateInvoiceShareText(shareData);
       await navigator.clipboard.writeText(text);
-      toast.success('تم نسخ تفاصيل الفاتورة بنجاح');
+      toast.success(t('invoices.invoiceCopied') || (language === 'en' ? 'Invoice details copied successfully' : 'تم نسخ تفاصيل الفاتورة بنجاح'));
     } catch (e) {
-      toast.error('تعذر نسخ تفاصيل الفاتورة');
+      toast.error(t('invoices.invoiceCopyFailed') || (language === 'en' ? 'Failed to copy invoice details' : 'تعذر نسخ تفاصيل الفاتورة'));
     }
   };
 
@@ -2161,19 +2161,59 @@ export default function Invoices() {
                 <p className="leading-relaxed">
                   {refundMode === 'full' ? (
                     (invoiceToRefund.debtPaid || 0) > 0 ? (
-                      <>
-                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
-                      </>
+                      language === 'en' ? (
+                        <>
+                          ⚠️ <strong>Cash refund to customer:</strong> The customer previously paid <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong>. This amount must be paid to the customer in cash, <strong>and will be automatically deducted from the cash drawer / current shift</strong>, canceling all remaining debt.
+                        </>
+                      ) : language === 'tr' ? (
+                        <>
+                          ⚠️ <strong>Müşteriye Nakit İade:</strong> Müşteri daha önce <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> ödedi. Bu tutar müşteriye nakit olarak ödenmeli <strong>ve otomatik olarak kasa çekmecesinden / mevcut vardiyadan düşülecektir</strong>, kalan borç tamamen silinecektir.
+                        </>
+                      ) : language === 'fa' ? (
+                        <>
+                          ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> مشتری قبلاً <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> پرداخت کرده است. این مبلغ باید نقداً به مشتری پرداخت شود، <strong>و به طور خودکار از کشوی صندوق / شیفت فعلی کسر می‌شود</strong>، و باقیمانده بدهی کاملاً تسویه خواهد شد.
+                        </>
+                      ) : (
+                        <>
+                          ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
+                        </>
+                      )
                     ) : (
-                      'سيتم إلغاء وشطب الدين المتبقي في ذمة العميل بالكامل دون التأثير على درج الكاشير.'
+                      language === 'en'
+                        ? 'The remaining customer debt will be canceled in full without affecting the cash drawer.'
+                        : language === 'tr'
+                        ? 'Kalan müşteri borcu kasa çekmecesini etkilemeden tamamen iptal edilecektir.'
+                        : language === 'fa'
+                        ? 'بدهی باقیمانده مشتری بدون تأثیر بر کشوی صندوق به طور کامل لغو خواهد شد.'
+                        : 'سيتم إلغاء وشطب الدين المتبقي في ذمة العميل بالكامل دون التأثير على درج الكاشير.'
                     )
                   ) : (
                     partialRefundStats.cashToReturn > 0 ? (
-                      <>
-                        ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
-                      </>
+                      language === 'en' ? (
+                        <>
+                          ⚠️ <strong>Cash refund to customer:</strong> The return value ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) exceeds remaining debt. The debt will be cleared and the difference <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) returned in cash and deducted from current shift</strong>.
+                        </>
+                      ) : language === 'tr' ? (
+                        <>
+                          ⚠️ <strong>Müşteriye Nakit İade:</strong> İade tutarı ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) kalan borcu aşıyor. Borç tamamen kapatılacak ve fark <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) müşteriye nakit iade edilip mevcut vardiyadan düşülecektir</strong>.
+                        </>
+                      ) : language === 'fa' ? (
+                        <>
+                          ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> ارزش مرجوعی ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) از بدهی باقیمانده بیشتر است. بدهی تسویه شده و مابه‌التفاوت <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً به مشتری پرداخت و از شیفت فعلی کسر می‌شود</strong>.
+                        </>
+                      ) : (
+                        <>
+                          ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
+                        </>
+                      )
                     ) : (
-                      `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
+                      language === 'en'
+                        ? `${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} will be deducted from remaining customer debt without affecting the cash drawer.`
+                        : language === 'tr'
+                        ? `Kalan müşteri borcundan ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} düşülecek, kasa etkilenmeyecektir.`
+                        : language === 'fa'
+                        ? `مبلغ ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} از بدهی باقیمانده کسر می‌شود بدون تأثیر بر کشوی صندوق.`
+                        : `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
                     )
                   )}
                 </p>
@@ -2347,8 +2387,8 @@ export default function Invoices() {
               >
                 <Layers className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
                 {refundGuard.isRunning
-                  ? 'جاري الاسترداد...'
-                  : `تأكيد الاسترداد الجزئي (${formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)})`}
+                  ? (t('common.loading') || 'جاري الاسترداد...')
+                  : `${t('invoices.confirmPartialRefund') || 'تأكيد الاسترداد الجزئي'} (${formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)})`}
               </Button>
             )}
           </DialogFooter>

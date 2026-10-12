@@ -151,7 +151,7 @@ export default function Appearance() {
                 type="button"
                 onClick={() => handleDesignChange('classic')}
                 className={cn(
-                  "p-4 rounded-2xl border text-right transition-all duration-200 hover:border-primary/40",
+                  "p-4 rounded-2xl border text-start transition-all duration-200 hover:border-primary/40",
                   dashboardDesign === 'classic'
                     ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xs"
                     : "border-border/60 bg-muted/20 hover:bg-muted/40"
@@ -165,7 +165,7 @@ export default function Appearance() {
                 type="button"
                 onClick={() => handleDesignChange('unified_pro')}
                 className={cn(
-                  "p-4 rounded-2xl border text-right transition-all duration-200 hover:border-primary/40",
+                  "p-4 rounded-2xl border text-start transition-all duration-200 hover:border-primary/40",
                   dashboardDesign === 'unified_pro'
                     ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xs"
                     : "border-border/60 bg-muted/20 hover:bg-muted/40"

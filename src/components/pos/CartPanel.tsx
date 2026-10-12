@@ -452,7 +452,7 @@ export function CartPanel({
     setDiscountType('fixed');
     const newDiscountInCurrency = roundCurrency(requiredDiscountAmountUSD * activeRate);
     onDiscountChange(newDiscountInCurrency);
-    showToast.success(`تم اعتماد العجز (${activeReceivedCurrency.symbol}${formatNumber(remainingInReceivedCurrency)}) كخصم فوري`);
+    showToast.success(`${t('pos.deficitAppliedSuccess') || 'تم اعتماد العجز كخصم فوري'} (${activeReceivedCurrency.symbol}${formatNumber(remainingInReceivedCurrency)})`);
   };
 
   // اعتماد الزيادة في المبلغ المقبوض كربح إضافي عبر تعديل سعر البيع
@@ -474,7 +474,7 @@ export function CartPanel({
       const item = cart[0];
       const newUnitPrice = roundCurrency(targetSubtotalUSD / item.quantity);
       onUpdateItemPrice(item.id, newUnitPrice, item.unit);
-      showToast.success(`تم تعديل سعر الصنف واعتماد الزيادة (${formatNumber(extraProfitUSD)}) كربح إضافي`);
+      showToast.success(`${t('pos.surplusAppliedSuccess') || 'تم تعديل السعر واعتماد الزيادة كربح إضافي'} (${formatNumber(extraProfitUSD)})`);
     } else {
       const currentSubtotal = subtotal > 0 ? subtotal : 1;
       const ratio = targetSubtotalUSD / currentSubtotal;
@@ -482,7 +482,7 @@ export function CartPanel({
         const newUnitPrice = roundCurrency(item.price * ratio);
         onUpdateItemPrice(item.id, newUnitPrice, item.unit);
       });
-      showToast.success(`تم تعديل أسعار الأصناف واعتماد الزيادة (${formatNumber(extraProfitUSD)}) كربح إضافي`);
+      showToast.success(`${t('pos.surplusAppliedSuccess') || 'تم تعديل السعر واعتماد الزيادة كربح إضافي'} (${formatNumber(extraProfitUSD)})`);
     }
   };
 
@@ -491,7 +491,7 @@ export function CartPanel({
 
     const validation = await validateCartProducts(cart);
     if (!validation.isValid) {
-      showToast.error(`تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير متاح.`);
+      showToast.error(`${t('pos.itemUnavailable') || 'الصنف غير متاح'}: ${validation.invalidItems.join(', ')}`);
       return;
     }
 
@@ -511,7 +511,7 @@ export function CartPanel({
     const validation = await validateCartProducts(cart);
     if (!validation.isValid) {
       showToast.error(
-        `تعذر المتابعة: الصنف "${validation.invalidItems.join('، ')}" غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        `${t('pos.itemUnapproved') || 'الصنف غير معتمد أو تم حذفه من السحابة. يرجى إزالته من السلة.'} (${validation.invalidItems.join(', ')})`,
         { persistent: false }
       );
       return;
@@ -1034,15 +1034,15 @@ export function CartPanel({
           description: `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), 2)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), 2)}`,
         });
       } else {
-        showToast.success('فاتورة بيع مؤجل', {
-          operation: 'فاتورة بيع مؤجل',
+        showToast.success(t('pos.debtSaleRecorded') || 'فاتورة بيع مؤجل', {
+          operation: t('pos.debtSaleRecorded') || 'فاتورة بيع مؤجل',
           invoiceNumber,
           itemName: singleName,
           isMultiple: !isSingle,
           itemCount: totalPieces,
           price: formattedDebtPrice,
           currency: selectedCurrency.symbol,
-          description: `العميل: ${customerNameSnapshot}`,
+          description: `${t('pos.customerSnapshot') || 'العميل'}: ${customerNameSnapshot}`,
         });
       }
 
@@ -1057,23 +1057,23 @@ export function CartPanel({
           const outcome = await Promise.race([syncPromise, timeoutPromise]);
 
           if ('timeout' in outcome) {
-            completeSync('محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
+            completeSync(t('pos.savedLocallySyncing') || 'محفوظة محلياً ✓ جاري المزامنة بالخلفية...', 2500);
           } else if (outcome.success) {
-            completeSync('تمت المزامنة بنجاح ✓', 2000);
+            completeSync(t('pos.syncedSuccess') || 'تمت المزامنة بنجاح ✓', 2000);
           } else if (outcome.failed > 0) {
-            failSync('الفاتورة محفوظة محلياً - ستُعاد المحاولة');
+            failSync(t('pos.savedLocallyRetry') || 'الفاتورة محفوظة محلياً - ستُعاد المحاولة');
           } else {
-            completeSync('تم حفظ الفاتورة ✓', 2000);
+            completeSync(t('pos.invoiceSavedLocally') || 'تم حفظ الفاتورة ✓', 2000);
           }
         } catch {
-          completeSync('محفوظة محلياً ✓', 2000);
+          completeSync(t('pos.invoiceSavedLocally') || 'محفوظة محلياً ✓', 2000);
         }
       })();
 
     } catch (error) {
       console.error('Debt sale error:', error);
-      failSync('حدث خطأ - الفاتورة محفوظة محلياً');
-      showToast.warning('تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
+      failSync(t('pos.savedLocallyRetry') || 'حدث خطأ - الفاتورة محفوظة محلياً');
+      showToast.warning(t('pos.offlineSaleWarning') || 'تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -1149,7 +1149,7 @@ export function CartPanel({
       });
 
       if (!created) {
-        showToast.error('هذا الاسم موجود مسبقاً، يرجى اختيار اسم مختلف');
+        showToast.error(t('pos.customerNameExists') || 'هذا الاسم موجود مسبقاً، يرجى اختيار اسم مختلف');
         return;
       }
 
@@ -1186,7 +1186,7 @@ export function CartPanel({
     let storeAddress = '';
     let storePhone = '';
     let storeLogo = '';
-    let footer = 'شكراً لتعاملكم معنا!';
+    let footer = t('pos.receiptThanks') || 'شكراً لتعاملكم معنا!';
 
     try {
       const settingsRaw = localStorage.getItem('hyperpos_settings_v1');
@@ -1200,8 +1200,8 @@ export function CartPanel({
       }
     } catch { }
 
-    const currentDate = new Date().toLocaleDateString('ar-SA');
-    const currentTime = new Date().toLocaleTimeString('ar-SA');
+    const currentDate = new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+    const currentTime = new Date().toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US');
 
     const storeType = getCurrentStoreType();
     const isPharmacy = storeType === 'pharmacy';
@@ -1210,20 +1210,20 @@ export function CartPanel({
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">
           ${item.name}
-          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">الصلاحية: ${item.expiryDate}</small>` : ''}
-          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">الدفعة: ${item.batchNumber}</small>` : ''}
+          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">${t('pos.expiryDateLabel') || 'الصلاحية'}: ${item.expiryDate}</small>` : ''}
+          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">${t('pos.batchNumberLabel') || 'الدفعة'}: ${item.batchNumber}</small>` : ''}
         </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${printCurrency.symbol}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${printCurrency.symbol}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
       </tr>
     `).join('');
 
     const printContent = `
       <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${language}">
         <head>
           <meta charset="UTF-8">
-          <title>فاتورة</title>
+          <title>${t('pos.invoiceTitle') || 'فاتورة'}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; max-width: 80mm; margin: 0 auto; font-size: 12px; }
             .header { text-align: center; margin-bottom: 15px; border-bottom: 2px dashed #333; padding-bottom: 12px; }
@@ -1233,7 +1233,7 @@ export function CartPanel({
             .invoice-info { margin: 12px 0; font-size: 0.9em; }
             .invoice-info > div { padding: 3px 0; }
             table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
-            th { background: #333; color: #fff; padding: 8px 5px; text-align: right; font-size: 0.85em; }
+            th { background: #333; color: #fff; padding: 8px 5px; text-align: ${isRTL ? 'right' : 'left'}; font-size: 0.85em; }
             td { padding: 8px 5px; border-bottom: 1px solid #eee; }
             .total { font-size: 1.2em; font-weight: bold; margin-top: 12px; border-top: 2px solid #333; padding-top: 10px; text-align: center; }
             .footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: #666; border-top: 1px dashed #ccc; padding-top: 12px; }
@@ -1242,35 +1242,35 @@ export function CartPanel({
         </head>
         <body>
           <div class="header">
-            ${storeLogo ? `<img src="${storeLogo}" alt="شعار" class="logo" />` : ''}
+            ${storeLogo ? `<img src="${storeLogo}" alt="${t('pos.logo') || 'شعار'}" class="logo" />` : ''}
             <div class="store-name">${storeName}</div>
             ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
             ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
           </div>
           <div class="invoice-info">
-            ${data?.invoiceNumber ? `<div><strong>رقم الفاتورة:</strong> #${data.invoiceNumber}</div>` : ''}
-            <div><strong>التاريخ:</strong> ${currentDate} - ${currentTime}</div>
-            <div><strong>العميل:</strong> ${printCustomerName || 'عميل نقدي'}</div>
+            ${data?.invoiceNumber ? `<div><strong>${t('pos.invoiceNumberLabel') || 'رقم الفاتورة'}:</strong> #${data.invoiceNumber}</div>` : ''}
+            <div><strong>${t('pos.dateLabel') || 'التاريخ'}:</strong> ${currentDate} - ${currentTime}</div>
+            <div><strong>${t('pos.customerLabel') || 'العميل'}:</strong> ${printCustomerName || t('pos.walkInCustomer') || 'عميل نقدي'}</div>
           </div>
           <table>
             <thead>
               <tr>
-                <th>المنتج</th>
-                <th>الكمية</th>
-                <th>المبلغ</th>
+                <th>${t('pos.productCol') || 'المنتج'}</th>
+                <th>${t('pos.qtyCol') || 'الكمية'}</th>
+                <th>${t('pos.amountCol') || 'المبلغ'}</th>
               </tr>
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${printDiscount > 0 ? `<div style="text-align: left; color: #c00;">خصم: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
+          ${printDiscount > 0 ? `<div style="text-align: ${isRTL ? 'left' : 'right'}; color: #c00;">${t('pos.discountCol') || 'خصم'}: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${printCurrency.symbol}${formatNumber(printTotalInCurrency)}
+            ${t('pos.totalLabel') || 'الإجمالي'}: ${printCurrency.symbol}${formatNumber(printTotalInCurrency)}
           </div>
           ${data?.paymentType === 'split' && data?.downPayment ? `
             <div style="margin-top: 8px; font-size: 0.9em; text-align: center; border-top: 1px dashed #333; padding-top: 6px;">
-              <div>طريقة الدفع: <strong>بيع مركب</strong></div>
-              <div>المقبوض نقداً: <strong>${printCurrency.symbol}${formatNumber(roundCurrency(data.downPayment * printCurrency.rate))}</strong></div>
-              <div style="color: #c00;">المتبقي كدين: <strong>${printCurrency.symbol}${formatNumber(roundCurrency((data.debtRemaining || 0) * printCurrency.rate))}</strong></div>
+              <div>${t('pos.paymentMethodLabel') || 'طريقة الدفع'}: <strong>${t('pos.compositeSale') || 'بيع مركب'}</strong></div>
+              <div>${t('pos.cashPaid') || 'المقبوض نقداً'}: <strong>${printCurrency.symbol}${formatNumber(roundCurrency(data.downPayment * printCurrency.rate))}</strong></div>
+              <div style="color: #c00;">${t('pos.remainingAsDebt') || 'المتبقي كدين'}: <strong>${printCurrency.symbol}${formatNumber(roundCurrency((data.debtRemaining || 0) * printCurrency.rate))}</strong></div>
             </div>
           ` : ''}
           <div class="footer">${footer}</div>
@@ -1279,7 +1279,7 @@ export function CartPanel({
     `;
 
     printHTML(printContent);
-    showToast.success('جاري إرسال الفاتورة للطابعة...');
+    showToast.success(t('pos.sendingToPrinter') || 'جاري إرسال الفاتورة للطابعة...');
     if (data) setLastSale(null); // مسح بعد الطباعة
   };
 
@@ -1367,7 +1367,7 @@ export function CartPanel({
                 )}
               >
                 <Package className="w-3.5 h-3.5 inline-block ml-1" />
-                جملة
+                {wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.retail') || 'مفرق')}
               </button>
               {cart.length > 0 && (
                 <button
@@ -1569,7 +1569,7 @@ export function CartPanel({
                     <div className="text-[9px] text-muted-foreground truncate leading-none mt-0.5">
                       {wholesaleMode && <span className="text-orange-400 font-medium">{formatNumber(getItemPrice(item))} × {item.quantity}</span>}
                       {wholesaleMode && isRepairStoreType() && item.costPrice != null && ' · '}
-                      {isRepairStoreType() && item.costPrice != null && `تكلفة: ${formatNumber(item.costPrice || 0)}`}
+                      {isRepairStoreType() && item.costPrice != null && `${t('pos.cost') || 'تكلفة'}: ${formatNumber(item.costPrice || 0)}`}
                     </div>
                   )}
                 </div>
@@ -1884,7 +1884,7 @@ export function CartPanel({
                   className="flex-1 h-7 text-[11px] font-bold bg-warning/15 hover:bg-warning/25 text-warning border-warning/40 rounded-lg"
                   title={t('pos.recordAsDebt') || 'تسجيل كدين'}
                 >
-                  تسجيل كدين
+                  {t('pos.recordAsDebt') || 'تسجيل كدين'}
                 </Button>
               </div>
             </div>
@@ -1993,7 +1993,7 @@ export function CartPanel({
                           }}
                           className="h-7 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 self-end mt-1 rounded-lg"
                         >
-                          {t('pos.acceptExtraProfit') || 'اعتماد الزيادة كربح إضافي'} (بدون باقٍ)
+                          {t('pos.acceptExtraProfit') || 'اعتماد الزيادة كربح إضافي'} ({t('pos.withoutChange') || 'بدون باقٍ'})
                         </Button>
                       )}
                     </div>

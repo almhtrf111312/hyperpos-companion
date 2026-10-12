@@ -87,6 +87,14 @@ import { toLocalDateString } from '@/lib/date-utils';
 
 export default function Expenses() {
   const { t } = useLanguage();
+
+  const getLocalizedExpenseType = (type: string, fallback?: string): string => {
+    return (t as any)(`expenses.types.${type}`) || fallback || type;
+  };
+
+  const getLocalizedInterval = (interval: { value: number; label: string; interval: string }): string => {
+    return (t as any)(`expenses.intervals.${interval.interval}`) || interval.label;
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => loadRecurringExpenses());
@@ -613,7 +621,7 @@ export default function Expenses() {
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(stats.byType).map(([type, amount]) => (
               <div key={type} className="px-2 py-1 bg-muted/60 border border-border/40 rounded-xl text-xs flex items-center gap-1.5">
-                <span className="text-muted-foreground">{type}:</span>
+                <span className="text-muted-foreground">{getLocalizedExpenseType(type)}:</span>
                 <span className="font-bold font-mono text-foreground whitespace-nowrap">{formatCurrency(amount)}</span>
               </div>
             ))}
@@ -680,7 +688,7 @@ export default function Expenses() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <h3 className="font-bold text-xs md:text-sm text-foreground truncate">{expense.typeLabel}</h3>
+                      <h3 className="font-bold text-xs md:text-sm text-foreground truncate">{getLocalizedExpenseType(expense.type, expense.typeLabel)}</h3>
                       {expense.is_reversed && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
                           {t('expenses.reversed')}
@@ -769,7 +777,7 @@ export default function Expenses() {
                 <SelectContent className="rounded-2xl">
                   {expenseTypes.map(type => (
                     <SelectItem key={type.value} value={type.value} className="rounded-xl">
-                      {type.label}
+                      {getLocalizedExpenseType(type.value, type.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -874,7 +882,7 @@ export default function Expenses() {
                 <SelectContent className="rounded-2xl">
                   {expenseTypes.map(type => (
                     <SelectItem key={type.value} value={type.value} className="rounded-xl">
-                      {type.label}
+                      {getLocalizedExpenseType(type.value, type.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -905,7 +913,7 @@ export default function Expenses() {
                 <SelectContent className="rounded-2xl">
                   {recurringIntervals.map(interval => (
                     <SelectItem key={interval.value} value={String(interval.value)} className="rounded-xl">
-                      {interval.label}
+                      {getLocalizedInterval(interval)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1127,7 +1135,7 @@ export default function Expenses() {
                 <SelectContent className="rounded-2xl">
                   {expenseTypes.map(type => (
                     <SelectItem key={type.value} value={type.value} className="rounded-xl">
-                      {type.label}
+                      {getLocalizedExpenseType(type.value, type.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1158,7 +1166,7 @@ export default function Expenses() {
                 <SelectContent className="rounded-2xl">
                   {recurringIntervals.map(interval => (
                     <SelectItem key={interval.value} value={String(interval.value)} className="rounded-xl">
-                      {interval.label}
+                      {getLocalizedInterval(interval)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1248,7 +1256,7 @@ export default function Expenses() {
               <span>{t('expenses.reverseExpense')}</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground pt-2">
-              {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense?.typeLabel || '').replace('{amount}', formatNumber(selectedExpense?.amount || 0))}
+              {t('expenses.deleteConfirmDesc').replace('{name}', selectedExpense ? getLocalizedExpenseType(selectedExpense.type, selectedExpense.typeLabel) : '').replace('{amount}', formatNumber(selectedExpense?.amount || 0))}
               <span className="block mt-2 font-medium text-emerald-600 dark:text-emerald-400">
                 💰 {t('expenses.reverseExpenseNote')}
               </span>

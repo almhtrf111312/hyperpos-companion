@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
 
 export interface ReportFilters {
   dateRange: { from: string; to: string };
@@ -34,30 +35,31 @@ interface Props {
   config: FilterConfig;
 }
 
-const DATE_PRESETS = [
-  { label: 'اليوم', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
-  { label: 'أمس', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
-  { label: 'هذا الأسبوع', getValue: () => {
-    const now = new Date();
-    const day = now.getDay();
-    const start = new Date(now);
-    start.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
-  }},
-  { label: 'هذا الشهر', getValue: () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
-  }},
-  { label: 'آخر 30 يوم', getValue: () => {
-    const now = new Date();
-    const start = new Date(Date.now() - 30 * 86400000);
-    return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
-  }},
-];
-
 export function ReportFiltersBar({ filters, onChange, config }: Props) {
+  const { t, isRTL, language } = useLanguage();
   const [showCustomDate, setShowCustomDate] = useState(false);
+
+  const datePresets = [
+    { label: t('reports.today') || 'اليوم', getValue: () => { const d = new Date().toISOString().split('T')[0]; return { from: d, to: d }; } },
+    { label: language === 'en' ? 'Yesterday' : 'أمس', getValue: () => { const d = new Date(Date.now() - 86400000).toISOString().split('T')[0]; return { from: d, to: d }; } },
+    { label: t('reports.thisWeek') || 'هذا الأسبوع', getValue: () => {
+      const now = new Date();
+      const day = now.getDay();
+      const start = new Date(now);
+      start.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+      return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
+    }},
+    { label: t('reports.thisMonth') || 'هذا الشهر', getValue: () => {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
+    }},
+    { label: language === 'en' ? 'Last 30 Days' : 'آخر 30 يوم', getValue: () => {
+      const now = new Date();
+      const start = new Date(Date.now() - 30 * 86400000);
+      return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
+    }},
+  ];
 
   const update = (partial: Partial<ReportFilters>) => {
     onChange({ ...filters, ...partial });
@@ -81,7 +83,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
     <div className="space-y-3">
       {/* Date presets row */}
       <div className="flex flex-wrap gap-1.5">
-        {DATE_PRESETS.map((preset) => {
+        {datePresets.map((preset) => {
           const presetValue = preset.getValue();
           const isActive = filters.dateRange.from === presetValue.from && filters.dateRange.to === presetValue.to;
           return (
@@ -112,7 +114,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
           )}
         >
           <Calendar className="w-3 h-3" />
-          مخصص
+          {t('reports.custom') || 'مخصص'}
         </button>
       </div>
 
@@ -120,7 +122,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
       {showCustomDate && (
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-1.5 bg-card rounded-lg border border-border/50 px-2.5 py-1.5">
-            <span className="text-xs text-muted-foreground">من:</span>
+            <span className="text-xs text-muted-foreground">{language === 'en' ? 'From:' : 'من:'}</span>
             <Input
               type="date"
               value={filters.dateRange.from}
@@ -129,7 +131,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
             />
           </div>
           <div className="flex items-center gap-1.5 bg-card rounded-lg border border-border/50 px-2.5 py-1.5">
-            <span className="text-xs text-muted-foreground">إلى:</span>
+            <span className="text-xs text-muted-foreground">{language === 'en' ? 'To:' : 'إلى:'}</span>
             <Input
               type="date"
               value={filters.dateRange.to}
@@ -145,19 +147,19 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {/* Search */}
         {config.showSearch !== false && (
           <div className="relative flex-1 min-w-[200px] w-full sm:max-w-[360px]">
-            <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
             <Input
-              placeholder="ابحث بالاسم أو الرقم أو الباركود..."
+              placeholder={language === 'en' ? 'Search by name, ID, or barcode...' : 'ابحث بالاسم أو الرقم أو الباركود...'}
               value={filters.search}
               onChange={(e) => update({ search: e.target.value })}
-              className="h-10 text-sm pr-9 pl-11 rounded-lg"
+              className={cn("h-10 text-sm rounded-lg", isRTL ? "pr-9 pl-11" : "pl-9 pr-11")}
             />
             {filters.search && (
               <button
                 type="button"
-                aria-label="مسح البحث"
+                aria-label={language === 'en' ? 'Clear search' : 'مسح البحث'}
                 onClick={() => update({ search: '' })}
-                className="absolute left-0 top-0 h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground z-10"
+                className={cn("absolute top-0 h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground z-10", isRTL ? "left-0" : "right-0")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -169,14 +171,14 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {config.showStatus && (
           <Select value={filters.status} onValueChange={(v) => update({ status: v })}>
             <SelectTrigger className="h-8 text-xs w-[130px] rounded-lg">
-              <SelectValue placeholder="الحالة" />
+              <SelectValue placeholder={language === 'en' ? 'Status' : 'الحالة'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">كل الحالات</SelectItem>
+              <SelectItem value="all">{language === 'en' ? 'All Statuses' : 'كل الحالات'}</SelectItem>
               {(config.statusOptions || [
-                { value: 'completed', label: 'مكتملة' },
-                { value: 'refunded', label: 'مرتجعة' },
-                { value: 'cancelled', label: 'ملغاة' },
+                { value: 'completed', label: language === 'en' ? 'Completed' : 'مكتملة' },
+                { value: 'refunded', label: language === 'en' ? 'Refunded' : 'مرتجعة' },
+                { value: 'cancelled', label: language === 'en' ? 'Cancelled' : 'ملغاة' },
               ]).map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
@@ -188,10 +190,10 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {config.showCashier && config.cashiers && config.cashiers.length > 0 && (
           <Select value={filters.cashierId} onValueChange={(v) => update({ cashierId: v })}>
             <SelectTrigger className="h-8 text-xs w-[140px] rounded-lg">
-              <SelectValue placeholder="الكاشير" />
+              <SelectValue placeholder={t('cashShifts.cashier') || 'الكاشير'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">جميع الكاشيرات</SelectItem>
+              <SelectItem value="all">{t('reports.filterAllCashiers') || 'جميع الكاشيرات'}</SelectItem>
               {config.cashiers.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
@@ -203,10 +205,10 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {config.showWarehouse && config.warehouses && config.warehouses.length > 0 && (
           <Select value={filters.warehouseId} onValueChange={(v) => update({ warehouseId: v })}>
             <SelectTrigger className="h-8 text-xs w-[140px] rounded-lg">
-              <SelectValue placeholder="المستودع" />
+              <SelectValue placeholder={language === 'en' ? 'Warehouse' : 'المستودع'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">جميع المستودعات</SelectItem>
+              <SelectItem value="all">{language === 'en' ? 'All Warehouses' : 'جميع المستودعات'}</SelectItem>
               {config.warehouses.map((w) => (
                 <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
               ))}
@@ -218,10 +220,10 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {config.showCategory && config.categories && config.categories.length > 0 && (
           <Select value={filters.category} onValueChange={(v) => update({ category: v })}>
             <SelectTrigger className="h-8 text-xs w-[140px] rounded-lg">
-              <SelectValue placeholder="التصنيف" />
+              <SelectValue placeholder={t('products.category') || 'القسم'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">كل التصنيفات</SelectItem>
+              <SelectItem value="all">{t('reports.filterAllCategories') || 'جميع الأقسام'}</SelectItem>
               {config.categories.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
@@ -233,12 +235,12 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {config.showPaymentType && (
           <Select value={filters.paymentType} onValueChange={(v) => update({ paymentType: v })}>
             <SelectTrigger className="h-8 text-xs w-[120px] rounded-lg">
-              <SelectValue placeholder="نوع الدفع" />
+              <SelectValue placeholder={language === 'en' ? 'Payment Type' : 'نوع الدفع'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">الكل</SelectItem>
-              <SelectItem value="cash">نقدي</SelectItem>
-              <SelectItem value="debt">آجل</SelectItem>
+              <SelectItem value="all">{language === 'en' ? 'All' : 'الكل'}</SelectItem>
+              <SelectItem value="cash">{t('pos.cash') || 'نقدي'}</SelectItem>
+              <SelectItem value="debt">{t('pos.debt') || 'آجل'}</SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -247,7 +249,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs gap-1 text-muted-foreground">
             <X className="w-3 h-3" />
-            مسح الفلاتر
+            {language === 'en' ? 'Clear Filters' : 'مسح الفلاتر'}
           </Button>
         )}
       </div>

@@ -21,7 +21,7 @@ interface ThemeSectionProps {
 
 export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps) {
   const { mode, color, blurEnabled, transparencyLevel } = useTheme();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
@@ -140,7 +140,7 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
                   ? "border-primary bg-primary/10"
                   : "border-border bg-muted hover:bg-muted/80"
               )}
-              title={value.nameAr}
+              title={isRTL ? value.nameAr : value.name}
             >
               <div
                 className="w-10 h-10 rounded-full shadow-lg"
@@ -149,7 +149,7 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
                 }}
               />
               <span className="text-xs font-medium text-foreground truncate w-full text-center hidden md:block">
-                {value.nameAr}
+                {isRTL ? value.nameAr : value.name}
               </span>
               {pendingColor === key && (
                 <div className="absolute top-1 left-1">
@@ -206,10 +206,10 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
                 className="w-full cursor-pointer"
               />
               <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
-                <span>10% (خفيف)</span>
-                <span>50% (متوسط)</span>
-                <span>80% (قوي)</span>
-                <span>100% (زجاجي فائق)</span>
+                <span>{isRTL ? '10% (خفيف)' : '10% (Subtle)'}</span>
+                <span>{isRTL ? '50% (متوسط)' : '50% (Medium)'}</span>
+                <span>{isRTL ? '80% (قوي)' : '80% (Strong)'}</span>
+                <span>{isRTL ? '100% (زجاجي فائق)' : '100% (Ultra Glass)'}</span>
               </div>
             </div>
           </div>

@@ -180,7 +180,7 @@ export function ProductDetailsDialog({
             {/* شارة القسم: كبسولة هادئة مع نقطة بارزة */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              <span>قسم: {product.category || 'عام'}</span>
+              <span>{language === 'en' ? 'Category: ' : 'قسم: '}{product.category || (language === 'en' ? 'General' : 'عام')}</span>
             </div>
 
             {/* زر إغلاق دائري (X) في أقصى اليسار */}
@@ -188,7 +188,7 @@ export function ProductDetailsDialog({
               type="button"
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all border border-border/50"
-              aria-label="إغلاق"
+              aria-label={language === 'en' ? 'Close' : 'إغلاق'}
             >
               <X className="h-4 w-4" />
             </button>
@@ -216,7 +216,7 @@ export function ProductDetailsDialog({
                   <button
                     type="button"
                     onClick={handleCopyBarcode}
-                    title="انقر لنسخ الباركود"
+                    title={language === 'en' ? 'Click to copy barcode' : 'انقر لنسخ الباركود'}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 text-xs font-mono font-medium active:scale-95 transition-all shadow-2xs"
                   >
                     <Barcode className="h-3.5 w-3.5 text-primary" />
@@ -287,8 +287,8 @@ export function ProductDetailsDialog({
                     <DollarSign className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-foreground block">سعر المبيع الأساسي</span>
-                    <span className="text-[11px] text-muted-foreground">السعر المعتمد للقطعة الواحدة</span>
+                    <span className="text-xs font-bold text-foreground block">{language === 'en' ? 'Base Retail Price' : 'سعر المبيع الأساسي'}</span>
+                    <span className="text-[11px] text-muted-foreground">{language === 'en' ? 'Standard per-unit price' : 'السعر المعتمد للقطعة الواحدة'}</span>
                   </div>
                 </div>
                 <span className="text-base font-black text-primary font-mono">
@@ -303,12 +303,12 @@ export function ProductDetailsDialog({
                     <Box className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-foreground block">سعر الجملة</span>
-                    <span className="text-[11px] text-muted-foreground">يطبق تلقائياً عند طلب الكميات</span>
+                    <span className="text-xs font-bold text-foreground block">{language === 'en' ? 'Wholesale Price' : 'سعر الجملة'}</span>
+                    <span className="text-[11px] text-muted-foreground">{language === 'en' ? 'Applied for bulk quantities' : 'يطبق تلقائياً عند طلب الكميات'}</span>
                   </div>
                 </div>
                 <span className="text-sm md:text-base font-bold text-foreground font-mono">
-                  {hasWholesale ? `$${wholesalePrice!.toFixed(2)}` : 'لا يوجد'}
+                  {hasWholesale ? `$${wholesalePrice!.toFixed(2)}` : (language === 'en' ? 'None' : 'لا يوجد')}
                 </span>
               </div>
             </div>

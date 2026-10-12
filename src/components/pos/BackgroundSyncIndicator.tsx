@@ -97,7 +97,7 @@ export function BackgroundSyncIndicator({
           resetOperationForRetry(op.id);
         }
       }
-      showToast.info('جاري إعادة المحاولة', 'يتم رفع العمليات المعلقة الآن...');
+      showToast.info(isRTL ? 'جاري إعادة المحاولة' : 'Retrying...', isRTL ? 'يتم رفع العمليات المعلقة الآن...' : 'Uploading pending operations...');
       if (syncContext?.syncNow) {
         await syncContext.syncNow();
       }
@@ -108,7 +108,7 @@ export function BackgroundSyncIndicator({
         setDialogOpen(false);
       }
     } catch {
-      showToast.error('فشل بدء إعادة المحاولة');
+      showToast.error(isRTL ? 'فشل بدء إعادة المحاولة' : 'Failed to start retry');
     } finally {
       setIsRetrying(false);
     }
@@ -116,13 +116,13 @@ export function BackgroundSyncIndicator({
 
   const getOpTypeLabel = (type: string) => {
     switch (type) {
-      case 'invoice_create': return 'فاتورة مبيعات نقدية';
-      case 'debt_sale_bundle': return 'فاتورة مبيعات ذمة (آجلة)';
-      case 'invoice_refund': return 'استرداد فاتورة';
-      case 'invoice_refund_partial': return 'استرداد جزئي';
-      case 'quick_purchase': return 'شراء سريع';
-      case 'purchase_invoice': return 'فاتورة مشتريات';
-      case 'stock_update': return 'تحديث مخزون';
+      case 'invoice_create': return isRTL ? 'فاتورة مبيعات نقدية' : 'Cash Sales Invoice';
+      case 'debt_sale_bundle': return isRTL ? 'فاتورة مبيعات ذمة (آجلة)' : 'Credit Sales Invoice';
+      case 'invoice_refund': return isRTL ? 'استرداد فاتورة' : 'Invoice Refund';
+      case 'invoice_refund_partial': return isRTL ? 'استرداد جزئي' : 'Partial Refund';
+      case 'quick_purchase': return isRTL ? 'شراء سريع' : 'Quick Purchase';
+      case 'purchase_invoice': return isRTL ? 'فاتورة مشتريات' : 'Purchase Invoice';
+      case 'stock_update': return isRTL ? 'تحديث مخزون' : 'Stock Update';
       default: return type;
     }
   };

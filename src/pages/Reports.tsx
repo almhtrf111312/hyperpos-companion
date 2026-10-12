@@ -303,7 +303,7 @@ export default function Reports() {
   const uniqueCashiers = useMemo(() => {
     const map = new Map<string, string>();
     cloudInvoices.forEach(inv => {
-      const name = inv.cashierName || 'غير محدد';
+      const name = inv.cashierName || (t('reports.unspecified') || 'غير محدد');
       if (!map.has(name)) map.set(name, name);
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
@@ -397,7 +397,7 @@ export default function Reports() {
       // Apply status filter
       if (filters.status !== 'all' && inv.status !== filters.status) return false;
       // Apply cashier filter
-      if (filters.cashierId !== 'all' && (inv.cashierName || 'غير محدد') !== filters.cashierId) return false;
+      if (filters.cashierId !== 'all' && (inv.cashierName || (t('reports.unspecified') || 'غير محدد')) !== filters.cashierId) return false;
       // Apply payment type filter
       if (filters.paymentType !== 'all' && inv.paymentType !== filters.paymentType) return false;
       // Apply search filter
@@ -628,17 +628,17 @@ export default function Reports() {
   const salesTrend = useMemo(() => {
     if (previousPeriodSales <= 0) {
       if (reportData.summary.totalSales > 0) {
-        return { isUp: true, label: `${reportData.summary.totalOrders} مبيعات في الفترة` };
+        return { isUp: true, label: `${reportData.summary.totalOrders} ${t('reports.salesInPeriod') || 'مبيعات في الفترة'}` };
       }
-      return { isUp: true, label: '0% عن الفترة السابقة' };
+      return { isUp: true, label: `0% ${t('reports.vsPrevPeriod') || 'عن الفترة السابقة'}` };
     }
     const diff = ((reportData.summary.totalSales - previousPeriodSales) / previousPeriodSales) * 100;
     const isUp = diff >= 0;
     return {
       isUp,
-      label: `${isUp ? '+' : ''}${diff.toFixed(1)}% عن الفترة السابقة`,
+      label: `${isUp ? '+' : ''}${diff.toFixed(1)}% ${t('reports.vsPrevPeriod') || 'عن الفترة السابقة'}`,
     };
-  }, [reportData.summary.totalSales, reportData.summary.totalOrders, previousPeriodSales]);
+  }, [reportData.summary.totalSales, reportData.summary.totalOrders, previousPeriodSales, t]);
 
   // ========== EXPORT HANDLERS ==========
 
@@ -667,7 +667,7 @@ export default function Reports() {
       if (!isValidType) return false;
       if (inv.status === 'refunded' || inv.status === 'cancelled') return false;
       if (filters.status !== 'all' && inv.status !== filters.status) return false;
-      if (filters.cashierId !== 'all' && (inv.cashierName || 'غير محدد') !== filters.cashierId) return false;
+      if (filters.cashierId !== 'all' && (inv.cashierName || (t('reports.unspecified') || 'غير محدد')) !== filters.cashierId) return false;
       if (filters.paymentType !== 'all' && inv.paymentType !== filters.paymentType) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
@@ -755,7 +755,7 @@ export default function Reports() {
             label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: `هامش ربح: ${profitMargin}%`,
+            subtext: `${t('reports.profitMarginRate') || 'هامش ربح'}: ${profitMargin}%`,
           },
           {
             icon: ShoppingBag,
@@ -763,7 +763,7 @@ export default function Reports() {
             label: t('reports.ordersCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} طلب مكتمل` : 'لا توجد طلبات',
+            subtext: reportData.summary.totalOrders > 0 ? `${reportData.summary.totalOrders} ${t('reports.completedOrders') || 'طلب مكتمل'}` : (t('reports.noOrdersFound') || 'لا توجد طلبات'),
           },
           {
             icon: Clock,
@@ -771,7 +771,7 @@ export default function Reports() {
             label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} عميل بالفترة` : 'لكل طلب مسجل',
+            subtext: reportData.allCustomers.length > 0 ? `${reportData.allCustomers.length} ${t('reports.customersInPeriod') || 'عميل بالفترة'}` : (t('reports.perRegisteredOrder') || 'لكل طلب مسجل'),
           },
         ];
 
@@ -783,7 +783,7 @@ export default function Reports() {
             label: t('reports.totalNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: 'صافي الربح المحقق',
+            subtext: t('reports.netRealizedProfit') || 'صافي الربح المحقق',
           },
           {
             icon: PieChart,
@@ -791,7 +791,7 @@ export default function Reports() {
             label: t('reports.profitMarginRate'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'معدل الربحية العام',
+            subtext: t('reports.overallProfitRate') || 'معدل الربحية العام',
           },
           {
             icon: DollarSign,
@@ -799,7 +799,7 @@ export default function Reports() {
             label: t('reports.profitGeneratingSales'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: 'إجمالي إيراد المبيعات',
+            subtext: t('reports.totalSalesRevenue') || 'إجمالي إيراد المبيعات',
           },
           {
             icon: Coins,
@@ -807,7 +807,7 @@ export default function Reports() {
             label: t('reports.avgProfitPerInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'متوسط عائد الفاتورة',
+            subtext: t('reports.avgInvoiceRevenue') || 'متوسط عائد الفاتورة',
           },
         ];
 
@@ -823,7 +823,7 @@ export default function Reports() {
             label: t('reports.inventoryValueAtCost'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'سعر الشراء الفعلي',
+            subtext: t('reports.actualPurchasePrice') || 'سعر الشراء الفعلي',
           },
           {
             icon: TrendingUp,
@@ -831,7 +831,7 @@ export default function Reports() {
             label: t('reports.expectedSalesValue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: 'عائد البيع المتوقع',
+            subtext: t('reports.expectedSalesRevenue') || 'عائد البيع المتوقع',
           },
           {
             icon: Package,
@@ -839,7 +839,7 @@ export default function Reports() {
             label: t('reports.totalSkuCount'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'الأصناف المسجلة (SKU)',
+            subtext: t('reports.registeredSkus') || 'الأصناف المسجلة (SKU)',
           },
           {
             icon: ShoppingCart,
@@ -847,7 +847,7 @@ export default function Reports() {
             label: t('reports.totalAvailablePieces'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: 'إجمالي الوحدات بالمخزن',
+            subtext: t('reports.totalUnitsInStock') || 'إجمالي الوحدات بالمخزن',
           },
         ];
       }
@@ -866,7 +866,7 @@ export default function Reports() {
             label: t('reports.totalAuditedItems'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'أصناف مشمولة بالجرد',
+            subtext: t('reports.itemsInAudit') || 'أصناف مشمولة بالجرد',
           },
           {
             icon: Clock,
@@ -874,7 +874,7 @@ export default function Reports() {
             label: t('reports.lowStockItems'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'الكمية ≤ الحد الأدنى',
+            subtext: t('reports.qtyUnderMin') || 'الكمية ≤ الحد الأدنى',
           },
           {
             icon: X,
@@ -882,7 +882,7 @@ export default function Reports() {
             label: t('reports.outOfStockItems'),
             color: 'text-rose-600',
             bg: 'bg-rose-500/10',
-            subtext: 'الرصيد بالمخزن = 0',
+            subtext: t('reports.stockBalanceZero') || 'الرصيد بالمخزن = 0',
           },
           {
             icon: ShoppingBag,
@@ -890,7 +890,7 @@ export default function Reports() {
             label: t('reports.totalAuditQuantities'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: `بقيمة: ${formatCurrency(costValue)}`,
+            subtext: `${t('reports.atCostValue') || 'بالتكلفة'}: ${formatCurrency(costValue)}`,
           },
         ];
       }
@@ -899,8 +899,8 @@ export default function Reports() {
       case 'top-products': {
         const totalSold = reportData.allProducts.reduce((sum, p) => sum + p.sales, 0);
         const totalRev = reportData.allProducts.reduce((sum, p) => sum + p.revenue, 0);
-        const topQtyProd = reportData.allProducts.slice().sort((a, b) => b.sales - a.sales)[0]?.name || 'لا يوجد';
-        const topProfitProd = reportData.allProducts.slice().sort((a, b) => b.profit - a.profit)[0]?.name || 'لا يوجد';
+        const topQtyProd = reportData.allProducts.slice().sort((a, b) => b.sales - a.sales)[0]?.name || (t('reports.none') || 'لا يوجد');
+        const topProfitProd = reportData.allProducts.slice().sort((a, b) => b.profit - a.profit)[0]?.name || (t('reports.none') || 'لا يوجد');
         return [
           {
             icon: ShoppingBag,
@@ -908,7 +908,7 @@ export default function Reports() {
             label: t('reports.totalSoldPieces'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'حركة المبيعات بالفترة',
+            subtext: t('reports.salesMovementInPeriod') || 'حركة المبيعات بالفترة',
           },
           {
             icon: DollarSign,
@@ -916,7 +916,7 @@ export default function Reports() {
             label: t('reports.productsSalesRevenue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: 'إجمالي إيراد الأصناف',
+            subtext: t('reports.totalItemsRevenue') || 'إجمالي إيراد الأصناف',
           },
           {
             icon: Flame,
@@ -924,7 +924,7 @@ export default function Reports() {
             label: t('reports.mostDemandedItem'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'الأعلى طلباً بالكمية',
+            subtext: t('reports.topDemandByQty') || 'الأعلى طلباً بالكمية',
           },
           {
             icon: TrendingUp,
@@ -932,7 +932,7 @@ export default function Reports() {
             label: t('reports.highestProfitItem'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: 'الأعلى تحقيقاً للأرباح',
+            subtext: t('reports.topByProfit') || 'الأعلى تحقيقاً للأرباح',
           },
         ];
       }
@@ -950,7 +950,7 @@ export default function Reports() {
             label: t('reports.totalOutstandingDebts'),
             color: 'text-rose-600',
             bg: 'bg-rose-500/10',
-            subtext: 'مستحقات واجبة التحصيل',
+            subtext: t('reports.duesToCollect') || 'مستحقات واجبة التحصيل',
           },
           {
             icon: UserCheck,
@@ -958,7 +958,7 @@ export default function Reports() {
             label: t('reports.totalPaid'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: 'دفعات تم تحصيلها',
+            subtext: t('reports.collectedPayments') || 'دفعات تم تحصيلها',
           },
           {
             icon: DollarSign,
@@ -966,7 +966,7 @@ export default function Reports() {
             label: t('reports.totalOriginalDebt'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'إجمالي المديونيات المسجلة',
+            subtext: t('reports.totalRecordedDebts') || 'إجمالي المديونيات المسجلة',
           },
           {
             icon: Users,
@@ -974,7 +974,7 @@ export default function Reports() {
             label: t('reports.debtorCustomersCount'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'عملاء لديهم رصيد مستحق',
+            subtext: t('reports.customersWithBalance') || 'عملاء لديهم رصيد مستحق',
           },
         ];
       }
@@ -987,7 +987,7 @@ export default function Reports() {
             label: t('reports.totalCustomersCount'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'مسجلين بالدليل',
+            subtext: t('reports.registeredInDirectory') || 'مسجلين بالدليل',
           },
           {
             icon: UserCheck,
@@ -995,7 +995,7 @@ export default function Reports() {
             label: t('reports.activeCustomersInPeriod'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: 'أجروا طلبات خلال الفترة',
+            subtext: t('reports.orderedInPeriod') || 'أجروا طلبات خلال الفترة',
           },
           {
             icon: DollarSign,
@@ -1003,7 +1003,7 @@ export default function Reports() {
             label: t('reports.totalCustomerPurchases'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: 'إيراد المبيعات بالفترة',
+            subtext: t('reports.totalSalesRevenue') || 'إيراد المبيعات بالفترة',
           },
           {
             icon: Sparkles,
@@ -1011,7 +1011,7 @@ export default function Reports() {
             label: t('reports.topPurchasingCustomer'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'الأعلى إنفاقاً بالفترة',
+            subtext: t('reports.topSpenderInPeriod') || 'الأعلى إنفاقاً بالفترة',
           },
         ];
 
@@ -1028,7 +1028,7 @@ export default function Reports() {
             label: t('reports.totalPurchases'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: 'إجمالي فواتير التوريد',
+            subtext: t('reports.totalSupplyInvoices') || 'إجمالي فواتير التوريد',
           },
           {
             icon: ShoppingCart,
@@ -1036,7 +1036,7 @@ export default function Reports() {
             label: t('reports.purchaseInvoicesCount'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: 'فواتير توريد مستلمة',
+            subtext: t('reports.receivedSupplyInvoices') || 'فواتير توريد مستلمة',
           },
           {
             icon: Truck,
@@ -1044,7 +1044,7 @@ export default function Reports() {
             label: t('reports.suppliersCount'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: 'تم التعامل معهم بالفترة',
+            subtext: t('reports.activeSuppliersInPeriod') || 'تم التعامل معهم بالفترة',
           },
           {
             icon: Clock,
@@ -1052,7 +1052,7 @@ export default function Reports() {
             label: t('reports.avgPurchaseInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: 'متوسط تكلفة التوريد',
+            subtext: t('reports.avgSupplyCost') || 'متوسط تكلفة التوريد',
           },
         ];
       }

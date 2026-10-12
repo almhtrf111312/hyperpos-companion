@@ -29,7 +29,7 @@ export function LoanQuickDialog({
   productName,
   onLoanComplete,
 }: LoanQuickDialogProps) {
-  const { t } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const [members, setMembers] = useState<LibraryMember[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMember, setSelectedMember] = useState<LibraryMember | null>(null);
@@ -55,11 +55,11 @@ export function LoanQuickDialog({
 
   const handleSubmit = async () => {
     if (!selectedMember) {
-      showToast.warning('يرجى اختيار عضو');
+      showToast.warning(language === 'en' ? 'Please select a member' : 'يرجى اختيار عضو');
       return;
     }
     if (!dueDate) {
-      showToast.warning('يرجى تحديد تاريخ الاسترداد');
+      showToast.warning(language === 'en' ? 'Please select a return due date' : 'يرجى تحديد تاريخ الاسترداد');
       return;
     }
 
@@ -71,35 +71,35 @@ export function LoanQuickDialog({
     });
 
     if (loan) {
-      showToast.success(`تم تسجيل إعارة "${productName}" للعضو ${selectedMember.name}`);
+      showToast.success(language === 'en' ? `Book loan registered for "${productName}" to ${selectedMember.name}` : `تم تسجيل إعارة "${productName}" للعضو ${selectedMember.name}`);
       onLoanComplete();
       onClose();
     } else {
-      showToast.error('فشل تسجيل الإعارة');
+      showToast.error(language === 'en' ? 'Failed to record loan' : 'فشل تسجيل الإعارة');
     }
     setIsSubmitting(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl">
+      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl" dir={isRTL ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
-            إعارة كتاب
+            {language === 'en' ? 'Book Loan' : 'إعارة كتاب'}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Book Name */}
           <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-            <p className="text-xs text-muted-foreground">الكتاب</p>
+            <p className="text-xs text-muted-foreground">{language === 'en' ? 'Book' : 'الكتاب'}</p>
             <p className="font-semibold text-foreground">{productName}</p>
           </div>
 
           {/* Member Search */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">اختر العضو</label>
+            <label className="text-sm font-medium text-foreground mb-1.5 block">{language === 'en' ? 'Select Member' : 'اختر العضو'}</label>
             {selectedMember ? (
               <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/30">
                 <div className="flex items-center gap-2">
@@ -115,7 +115,7 @@ export function LoanQuickDialog({
                   onClick={() => setSelectedMember(null)}
                   className="text-xs"
                 >
-                  تغيير
+                  {language === 'en' ? 'Change' : 'تغيير'}
                 </Button>
               </div>
             ) : (
@@ -123,7 +123,7 @@ export function LoanQuickDialog({
                 <div className="relative mb-2">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="بحث بالاسم أو الهاتف..."
+                    placeholder={language === 'en' ? 'Search by name or phone...' : 'بحث بالاسم أو الهاتف...'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm"
@@ -132,7 +132,7 @@ export function LoanQuickDialog({
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {filteredMembers.length === 0 ? (
                     <p className="text-center text-sm text-muted-foreground py-3">
-                      {members.length === 0 ? 'لا يوجد أعضاء. أضف أعضاء من صفحة المكتبة.' : 'لا توجد نتائج'}
+                      {members.length === 0 ? (language === 'en' ? 'No members found. Add members from the Library page.' : 'لا يوجد أعضاء. أضف أعضاء من صفحة المكتبة.') : (language === 'en' ? 'No results' : 'لا توجد نتائج')}
                     </p>
                   ) : (
                     filteredMembers.map(m => (
@@ -158,12 +158,12 @@ export function LoanQuickDialog({
           <div>
             <label className="text-sm font-medium text-foreground mb-1.5 block">
               <Calendar className="w-4 h-4 inline ml-1" />
-              تاريخ الاسترداد
+              {language === 'en' ? 'Due Date' : 'تاريخ الاسترداد'}
             </label>
             <DatePicker
               value={dueDate}
               onChange={setDueDate}
-              placeholder="اختر تاريخ الاسترداد"
+              placeholder={language === 'en' ? 'Select return date' : 'اختر تاريخ الاسترداد'}
             />
           </div>
 
@@ -174,7 +174,7 @@ export function LoanQuickDialog({
             className="w-full"
           >
             <BookOpen className="w-4 h-4 ml-2" />
-            {isSubmitting ? 'جارٍ التسجيل...' : 'تأكيد الإعارة'}
+            {isSubmitting ? (language === 'en' ? 'Recording...' : 'جارٍ التسجيل...') : (language === 'en' ? 'Confirm Loan' : 'تأكيد الإعارة')}
           </Button>
         </div>
       </DialogContent>

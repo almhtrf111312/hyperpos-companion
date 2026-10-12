@@ -60,7 +60,7 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
           </h3>
         </div>
         <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
-          {currentOption?.labelAr || '100%'}
+          {(isRTL ? currentOption?.labelAr : currentOption?.labelEn) || '100%'}
         </span>
       </div>
 
@@ -79,11 +79,11 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
 
         {/* تسميات النقاط الخمس من اليسار لليمين */}
         <div className="grid grid-cols-5 text-center text-[10px] md:text-xs font-medium text-muted-foreground">
-          <span className={stepIndex === 0 ? "font-bold text-primary" : ""}>صغير جداً</span>
-          <span className={stepIndex === 1 ? "font-bold text-primary" : ""}>صغير</span>
-          <span className={stepIndex === 2 ? "font-black text-primary underline" : "font-semibold"}>وسط</span>
-          <span className={stepIndex === 3 ? "font-bold text-primary" : ""}>كبير</span>
-          <span className={stepIndex === 4 ? "font-bold text-primary" : ""}>كبير جداً</span>
+          <span className={stepIndex === 0 ? "font-bold text-primary" : ""}>{isRTL ? 'صغير جداً' : 'Extra Small'}</span>
+          <span className={stepIndex === 1 ? "font-bold text-primary" : ""}>{isRTL ? 'صغير' : 'Small'}</span>
+          <span className={stepIndex === 2 ? "font-black text-primary underline" : "font-semibold"}>{isRTL ? 'وسط' : 'Normal'}</span>
+          <span className={stepIndex === 3 ? "font-bold text-primary" : ""}>{isRTL ? 'كبير' : 'Large'}</span>
+          <span className={stepIndex === 4 ? "font-bold text-primary" : ""}>{isRTL ? 'كبير جداً' : 'Extra Large'}</span>
         </div>
       </div>
     </div>

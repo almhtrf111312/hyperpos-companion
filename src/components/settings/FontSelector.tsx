@@ -59,7 +59,7 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
               type="button"
               onClick={() => handleSelectFont(font.id, isRTL ? font.nameAr : font.name)}
               className={cn(
-                "group relative w-full text-right p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 select-none",
+                "group relative w-full text-start p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 select-none",
                 "flex items-center justify-between gap-3 overflow-visible",
                 isSelected
                   ? "border-primary/80 bg-primary/[0.08] dark:bg-primary/[0.12] ring-1 ring-primary/40 shadow-sm"
@@ -92,7 +92,7 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
 
                 {/* السطر الثاني: الوصف والمعاينة الحية للأرقام والنصوص */}
                 <p className={cn("text-xs text-muted-foreground/80 mt-0.5 leading-relaxed overflow-visible", font.previewClass)}>
-                  {font.descriptionAr}
+                  {isRTL ? font.descriptionAr : font.descriptionEn}
                 </p>
               </div>
 

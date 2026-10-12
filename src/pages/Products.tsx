@@ -1858,8 +1858,8 @@ export default function Products() {
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 {archiveSearchQuery
-                  ? 'جرب البحث باسم أو باركود آخر'
-                  : 'لا توجد منتجات مؤرشفة أو منتهية المخزون حالياً.'}
+                  ? (t('products.tryDifferentSearch') || 'جرب البحث باسم أو باركود آخر')
+                  : (t('products.noArchivedOrOutOfStock') || 'لا توجد منتجات مؤرشفة أو منتهية المخزون حالياً.')}
               </p>
               {archiveSearchQuery && (
                 <Button variant="outline" size="sm" onClick={() => setArchiveSearchQuery('')}>
@@ -1956,20 +1956,20 @@ export default function Products() {
                       size="sm"
                       className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
                       onClick={() => openQuickRestock(product)}
-                      title="إعادة تزويد الكمية ليعود فوراً للمنتجات النشطة ونقطة البيع"
+                      title={t('products.restockSubtitle') || 'إعادة تزويد الكمية'}
                     >
                       <Plus className="w-3.5 h-3.5 ml-1" />
-                      إعادة تزويد
+                      {t('products.restock') || 'إعادة تزويد'}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-8 text-xs px-2.5 font-medium"
                       onClick={() => openEditDialog(product)}
-                      title="تعديل بيانات المنتج وتفاصيله"
+                      title={t('common.edit') || 'تعديل بيانات المنتج'}
                     >
                       <RotateCcw className="w-3.5 h-3.5 ml-1" />
-                      تعديل
+                      {t('common.edit') || 'تعديل'}
                     </Button>
                     {product.archived ? (
                       <Button
@@ -1980,7 +1980,7 @@ export default function Products() {
                           setArchivedProductToDelete(product);
                           setShowHardDeleteDialog(true);
                         }}
-                        title="حذف نهائي قطعي للمنتج وسجلاته من السحابة"
+                        title={t('products.permanentDeleteTitle') || 'حذف نهائي للمنتج'}
                       >
                         <Trash2 className="w-3.5 h-3.5 ml-1" />
                         {t('products.permanentDelete')}
@@ -1991,7 +1991,7 @@ export default function Products() {
                         size="sm"
                         className="h-8 text-xs px-2 font-medium text-destructive hover:bg-destructive/10"
                         onClick={() => openDeleteDialog(product)}
-                        title="أرشفة المنتج يدوياً"
+                        title={t('products.archiveAction') || 'أرشفة المنتج'}
                       >
                         <Archive className="w-3.5 h-3.5 ml-1" />
                         {t('products.archiveAction')}
@@ -2514,7 +2514,7 @@ export default function Products() {
                   <Package className="w-6 h-6 text-primary" />
                 </div>
                 <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
-                  إضافة منتج جديد
+                  {t('products.addProductTitle') || 'إضافة منتج جديد'}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground mt-1">
                   {t('products.addProductDesc')}
@@ -3038,11 +3038,11 @@ export default function Products() {
                   setImagePreviewBase64('');
                   clearPersistedState();
                 }}>
-                  إلغاء
+                  {t('common.cancel') || 'إلغاء'}
                 </Button>
                 <Button className="flex-1 min-h-[48px]" onClick={handleAddProduct}>
                   <Save className="w-4 h-4 ml-2" />
-                  حفظ المنتج
+                  {t('products.saveProduct') || 'حفظ المنتج'}
                 </Button>
               </div>
             </div>
@@ -3602,7 +3602,7 @@ export default function Products() {
             <AlertDialogFooter className="flex-row-reverse gap-2">
               <AlertDialogCancel disabled={deleteGuard.isRunning}>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteProduct} disabled={deleteGuard.isRunning} className="bg-destructive hover:bg-destructive/90">
-                {deleteGuard.isRunning ? 'جاري الحذف...' : t('common.delete')}
+                {deleteGuard.isRunning ? (t('common.deleting') || 'جاري الحذف...') : t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -3614,11 +3614,16 @@ export default function Products() {
             <AlertDialogHeader>
               <AlertDialogTitle className="text-destructive flex items-center gap-2">
                 <Trash2 className="w-5 h-5" />
-                حذف نهائي قطعي للمنتج
+                {t('products.permanentDeleteTitle') || 'حذف نهائي قطعي للمنتج'}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-2">
                 <p>
-                  هل أنت متأكد من حذف المنتج <strong className="text-foreground">"{archivedProductToDelete?.name}"</strong> نهائياً من قاعدة البيانات والسحابة؟
+                  {t('products.permanentDeleteConfirm') || 'هل أنت متأكد من حذف هذا المنتج نهائياً من قاعدة البيانات والسحابة؟'}
+                  {archivedProductToDelete?.name && (
+                    <span className="block mt-1 font-bold text-foreground">
+                      "{archivedProductToDelete.name}"
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-destructive font-medium bg-destructive/10 p-2.5 rounded-lg border border-destructive/20">
                   {t('products.permanentDeleteWarning')}
