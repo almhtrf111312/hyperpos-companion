@@ -338,7 +338,7 @@ export default function Invoices() {
         pendingUpdateRef.current = true;
         return;
       }
-      // 🚀 تحديث صامت في الخلفية دائماً عند وصول أحداث التحديث لمنع وميض الشاشة أو تصفير التمرير
+      // 🚀 تحديث صامت في الخلفية دائماً عند وصول أحداث التحديث لمنع وميض الشاشة أو {t('invoices.reset') || 'تصفير'} التمرير
       loadData(true);
     };
 
@@ -748,7 +748,7 @@ export default function Invoices() {
         duration: 5000,
       });
 
-      const partialRefundDesc = `استرداد جزئي للفاتورة ${invoiceLabel}: بقيمة $${roundCurrency(result.refundedAmount)} ${result.debtReduced > 0 ? `(تخفيض دين: $${formatNumber(result.debtReduced)})` : ''} ${result.cashToRefund > 0 ? `(إرجاع نقدي: $${formatNumber(result.cashToRefund)})` : ''}`;
+      const partialRefundDesc = `{t('invoices.partialRefund') || 'استرداد جزئي'} للفاتورة ${invoiceLabel}: بقيمة $${roundCurrency(result.refundedAmount)} ${result.debtReduced > 0 ? `(تخفيض دين: $${formatNumber(result.debtReduced)})` : ''} ${result.cashToRefund > 0 ? `(إرجاع نقدي: $${formatNumber(result.cashToRefund)})` : ''}`;
 
       void logActivity('invoice_refunded', partialRefundDesc, {
         entityType: 'invoice',
@@ -1744,9 +1744,9 @@ export default function Invoices() {
                           <div className="flex items-center justify-between pb-0.5 border-b border-border/50">
                             <span className="text-[9.5px] font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5">
                               <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                              <span>صافي الربح:</span>
+                              <span>{t('invoices.netProfit') || 'صافي الربح'}:</span>
                             </span>
-                            <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">(الأرباح)</span>
+                            <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">({t('invoices.profits') || 'الأرباح'})</span>
                           </div>
 
                           {/* سوري */}
@@ -1860,20 +1860,20 @@ export default function Invoices() {
 
               {selectedInvoice.type === 'maintenance' && (
                 <div className="bg-muted rounded-lg p-3 space-y-2">
-                  <p className="text-sm font-semibold text-muted-foreground">تفاصيل الصيانة:</p>
+                  <p className="text-sm font-semibold text-muted-foreground">{t('invoices.maintenanceDetails') || 'تفاصيل الصيانة'}:</p>
                   {selectedInvoice.serviceDescription && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">الوصف / نوع العطل:</span>
+                      <span className="text-muted-foreground">{t('invoices.descOrFault') || 'الوصف / نوع العطل'}:</span>
                       <span className="font-medium text-right max-w-[60%]">{selectedInvoice.serviceDescription}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">المبلغ المقبوض:</span>
+                    <span className="text-muted-foreground">{t('pos.receivedAmount') || 'المبلغ المقبوض'}:</span>
                     <span className="font-medium">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                   {selectedInvoice.partsCost !== undefined && selectedInvoice.partsCost > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">تكلفة القطع علينا:</span>
+                      <span className="text-muted-foreground">{t('invoices.partsCost') || 'تكلفة القطع علينا'}:</span>
                       <span className="font-medium text-destructive">{formatCurrency((selectedInvoice.partsCost || 0) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                     </div>
                   )}
@@ -1893,10 +1893,10 @@ export default function Invoices() {
                     <table className="w-full text-xs sm:text-sm">
                       <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-2 py-2 text-right font-medium text-muted-foreground">المنتج</th>
-                          <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">الكمية</th>
-                          <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">السعر</th>
-                          <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">المجموع</th>
+                          <th className="px-2 py-2 text-right font-medium text-muted-foreground">{t('invoices.products') || 'المنتج'}</th>
+                          <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">{t('pos.quantity') || 'الكمية'}</th>
+                          <th className="px-2 py-2 text-center font-medium text-muted-foreground whitespace-nowrap">{t('pos.price') || 'السعر'}</th>
+                          <th className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">{t('pos.total') || 'المجموع'}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1905,7 +1905,7 @@ export default function Invoices() {
                             <td className="px-2 py-2 text-right whitespace-normal break-words leading-snug" dir="auto">
                               <span className={cn(item.refunded && "line-through")}>{item.name}</span>
                               {item.refunded && (
-                                <span className="mr-2 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">مُسترد</span>
+                                <span className="mr-2 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">{t('invoices.refunded') || 'مُسترد'}</span>
                               )}
                             </td>
                             <td className="px-2 py-2 text-center whitespace-nowrap">{item.quantity}</td>
@@ -1938,13 +1938,13 @@ export default function Invoices() {
                 </div>
                 {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && selectedInvoice.debtPaid !== undefined && selectedInvoice.debtPaid > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>المدفوع نقداً:</span>
+                    <span>{t('invoices.paidCash') || 'المدفوع نقداً'}:</span>
                     <span className="font-medium text-success">{formatCurrency((selectedInvoice.debtPaid || 0) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
                 {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && (
                   <div className="flex justify-between text-sm text-destructive">
-                    <span>المتبقي (دين):</span>
+                    <span>{t('invoices.debtRemaining') || 'المتبقي (دين)'}:</span>
                     <span className="font-semibold">{formatCurrency(((selectedInvoice.debtRemaining !== undefined && selectedInvoice.debtRemaining !== null) ? selectedInvoice.debtRemaining : (selectedInvoice.total - (selectedInvoice.debtPaid || 0))) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
@@ -1961,23 +1961,23 @@ export default function Invoices() {
                 <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground pb-1.5 border-b border-border/40">
                   <span className="flex items-center gap-1.5 text-foreground">
                     <Coins className="w-3.5 h-3.5 text-primary" />
-                    معادلة العملات (إجمالي الفاتورة):
+                    {t('invoices.currencyEquivalent') || 'معادلة العملات (إجمالي الفاتورة)'}:
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
-                    <span className="text-muted-foreground text-[11px]">القيمة بالدولار:</span>
+                    <span className="text-muted-foreground text-[11px]">{t('invoices.valueInUSD') || 'القيمة بالدولار'}:</span>
                     <span className="font-bold text-foreground text-sm whitespace-nowrap" dir="ltr">{totalUsdStr}</span>
                   </div>
                   {enabledCurrencies.TRY && (
                     <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
-                      <span className="text-muted-foreground text-[11px]">القيمة بالليرة التركية:</span>
+                      <span className="text-muted-foreground text-[11px]">{t('invoices.valueInTRY') || 'القيمة بالليرة التركية'}:</span>
                       <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalTryStr}</span>
                     </div>
                   )}
                   {enabledCurrencies.SYP && (
                     <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
-                      <span className="text-muted-foreground text-[11px]">القيمة بالليرة السورية:</span>
+                      <span className="text-muted-foreground text-[11px]">{t('invoices.valueInSYP') || 'القيمة بالليرة السورية'}:</span>
                       <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalSypStr}</span>
                     </div>
                   )}
@@ -2015,7 +2015,7 @@ export default function Invoices() {
             <div className="flex items-center gap-2">
               <Share2 className="w-4 h-4 text-primary" />
               <DialogTitle className="text-sm font-bold">
-                مشاركة الفاتورة {invoiceToShare?.id}
+                {t('invoices.shareInvoice') || 'مشاركة الفاتورة'} {invoiceToShare?.id}
               </DialogTitle>
             </div>
             <DialogDescription className="sr-only">نافذة مشاركة الفاتورة</DialogDescription>
@@ -2034,11 +2034,11 @@ export default function Invoices() {
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center text-muted-foreground">
-                    <span>رقم الفاتورة:</span>
+                    <span>{t('invoices.invoiceNumber') || 'رقم الفاتورة'}:</span>
                     <span className="font-mono text-foreground font-semibold">{invoiceToShare.id}</span>
                   </div>
                   <div className="flex justify-between items-center text-muted-foreground">
-                    <span>التاريخ:</span>
+                    <span>{t('invoices.date') || 'التاريخ'}:</span>
                     <span>{formatDateTime(new Date(invoiceToShare.createdAt))}</span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-border/40">
@@ -2066,12 +2066,12 @@ export default function Invoices() {
                     {isGeneratingShare ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin ml-2" />
-                        <span>جاري استخراج ومشاركة الصورة...</span>
+                        <span>{t('common.loading') || 'جاري استخراج ومشاركة الصورة...'}</span>
                       </>
                     ) : (
                       <>
                         <Share2 className="w-4 h-4 ml-2" />
-                        <span>مشاركة كصورة (واتساب / تطبيقات)</span>
+                        <span>{t('invoices.shareAsImage') || 'مشاركة كصورة (واتساب / تطبيقات)'}</span>
                       </>
                     )}
                   </Button>
@@ -2084,7 +2084,7 @@ export default function Invoices() {
                       onClick={() => executeShareInvoice(invoiceToShare, 'text')}
                     >
                       <Send className="w-3.5 h-3.5" />
-                      مشاركة كنص
+                      {t('invoices.shareAsText') || 'مشاركة كنص'}
                     </Button>
                     <Button
                       variant="outline"
@@ -2093,7 +2093,7 @@ export default function Invoices() {
                       onClick={() => handleCopyShareText(invoiceToShare)}
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      نسخ التفاصيل
+                      {t('invoices.copyDetails') || 'نسخ التفاصيل'}
                     </Button>
                   </div>
                 </div>
@@ -2113,7 +2113,7 @@ export default function Invoices() {
             <DialogTitle className="text-orange-600 flex items-center justify-between gap-2 text-base font-bold">
               <div className="flex items-center gap-2">
                 <Undo2 className="w-5 h-5" />
-                <span>استرداد الفاتورة {invoiceToRefund?.id}</span>
+                <span>{t('invoices.refundInvoice') || 'استرداد الفاتورة'} {invoiceToRefund?.id}</span>
               </div>
               {invoiceToRefund && (
                 <Badge variant={invoiceToRefund.paymentType === 'cash' ? 'default' : 'destructive'} className="text-xs">
@@ -2129,11 +2129,11 @@ export default function Invoices() {
               <div className="grid grid-cols-2 gap-2">
                 <Button type="button" variant={refundMode === 'full' ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal text-xs gap-1.5" onClick={() => setRefundMode('full')}>
                   <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                  استرداد كلي
+                  {t('invoices.fullRefund') || 'استرداد كلي'}
                 </Button>
                 <Button type="button" variant={refundMode === 'partial' ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal text-xs gap-1.5" onClick={() => setRefundMode('partial')}>
                   <Layers className="w-3.5 h-3.5 shrink-0" />
-                  استرداد جزئي
+                  {t('invoices.partialRefund') || 'استرداد جزئي'}
                 </Button>
               </div>
             </div>
@@ -2184,11 +2184,11 @@ export default function Invoices() {
               <div className="space-y-3 py-1 text-right">
                 <div className="bg-muted/40 rounded-lg p-3 text-sm space-y-2 border">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">العميل:</span>
+                    <span className="text-muted-foreground">{t('invoices.customer') || 'العميل'}:</span>
                     <span className="font-semibold">{invoiceToRefund?.customerName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">إجمالي الفاتورة:</span>
+                    <span className="text-muted-foreground">{t('invoices.total') || 'إجمالي الفاتورة'}:</span>
                     <span className="font-bold">{formatCurrency(refundFinancials ? refundFinancials.displayTotal : 0, refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -2206,10 +2206,10 @@ export default function Invoices() {
                   <span className="font-medium text-muted-foreground">حدد الكميات المراد إرجاعها للمخزون:</span>
                   <div className="flex items-center gap-1.5">
                     <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2 text-primary" onClick={setAllPartialQtyMax}>
-                      تحديد الكل
+                      {t('invoices.selectAll') || 'تحديد الكل'}
                     </Button>
                     <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2 text-muted-foreground" onClick={resetAllPartialQty}>
-                      تصفير
+                      {t('invoices.reset') || 'تصفير'}
                     </Button>
                   </div>
                 </div>
@@ -2306,7 +2306,7 @@ export default function Invoices() {
 
             {/* Returned goods condition */}
             <div className="space-y-1.5 text-right">
-              <span className="text-xs font-medium text-muted-foreground">حالة البضاعة المرتجعة:</span>
+              <span className="text-xs font-medium text-muted-foreground">{t('invoices.itemCondition') || 'حالة البضاعة المرتجعة'}:</span>
               <div className="grid grid-cols-2 gap-2">
                 {(['good', 'damaged'] as const).map((c) => (
                   <Button
@@ -2317,7 +2317,7 @@ export default function Invoices() {
                     className="h-9 text-xs"
                     onClick={() => setRefundCondition(c)}
                   >
-                    {c === 'good' ? 'سليم' : 'معيب'}
+                    {c === 'good' ? (t('invoices.conditionGood') || 'سليم') : (t('invoices.conditionDefective') || 'معيب')}
                   </Button>
                 ))}
               </div>
@@ -2336,7 +2336,7 @@ export default function Invoices() {
                 aria-busy={refundGuard.isRunning}
               >
                 <Undo2 className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
-                {refundGuard.isRunning ? 'جاري الاسترداد...' : 'تأكيد الاسترداد الكامل'}
+                {refundGuard.isRunning ? (t('common.loading') || 'جاري الاسترداد...') : (t('invoices.confirmFullRefund') || 'تأكيد الاسترداد الكامل')}
               </Button>
             ) : (
               <Button
@@ -2398,7 +2398,7 @@ export default function Invoices() {
 
               {/* اختيار عملة السداد */}
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">عملة الدفع المستلمة</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('invoices.receivedCurrency') || 'عملة الدفع المستلمة'}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {enabledCurrencies.USD !== false && (
                     <button
@@ -2463,7 +2463,7 @@ export default function Invoices() {
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
-                    <span>سعر الصرف المعتمد:</span>
+                    <span>{t('invoices.exchangeRate') || 'سعر الصرف المعتمد'}:</span>
                     <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {paymentCurrency}</span>
                   </p>
                 )}
@@ -2495,7 +2495,7 @@ export default function Invoices() {
                 {/* المعادل بالدولار إذا كانت العملة أجنبية */}
                 {paymentCurrency !== 'USD' && (
                   <div className="mt-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">المبلغ المعادل بالدولار المخصوم من الدين:</span>
+                    <span className="text-muted-foreground">{t('invoices.usdEquivalentDeducted') || 'المبلغ المعادل بالدولار المخصوم من الدين'}:</span>
                     <span className="font-bold text-primary text-sm font-mono">${formatNumber(amountUSD)}</span>
                   </div>
                 )}
@@ -2539,7 +2539,7 @@ export default function Invoices() {
                   {isSubmittingPayment ? (
                     <>
                       <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                      <span>جاري الدفع...</span>
+                      <span>{t('invoices.payingDebt') || 'جاري الدفع...'}</span>
                     </>
                   ) : (
                     <>

@@ -2070,7 +2070,7 @@ export default function Products() {
                             type="button"
                             onClick={() => openEditDialog(product)}
                             className="w-6 h-6 rounded-md bg-muted text-foreground/75 border border-border/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all flex items-center justify-center shadow-2xs"
-                            title="تعديل"
+                            title={t('common.edit') || 'تعديل'}
                           >
                             <Edit className="w-3 h-3 text-foreground/75" />
                           </button>
@@ -2078,7 +2078,7 @@ export default function Products() {
                             type="button"
                             onClick={() => openDeleteDialog(product)}
                             className="w-6 h-6 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-all flex items-center justify-center shadow-2xs"
-                            title="حذف"
+                            title={t('common.delete') || 'حذف'}
                           >
                             <Trash2 className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                           </button>
@@ -2091,7 +2091,7 @@ export default function Products() {
                       {/* Stock Count (Aligned to Right) */}
                       {!noInventory ? (
                         <div className="flex items-center gap-1 text-muted-foreground font-bold shrink-0">
-                          <span className="text-muted-foreground/70 text-[10px]">المخزون:</span>
+                          <span className="text-muted-foreground/70 text-[10px]">{t('products.stock') || 'المخزون'}:</span>
                           <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
                           <span className="text-muted-foreground/70 text-[10px] font-sans">
                             {product.conversionFactor && product.conversionFactor > 1
@@ -2108,12 +2108,12 @@ export default function Products() {
                                     <TooltipTrigger asChild>
                                       <span className="inline-flex items-center gap-0.5 text-[9.5px] text-primary font-medium mr-1 cursor-help">
                                         <Truck className="w-2.5 h-2.5" />
-                                        {custodyQty} عهدة
+                                        {custodyQty} {t('products.custody') || 'عهدة'}
                                       </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="max-w-xs">
                                       <div className="text-xs space-y-1">
-                                        <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                        <div className="font-medium border-b pb-1 mb-1">{t('products.custodyBreakdown') || 'توزيع العهدة'}:</div>
                                         {breakdown.map((item, idx) => (
                                           <div key={idx} className="flex justify-between gap-3">
                                             <span>{item.warehouseName}:</span>
@@ -2139,13 +2139,13 @@ export default function Products() {
                       <div className="flex items-center gap-1 font-mono font-bold text-[10.5px] shrink-0">
                         {!noInventory && (
                           <div className="flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/70 shadow-2xs">
-                            <span className="text-[8.5px] font-sans text-muted-foreground font-medium">شراء:</span>
+                            <span className="text-[8.5px] font-sans text-muted-foreground font-medium">{t('products.buy') || 'شراء'}:</span>
                             <span className="text-foreground">{formatPrice(product.costPrice)}</span>
                           </div>
                         )}
 
                         <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20 shadow-2xs text-primary">
-                          <span className="text-[8.5px] font-sans text-primary/80 font-medium">بيع:</span>
+                          <span className="text-[8.5px] font-sans text-primary/80 font-medium">{t('products.sell') || 'بيع'}:</span>
                           <span className="text-foreground font-black">{formatPrice(product.salePrice)}</span>
                         </div>
                       </div>
@@ -2200,7 +2200,7 @@ export default function Products() {
                         {/* Stock Count */}
                         {!noInventory ? (
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
-                            <span className="text-muted-foreground/70 text-[10px]">المخزون:</span>
+                            <span className="text-muted-foreground/70 text-[10px]">{t('products.stock') || 'المخزون'}:</span>
                             <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
                             <span className="bg-muted text-muted-foreground text-[9px] px-1 py-0.2 rounded font-bold">
                               {product.conversionFactor && product.conversionFactor > 1
@@ -2217,12 +2217,12 @@ export default function Products() {
                                       <TooltipTrigger asChild>
                                         <span className="inline-flex items-center gap-0.5 text-[9.5px] text-primary font-medium mr-1 cursor-help">
                                           <Truck className="w-2.5 h-2.5" />
-                                          {custodyQty} عهدة
+                                          {custodyQty} {t('products.custody') || 'عهدة'}
                                         </span>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="max-w-xs">
                                         <div className="text-xs space-y-1">
-                                          <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                          <div className="font-medium border-b pb-1 mb-1">{t('products.custodyBreakdown') || 'توزيع العهدة'}:</div>
                                           {breakdown.map((item, idx) => (
                                             <div key={idx} className="flex justify-between gap-3">
                                               <span>{item.warehouseName}:</span>
@@ -2248,12 +2248,12 @@ export default function Products() {
                         <div className="flex items-center gap-1.5 font-mono text-[11px] shrink-0">
                           {!noInventory && (
                             <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md border border-border/70 shadow-2xs">
-                              <span className="text-[9px] font-sans text-muted-foreground font-medium">شراء:</span>
+                              <span className="text-[9px] font-sans text-muted-foreground font-medium">{t('products.buy') || 'شراء'}:</span>
                               <span className="text-foreground font-bold">{formatPrice(product.costPrice)}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 shadow-2xs text-primary">
-                            <span className="text-[9px] font-sans text-primary/80 font-medium">بيع:</span>
+                            <span className="text-[9px] font-sans text-primary/80 font-medium">{t('products.sell') || 'بيع'}:</span>
                             <span className="text-foreground font-black">{formatPrice(product.salePrice)}</span>
                           </div>
                         </div>
@@ -2266,7 +2266,7 @@ export default function Products() {
                             type="button"
                             onClick={() => openEditDialog(product)}
                             className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
-                            title="تعديل"
+                            title={t('common.edit') || 'تعديل'}
                           >
                             <Edit className="w-3.5 h-3.5 text-foreground/80" />
                           </button>
@@ -2274,7 +2274,7 @@ export default function Products() {
                             type="button"
                             onClick={() => openDeleteDialog(product)}
                             className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-rose-500/20"
-                            title="حذف"
+                            title={t('common.delete') || 'حذف'}
                           >
                             <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                           </button>
@@ -2325,7 +2325,7 @@ export default function Products() {
                               }
                             }}
                             className="inline-flex items-center gap-1.5 bg-muted hover:bg-muted/80 px-2 py-1 rounded-lg cursor-pointer transition-colors text-muted-foreground shadow-2xs"
-                            title="انقر لنسخ الباركود"
+                            title={t('products.clickToCopyBarcode') || 'انقر لنسخ الباركود'}
                           >
                             <Copy className="w-3 h-3 text-muted-foreground/70 flex-shrink-0" />
                             <span className="font-mono text-[10px] font-bold tracking-wider">{product.barcode}</span>
@@ -2350,7 +2350,7 @@ export default function Products() {
                       {/* Stock Information (Aligned on the right) */}
                       {!noInventory ? (
                         <div className="flex items-center gap-1.5 text-xs text-foreground/80 font-bold">
-                          <span>المخزون:</span>
+                          <span>{t('products.stock') || 'المخزون'}:</span>
                           <span className="font-mono text-sm text-foreground font-black">{product.quantity}</span>
                           <span className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-md font-bold">
                             {product.conversionFactor && product.conversionFactor > 1
@@ -2367,12 +2367,12 @@ export default function Products() {
                                     <TooltipTrigger asChild>
                                       <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mr-1 cursor-help">
                                         <Truck className="w-2.5 h-2.5" />
-                                        {custodyQty} عهدة
+                                        {custodyQty} {t('products.custody') || 'عهدة'}
                                       </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="max-w-xs">
                                       <div className="text-xs space-y-1">
-                                        <div className="font-medium border-b pb-1 mb-1">توزيع العهدة:</div>
+                                        <div className="font-medium border-b pb-1 mb-1">{t('products.custodyBreakdown') || 'توزيع العهدة'}:</div>
                                         {breakdown.map((item, idx) => (
                                           <div key={idx} className="flex justify-between gap-3">
                                             <span>{item.warehouseName}:</span>
@@ -2420,7 +2420,7 @@ export default function Products() {
                           type="button"
                           onClick={() => openEditDialog(product)}
                           className="w-8 h-8 rounded-xl bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
-                          title="تعديل"
+                          title={t('common.edit') || 'تعديل'}
                         >
                           <Edit className="w-4 h-4 text-foreground/80" />
                         </button>
@@ -2428,7 +2428,7 @@ export default function Products() {
                           type="button"
                           onClick={() => openDeleteDialog(product)}
                           className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-rose-500/20"
-                          title="حذف"
+                          title={t('common.delete') || 'حذف'}
                         >
                           <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                         </button>
@@ -2457,7 +2457,7 @@ export default function Products() {
                       ) : (
                         <>
                           <div className="bg-card p-1 rounded-lg border border-border/70">
-                            <span className="text-[9px] text-muted-foreground font-bold block">البيع</span>
+                            <span className="text-[9px] text-muted-foreground font-bold block">{t('products.salePrice') || 'البيع'}</span>
                             <span className="text-xs font-black text-primary font-mono">{formatPrice(product.salePrice)}</span>
                           </div>
                           <div className="bg-card p-1 rounded-lg border border-border/70">
@@ -2471,12 +2471,12 @@ export default function Products() {
                     <div className="grid grid-cols-3 gap-1.5 text-center bg-muted/40 p-1.5 rounded-xl border border-border/80 mt-2.5">
                       {/* الشراء */}
                       <div className="bg-card p-1 rounded-lg border border-border/70">
-                        <span className="text-[9px] text-muted-foreground font-bold block">الشراء</span>
+                        <span className="text-[9px] text-muted-foreground font-bold block">{t('products.costPrice') || 'الشراء'}</span>
                         <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.costPrice)}</span>
                       </div>
                       {/* البيع */}
                       <div className="bg-card p-1 rounded-lg border border-border/70">
-                        <span className="text-[9px] text-muted-foreground font-bold block">البيع</span>
+                        <span className="text-[9px] text-muted-foreground font-bold block">{t('products.salePrice') || 'البيع'}</span>
                         <span className="text-xs font-black text-primary font-mono">{formatPrice(product.salePrice)}</span>
                       </div>
                       {/* الربح */}
@@ -2488,7 +2488,7 @@ export default function Products() {
                           ? "bg-destructive/10 text-destructive border-destructive/20"
                           : "bg-card border-border/70 text-muted-foreground"
                       )}>
-                        <span className="text-[9px] font-bold block">{profit >= 0 ? "الربح" : "الخسارة"}</span>
+                        <span className="text-[9px] font-bold block">{profit >= 0 ? (t('products.profit') || "الربح") : (t('products.loss') || "الخسارة")}</span>
                         <span className="text-xs font-black font-mono">
                           {profit > 0 ? `+$${formatNumber(profit, 2)}` : profit < 0 ? `-$${formatNumber(Math.abs(profit), 2)}` : `$0.00`}
                         </span>

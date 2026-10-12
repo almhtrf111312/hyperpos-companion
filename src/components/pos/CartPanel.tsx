@@ -1425,7 +1425,7 @@ export function CartPanel({
                       tabIndex={0}
                       onClick={(e) => onRemoveCart(hc.id, e)}
                       className="hover:text-destructive p-0.5 rounded text-muted-foreground"
-                      title="إلغاء السلة"
+                      title={t('pos.clearCart') || 'إلغاء السلة'}
                     >
                       <X className="w-3 h-3" />
                     </span>
@@ -1437,10 +1437,10 @@ export function CartPanel({
                   type="button"
                   onClick={onAddNewCart}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-dashed border-border/70 transition-all shrink-0"
-                  title="إضافة سلة جديدة"
+                  title={t('pos.newCart') || 'إضافة سلة جديدة'}
                 >
                   <Plus className="w-3 h-3" />
-                  <span>سلة +</span>
+                  <span>{t('pos.cart') || 'سلة'} +</span>
                 </button>
               )}
             </div>
@@ -1528,7 +1528,7 @@ export function CartPanel({
                   type="button"
                   onClick={() => onRemoveItem(item.id, item.unit)}
                   className="w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center shrink-0 transition-all active:scale-90"
-                  title="حذف من السلة"
+                  title={t('pos.removeFromCart') || 'حذف من السلة'}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -1579,7 +1579,7 @@ export function CartPanel({
                     type="button"
                     onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
                     className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-all shadow-xs"
-                    title="تقليل الكمية"
+                    title={t('pos.decreaseQty') || 'تقليل الكمية'}
                   >
                     <Minus className="w-3 h-3" />
                   </button>
@@ -1590,7 +1590,7 @@ export function CartPanel({
                     type="button"
                     onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
                     className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-all shadow-xs"
-                    title="زيادة الكمية"
+                    title={t('pos.increaseQty') || 'زيادة الكمية'}
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -1665,7 +1665,7 @@ export function CartPanel({
                 >
                   <Input
                     type="number"
-                    placeholder="خصم"
+                    placeholder={t('pos.discount') || 'خصم'}
                     value={discountType === 'percent' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('percent');
@@ -1698,7 +1698,7 @@ export function CartPanel({
                 >
                   <Input
                     type="number"
-                    placeholder="خصم"
+                    placeholder={t('pos.discount') || 'خصم'}
                     value={discountType === 'fixed' ? (discount || '') : ''}
                     onChange={(e) => {
                       setDiscountType('fixed');
@@ -1774,8 +1774,8 @@ export function CartPanel({
             {/* بيان توضيحي لقيمة المقبوض بالدولار إذا أُدخل بعملة ثانوية */}
             {receivedAmount > 0 && activeReceivedCurrency.code !== 'USD' && (
               <div className="flex justify-between items-center text-[10px] text-muted-foreground px-1">
-                <span>المعادل بالدولار:</span>
-                <span className="font-semibold text-foreground">${formatNumber(receivedUSD)} (سعر الصرف: {formatNumber(receivedRate)})</span>
+                <span>{t('pos.usdEquivalent') || 'المعادل بالدولار'}:</span>
+                <span className="font-semibold text-foreground">${formatNumber(receivedUSD)} (${t('pos.exchangeRate') || 'سعر الصرف'}: {formatNumber(receivedRate)})</span>
               </div>
             )}
           </div>
@@ -1803,7 +1803,7 @@ export function CartPanel({
                 {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
                   <div className="flex items-center justify-between gap-1 w-full flex-wrap">
                     <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                      باقي للعميل: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
+                      {t('pos.balance') || 'باقي للعميل'}: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
                       {activeReceivedCurrency.code !== 'USD' && ` (${formatNumber(changeUSD)})`}
                     </span>
                     {receivedUSD > roundCurrency(total) + 0.01 && onUpdateItemPrice && (
@@ -1811,9 +1811,9 @@ export function CartPanel({
                         type="button"
                         onClick={handleApplySurplusAsProfit}
                         className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-all flex items-center gap-1"
-                        title="تعديل سعر الصنف ليطابق المبلغ المقبوض واعتماد الزيادة كربح"
+                        title={t('pos.setExtraProfit') || 'تعديل سعر الصنف واعتماد الزيادة كربح'}
                       >
-                        <span>اعتماد كربح إضافي (+${formatNumber(roundCurrency(receivedUSD - total))})</span>
+                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+${formatNumber(roundCurrency(receivedUSD - total))})</span>
                       </button>
                     )}
                   </div>
@@ -1822,10 +1822,10 @@ export function CartPanel({
                   <div className="flex flex-col gap-1 w-full mt-1 animate-in fade-in zoom-in-95 duration-200">
                     <span className="bg-destructive/15 text-destructive px-2 py-1.5 rounded-md text-xs font-bold text-center border border-destructive/30 shadow-sm flex items-center justify-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5" />
-                      المبلغ المقبوض أقل من الإجمالي - هل ترغب بالمتابعة؟
+                      {t('pos.shortageAlert') || 'المبلغ المقبوض أقل من الإجمالي - هل ترغب بالمتابعة؟'}
                     </span>
                     <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold text-center text-xs">
-                      مقبوض: {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)} — متبقٍ: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
+                      {t('pos.received') || 'مقبوض'}: {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)} — {t('pos.remaining') || 'متبقٍ'}: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
                     </span>
                   </div>
                 )}
@@ -1844,7 +1844,7 @@ export function CartPanel({
                 <button
                   onClick={() => setShowCalculator(true)}
                   className="w-6 h-6 rounded-md bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-xs font-semibold"
-                  title="آلة حاسبة"
+                  title={t('pos.calculator') || 'آلة حاسبة'}
                 >
                   ⊞
                 </button>
@@ -1871,9 +1871,9 @@ export function CartPanel({
                   variant="outline"
                   onClick={handleApplyDeficitAsDiscount}
                   className="flex-1 h-7 text-[11px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-500/40 rounded-lg"
-                  title="تحويل العجز إلى خصم مباشر وإتمام البيع نقداً"
+                  title={t('pos.acceptAsDiscount') || 'اعتماد كخصم'}
                 >
-                  اعتماد كخصم (-${formatNumber(remainingUSD)})
+                  {t('pos.acceptAsDiscount') || 'اعتماد كخصم'} (-${formatNumber(remainingUSD)})
                 </Button>
                 <Button
                   type="button"
@@ -1881,7 +1881,7 @@ export function CartPanel({
                   variant="outline"
                   onClick={handleDebtSale}
                   className="flex-1 h-7 text-[11px] font-bold bg-warning/15 hover:bg-warning/25 text-warning border-warning/40 rounded-lg"
-                  title="تسجيل المبلغ المتبقي كدين على العميل"
+                  title={t('pos.recordAsDebt') || 'تسجيل كدين'}
                 >
                   تسجيل كدين
                 </Button>
@@ -1919,7 +1919,7 @@ export function CartPanel({
               className="h-11 w-9 flex-shrink-0 text-primary hover:text-primary hover:bg-primary/10 rounded-xl"
               disabled={cart.length === 0 && !lastSale}
               onClick={() => handleWhatsApp()}
-              title="مشاركة الفاتورة كصورة"
+              title={t('pos.shareAsImage') || 'مشاركة الفاتورة كصورة'}
             >
               <Share2 className="w-4 h-4" />
             </Button>
@@ -1952,21 +1952,21 @@ export function CartPanel({
           <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>عدد المنتجات:</span>
+                <span>{t('pos.productCount') || 'عدد المنتجات'}:</span>
                 <span className="font-semibold">{cart.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>العميل:</span>
+                <span>{t('pos.customer') || 'العميل'}:</span>
                 <span className="font-semibold">{customerName || 'عميل نقدي'}</span>
               </div>
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2">
-                <span>الإجمالي:</span>
+                <span>{t('pos.total') || 'الإجمالي'}:</span>
                 <span className="text-primary">{selectedCurrency.symbol}{formatNumber(totalInCurrency)}</span>
               </div>
               {receivedAmount > 0 && (
                 <div className="space-y-1.5 border-t border-border/50 pt-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>المبلغ المقبوض:</span>
+                    <span>{t('pos.receivedAmount') || 'المبلغ المقبوض'}:</span>
                     <span className="font-semibold text-foreground">
                       {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
                       {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
@@ -1975,7 +1975,7 @@ export function CartPanel({
                   {changeInReceivedCurrency > 0 && (
                     <div className="flex flex-col gap-1.5 bg-success/10 p-2.5 rounded-lg border border-success/20">
                       <div className="flex justify-between text-success font-bold text-sm">
-                        <span>الباقي للعميل:</span>
+                        <span>{t('pos.balance') || 'الباقي للعميل'}:</span>
                         <span>
                           {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
                           {activeReceivedCurrency.code !== 'USD' && ` (${formatNumber(changeUSD)})`}
@@ -1992,7 +1992,7 @@ export function CartPanel({
                           }}
                           className="h-7 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 self-end mt-1 rounded-lg"
                         >
-                          اعتماد الزيادة كربح إضافي (بدون باقٍ)
+                          {t('pos.acceptExtraProfit') || 'اعتماد الزيادة كربح إضافي'} (بدون باقٍ)
                         </Button>
                       )}
                     </div>
@@ -2070,7 +2070,7 @@ export function CartPanel({
                   setTimeout(() => setShowCashDialog(true), 150);
                 }}
               >
-                اعتماد العجز كخصم فوري وإتمام البيع نقداً
+                {t('pos.acceptAsDiscount') || 'اعتماد العجز كخصم فوري وإتمام البيع نقداً'}
               </Button>
 
               {isRealCustomerSelected(customerName) ? (
@@ -2083,7 +2083,7 @@ export function CartPanel({
                     handleDebtSale();
                   }}
                 >
-                  تسجيل العجز كدين على العميل ({customerName})
+                  {t('pos.recordAsDebt') || 'تسجيل العجز كدين على العميل'} ({customerName})
                 </Button>
               ) : (
                 <div className="text-xs text-center text-muted-foreground">
@@ -2097,7 +2097,7 @@ export function CartPanel({
                 className="w-full text-muted-foreground mt-1"
                 onClick={() => setShowDeficitDialog(false)}
               >
-                إلغاء والعودة لتعديل المبلغ
+                {t('common.cancel') || 'إلغاء والعودة لتعديل المبلغ'}
               </Button>
             </div>
           </div>
@@ -2113,13 +2113,13 @@ export function CartPanel({
               تأكيد البيع المؤجل
             </DialogTitle>
             <DialogDescription>
-              سيتم إضافة المبلغ كدين على العميل
+              {t('pos.confirmDebtSaleDesc') || 'سيتم إضافة المبلغ كدين على العميل'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="bg-muted rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>العميل:</span>
+                <span>{t('pos.customer') || 'العميل'}:</span>
                 <span className="font-semibold">{customerName}</span>
               </div>
               {isNewCustomer && (
@@ -2140,12 +2140,12 @@ export function CartPanel({
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span>عدد المنتجات:</span>
+                <span>{t('pos.productCount') || 'عدد المنتجات'}:</span>
                 <span className="font-semibold">{cart.length}</span>
               </div>
               {receivedAmount > 0 && (
                 <div className="flex justify-between text-sm text-success font-semibold bg-success/10 p-2 rounded-lg">
-                  <span>دفعة أولى مقبوضة (كاش):</span>
+                  <span>{t('pos.cash') || 'دفعة أولى مقبوضة (كاش)'}:</span>
                   <span>
                     {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
                     {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
@@ -2153,7 +2153,7 @@ export function CartPanel({
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
-                <span>مبلغ الدين:</span>
+                <span>{t('pos.debtAmount') || 'مبلغ الدين'}:</span>
                 <span>
                   {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
                   {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
@@ -2177,7 +2177,7 @@ export function CartPanel({
                 }}
               >
                 <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
-                {isSaving ? 'جاري الحفظ...' : 'تأكيد البيع المؤجل'}
+                {isSaving ? (t('common.saving') || 'جاري الحفظ...') : (t('pos.confirmDebt') || 'تأكيد البيع المؤجل')}
               </Button>
             </div>
           </div>
@@ -2201,16 +2201,16 @@ export function CartPanel({
           <div className="space-y-4 py-4">
             <div className="space-y-3">
               <div>
-                <label htmlFor="cart-customer-name" className="text-sm font-medium mb-1.5 block">الاسم *</label>
+                <label htmlFor="cart-customer-name" className="text-sm font-medium mb-1.5 block">{t('pos.name') || 'الاسم'} *</label>
                 <Input
                   id="cart-customer-name"
-                  placeholder="اسم العميل"
+                  placeholder={t('pos.namePlaceholder') || 'اسم العميل'}
                   value={newCustomer.name}
                   onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div>
-                <label htmlFor="cart-customer-phone" className="text-sm font-medium mb-1.5 block">رقم الهاتف *</label>
+                <label htmlFor="cart-customer-phone" className="text-sm font-medium mb-1.5 block">{t('pos.phone') || 'رقم الهاتف'} *</label>
                 <Input
                   id="cart-customer-phone"
                   type="tel"
@@ -2226,7 +2226,7 @@ export function CartPanel({
                 />
               </div>
               <div>
-                <label htmlFor="cart-customer-email" className="text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+                <label htmlFor="cart-customer-email" className="text-sm font-medium mb-1.5 block">{t('pos.email') || 'البريد الإلكتروني'}</label>
                 <Input
                   id="cart-customer-email"
                   placeholder="email@example.com"
@@ -2241,7 +2241,7 @@ export function CartPanel({
               </Button>
               <Button className="flex-1" onClick={handleAddCustomer} disabled={isAddingCustomer}>
                 <UserPlus className="w-4 h-4 ml-2" />
-                {isAddingCustomer ? 'جاري الحفظ...' : 'إضافة العميل'}
+                {isAddingCustomer ? (t('common.saving') || 'جاري الحفظ...') : (t('pos.addCustomerBtn') || 'إضافة العميل')}
               </Button>
             </div>
           </div>

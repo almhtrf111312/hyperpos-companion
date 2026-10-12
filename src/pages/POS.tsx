@@ -238,7 +238,7 @@ export default function POS() {
     try { legacyDiscount = Number(localStorage.getItem(CART_DISCOUNT_KEY)) || 0; } catch {}
     return [{
       id: 'cart_1',
-      name: 'سلة 1',
+      name: `${t('pos.cart') || 'سلة'} 1`,
       cart: legacyCart,
       customerName: legacyCustomer,
       discount: legacyDiscount,
@@ -690,7 +690,7 @@ export default function POS() {
 
   const addToCart = (product: POSProduct, unit: 'piece' | 'bulk' = 'piece') => {
     if (!isNoInventoryMode() && (product.quantity <= 0 || product.archived)) {
-      showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+      showToast.warning(t('pos.productArchived') || "المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
       return; // Don't add out-of-stock items
     }
 
@@ -700,7 +700,7 @@ export default function POS() {
       const now = new Date();
       const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       if (daysUntilExpiry <= 0) {
-        showToast.error(`⚠️ ${product.name} - منتهي الصلاحية!`);
+        showToast.error(`⚠️ ${product.name} - ${t('pos.expired') || 'منتهي الصلاحية!'}`);
         return;
       }
     }
@@ -717,7 +717,7 @@ export default function POS() {
       const unitLabel = unit === 'bulk'
         ? getLocalizedUnit(product.bulkUnit, true, language)
         : getLocalizedUnit(product.smallUnit, false, language);
-      showToast.error(`الكمية المطلوبة غير متوفرة. المتاح: ${maxAvailable} ${unitLabel}`);
+      showToast.error(`${t('pos.insufficientStock') || 'الكمية المطلوبة غير متوفرة'}. ${t('pos.available') || 'المتاح'}: ${maxAvailable} ${unitLabel}`);
       return;
     }
 
@@ -791,7 +791,7 @@ export default function POS() {
       if (!isNoInventoryMode()) {
         const availableMatches = matches.filter(p => p.quantity > 0 && !p.archived);
         if (availableMatches.length === 0) {
-          showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+          showToast.warning(t('pos.productArchived') || "المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
           return;
         }
         if (availableMatches.length === 1) {
@@ -814,7 +814,7 @@ export default function POS() {
 
     if (matches.length === 1) {
       if (!isNoInventoryMode() && (matches[0].quantity <= 0 || matches[0].archived)) {
-        showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+        showToast.warning(t('pos.productArchived') || "المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
         return;
       }
       if (loadBarcodeScanMode() === 'add') {
@@ -831,7 +831,7 @@ export default function POS() {
       const cloudProduct = await getProductByBarcodeCloud(barcode);
       if (cloudProduct) {
         if (!isNoInventoryMode() && (cloudProduct.quantity <= 0 || cloudProduct.archived)) {
-          showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+          showToast.warning(t('pos.productArchived') || "المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
           return;
         }
         if (loadBarcodeScanMode() === 'add') {
@@ -876,7 +876,7 @@ export default function POS() {
     if (trimmed.length >= 2 && !isNoInventoryMode()) {
       const match = products.find(p => p.barcode === trimmed || p.barcode2 === trimmed || p.barcode3 === trimmed);
       if (match && (match.quantity <= 0 || match.archived)) {
-        showToast.warning("المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
+        showToast.warning(t('pos.productArchived') || "المنتج موجود في الأرشيف (انتهت الكمية الموجودة في المخزن)");
       }
     }
   };
@@ -931,7 +931,7 @@ export default function POS() {
             const unitLabel = targetUnit === 'bulk'
               ? getLocalizedUnit(product.bulkUnit, true, language)
               : getLocalizedUnit(product.smallUnit, false, language);
-            showToast.error(`الكمية المطلوبة غير متوفرة. المتاح: ${maxAvailable} ${unitLabel}`);
+            showToast.error(`${t('pos.insufficientStock') || 'الكمية المطلوبة غير متوفرة'}. ${t('pos.available') || 'المتاح'}: ${maxAvailable} ${unitLabel}`);
             return;
           }
         }
@@ -985,7 +985,7 @@ export default function POS() {
 
   const handleAddNewCart = useCallback(() => {
     const newId = `cart_${Date.now()}`;
-    const newName = `سلة ${heldCarts.length + 1}`;
+    const newName = `${t('pos.cart') || 'سلة'} ${heldCarts.length + 1}`;
     setHeldCarts(prev => [
       ...prev.map(c => c.id === activeCartId ? { ...c, cart, customerName, discount } : c),
       { id: newId, name: newName, cart: [], customerName: '', discount: 0, createdAt: Date.now() }
