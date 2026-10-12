@@ -887,14 +887,14 @@ input, textarea {
 }
 
 /* أزرار primary تحتفظ بلونها الأبيض */
-.light button[class*="bg-primary"],
-.light [class*="bg-primary"] {
+.light button[class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]),
+.light [class~="bg-primary"]:not([class*="/"]):not([class*="text-primary"]) {
   color: hsl(var(--primary-foreground)) !important;
 }
 
-/* أزرار destructive */
-.light button[class*="bg-destructive"],
-.light [class*="bg-destructive"] {
+/* أزرار destructive (الصلبة فقط - تمنع تبييض أو إخفاء أيقونات ونصوص الأزرار الشفافة مثل bg-destructive/10) */
+.light button[class~="bg-destructive"]:not([class*="/"]):not([class*="text-destructive"]),
+.light [class~="bg-destructive"]:not([class*="/"]):not([class*="text-destructive"]) {
   color: hsl(var(--destructive-foreground)) !important;
 }
 

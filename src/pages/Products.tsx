@@ -2039,24 +2039,24 @@ export default function Products() {
               ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
               : viewMode === 'list'
               ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5"
-              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start"
           )}>
             {filteredProducts.map((product, index) => {
               const status = statusConfig[product.status];
               const profit = product.salePrice - product.costPrice;
 
-              // 1. Compact View (الوضع الأصغر)
+              // 1. Compact View (الوضع الأصغر - مدمج ومقلص الفراغات تماماً)
               if (viewMode === 'compact') {
                 return (
                   <div
                     key={product.id}
-                    className="bg-card rounded-xl p-2.5 border border-border shadow-2xs hover:border-border/80 transition-all text-xs space-y-1.5 fade-in"
+                    className="bg-card rounded-xl px-2.5 py-1.5 border border-border shadow-2xs hover:border-border/80 transition-all text-xs space-y-1 fade-in"
                     style={{ animationDelay: `${index * 10}ms` }}
                   >
                     {/* Line 1: Full Product Name + Action Buttons on Left */}
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <h3
-                        className="font-black text-foreground text-xs leading-snug break-words flex-1 min-w-0 cursor-pointer hover:text-primary transition-colors"
+                        className="font-black text-foreground text-xs leading-tight truncate flex-1 min-w-0 cursor-pointer hover:text-primary transition-colors"
                         title={product.name}
                         onClick={() => openEditDialog(product)}
                       >
@@ -2069,28 +2069,28 @@ export default function Products() {
                           <button
                             type="button"
                             onClick={() => openEditDialog(product)}
-                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all"
+                            className="w-6 h-6 rounded-md bg-muted text-foreground/75 border border-border/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all flex items-center justify-center shadow-2xs"
                             title="تعديل"
                           >
-                            <Edit className="w-3.5 h-3.5" />
+                            <Edit className="w-3 h-3 text-foreground/75" />
                           </button>
                           <button
                             type="button"
                             onClick={() => openDeleteDialog(product)}
-                            className="p-1 rounded-md text-destructive/70 hover:text-destructive hover:bg-destructive/10 active:scale-90 transition-all"
+                            className="w-6 h-6 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-all flex items-center justify-center shadow-2xs"
                             title="حذف"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                           </button>
                         </div>
                       )}
                     </div>
 
                     {/* Line 2: Stock on Right + Clean Buy & Sell Price Badges on Left */}
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-dashed border-border text-[11px]">
+                    <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-dashed border-border/60 text-[11px]">
                       {/* Stock Count (Aligned to Right) */}
                       {!noInventory ? (
-                        <div className="flex items-center gap-1 text-muted-foreground font-bold">
+                        <div className="flex items-center gap-1 text-muted-foreground font-bold shrink-0">
                           <span className="text-muted-foreground/70 text-[10px]">المخزون:</span>
                           <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
                           <span className="text-muted-foreground/70 text-[10px] font-sans">
@@ -2106,7 +2106,7 @@ export default function Products() {
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mr-1 cursor-help">
+                                      <span className="inline-flex items-center gap-0.5 text-[9.5px] text-primary font-medium mr-1 cursor-help">
                                         <Truck className="w-2.5 h-2.5" />
                                         {custodyQty} عهدة
                                       </span>
@@ -2130,22 +2130,22 @@ export default function Products() {
                           })()}
                         </div>
                       ) : (
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-[10px] text-muted-foreground truncate">
                           {product.category}
                         </div>
                       )}
 
                       {/* Buy & Sell Pricing (Aligned to Left) */}
-                      <div className="flex items-center gap-1.5 font-mono font-bold text-[11px] shrink-0">
+                      <div className="flex items-center gap-1 font-mono font-bold text-[10.5px] shrink-0">
                         {!noInventory && (
-                          <div className="flex items-center gap-1 bg-muted/40 px-2 py-0.5 rounded-lg border border-border shadow-2xs">
-                            <span className="text-[9px] font-sans text-muted-foreground font-medium">شراء:</span>
+                          <div className="flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/70 shadow-2xs">
+                            <span className="text-[8.5px] font-sans text-muted-foreground font-medium">شراء:</span>
                             <span className="text-foreground">{formatPrice(product.costPrice)}</span>
                           </div>
                         )}
 
-                        <div className="flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 shadow-2xs text-primary">
-                          <span className="text-[9px] font-sans text-primary/80 font-medium">بيع:</span>
+                        <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20 shadow-2xs text-primary">
+                          <span className="text-[8.5px] font-sans text-primary/80 font-medium">بيع:</span>
                           <span className="text-foreground font-black">{formatPrice(product.salePrice)}</span>
                         </div>
                       </div>
@@ -2154,7 +2154,7 @@ export default function Products() {
                 );
               }
 
-              // 2. Medium View (الوضع المتوسط)
+              // 2. Medium View (الوضع المتوسط - ارتفاع أقل مقارب للصورة، صورة أكبر بـ 25-30%، أزرار متناسقة العرض)
               if (viewMode === 'list') {
                 return (
                   <div
@@ -2162,23 +2162,22 @@ export default function Products() {
                     className="bg-card rounded-2xl p-2.5 border border-border shadow-2xs hover:border-border/80 transition-all fade-in"
                     style={{ animationDelay: `${index * 15}ms` }}
                   >
-                    {/* Top Section */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      {/* Right: Product Thumbnail Image */}
-                      <div className="w-14 h-14 rounded-xl bg-muted/40 overflow-hidden border border-border shrink-0 aspect-square flex items-center justify-center shadow-2xs">
+                    <div className="flex items-center justify-between gap-2.5">
+                      {/* Right: Product Thumbnail Image (Enlarged ~28% to 72x72px) */}
+                      <div className="w-[72px] h-[72px] rounded-xl bg-muted/40 overflow-hidden border border-border shrink-0 aspect-square flex items-center justify-center shadow-2xs">
                         <ProductImage
                           imageUrl={product.image}
                           alt={product.name}
                           className="w-full h-full object-cover"
-                          iconClassName="w-6 h-6 text-muted-foreground/40"
+                          iconClassName="w-7 h-7 text-muted-foreground/40"
                         />
                       </div>
 
-                      {/* Middle: Full Name + Status + Stock */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-start gap-1.5 flex-wrap">
+                      {/* Middle: Full Name + Status + Stock + Buy/Sell Prices (Height-matched with Image) */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between h-[72px] py-0.5">
+                        <div className="flex items-start gap-1.5 min-w-0">
                           <h3
-                            className="font-black text-foreground text-xs sm:text-sm leading-snug break-words cursor-pointer hover:text-primary transition-colors"
+                            className="font-black text-foreground text-xs sm:text-sm leading-tight truncate flex-1 min-w-0 cursor-pointer hover:text-primary transition-colors"
                             title={product.name}
                             onClick={() => openEditDialog(product)}
                           >
@@ -2186,7 +2185,7 @@ export default function Products() {
                           </h3>
                           {!noInventory && (
                             <span className={cn(
-                              "border text-[8.5px] font-black px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap",
+                              "border text-[8px] sm:text-[8.5px] font-black px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap",
                               product.status === 'out_of_stock'
                                 ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                                 : product.status === 'low_stock'
@@ -2203,7 +2202,7 @@ export default function Products() {
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
                             <span className="text-muted-foreground/70 text-[10px]">المخزون:</span>
                             <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
-                            <span className="bg-muted text-muted-foreground text-[9.5px] px-1.5 py-0.5 rounded font-bold">
+                            <span className="bg-muted text-muted-foreground text-[9px] px-1 py-0.2 rounded font-bold">
                               {product.conversionFactor && product.conversionFactor > 1
                                 ? getLocalizedUnit(product.bulkUnit, true)
                                 : getLocalizedUnit(product.smallUnit, false)}
@@ -2216,7 +2215,7 @@ export default function Products() {
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mr-1 cursor-help">
+                                        <span className="inline-flex items-center gap-0.5 text-[9.5px] text-primary font-medium mr-1 cursor-help">
                                           <Truck className="w-2.5 h-2.5" />
                                           {custodyQty} عهدة
                                         </span>
@@ -2244,44 +2243,43 @@ export default function Products() {
                             {product.category}
                           </div>
                         )}
+
+                        {/* Buy & Sell Pricing (Aligned directly with bottom of image) */}
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] shrink-0">
+                          {!noInventory && (
+                            <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md border border-border/70 shadow-2xs">
+                              <span className="text-[9px] font-sans text-muted-foreground font-medium">شراء:</span>
+                              <span className="text-foreground font-bold">{formatPrice(product.costPrice)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 shadow-2xs text-primary">
+                            <span className="text-[9px] font-sans text-primary/80 font-medium">بيع:</span>
+                            <span className="text-foreground font-black">{formatPrice(product.salePrice)}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Top-Left Corner: Vertically Stacked Actions (Edit top, Delete directly below) */}
+                      {/* Left: Vertically Stacked Actions (Proportional, wider, slightly smaller icons, not elongated) */}
                       {canAddProducts && (
-                        <div className="flex flex-col gap-1.5 shrink-0">
+                        <div className="flex flex-col gap-1.5 shrink-0 justify-center h-[72px]">
                           <button
                             type="button"
                             onClick={() => openEditDialog(product)}
-                            className="p-1.5 rounded-lg bg-muted text-foreground/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs"
+                            className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
                             title="تعديل"
                           >
-                            <Edit className="w-3.5 h-3.5" />
+                            <Edit className="w-3.5 h-3.5 text-foreground/80" />
                           </button>
                           <button
                             type="button"
                             onClick={() => openDeleteDialog(product)}
-                            className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-90 transition-all shadow-2xs"
+                            className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-rose-500/20"
                             title="حذف"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                           </button>
                         </div>
                       )}
-                    </div>
-
-                    {/* Bottom Section: Lowered Buy & Sell Prices Only (Balanced 2-Column Boxes, No profit) */}
-                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-dashed border-border text-center">
-                      {/* سعر الشراء */}
-                      <div className="bg-muted/40 py-1.5 px-2.5 rounded-xl border border-border/80 flex items-center justify-between shadow-2xs">
-                        <span className="text-[9.5px] text-muted-foreground font-bold">سعر الشراء:</span>
-                        <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.costPrice)}</span>
-                      </div>
-
-                      {/* سعر البيع */}
-                      <div className="bg-primary/5 py-1.5 px-2.5 rounded-xl border border-primary/20 flex items-center justify-between shadow-2xs">
-                        <span className="text-[9.5px] text-primary font-bold">سعر البيع:</span>
-                        <span className="text-xs font-black text-foreground font-mono">{formatPrice(product.salePrice)}</span>
-                      </div>
                     </div>
                   </div>
                 );
@@ -2421,18 +2419,18 @@ export default function Products() {
                         <button
                           type="button"
                           onClick={() => openEditDialog(product)}
-                          className="p-2 rounded-xl bg-muted text-foreground/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs"
+                          className="w-8 h-8 rounded-xl bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
                           title="تعديل"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-4 h-4 text-foreground/80" />
                         </button>
                         <button
                           type="button"
                           onClick={() => openDeleteDialog(product)}
-                          className="p-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-90 transition-all shadow-2xs"
+                          className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-rose-500/20"
                           title="حذف"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                         </button>
                       </div>
                     )}
