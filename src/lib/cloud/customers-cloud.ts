@@ -13,9 +13,13 @@ import { addToQueue } from '../sync-queue';
 
 const isOfflineNow = () => typeof navigator !== 'undefined' && !navigator.onLine;
 const commitLocal = (list: Customer[]) => {
+  const userId = getCurrentUserId();
+  if (!userId) return; // Don't cache without user context
+  
   customersCache = list;
   cacheTimestamp = Date.now();
-  saveCustomersLocally(list);
+  cacheOwnerId = userId;
+  saveCustomersLocally(list, userId);
   emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
 };
 
@@ -72,28 +76,52 @@ function toCustomer(cloud: CloudCustomer): Customer {
 // Local storage cache helpers
 const LOCAL_CACHE_KEY = 'hyperpos_customers_cache';
 
-const saveCustomersLocally = (customers: Customer[]) => {
+interface CachedCustomersData {
+  userId: string;
+  customers: Customer[];
+  timestamp: number;
+}
+
+const saveCustomersLocally = (customers: Customer[], userId: string) => {
   try {
-    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(customers));
+    const cacheData: CachedCustomersData = {
+      userId,
+      customers,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(cacheData));
   } catch { /* ignore */ }
 };
 
-const loadCustomersLocally = (): Customer[] | null => {
+const loadCustomersLocally = (userId: string): Customer[] | null => {
   try {
     const data = localStorage.getItem(LOCAL_CACHE_KEY);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    
+    const cached: CachedCustomersData = JSON.parse(data);
+    // Verify cache belongs to current user
+    if (cached.userId !== userId) {
+      console.log('[customers-cloud] localStorage cache belongs to different user, ignoring');
+      return null;
+    }
+    
+    return cached.customers;
   } catch { return null; }
 };
 
-// Cache
+// Cache with owner tracking
 let customersCache: Customer[] | null = null;
 let cacheTimestamp = 0;
+let cacheOwnerId: string | null = null;
 const CACHE_TTL = 30000; // 30 seconds
 
 // Background refresh control
 let bgRefreshing = false;
 const refreshCustomersInBackground = async () => {
   if (bgRefreshing || !navigator.onLine) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  
   bgRefreshing = true;
   try {
     const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
@@ -102,7 +130,8 @@ const refreshCustomersInBackground = async () => {
     });
     customersCache = cloudCustomers.map(toCustomer);
     cacheTimestamp = Date.now();
-    saveCustomersLocally(customersCache);
+    cacheOwnerId = userId;
+    saveCustomersLocally(customersCache, userId);
     try {
       const { emitEvent, EVENTS } = await import('../events');
       emitEvent(EVENTS.CUSTOMERS_UPDATED);
@@ -118,20 +147,29 @@ const refreshCustomersInBackground = async () => {
 export const loadCustomersCloud = async (): Promise<Customer[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
-    const local = loadCustomersLocally();
-    return local || [];
+    // No authenticated user - return empty to avoid leaking cached data
+    return [];
   }
 
-  // Memory cache: instant
-  if (customersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Memory cache: instant, but verify ownership
+  if (customersCache && cacheOwnerId === userId && Date.now() - cacheTimestamp < CACHE_TTL) {
     return customersCache;
   }
 
-  // localStorage cache: instant + trigger background refresh
-  const local = loadCustomersLocally();
+  // If memory cache exists but belongs to different user, invalidate it
+  if (customersCache && cacheOwnerId && cacheOwnerId !== userId) {
+    console.log('[customers-cloud] Memory cache belongs to different user, invalidating');
+    customersCache = null;
+    cacheTimestamp = 0;
+    cacheOwnerId = null;
+  }
+
+  // localStorage cache: instant + trigger background refresh, but verify ownership
+  const local = loadCustomersLocally(userId);
   if (local) {
     customersCache = local;
     cacheTimestamp = Date.now();
+    cacheOwnerId = userId;
     if (navigator.onLine) refreshCustomersInBackground();
     return local;
   }
@@ -146,7 +184,8 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
 
   customersCache = cloudCustomers.map(toCustomer);
   cacheTimestamp = Date.now();
-  saveCustomersLocally(customersCache);
+  cacheOwnerId = userId;
+  saveCustomersLocally(customersCache, userId);
 
   return customersCache;
 };
@@ -176,6 +215,11 @@ export const loadCustomersWithCashierNamesCloud = async (): Promise<Customer[]> 
 export const invalidateCustomersCache = () => {
   customersCache = null;
   cacheTimestamp = 0;
+  cacheOwnerId = null;
+  // Also clear localStorage to prevent stale data from being loaded
+  try {
+    localStorage.removeItem(LOCAL_CACHE_KEY);
+  } catch { /* ignore */ }
 };
 
 // Add customer
@@ -213,7 +257,9 @@ export const addCustomerCloud = async (
     };
     addToQueue('customer_create', payload, 10);
     const local = toCustomer({ ...payload, user_id: '', last_purchase: null, created_at: nowIso, updated_at: nowIso } as unknown as CloudCustomer);
-    commitLocal([local, ...(customersCache || loadCustomersLocally() || [])]);
+    const userId = getCurrentUserId();
+    const existingList = userId && customersCache ? customersCache : (userId ? loadCustomersLocally(userId) : null) || [];
+    commitLocal([local, ...existingList]);
     return local;
   }
 
@@ -230,11 +276,15 @@ export const addCustomerCloud = async (
   
   if (inserted) {
     const newCustomer = toCustomer(inserted);
+    const userId = getCurrentUserId();
+    if (!userId) return newCustomer; // Shouldn't happen but be safe
+    
     // ✅ تحديث الكاش المحلي وفي الذاكرة فوراً لضمان توفره لحظياً
-    const currentList = customersCache || loadCustomersLocally() || [];
+    const currentList = customersCache || loadCustomersLocally(userId) || [];
     customersCache = [newCustomer, ...currentList.filter(c => c.id !== newCustomer.id)];
     cacheTimestamp = Date.now();
-    saveCustomersLocally(customersCache);
+    cacheOwnerId = userId;
+    saveCustomersLocally(customersCache, userId);
 
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
     triggerAutoBackup(`عميل جديد: ${normalizedName}`);
@@ -262,7 +312,8 @@ export const updateCustomerCloud = async (
 
   if (isOfflineNow()) {
     addToQueue('customer_update', { id, ...updates }, 10);
-    const currentList = customersCache || loadCustomersLocally() || [];
+    const userId = getCurrentUserId();
+    const currentList = userId && customersCache ? customersCache : (userId ? loadCustomersLocally(userId) : null) || [];
     commitLocal(currentList.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c));
     return true;
   }
@@ -270,10 +321,14 @@ export const updateCustomerCloud = async (
   const success = await updateInSupabase('customers', id, updates);
   
   if (success) {
-    const currentList = customersCache || loadCustomersLocally() || [];
+    const userId = getCurrentUserId();
+    if (!userId) return success; // Shouldn't happen but be safe
+    
+    const currentList = customersCache || loadCustomersLocally(userId) || [];
     customersCache = currentList.map(c => c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c);
     cacheTimestamp = Date.now();
-    saveCustomersLocally(customersCache);
+    cacheOwnerId = userId;
+    saveCustomersLocally(customersCache, userId);
 
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
   }
@@ -285,17 +340,23 @@ export const updateCustomerCloud = async (
 export const deleteCustomerCloud = async (id: string): Promise<boolean> => {
   if (isOfflineNow()) {
     addToQueue('customer_delete', { id }, 10);
-    commitLocal((customersCache || loadCustomersLocally() || []).filter(c => c.id !== id));
+    const userId = getCurrentUserId();
+    const currentList = userId && customersCache ? customersCache : (userId ? loadCustomersLocally(userId) : null) || [];
+    commitLocal(currentList.filter(c => c.id !== id));
     return true;
   }
 
   const success = await deleteFromSupabase('customers', id);
   
   if (success) {
-    const currentList = customersCache || loadCustomersLocally() || [];
+    const userId = getCurrentUserId();
+    if (!userId) return success; // Shouldn't happen but be safe
+    
+    const currentList = customersCache || loadCustomersLocally(userId) || [];
     customersCache = currentList.filter(c => c.id !== id);
     cacheTimestamp = Date.now();
-    saveCustomersLocally(customersCache);
+    cacheOwnerId = userId;
+    saveCustomersLocally(customersCache, userId);
 
     emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
   }
