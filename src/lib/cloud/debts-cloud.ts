@@ -135,85 +135,123 @@ export const getNextManualDebtId = async (): Promise<string> => {
 // Load debts
 // ✅ Owners see all debts, cashiers see only their own
 const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
-  let userId = getCurrentUserId();
-  if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      userId = user.id;
-      setCurrentUserId(user.id);
-    }
-  }
-  if (!userId) return [];
-
-  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return debtsCache;
-  }
-
-  // Offline: return local cache
-  if (!navigator.onLine) {
+  // 1. Offline fast-path
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
     const local = loadDebtsLocally();
     if (local) {
       debtsCache = local;
       cacheTimestamp = Date.now();
       return mergeSyncQueueDebts(local);
     }
-    return [];
+    return mergeSyncQueueDebts(debtsCache || []);
   }
 
-  // Check if current user is a cashier
-  const isCashier = await isCashierUser();
-
-  let cloudDebts = await fetchFromSupabase<CloudDebt & { cashier_id?: string }>('debts', {
-    column: 'created_at',
-    ascending: false,
-  });
-
-  // ✅ If cashier, filter to only show their own debts
-  if (isCashier) {
-    cloudDebts = cloudDebts.filter(d => d.cashier_id === userId);
+  // 2. Safe userId retrieval using local session
+  let userId = getCurrentUserId();
+  if (!userId) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        userId = session.user.id;
+        setCurrentUserId(session.user.id);
+      }
+    } catch { /* ignore */ }
   }
 
-  // Fetch cashier names for debts with cashier_id
-  const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
-  if (cashierIds.length > 0) {
-    const { data: profiles } = await sb
-      .from('profiles')
-      .select('user_id, full_name')
-      .in('user_id', cashierIds);
+  if (!userId) {
+    const local = loadDebtsLocally();
+    return mergeSyncQueueDebts(local || debtsCache || []);
+  }
 
-    if (profiles) {
-      const nameMap: Record<string, string> = {};
-      profiles.forEach((p: { user_id: string; full_name: string }) => {
-        nameMap[p.user_id] = p.full_name;
-        cashierNamesCache[p.user_id] = p.full_name;
-      });
+  if (debtsCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return mergeSyncQueueDebts(debtsCache);
+  }
 
-      cloudDebts = cloudDebts.map(d => ({
-        ...d,
-        cashier_name: (d as { cashier_id?: string }).cashier_id ? nameMap[(d as { cashier_id: string }).cashier_id] : undefined,
-      }));
+  try {
+    // Check if current user is a cashier
+    const isCashier = await isCashierUser();
+
+    let cloudDebts = await fetchFromSupabase<CloudDebt & { cashier_id?: string }>('debts', {
+      column: 'created_at',
+      ascending: false,
+    });
+
+    if (cloudDebts.length === 0) {
+      const local = loadDebtsLocally();
+      if (local && local.length > 0) {
+        debtsCache = local;
+        cacheTimestamp = Date.now();
+        return debtsCache;
+      }
     }
+
+    // ✅ If cashier, filter to only show their own debts
+    if (isCashier) {
+      cloudDebts = cloudDebts.filter(d => d.cashier_id === userId);
+    }
+
+    // Fetch cashier names for debts with cashier_id safely
+    const cashierIds = [...new Set(cloudDebts.filter(d => (d as { cashier_id?: string }).cashier_id).map(d => (d as { cashier_id: string }).cashier_id))];
+    if (cashierIds.length > 0) {
+      try {
+        const { data: profiles } = await sb
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', cashierIds);
+
+        if (profiles) {
+          const nameMap: Record<string, string> = {};
+          profiles.forEach((p: { user_id: string; full_name: string }) => {
+            nameMap[p.user_id] = p.full_name;
+            cashierNamesCache[p.user_id] = p.full_name;
+          });
+
+          cloudDebts = cloudDebts.map(d => ({
+            ...d,
+            cashier_name: (d as { cashier_id?: string }).cashier_id ? nameMap[(d as { cashier_id: string }).cashier_id] : undefined,
+          }));
+        }
+      } catch (err) {
+        console.warn('[debts-cloud] cashier names lookup failed:', err);
+      }
+    }
+
+    debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
+    cacheTimestamp = Date.now();
+    saveDebtsLocally(debtsCache);
+
+    return debtsCache;
+  } catch (err) {
+    console.warn('[debts-cloud] fetch failed, falling back to local cache:', err);
+    const local = loadDebtsLocally();
+    return local || debtsCache || [];
   }
-
-  debtsCache = cloudDebts.map(d => toDebt(d as CloudDebt & { cashier_name?: string }));
-  cacheTimestamp = Date.now();
-  saveDebtsLocally(debtsCache);
-
-  return debtsCache;
 };
-
 
 // Local-first boot: first load after app start shows the saved copy instantly, refreshes silently
 let bootServed_loadDebtsCloud = false;
 export const loadDebtsCloud = async (): Promise<Debt[]> => {
+  // If offline, return immediately from local cache
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const local = loadDebtsLocally();
+    if (local) {
+      debtsCache = local;
+      cacheTimestamp = Date.now();
+      return mergeSyncQueueDebts(local);
+    }
+    return mergeSyncQueueDebts(debtsCache || []);
+  }
+
   if (!bootServed_loadDebtsCloud) {
     bootServed_loadDebtsCloud = true;
     const local = loadDebtsLocally();
-    if (local && local.length > 0 && getCurrentUserId()) {
-      debtsCache = local; cacheTimestamp = Date.now();
+    if (local && local.length > 0) {
+      debtsCache = local;
+      cacheTimestamp = Date.now();
       if (navigator.onLine) {
         setTimeout(() => {
-          debtsCache = null; cacheTimestamp = 0;
+          debtsCache = null;
+          cacheTimestamp = 0;
           fetchFresh_loadDebtsCloud().then(() => emitEvent(EVENTS.DEBTS_UPDATED, null)).catch(() => {});
         }, 0);
       }

@@ -9,10 +9,12 @@ export * from './categories-cloud';
 export * from './customers-cloud';
 export * from './invoices-cloud';
 export * from './debts-cloud';
+export * from './purchase-invoices-cloud';
 export * from './partners-cloud';
 export * from './expenses-cloud';
 export * from './recurring-expenses-cloud';
 export * from './warehouses-cloud';
+export * from './cache-warmup';
 
 // Helper to check if cloud sync is available
 export const isCloudSyncEnabled = (): boolean => {
@@ -26,6 +28,7 @@ export const invalidateAllCaches = async () => {
   const { invalidateCustomersCache } = await import('./customers-cloud');
   const { invalidateInvoicesCache } = await import('./invoices-cloud');
   const { invalidateDebtsCache } = await import('./debts-cloud');
+  const { invalidatePurchaseInvoicesCache } = await import('./purchase-invoices-cloud');
   const { invalidatePartnersCache } = await import('./partners-cloud');
   const { invalidateExpensesCache } = await import('./expenses-cloud');
   const { invalidateRecurringExpensesCache } = await import('./recurring-expenses-cloud');
@@ -36,6 +39,7 @@ export const invalidateAllCaches = async () => {
   invalidateCustomersCache();
   invalidateInvoicesCache();
   invalidateDebtsCache();
+  invalidatePurchaseInvoicesCache();
   invalidatePartnersCache();
   invalidateExpensesCache();
   invalidateRecurringExpensesCache();

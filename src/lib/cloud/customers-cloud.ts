@@ -9,7 +9,7 @@ import {
 import { emitEvent, EVENTS } from '../events';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
-import { addToQueue } from '../sync-queue';
+import { addToQueue, getPendingOperations } from '../sync-queue';
 
 const isOfflineNow = () => typeof navigator !== 'undefined' && !navigator.onLine;
 const commitLocal = (list: Customer[]) => {
@@ -116,61 +116,84 @@ const refreshCustomersInBackground = async () => {
 
 // Load customers — local-first: serve cache instantly, refresh in background
 export const loadCustomersCloud = async (): Promise<Customer[]> => {
+  // Fast offline return: instant local cache + queue
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const local = loadCustomersLocally();
+    return mergeSyncQueueCustomers(local || customersCache || []);
+  }
+
   const userId = getCurrentUserId();
   if (!userId) {
     const local = loadCustomersLocally();
-    return local || [];
+    return mergeSyncQueueCustomers(local || customersCache || []);
   }
 
   // Memory cache: instant
   if (customersCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return customersCache;
+    return mergeSyncQueueCustomers(customersCache);
   }
 
   // localStorage cache: instant + trigger background refresh
   const local = loadCustomersLocally();
-  if (local) {
+  if (local && local.length > 0) {
     customersCache = local;
     cacheTimestamp = Date.now();
     if (navigator.onLine) refreshCustomersInBackground();
-    return local;
+    return mergeSyncQueueCustomers(local);
   }
 
-  // First load — must wait for network
-  if (!navigator.onLine) return [];
+  // First load — must wait for network if online
+  if (!navigator.onLine) return mergeSyncQueueCustomers([]);
 
-  const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
-    column: 'created_at',
-    ascending: false,
-  });
+  try {
+    const cloudCustomers = await fetchFromSupabase<CloudCustomer>('customers', {
+      column: 'created_at',
+      ascending: false,
+    });
 
-  customersCache = cloudCustomers.map(toCustomer);
-  cacheTimestamp = Date.now();
-  saveCustomersLocally(customersCache);
+    if (cloudCustomers && cloudCustomers.length > 0) {
+      customersCache = cloudCustomers.map(toCustomer);
+      cacheTimestamp = Date.now();
+      saveCustomersLocally(customersCache);
+      return mergeSyncQueueCustomers(customersCache);
+    }
+  } catch (e) {
+    console.warn('[customers-cloud] Failed to load customers from cloud:', e);
+  }
 
-  return customersCache;
+  return mergeSyncQueueCustomers(local || customersCache || []);
 };
 
-// ✅ تحميل العملاء مع أسماء الكاشير
+// ✅ تحميل العملاء مع أسماء الكاشير بأمان دون تعليق أو أخطاء أوفلاين
 export const loadCustomersWithCashierNamesCloud = async (): Promise<Customer[]> => {
   const customers = await loadCustomersCloud();
   
-  // جلب أسماء الكاشير من profiles
-  const cashierIds = [...new Set(customers.filter(c => c.cashierId).map(c => c.cashierId!))];
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return customers;
+  }
   
-  if (cashierIds.length === 0) return customers;
-  
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('user_id, full_name')
-    .in('user_id', cashierIds);
-  
-  const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-  
-  return customers.map(c => ({
-    ...c,
-    cashierName: c.cashierId ? profileMap.get(c.cashierId) || undefined : undefined,
-  }));
+  try {
+    // جلب أسماء الكاشير من profiles
+    const cashierIds = [...new Set(customers.filter(c => c.cashierId).map(c => c.cashierId!))];
+    
+    if (cashierIds.length === 0) return customers;
+    
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, full_name')
+      .in('user_id', cashierIds);
+    
+    if (!profiles || profiles.length === 0) return customers;
+    const profileMap = new Map(profiles.map(p => [p.user_id, p.full_name]));
+    
+    return customers.map(c => ({
+      ...c,
+      cashierName: c.cashierId ? profileMap.get(c.cashierId) || undefined : undefined,
+    }));
+  } catch (err) {
+    console.warn('[customers-cloud] cashier names lookup failed:', err);
+    return customers;
+  }
 };
 
 export const invalidateCustomersCache = () => {
@@ -191,30 +214,31 @@ export const addCustomerCloud = async (
   );
   
   if (duplicate) {
-    // إرجاع null مع تسجيل التحذير (الواجهة ستتعامل مع هذا)
     console.warn('[addCustomerCloud] Customer with same name already exists:', customer.name);
     return null;
-  }
-  
-  // ✅ جلب معرف الكاشير الحالي لحفظه مع العميل
-  let cashierId = getCurrentUserId();
-  if (!cashierId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    cashierId = user?.id || null;
   }
   
   // Offline: save on device now, upload automatically when internet returns
   if (isOfflineNow()) {
     const nowIso = new Date().toISOString();
-    const id = crypto.randomUUID();
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `cust_${Date.now()}`;
     const payload = {
       id, name: normalizedName, phone: customer.phone || null, email: customer.email || null,
-      address: customer.address || null, total_purchases: 0, total_debt: 0, invoice_count: 0, cashier_id: cashierId,
+      address: customer.address || null, total_purchases: 0, total_debt: 0, invoice_count: 0, cashier_id: getCurrentUserId() || null,
     };
     addToQueue('customer_create', payload, 10);
     const local = toCustomer({ ...payload, user_id: '', last_purchase: null, created_at: nowIso, updated_at: nowIso } as unknown as CloudCustomer);
     commitLocal([local, ...(customersCache || loadCustomersLocally() || [])]);
     return local;
+  }
+
+  // ✅ جلب معرف الكاشير الحالي لحفظه مع العميل
+  let cashierId = getCurrentUserId();
+  if (!cashierId && typeof navigator !== 'undefined' && navigator.onLine) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      cashierId = session?.user?.id || null;
+    } catch { /* ignore */ }
   }
 
   const inserted = await insertToSupabase<CloudCustomer>('customers', {
@@ -464,3 +488,37 @@ export const getCustomersStatsCloud = async () => {
     totalPurchases: rows.reduce((sum, r) => sum + r.totalPurchases, 0),
   };
 };
+
+function mergeSyncQueueCustomers(customers: Customer[]): Customer[] {
+  try {
+    const pending = getPendingOperations();
+    const queueCustomers: Customer[] = [];
+    for (const op of pending) {
+      if (op.type === 'customer_create') {
+        const data = (op.data || {}) as Record<string, any>;
+        const nowIso = op.timestamp || op.createdAt || new Date().toISOString();
+        queueCustomers.push({
+          id: data.id || op.id,
+          name: data.name || '',
+          phone: data.phone || '',
+          email: data.email || undefined,
+          address: data.address || undefined,
+          totalPurchases: Number(data.total_purchases) || 0,
+          totalDebt: Number(data.total_debt) || 0,
+          invoiceCount: Number(data.invoice_count) || 0,
+          lastPurchase: data.last_purchase || '',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          cashierId: data.cashier_id || undefined,
+        });
+      }
+    }
+    const existingNames = new Set(customers.map(c => c.name.toLowerCase().trim()));
+    const existingIds = new Set(customers.map(c => c.id));
+    const uniqueQueue = queueCustomers.filter(qc => !existingIds.has(qc.id) && !existingNames.has(qc.name.toLowerCase().trim()));
+    return [...uniqueQueue, ...customers];
+  } catch {
+    return customers;
+  }
+}
+

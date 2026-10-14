@@ -1,7 +1,8 @@
- import { supabase } from '@/integrations/supabase/client';
- import { isNoInventoryMode } from '@/lib/store-type-config';
- import { emitEvent, EVENTS } from '@/lib/events';
- import { getOwnerIdForInsert } from '@/lib/supabase-store';
+import { supabase } from '@/integrations/supabase/client';
+import { isNoInventoryMode } from '@/lib/store-type-config';
+import { emitEvent, EVENTS } from '@/lib/events';
+import { getOwnerIdForInsert, getCurrentUserId } from '@/lib/supabase-store';
+import { getPendingOperations } from '@/lib/sync-queue';
  
  export interface PurchaseInvoice {
    id: string;
@@ -61,83 +62,130 @@
    sale_price?: number;
  }
  
- // Local storage cache helpers
- const LOCAL_CACHE_KEY = 'hyperpos_purchase_invoices_cache';
+// Local storage cache helpers
+const LOCAL_CACHE_KEY = 'hyperpos_purchase_invoices_cache';
 
- const savePurchaseInvoicesLocally = (invoices: PurchaseInvoice[]) => {
-   try {
-     localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(invoices));
-   } catch { /* ignore */ }
- };
+let purchaseInvoicesCache: PurchaseInvoice[] | null = null;
+let purchaseCacheTimestamp = 0;
+const PURCHASE_CACHE_TTL = 30000;
 
- const loadPurchaseInvoicesLocally = (): PurchaseInvoice[] | null => {
-   try {
-     const data = localStorage.getItem(LOCAL_CACHE_KEY);
-     return data ? JSON.parse(data) : null;
-   } catch { return null; }
- };
+export const invalidatePurchaseInvoicesCache = () => {
+  purchaseInvoicesCache = null;
+  purchaseCacheTimestamp = 0;
+};
 
- // Load all purchase invoices
- export async function loadPurchaseInvoicesCloud(): Promise<PurchaseInvoice[]> {
-   const { data: { user } } = await supabase.auth.getUser();
-   if (!user) return [];
+const savePurchaseInvoicesLocally = (invoices: PurchaseInvoice[]) => {
+  try {
+    purchaseInvoicesCache = invoices;
+    purchaseCacheTimestamp = Date.now();
+    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(invoices));
+  } catch { /* ignore */ }
+};
 
-   // Offline: return local cache
-   if (!navigator.onLine) {
-     const local = loadPurchaseInvoicesLocally();
-     if (local) return local;
-     return [];
-   }
+const loadPurchaseInvoicesLocally = (): PurchaseInvoice[] | null => {
+  try {
+    const data = localStorage.getItem(LOCAL_CACHE_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch { return null; }
+};
 
-   const { data, error } = await supabase
-     .from('purchase_invoices')
-     .select('*')
-     .order('created_at', { ascending: false });
+// Load all purchase invoices
+export async function loadPurchaseInvoicesCloud(): Promise<PurchaseInvoice[]> {
+  // 1. Offline fast-path: zero network delay, instant local cache + queue
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const local = loadPurchaseInvoicesLocally();
+    return mergeSyncQueuePurchases(local || purchaseInvoicesCache || []);
+  }
 
-   if (error) {
-     console.error('Error loading purchase invoices:', error);
-     return [];
-   }
+  // 2. Safe userId retrieval using local session
+  let userId = getCurrentUserId();
+  if (!userId) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id || null;
+    } catch { /* ignore */ }
+  }
 
-   const invoices = (data || []) as PurchaseInvoice[];
-   savePurchaseInvoicesLocally(invoices);
-   return invoices;
- }
+  if (!userId) {
+    const local = loadPurchaseInvoicesLocally();
+    return mergeSyncQueuePurchases(local || purchaseInvoicesCache || []);
+  }
+
+  if (purchaseInvoicesCache && Date.now() - purchaseCacheTimestamp < PURCHASE_CACHE_TTL) {
+    return mergeSyncQueuePurchases(purchaseInvoicesCache);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('purchase_invoices')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Error loading purchase invoices from cloud:', error);
+      const local = loadPurchaseInvoicesLocally();
+      return mergeSyncQueuePurchases(local || purchaseInvoicesCache || []);
+    }
+
+    const invoices = (data || []) as PurchaseInvoice[];
+    savePurchaseInvoicesLocally(invoices);
+    return mergeSyncQueuePurchases(invoices);
+  } catch (err) {
+    console.warn('Exception loading purchase invoices, falling back to local cache:', err);
+    const local = loadPurchaseInvoicesLocally();
+    return mergeSyncQueuePurchases(local || purchaseInvoicesCache || []);
+  }
+}
  
- // Load single purchase invoice with items
- export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
-   invoice: PurchaseInvoice | null;
-   items: PurchaseInvoiceItem[];
- }> {
-   const { data: invoice, error: invoiceError } = await supabase
-     .from('purchase_invoices')
-     .select('*')
-     .eq('id', invoiceId)
-     .single();
- 
-   if (invoiceError) {
-     console.error('Error loading purchase invoice:', invoiceError);
-     return { invoice: null, items: [] };
-   }
- 
-   const { data: items, error: itemsError } = await supabase
-     .from('purchase_invoice_items')
-     .select('*')
-     .eq('invoice_id', invoiceId)
-     .order('created_at', { ascending: true });
- 
-   if (itemsError) {
-     console.error('Error loading purchase invoice items:', itemsError);
-     return { invoice: invoice as PurchaseInvoice, items: [] };
-   }
- 
-   return {
-     invoice: invoice as PurchaseInvoice,
-     items: (items || []) as PurchaseInvoiceItem[]
-   };
- }
- 
- // Create new purchase invoice
+// Load single purchase invoice with items
+export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
+  invoice: PurchaseInvoice | null;
+  items: PurchaseInvoiceItem[];
+}> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const local = loadPurchaseInvoicesLocally() || [];
+    const invoice = local.find(i => i.id === invoiceId || i.invoice_number === invoiceId) || null;
+    return { invoice, items: [] };
+  }
+
+  try {
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('purchase_invoices')
+      .select('*')
+      .eq('id', invoiceId)
+      .single();
+
+    if (invoiceError) {
+      console.warn('Error loading purchase invoice:', invoiceError);
+      const local = loadPurchaseInvoicesLocally() || [];
+      const cached = local.find(i => i.id === invoiceId || i.invoice_number === invoiceId) || null;
+      return { invoice: cached, items: [] };
+    }
+
+    const { data: items, error: itemsError } = await supabase
+      .from('purchase_invoice_items')
+      .select('*')
+      .eq('invoice_id', invoiceId)
+      .order('created_at', { ascending: true });
+
+    if (itemsError) {
+      console.warn('Error loading purchase invoice items:', itemsError);
+      return { invoice: invoice as PurchaseInvoice, items: [] };
+    }
+
+    return {
+      invoice: invoice as PurchaseInvoice,
+      items: (items || []) as PurchaseInvoiceItem[]
+    };
+  } catch (err) {
+    console.warn('Exception loading purchase invoice with items:', err);
+    const local = loadPurchaseInvoicesLocally() || [];
+    const cached = local.find(i => i.id === invoiceId || i.invoice_number === invoiceId) || null;
+    return { invoice: cached, items: [] };
+  }
+}
+
+// Create new purchase invoice
  export async function addPurchaseInvoiceCloud(input: CreatePurchaseInvoiceInput): Promise<PurchaseInvoice | null> {
    const { data: { user } } = await supabase.auth.getUser();
    if (!user) return null;

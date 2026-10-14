@@ -12,6 +12,7 @@ import { processQuickPurchaseFromQueue, processPurchaseInvoiceFromQueue } from '
 import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus, checkRealInternetAccess } from '@/hooks/use-network-status';
 import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-processor';
+import { warmupAllCaches } from '@/lib/cloud/cache-warmup';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
@@ -151,14 +152,17 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   useEffect(() => {
     if (!user) return;
     const handleOnline = () => {
-      console.log('[CloudSync] window online event fired, triggering sync...');
-      setTimeout(() => { syncNowRef.current?.(true); }, 200);
+      console.log('[CloudSync] window online event fired, triggering sync & warmup...');
+      setTimeout(() => {
+        syncNowRef.current?.(true);
+        warmupAllCaches(true).catch(() => {});
+      }, 200);
     };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [user]);
 
-  // مؤقت دوري لإعادة محاولة المزامنة كل 30 دقيقة
+  // مؤقت دوري لإعادة محاولة المزامنة
   useEffect(() => {
     if (!user) return;
 
@@ -168,6 +172,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       const hasInternet = await checkRealInternetAccess(4000);
       if (hasInternet) {
         syncNowRef.current?.();
+        warmupAllCaches().catch(() => {});
       }
     }, PERIODIC_RETRY_INTERVAL_MS);
 
@@ -293,6 +298,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       }
 
       setLastSyncTime(new Date().toISOString());
+
+      // Warm up and cache all store tabs in the background (invoices, customers, debts, purchases, etc.)
+      warmupAllCaches().catch(() => {});
     } catch (error) {
       console.error('Cloud sync initialization error:', error);
     } finally {
@@ -439,6 +447,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       if (result.processed > 0) {
         const { invalidateAllCaches } = await import('@/lib/cloud');
         await invalidateAllCaches();
+        warmupAllCaches(true).catch(() => {});
       }
 
       const cloudSettings = await fetchStoreSettings();

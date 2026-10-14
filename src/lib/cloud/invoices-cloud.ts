@@ -1,4 +1,4 @@
-import { getPendingOperations } from '../sync-queue';
+import { getPendingOperations, addToQueue } from '../sync-queue';
 // Cloud Invoices Store - Supabase-backed invoices management
 import {
   fetchFromSupabase,
@@ -213,9 +213,9 @@ const loadInvoicesFromLocalCache = (): Invoice[] | null => {
   try {
     const cached = localStorage.getItem(LOCAL_INVOICES_CACHE_KEY);
     if (cached) {
-      const { invoices, timestamp } = JSON.parse(cached);
-      // 24hr TTL
-      if (Date.now() - timestamp < 86400000 && invoices?.length > 0) {
+      const parsed = JSON.parse(cached);
+      const invoices = Array.isArray(parsed) ? parsed : parsed?.invoices;
+      if (Array.isArray(invoices) && invoices.length > 0) {
         console.log('[InvoicesCloud] 📴 Serving', invoices.length, 'invoices from local cache');
         return invoices;
       }
@@ -233,6 +233,14 @@ const getNextInvoiceNumber = async (): Promise<string> => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const datePrefix = `${year}${month}${day}`;
+
+  // If offline, generate sequentially from local cache immediately
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const local = loadInvoicesFromLocalCache() || [];
+    const todayInvoices = local.filter(inv => inv.id && inv.id.startsWith(datePrefix));
+    const nextNumber = todayInvoices.length + 1;
+    return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
+  }
 
   // Try central sequence RPC first
   try {
@@ -264,52 +272,22 @@ const getNextInvoiceNumber = async (): Promise<string> => {
     }
     return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
   } catch {
-    const invoices = await loadInvoicesCloud();
-    const todayInvoices = invoices.filter(inv => inv.id.startsWith(datePrefix));
+    const invoices = loadInvoicesFromLocalCache() || [];
+    const todayInvoices = invoices.filter(inv => inv.id && inv.id.startsWith(datePrefix));
     const nextNumber = todayInvoices.length + 1;
     return `${datePrefix}-${String(nextNumber).padStart(3, '0')}`;
   }
 };
 
+let coldStartServed = false;
+
 // Load invoices
 // ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
-  let userId = getCurrentUserId();
-  if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      userId = user.id;
-      setCurrentUserId(user.id);
-    }
-  }
-  if (!userId) {
-    // Try local cache even without userId
-    const localInvoices = loadInvoicesFromLocalCache();
-    return mergeSyncQueueInvoices(localInvoices || []);
-  }
-
-  if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return invoicesCache;
-  }
-
-  // Instant open: on the first load after app start, serve the saved copy
-  // immediately and refresh from the server in the background (display only).
-  if (!coldStartServed && !invoicesCache && navigator.onLine) {
-    coldStartServed = true;
+  // 1. Instant offline fast-path: zero network delay, instant local cache + queue
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
     const localInvoices = loadInvoicesFromLocalCache();
     if (localInvoices && localInvoices.length > 0) {
-      void fetchInvoicesFromCloud(userId).then((fresh) => {
-        emitEvent(EVENTS.INVOICES_UPDATED, fresh);
-      }).catch(() => { /* keep saved copy */ });
-      return mergeSyncQueueInvoices(localInvoices);
-    }
-  }
-  coldStartServed = true;
-
-  // Check if offline
-  if (!navigator.onLine) {
-    const localInvoices = loadInvoicesFromLocalCache();
-    if (localInvoices) {
       invoicesCache = localInvoices;
       cacheTimestamp = Date.now();
       return mergeSyncQueueInvoices(localInvoices);
@@ -317,10 +295,51 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
     return mergeSyncQueueInvoices(invoicesCache || []);
   }
 
-  return fetchInvoicesFromCloud(userId).then(mergeSyncQueueInvoices);
-};
+  // 2. Safe userId retrieval using local session (no blocking network request)
+  let userId = getCurrentUserId();
+  if (!userId) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        userId = session.user.id;
+        setCurrentUserId(session.user.id);
+      }
+    } catch { /* ignore */ }
+  }
 
-let coldStartServed = false;
+  if (!userId) {
+    // Return local cache even without userId
+    const localInvoices = loadInvoicesFromLocalCache();
+    return mergeSyncQueueInvoices(localInvoices || invoicesCache || []);
+  }
+
+  if (invoicesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return mergeSyncQueueInvoices(invoicesCache);
+  }
+
+  // 3. Instant open: on first load after app start, serve local copy immediately
+  // and refresh from server in background without blocking rendering.
+  const localInvoices = loadInvoicesFromLocalCache();
+  if (!coldStartServed && localInvoices && localInvoices.length > 0) {
+    coldStartServed = true;
+    invoicesCache = localInvoices;
+    cacheTimestamp = Date.now();
+    void fetchInvoicesFromCloud(userId).then((fresh) => {
+      emitEvent(EVENTS.INVOICES_UPDATED, fresh);
+    }).catch(() => { /* keep saved copy */ });
+    return mergeSyncQueueInvoices(localInvoices);
+  }
+  coldStartServed = true;
+
+  try {
+    const cloudInvoices = await fetchInvoicesFromCloud(userId);
+    return mergeSyncQueueInvoices(cloudInvoices);
+  } catch (err) {
+    console.warn('[InvoicesCloud] Cloud fetch failed, serving local cache:', err);
+    if (localInvoices) return mergeSyncQueueInvoices(localInvoices);
+    return mergeSyncQueueInvoices(invoicesCache || []);
+  }
+};
 
 const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
   try {
@@ -420,17 +439,18 @@ export const addInvoiceCloud = async (
   const invoiceNumber = await getNextInvoiceNumber();
   const now = new Date();
 
-  // ✅ جلب معرف المستخدم من المتغير أو مباشرة من supabase
+  // ✅ جلب معرف المستخدم بأمان دون تعليق الشبكة
   let userId = getCurrentUserId();
-  if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    userId = user?.id || null;
-    console.log('[addInvoiceCloud] Fallback to supabase.auth.getUser:', userId);
+  if (!userId && typeof navigator !== 'undefined' && navigator.onLine) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id || null;
+    } catch { /* ignore */ }
   }
 
   // ✅ جلب اسم الكاشير/المستخدم الحالي
-  let cashierName = '';
-  if (userId) {
+  let cashierName = invoice.cashierName || '';
+  if (userId && !cashierName && typeof navigator !== 'undefined' && navigator.onLine) {
     try {
       const { data: profile } = await sb
         .from('profiles')
@@ -441,6 +461,48 @@ export const addInvoiceCloud = async (
     } catch (e) {
       console.warn('[addInvoiceCloud] Could not fetch cashier name:', e);
     }
+  }
+
+  // فرع أوفلاين فوري إذا كان الإنترنت مقطوعاً
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const offlineInvoice: Invoice = {
+      ...invoice,
+      id: invoiceNumber,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      cashierId: userId || undefined,
+      cashierName: cashierName || undefined,
+      pending_sync: true,
+    };
+    addToQueue('invoice_create', {
+      operationId: invoiceNumber,
+      bundle: {
+        customerName: invoice.customerName,
+        items: invoice.items,
+        subtotal: invoice.subtotal,
+        discount: invoice.discount,
+        discountPercentage: invoice.discountPercentage,
+        taxRate: invoice.taxRate,
+        taxAmount: invoice.taxAmount,
+        total: invoice.total,
+        totalInCurrency: invoice.totalInCurrency,
+        currency: invoice.currency,
+        currencySymbol: invoice.currencySymbol,
+        exchangeRate: (invoice as any).exchangeRate || 1,
+        profit: invoice.profit,
+        notes: invoice.notes || invoice.serviceDescription,
+        cashierId: userId,
+        cashierName: cashierName || undefined,
+        paymentType: invoice.paymentType,
+      }
+    }, 10);
+    const currentList = invoicesCache || loadInvoicesFromLocalCache() || [];
+    invoicesCache = [offlineInvoice, ...currentList.filter(i => i.id !== offlineInvoice.id)];
+    cacheTimestamp = Date.now();
+    saveInvoicesToLocalCache(invoicesCache);
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    triggerAutoBackup(`فاتورة جديدة #${invoiceNumber}`);
+    return offlineInvoice;
   }
 
   const inserted = await insertToSupabase<CloudInvoice>('invoices', {
@@ -500,7 +562,43 @@ export const addInvoiceCloud = async (
     };
   }
 
-  return null;
+  // Fallback: If cloud insert failed, keep locally and queue for retry
+  const offlineInvoice: Invoice = {
+    ...invoice,
+    id: invoiceNumber,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    cashierId: userId || undefined,
+    cashierName: cashierName || undefined,
+    pending_sync: true,
+  };
+  addToQueue('invoice_create', {
+    operationId: invoiceNumber,
+    bundle: {
+      customerName: invoice.customerName,
+      items: invoice.items,
+      subtotal: invoice.subtotal,
+      discount: invoice.discount,
+      discountPercentage: invoice.discountPercentage,
+      taxRate: invoice.taxRate,
+      taxAmount: invoice.taxAmount,
+      total: invoice.total,
+      totalInCurrency: invoice.totalInCurrency,
+      currency: invoice.currency,
+      currencySymbol: invoice.currencySymbol,
+      exchangeRate: (invoice as any).exchangeRate || 1,
+      profit: invoice.profit,
+      notes: invoice.notes || invoice.serviceDescription,
+      cashierId: userId,
+      paymentType: invoice.paymentType,
+    }
+  }, 10);
+  const currentList = invoicesCache || loadInvoicesFromLocalCache() || [];
+  invoicesCache = [offlineInvoice, ...currentList.filter(i => i.id !== offlineInvoice.id)];
+  cacheTimestamp = Date.now();
+  saveInvoicesToLocalCache(invoicesCache);
+  emitEvent(EVENTS.INVOICES_UPDATED, null);
+  return offlineInvoice;
 };
 
 // Update invoice
@@ -1007,38 +1105,48 @@ export const updateInvoiceByNumberCloud = async (
   return false;
 };
 
-function mergeSyncQueueInvoices(invoices) {
-  const pending = getPendingOperations();
-  const queueInvoices = [];
-  for (const op of pending) {
-    if (op.type === 'invoice_create' || op.type === 'debt_sale_bundle') {
-      const data = op.data as Record<string, any>;
-      const bundle = (data?.bundle || {}) as Record<string, any>;
-      const isFailed = op.status === 'failed';
-      queueInvoices.push({
-        id: data?.operationId || data?.localId || op.id,
-        type: 'sale',
-        customerName: bundle.customerName || 'عميل نقدي',
-        items: bundle.items || [],
-        subtotal: bundle.subtotal || 0,
-        discount: bundle.discount || 0,
-        total: bundle.total || 0,
-        totalInCurrency: bundle.totalInCurrency || bundle.total || 0,
-        currency: bundle.currency || 'USD',
-        currencySymbol: bundle.currencySymbol || '$',
-        paymentType: op.type === 'debt_sale_bundle' ? 'debt' : 'cash',
-        status: 'pending',
-        createdAt: op.timestamp || op.createdAt || new Date().toISOString(),
-        updatedAt: op.timestamp || op.createdAt || new Date().toISOString(),
-        pending_sync: true,
-        sync_failed: isFailed,
-        cashierId: bundle.cashierId,
-        debtPaid: bundle.downPayment || 0,
-        debtRemaining: (bundle.total || 0) - (bundle.downPayment || 0)
-      });
+function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
+  try {
+    const pending = getPendingOperations();
+    const queueInvoices: Invoice[] = [];
+    for (const op of pending) {
+      if (op.type === 'invoice_create' || op.type === 'debt_sale_bundle') {
+        const data = op.data as Record<string, any>;
+        const bundle = (data?.bundle || {}) as Record<string, any>;
+        const isFailed = op.status === 'failed';
+        queueInvoices.push({
+          id: data?.operationId || data?.localId || op.id,
+          type: (bundle.type as InvoiceType) || 'sale',
+          customerName: bundle.customerName || 'عميل نقدي',
+          customerPhone: bundle.customerPhone || undefined,
+          items: bundle.items || [],
+          subtotal: bundle.subtotal || 0,
+          discount: bundle.discount || 0,
+          discountPercentage: bundle.discountPercentage || 0,
+          taxRate: bundle.taxRate || 0,
+          taxAmount: bundle.taxAmount || 0,
+          total: bundle.total || 0,
+          totalInCurrency: bundle.totalInCurrency || bundle.total || 0,
+          currency: bundle.currency || 'USD',
+          currencySymbol: bundle.currencySymbol || '$',
+          paymentType: op.type === 'debt_sale_bundle' ? 'debt' : (bundle.paymentType || 'cash'),
+          status: (bundle.status as InvoiceStatus) || 'pending',
+          serviceDescription: bundle.notes || undefined,
+          createdAt: op.timestamp || op.createdAt || new Date().toISOString(),
+          updatedAt: op.timestamp || op.createdAt || new Date().toISOString(),
+          pending_sync: true,
+          sync_failed: isFailed,
+          cashierId: bundle.cashierId,
+          cashierName: bundle.cashierName,
+          debtPaid: bundle.downPayment || 0,
+          debtRemaining: (bundle.total || 0) - (bundle.downPayment || 0)
+        });
+      }
     }
+    const existingIds = new Set(invoices.map(i => i.id));
+    const uniqueQueue = queueInvoices.filter(qi => !existingIds.has(qi.id));
+    return [...uniqueQueue, ...invoices];
+  } catch {
+    return invoices;
   }
-  const existingIds = new Set(invoices.map(i => i.id));
-  const uniqueQueue = queueInvoices.filter(qi => !existingIds.has(qi.id));
-  return [...uniqueQueue, ...invoices];
 }
