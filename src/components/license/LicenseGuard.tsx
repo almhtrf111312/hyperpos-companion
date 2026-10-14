@@ -122,8 +122,22 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   
-  const hasActiveSession = Boolean(user && hasLicense && isValid);
-  const isFullyLoading = (authLoading || isLoading || isCheckingDevice) && !hasActiveSession;
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  
+  // Fast-path: Check if any license cache was ever recorded on this device
+  const hasCachedLicense = typeof window !== 'undefined' && Boolean(localStorage.getItem('hyperpos_license_cache_v1'));
+  const hasActiveSession = Boolean(user && (hasLicense || hasCachedLicense));
+  const isFullyLoading = (authLoading || isLoading || isCheckingDevice) && !hasActiveSession && !hasTimedOut;
+
+  // Failsafe timer: Never hold the user on the license loading screen for more than 1.5s
+  useEffect(() => {
+    if (isFullyLoading) {
+      const timer = setTimeout(() => {
+        setHasTimedOut(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isFullyLoading]);
 
   useEffect(() => {
     if (isRevoked) {
@@ -159,7 +173,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   // Only mount if verified against both IDs, check has concluded (!isCheckingDevice), and device is confirmed blocked.
   if (isDeviceBlocked && !isCheckingDevice) return <DeviceBlockedScreen />;
 
-  if (isValid && hasLicense) return <>{children}</>;
+  if ((isValid && hasLicense) || (user && hasCachedLicense)) return <>{children}</>;
 
   if (ownerNeedsActivation && role === 'cashier') {
     return (

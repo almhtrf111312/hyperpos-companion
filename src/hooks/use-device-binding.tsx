@@ -73,12 +73,34 @@ export function useDeviceBinding() {
       const currentDeviceId = await getDeviceId();
       const currentDeviceKey = getDeviceKey();
 
-      // Check if Boss or Admin
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const queryPromise = (async () => {
+        // Check if Boss or Admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (roleData?.role === 'boss' || roleData?.role === 'admin') {
+          return { roleData, license: null, error: null };
+        }
+
+        const { data: license, error } = await supabase
+          .from('app_licenses')
+          .select('device_id, is_revoked, allow_multi_device')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        return { roleData, license, error };
+      })();
+
+      const timeoutPromise = new Promise<{ roleData: null; license: null; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('device binding timeout')), 1500)
+      );
+
+      const { roleData, license, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (roleData?.role === 'boss' || roleData?.role === 'admin') {
         const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: null };
@@ -86,14 +108,6 @@ export function useDeviceBinding() {
         saveDeviceCache(result);
         return;
       }
-
-      const { data: license, error } = await supabase
-        .from('app_licenses')
-        .select('device_id, is_revoked, allow_multi_device')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
 
       if (error || !license) {
         // Transient network error or no license -> do not block active session

@@ -47,37 +47,67 @@ function loadLicenseCache(): (Omit<LicenseState, 'isLoading' | 'error'>) | null 
     const raw = localStorage.getItem(LICENSE_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // Cache valid for 7 days max
-    if (parsed._ts && Date.now() - parsed._ts > 7 * 24 * 60 * 60 * 1000) return null;
+    // Cache valid for 30 days max (aligned with offline-protection threshold)
+    if (parsed._ts && Date.now() - parsed._ts > 30 * 24 * 60 * 60 * 1000) return null;
     return parsed;
+  } catch { return null; }
+}
+
+/** Fallback cache loader that ignores expiry to allow instantaneous optimistic UI startup */
+function loadLicenseCacheFallback(): (Omit<LicenseState, 'isLoading' | 'error'>) | null {
+  try {
+    const raw = localStorage.getItem(LICENSE_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch { return null; }
 }
 
 export function LicenseProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const initialCache = loadLicenseCache();
+  const fallbackCache = initialCache ? null : loadLicenseCacheFallback();
+  const effectiveCache = initialCache || fallbackCache;
   
   const [state, setState] = useState<LicenseState>({
-    // ✅ If cache exists, start with isLoading=false for instant UI
-    isLoading: !initialCache,
-    isValid: initialCache?.isValid ?? false,
-    hasLicense: initialCache?.hasLicense ?? false,
-    isTrial: initialCache?.isTrial ?? false,
-    isExpired: initialCache?.isExpired ?? false,
-    isRevoked: initialCache?.isRevoked ?? false,
-    needsActivation: initialCache?.needsActivation ?? false,
-    ownerNeedsActivation: initialCache?.ownerNeedsActivation ?? false,
-    expiresAt: initialCache?.expiresAt ?? null,
-    remainingDays: initialCache?.remainingDays ?? null,
+    // ✅ If cache exists, start with isLoading=false for instant UI (< 0.5s)
+    isLoading: !initialCache && !fallbackCache,
+    isValid: effectiveCache?.isValid ?? true,
+    hasLicense: effectiveCache?.hasLicense ?? true,
+    isTrial: effectiveCache?.isTrial ?? false,
+    isExpired: effectiveCache?.isExpired ?? false,
+    isRevoked: effectiveCache?.isRevoked ?? false,
+    needsActivation: effectiveCache?.needsActivation ?? false,
+    ownerNeedsActivation: effectiveCache?.ownerNeedsActivation ?? false,
+    expiresAt: effectiveCache?.expiresAt ?? null,
+    remainingDays: effectiveCache?.remainingDays ?? null,
     error: null,
-    role: initialCache?.role ?? null,
-    maxCashiers: initialCache?.maxCashiers ?? null,
-    licenseTier: initialCache?.licenseTier ?? null,
-    expiringWarning: initialCache?.expiringWarning ?? false,
+    role: effectiveCache?.role ?? null,
+    maxCashiers: effectiveCache?.maxCashiers ?? null,
+    licenseTier: effectiveCache?.licenseTier ?? null,
+    expiringWarning: effectiveCache?.expiringWarning ?? false,
     offlineDays: getOfflineStatus().daysOffline,
     offlineWarning: getOfflineStatus().shouldWarn,
     dataEncrypted: isDataEncrypted(),
   });
+
+  // Safety failsafe: ensure isLoading never blocks the screen longer than 1500ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setState(prev => {
+        if (!prev.isLoading) return prev;
+        console.log('[License] 1.5s safety timeout reached: releasing loading state for instant offline UI');
+        const fb = loadLicenseCacheFallback();
+        return {
+          ...prev,
+          isLoading: false,
+          isValid: fb?.isValid ?? true,
+          hasLicense: fb?.hasLicense ?? true,
+          needsActivation: fb?.needsActivation ?? false,
+        };
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const prevUserIdRef = useRef<string | null>(null);
 
@@ -100,8 +130,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     prevUserIdRef.current = user.id;
 
     try {
-      // Only show loading if no cache
-      const cached = loadLicenseCache();
+      // Only show loading if no cache at all
+      const cached = loadLicenseCache() || loadLicenseCacheFallback();
       if (!cached) {
         setState(prev => ({ ...prev, isLoading: true, error: null }));
       }
@@ -117,10 +147,17 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const response = await supabase.functions.invoke('check-license', {
+      // Strict 1.5s timeout race to guarantee instant response on dead VPN or offline
+      const invokePromise = supabase.functions.invoke('check-license', {
         body: { device_id: getDeviceKey() },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('license check network timeout')), 1500)
+      );
+
+      const response = await Promise.race([invokePromise, timeoutPromise]);
 
       if (response.error) throw new Error(response.error.message);
 
@@ -190,18 +227,19 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       const { isLoading: _, error: _e, ...cacheData } = newState;
       saveLicenseCache(cacheData);
     } catch (error) {
-      console.error('Error checking license:', error);
+      console.warn('[License] License check error or timeout (offline/VPN mode):', error);
       // Check if offline protection should encrypt data
       await checkAndEnforceProtection();
       const offlineStatus = getOfflineStatus();
+      const fallback = loadLicenseCacheFallback();
 
       setState(prev => ({
         ...prev,
         isLoading: false,
-        isValid: true,
-        hasLicense: true,
-        needsActivation: false,
-        error: 'فشل في التحقق من الترخيص - وضع غير متصل',
+        isValid: fallback?.isValid ?? true,
+        hasLicense: fallback?.hasLicense ?? true,
+        needsActivation: fallback?.needsActivation ?? false,
+        error: 'وضع غير متصل بالإنترنت',
         offlineDays: offlineStatus.daysOffline,
         offlineWarning: offlineStatus.shouldWarn,
         dataEncrypted: isDataEncrypted(),

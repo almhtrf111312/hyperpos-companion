@@ -299,6 +299,17 @@ const AppContent = () => {
     } catch { return false; }
   })();
 
+  const [roleFallbackTimeout, setRoleFallbackTimeout] = useState(false);
+
+  useEffect(() => {
+    if (isNewSignup && roleLoading) {
+      const timer = setTimeout(() => {
+        setRoleFallbackTimeout(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewSignup, roleLoading]);
+
   if (isNewSignup) {
     // 1. While auth state is resolving for new signup, show waiting screen
     if (authLoading) {
@@ -320,8 +331,10 @@ const AppContent = () => {
 
     // 2. If user is authenticated, handle role resolution and setup wizard guard
     if (user) {
-      // 2a. Still determining user role -> display loading state, do NOT leak to main UI
-      if (roleLoading) {
+      const effectiveRole = role || (roleFallbackTimeout ? 'boss' : null);
+
+      // 2a. Still determining user role -> display loading state only within 2s timeout
+      if (roleLoading && !roleFallbackTimeout && !role) {
         return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4" dir="rtl">
             <div className="flex flex-col items-center gap-3 text-center">
@@ -338,56 +351,14 @@ const AppContent = () => {
         );
       }
 
-      // 2b. Role resolution failed -> display clear error state with retry / logout options
-      if (!role) {
-        return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4" dir="rtl">
-            <div className="w-full max-w-sm bg-card border border-border shadow-xl rounded-2xl p-6 text-center space-y-4">
-              <div className="mx-auto w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-foreground">تعذّر تحديد صلاحيات الحساب</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  لم نتمكن من التحقق من صلاحيات حسابك لتهيئة المتجر. يرجى التأكد من اتصال الإنترنت وإعادة المحاولة.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <Button
-                  onClick={() => refreshRole()}
-                  className="w-full h-10 rounded-xl text-xs font-bold gap-2 cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  إعادة المحاولة
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      sessionStorage.removeItem('hyperpos_just_signed_up');
-                      await signOut();
-                    } catch {}
-                    window.location.hash = '#/login';
-                  }}
-                  className="w-full h-10 rounded-xl text-xs font-medium gap-2 text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  الرجوع لتسجيل الدخول
-                </Button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // 2c. Role is cashier: Cashiers do not initialize a store
-      if (role === 'cashier') {
+      // 2b. Role is cashier: Cashiers do not initialize a store
+      if (effectiveRole === 'cashier') {
         try {
           sessionStorage.removeItem('hyperpos_just_signed_up');
           localStorage.setItem('hyperpos_setup_complete', 'true');
         } catch {}
-      } else if ((role === 'admin' || role === 'boss') && !setupComplete) {
-        // 2d. Role is admin or boss and setup not yet complete -> display SetupWizard
+      } else if (!setupComplete) {
+        // 2c. Store owners (boss/admin) or offline fallback -> display SetupWizard
         return (
           <SetupWizard onComplete={() => {
             try {
