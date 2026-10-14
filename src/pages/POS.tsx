@@ -7,10 +7,10 @@ import { MaintenancePanel } from '@/components/pos/MaintenancePanel';
 import { ScannedProductDialog } from '@/components/pos/ScannedProductDialog';
 import { VariantPickerDialog } from '@/components/pos/VariantPickerDialog';
 import { LoanQuickDialog } from '@/components/pos/LoanQuickDialog';
-import { Sidebar, MobileMenuTrigger } from '@/components/layout/Sidebar';
+import { Sidebar } from '@/components/layout/Sidebar';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, Wrench } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn, formatNumber } from '@/lib/utils';
 import { loadProductsCloud, loadProductsLocalFirst, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
@@ -1062,7 +1062,7 @@ export default function POS() {
         // Account for collapsed sidebar width based on RTL
         !isMobile && (isRTL ? "md:mr-20 md:ml-0" : "md:ml-20 md:mr-0")
       )}>
-        {/* Header */}
+        {/* Header - مدمج فيه زر المنيو وتبديل الأوضاع بدون تداخل */}
         <POSHeader
           onCartClick={() => handleSetCartOpen(true)}
           cartItemsCount={cartItemsCount}
@@ -1070,46 +1070,8 @@ export default function POS() {
           activeMode={activeMode}
           onModeChange={setActiveMode}
           hideMaintenance={hideMaintenanceSection}
+          onMenuClick={() => setSidebarOpen(true)}
         />
-
-        {/* Mobile menu trigger - same as MainLayout */}
-        {isMobile && !sidebarOpen && (
-          <MobileMenuTrigger onClick={() => setSidebarOpen(true)} />
-        )}
-
-        {/* Mode Buttons - Compact Segmented Pill */}
-        {isMobile && !hideMaintenanceSection && (
-          <div className="px-3 py-2 border-b border-black/5 dark:border-white/5 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-3xl flex justify-center">
-            <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-zinc-900 border border-black/5 dark:border-white/5 shadow-inner">
-              <button
-                type="button"
-                onClick={() => setActiveMode('products')}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
-                    activeMode === 'products'
-                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-[0_2px_8px_rgb(0,0,0,0.08)] dark:shadow-[0_2px_8px_rgb(0,0,0,0.4)]"
-                      : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <ShoppingCart className="w-3.5 h-3.5" />
-                <span>{tDynamic('products')}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMode('maintenance')}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300",
-                    activeMode === 'maintenance'
-                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-[0_2px_8px_rgb(0,0,0,0.08)] dark:shadow-[0_2px_8px_rgb(0,0,0,0.4)]"
-                      : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Wrench className="w-3.5 h-3.5" />
-                <span>{t('pos.maintenance')}</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
