@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -527,7 +527,13 @@ export type Database = {
           distributions: Json | null
           expense_type: string
           id: string
+          is_reversed: boolean | null
           notes: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          reversed_reason: string | null
+          status: string | null
           user_id: string
         }
         Insert: {
@@ -539,7 +545,13 @@ export type Database = {
           distributions?: Json | null
           expense_type: string
           id?: string
+          is_reversed?: boolean | null
           notes?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversed_reason?: string | null
+          status?: string | null
           user_id: string
         }
         Update: {
@@ -551,7 +563,13 @@ export type Database = {
           distributions?: Json | null
           expense_type?: string
           id?: string
+          is_reversed?: boolean | null
           notes?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversed_reason?: string | null
+          status?: string | null
           user_id?: string
         }
         Relationships: []
@@ -658,6 +676,8 @@ export type Database = {
           cashier_name: string | null
           created_at: string | null
           currency: string | null
+          currency_code: string | null
+          currency_symbol: string | null
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
@@ -691,6 +711,8 @@ export type Database = {
           cashier_name?: string | null
           created_at?: string | null
           currency?: string | null
+          currency_code?: string | null
+          currency_symbol?: string | null
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -724,6 +746,8 @@ export type Database = {
           cashier_name?: string | null
           created_at?: string | null
           currency?: string | null
+          currency_code?: string | null
+          currency_symbol?: string | null
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -1266,37 +1290,61 @@ export type Database = {
       recurring_expenses: {
         Row: {
           amount: number | null
+          auto_pay: boolean | null
+          auto_pay_account: string | null
           created_at: string | null
+          custom_type: string | null
           description: string | null
           expense_type: string
           id: string
           interval: string | null
+          interval_days: number | null
           is_active: boolean | null
+          last_paid_date: string | null
+          name: string | null
           next_due_date: string | null
+          notes: string | null
+          payment_method: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           amount?: number | null
+          auto_pay?: boolean | null
+          auto_pay_account?: string | null
           created_at?: string | null
+          custom_type?: string | null
           description?: string | null
           expense_type: string
           id?: string
           interval?: string | null
+          interval_days?: number | null
           is_active?: boolean | null
+          last_paid_date?: string | null
+          name?: string | null
           next_due_date?: string | null
+          notes?: string | null
+          payment_method?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           amount?: number | null
+          auto_pay?: boolean | null
+          auto_pay_account?: string | null
           created_at?: string | null
+          custom_type?: string | null
           description?: string | null
           expense_type?: string
           id?: string
           interval?: string | null
+          interval_days?: number | null
           is_active?: boolean | null
+          last_paid_date?: string | null
+          name?: string | null
           next_due_date?: string | null
+          notes?: string | null
+          payment_method?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -2170,6 +2218,61 @@ export type Database = {
           }
         | {
             Args: {
+              _currency: string
+              _customer_name: string
+              _customer_phone: string
+              _discount: number
+              _discount_percentage: number
+              _down_payment?: number
+              _exchange_rate?: number
+              _items: Json
+              _operation_id: string
+              _payment_type: string
+              _profit: number
+              _subtotal: number
+              _tax_amount: number
+              _tax_rate: number
+              _total: number
+              _warehouse_id: string
+            }
+            Returns: {
+              already_processed: boolean
+              cogs: number
+              debt_paid: number
+              debt_remaining: number
+              discount: number
+              invoice_id: string
+              invoice_number: string
+              profit: number
+              stock_shortage: boolean
+              subtotal: number
+              success: boolean
+              tax_amount: number
+              total: number
+            }[]
+          }
+        | {
+            Args: {
+              _cashier_id?: string
+              _cost: number
+              _created_at?: string
+              _currency: string
+              _customer_id: string
+              _debt_due_date?: string
+              _exchange_rate?: number
+              _invoice_number: string
+              _items: Json
+              _paid?: number
+              _payment_type: string
+              _profit: number
+              _remaining?: number
+              _total: number
+              _user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
               p_deduct_inventory?: boolean
               p_invoice: Json
               p_items: Json
@@ -2217,6 +2320,10 @@ export type Database = {
         Returns: Json
       }
       reset_user_device: { Args: { _target_user_id: string }; Returns: boolean }
+      reverse_expense_atomic: {
+        Args: { p_expense_id: string; p_reason?: string }
+        Returns: Json
+      }
       revoke_license: {
         Args: { _license_id: string; _reason?: string }
         Returns: boolean
