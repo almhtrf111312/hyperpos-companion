@@ -19,6 +19,8 @@ import { SetupWizard } from "./components/setup/SetupWizard";
 import { OnboardingTour } from "./components/onboarding/OnboardingTour";
 import { useAuth } from "./hooks/use-auth";
 import { useUserRole } from "./hooks/use-user-role";
+import { Button } from "@/components/ui/button";
+import { Loader2, Store, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
@@ -119,14 +121,18 @@ const AppContent = () => {
   const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();
 
   // Setup wizard state for fresh installations
-  const { user } = useAuth();
-  const { role, isLoading: roleLoading } = useUserRole();
+  const { user, isLoading: authLoading, signOut } = useAuth();
+  const { role, isLoading: roleLoading, refreshRole } = useUserRole();
 
   // 🔔 فحص المصاريف المستحقة والدفع التلقائي عند بدء تشغيل التطبيق
   useDueExpensesChecker();
 
   const [setupComplete, setSetupComplete] = useState<boolean>(() => {
     try {
+      // Prioritize new signup flag over existing device settings
+      if (sessionStorage.getItem('hyperpos_just_signed_up') === 'true') {
+        return localStorage.getItem('hyperpos_setup_complete') === 'true';
+      }
       return localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1');
     } catch { return true; }
   });
@@ -134,7 +140,12 @@ const AppContent = () => {
   useEffect(() => {
     const checkState = () => {
       try {
-        setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1'));
+        const isNew = sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+        if (isNew) {
+          setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true');
+        } else {
+          setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1'));
+        }
       } catch {}
     };
     checkState();
@@ -267,27 +278,128 @@ const AppContent = () => {
     return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
   }
 
-  // Show setup wizard for brand new signups or on manual trigger
+  // Show setup wizard on manual trigger (from Settings or Help)
+  if (manualShowSetup) {
+    return (
+      <SetupWizard onComplete={() => {
+        try {
+          sessionStorage.removeItem('hyperpos_just_signed_up');
+          localStorage.setItem('hyperpos_setup_complete', 'true');
+        } catch {}
+        setSetupComplete(true);
+        setManualShowSetup(false);
+      }} />
+    );
+  }
+
+  // Handle new signup setup flow with explicit state guarding
   const isNewSignup = (() => {
     try {
       return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
     } catch { return false; }
   })();
 
-  const shouldShowSetup = manualShowSetup || (isNewSignup && !!user && !roleLoading && !setupComplete && (role === 'admin' || role === 'boss'));
-  if (shouldShowSetup) {
-    return (
-      <>
-        <SetupWizard onComplete={() => {
-          try {
-            sessionStorage.removeItem('hyperpos_just_signed_up');
-            localStorage.setItem('hyperpos_setup_complete', 'true');
-          } catch {}
-          setSetupComplete(true);
-          setManualShowSetup(false);
-        }} />
-      </>
-    );
+  if (isNewSignup) {
+    // 1. While auth state is resolving for new signup, show waiting screen
+    if (authLoading) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4" dir="rtl">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse">
+              <Store className="w-7 h-7 text-primary" />
+            </div>
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span>جاري تهيئة حسابك الجديد...</span>
+            </div>
+            <p className="text-xs text-muted-foreground">يرجى الانتظار لحظات لإعداد متجرك</p>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. If user is authenticated, handle role resolution and setup wizard guard
+    if (user) {
+      // 2a. Still determining user role -> display loading state, do NOT leak to main UI
+      if (roleLoading) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4" dir="rtl">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse">
+                <Store className="w-7 h-7 text-primary" />
+              </div>
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span>جاري التحقق من صلاحيات الحساب وتجهيز المعالج...</span>
+              </div>
+              <p className="text-xs text-muted-foreground">نقوم بتهيئة إعدادات المتجر المناسبة لصلاحياتك</p>
+            </div>
+          </div>
+        );
+      }
+
+      // 2b. Role resolution failed -> display clear error state with retry / logout options
+      if (!role) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4" dir="rtl">
+            <div className="w-full max-w-sm bg-card border border-border shadow-xl rounded-2xl p-6 text-center space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-foreground">تعذّر تحديد صلاحيات الحساب</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  لم نتمكن من التحقق من صلاحيات حسابك لتهيئة المتجر. يرجى التأكد من اتصال الإنترنت وإعادة المحاولة.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <Button
+                  onClick={() => refreshRole()}
+                  className="w-full h-10 rounded-xl text-xs font-bold gap-2 cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  إعادة المحاولة
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      sessionStorage.removeItem('hyperpos_just_signed_up');
+                      await signOut();
+                    } catch {}
+                    window.location.hash = '#/login';
+                  }}
+                  className="w-full h-10 rounded-xl text-xs font-medium gap-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  الرجوع لتسجيل الدخول
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // 2c. Role is cashier: Cashiers do not initialize a store
+      if (role === 'cashier') {
+        try {
+          sessionStorage.removeItem('hyperpos_just_signed_up');
+          localStorage.setItem('hyperpos_setup_complete', 'true');
+        } catch {}
+      } else if ((role === 'admin' || role === 'boss') && !setupComplete) {
+        // 2d. Role is admin or boss and setup not yet complete -> display SetupWizard
+        return (
+          <SetupWizard onComplete={() => {
+            try {
+              sessionStorage.removeItem('hyperpos_just_signed_up');
+              localStorage.setItem('hyperpos_setup_complete', 'true');
+            } catch {}
+            setSetupComplete(true);
+            setManualShowSetup(false);
+          }} />
+        );
+      }
+    }
   }
 
   return (

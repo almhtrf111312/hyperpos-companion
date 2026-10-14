@@ -421,7 +421,8 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
 
           {/* Checkbox Card */}
           <div
-            onClick={() => {
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest('#terms-agree')) return;
               if (!scrolledToBottom) {
                 scrollToBottom();
               } else {

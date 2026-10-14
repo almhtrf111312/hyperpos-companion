@@ -189,12 +189,20 @@ export default function Login() {
       }
     }
 
-    // Existing account login -> bypass setup wizard and onboarding tour
-    try {
-      localStorage.setItem('hyperpos_setup_complete', 'true');
-      localStorage.setItem('hp_onboarding_complete', 'true');
-      sessionStorage.removeItem('hyperpos_just_signed_up');
-    } catch {}
+    // For existing account logins, bypass setup wizard and onboarding tour.
+    // If the user arrived here from a new signup flow, preserve hyperpos_just_signed_up intact
+    const isNewSignup = (() => {
+      try {
+        return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+      } catch { return false; }
+    })();
+
+    if (!isNewSignup) {
+      try {
+        localStorage.setItem('hyperpos_setup_complete', 'true');
+        localStorage.setItem('hp_onboarding_complete', 'true');
+      } catch {}
+    }
 
     setIsLoading(false);
     toast.success(t('auth.loginSuccess'));
@@ -235,11 +243,18 @@ export default function Login() {
           return;
         }
 
-        try {
-          localStorage.setItem('hyperpos_setup_complete', 'true');
-          localStorage.setItem('hp_onboarding_complete', 'true');
-          sessionStorage.removeItem('hyperpos_just_signed_up');
-        } catch {}
+        const isNewSignup = (() => {
+          try {
+            return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+          } catch { return false; }
+        })();
+
+        if (!isNewSignup) {
+          try {
+            localStorage.setItem('hyperpos_setup_complete', 'true');
+            localStorage.setItem('hp_onboarding_complete', 'true');
+          } catch {}
+        }
 
         toast.success(t('auth.loginSuccess'));
         navigate('/');
