@@ -1908,10 +1908,10 @@ export default function Invoices() {
                   <div
                     key={invoice.id}
                     onClick={() => handleView(invoice)}
-                    className="invoice-card bg-card text-card-foreground rounded-xl p-2.5 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+                    className="invoice-card bg-card text-card-foreground rounded-xl p-3 border border-border/80 shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
                   >
-                    {/* Top-Left Options Button */}
-                    <div className="absolute left-2 top-2 z-10" onClick={(e) => e.stopPropagation()}>
+                    {/* زر الخيارات ثلاثي النقاط - أعلى اليسار */}
+                    <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted active:scale-90 transition-transform">
@@ -1953,163 +1953,151 @@ export default function Invoices() {
                       </DropdownMenu>
                     </div>
 
-                    {/* Header Row: Customer, Badges & Cashier */}
-                    <div className="flex items-center flex-wrap gap-1.5 pr-0 pl-7 leading-tight">
-                      <span className="font-black text-foreground text-xs">{invoice.customerName}</span>
+                    {/* السطر الأول: اسم العميل والشارات الأساسية */}
+                    <div className="flex items-center flex-wrap gap-1.5 pr-0 pl-8 leading-tight">
+                      <span className="font-bold text-foreground text-xs">{invoice.customerName}</span>
                       
+                      {/* طريقة الدفع */}
                       {invoice.paymentType === 'cash' ? (
-                        <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                        <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[9.5px] font-bold px-1.5 py-0.5 rounded">
                           {t('invoices.cash') || 'نقدي'}
                         </span>
                       ) : (
-                        <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                        <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[9.5px] font-bold px-1.5 py-0.5 rounded">
                           {t('invoices.credit') || 'بيع مؤجل'}
                         </span>
                       )}
 
-                      {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
-                        invoice.debtPaid && invoice.debtPaid > 0 && invoice.debtRemaining && invoice.debtRemaining > 0 ? (
+                      {/* حالة الدفع للديون فقط (لا تظهر للفواتير النقدية لمنع التكرار) */}
+                      {invoice.paymentType === 'debt' && (
+                        invoice.status === 'paid' ? (
+                          <span className="bg-emerald-600 text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded">
+                            {t('invoices.paid') || 'تم السداد'}
+                          </span>
+                        ) : (invoice.debtPaid && invoice.debtPaid > 0) ? (
                           <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded">
-                            {t('invoices.partiallyPaid')}
+                            {t('invoices.partiallyPaid') || 'مدفوع جزئياً'}
                           </span>
                         ) : (
-                          <span className="bg-destructive text-destructive-foreground text-[8.5px] font-extrabold px-1.5 py-0.5 rounded">
+                          <span className="bg-destructive/15 text-destructive border border-destructive/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded">
                             {t('invoices.unpaid') || 'غير مدفوع'}
                           </span>
                         )
                       )}
 
-                      {invoice.status === 'paid' && (
-                        <span className="bg-emerald-600 text-white text-[8.5px] font-extrabold px-1.5 py-0.5 rounded">
-                          {t('invoices.paid') || 'مدفوع'}
-                        </span>
-                      )}
-
+                      {/* شارة الاسترداد إن وجدت */}
                       {invoice.status === 'refunded' && (
                         <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                           <Undo2 className="w-2.5 h-2.5" />
-                          {t('invoices.refunded')}
+                          {t('invoices.refunded') || 'مستردة'}
                         </span>
                       )}
 
+                      {/* حالة فحص الفاتورة المستردة */}
                       {refundMeta[invoice.id] && (
                         <span className="text-[8.5px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border font-medium">
                           {refundMeta[invoice.id].condition === 'damaged' ? t('invoices.conditionDefective') : t('invoices.conditionGood')}
                         </span>
                       )}
 
+                      {/* شارة حالة المزامنة غير المكتملة */}
                       {invoice.pending_sync && (
                         <span className={cn(
                           "text-[8.5px] px-1.5 py-0.5 rounded border font-semibold",
                           invoice.sync_failed ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
                         )}>
-                          {invoice.sync_failed ? t('invoices.syncFailed') : t('invoices.notSynced')}
+                          {invoice.sync_failed ? (t('invoices.syncFailed') || 'فشل الرفع') : (t('invoices.notSynced') || 'قيد المزامنة')}
                         </span>
                       )}
 
-                      {/* Cashier Badge */}
+                      {/* شارة الكاشير */}
                       {invoice.cashierName && (
-                        <span className="mr-1 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 font-black text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 shadow-2xs">
-                          <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span className="mr-auto text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 font-bold text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <User className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
                           <span>{invoice.cashierName}</span>
                         </span>
                       )}
                     </div>
 
-                    {/* Meta Tags (Number, Date, Item Count) */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[9.5px]">
-                      <span className="bg-muted text-foreground font-mono px-1 py-0.5 rounded font-bold">
-                        {invoice.id}
+                    {/* السطر الثاني: البيانات الوصفية (رقم الفاتورة، التاريخ، عدد المنتجات) */}
+                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
+                      <span className="bg-muted text-foreground/90 font-mono px-1.5 py-0.5 rounded font-semibold text-[9.5px]">
+                        #{invoice.id}
                       </span>
-                      <span className="text-muted-foreground font-medium" dir="ltr">
+                      <span dir="ltr" className="font-mono text-[9.5px]">
                         {formatDateTime(new Date(invoice.createdAt))}
                       </span>
-                      <span className="text-muted-foreground font-bold flex items-center gap-0.5 mr-auto bg-muted/60 px-1.5 py-0.5 rounded">
-                        <span>🛒</span>
-                        <span>{itemCount} {t('invoices.items')}</span>
+                      <span className="flex items-center gap-1 font-medium mr-auto">
+                        <ShoppingCart className="w-3 h-3 text-muted-foreground/70" />
+                        <span>{itemCount} {t('invoices.items') || 'عنصر'}</span>
                       </span>
                     </div>
 
-                    {/* Symmetrical Compact Dynamic Currency Box (Grid 2 cols: السعر + صافي الربح) */}
-                    <div className="mt-1.5 pt-1.5 border-t border-dashed border-border/80">
-                      <div className="grid grid-cols-2 rounded-lg bg-muted/40 p-1.5 border border-border/70 relative">
-                        
-                        {/* عمود السعر (الإجمالي) */}
-                        <div className="pe-2 space-y-0.5 border-l border-border/70">
-                          <div className="flex items-center justify-between pb-0.5 border-b border-border/50">
-                            <span className="text-[9.5px] font-black text-foreground flex items-center gap-0.5">
-                              <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-500" />
-                              <span>{t('invoices.price')}:</span>
+                    {/* السطر الثالث والأخير: البيانات المالية بهندسة مريحة للعين وبدون مربعات معقدة */}
+                    <div className="mt-2 pt-2 border-t border-border/40 flex items-center justify-between">
+                      {/* يمين: إجمالي الفاتورة وقيمتها المعروضة والمقابلة بالدولار */}
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-muted-foreground font-medium">{t('common.total') || 'الإجمالي'}:</span>
+                        {invUpper === 'TRY' ? (
+                          <div className="flex items-baseline gap-1">
+                            <span className="font-black text-foreground font-mono text-[13px]">
+                              {formatNumber(tryTotal, tryRate >= 100 || tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[10px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
                             </span>
-                            <span className="text-[8px] font-bold text-muted-foreground font-mono">({t('common.total')})</span>
-                          </div>
-
-                          {/* العملة المباعة وما يعادلها بالدولار */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight pt-0.5">
-                            {invUpper === 'TRY' ? (
-                              <>
-                                <span className="font-black text-sky-700 dark:text-sky-400 font-mono text-[10.5px] whitespace-nowrap">
-                                  {formatNumber(tryTotal, tryRate >= 100 || tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
-                                </span>
-                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
-                                  (${formatNumber(invUsdTotal, 2)})
-                                </span>
-                              </>
-                            ) : invUpper === 'SYP' ? (
-                              <>
-                                <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
-                                  {formatNumber(sypTotal, sypRate >= 100 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
-                                </span>
-                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
-                                  (${formatNumber(invUsdTotal, 2)})
-                                </span>
-                              </>
-                            ) : (
-                              <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[11px] whitespace-nowrap">
-                                ${formatNumber(invUsdTotal, 2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* عمود صافي الربح (الأرباح) */}
-                        <div className="ps-2 space-y-0.5">
-                          <div className="flex items-center justify-between pb-0.5 border-b border-border/50">
-                            <span className="text-[9.5px] font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-0.5">
-                              <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                              <span>{t('invoices.netProfit') || 'صافي الربح'}:</span>
+                            <span className="text-[9.5px] font-mono text-muted-foreground/80" dir="ltr">
+                              (${formatNumber(invUsdTotal, 2)})
                             </span>
-                            <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">({t('invoices.profits') || 'الأرباح'})</span>
                           </div>
-
-                          {/* صافي الربح بالعملة المباعة وما يعادلها بالدولار */}
-                          <div className="flex items-center justify-between text-[10px] leading-tight pt-0.5">
-                            {invUpper === 'TRY' ? (
-                              <>
-                                <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", tryProfit >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-600 dark:text-rose-400")}>
-                                  {formatNumber(tryProfit, tryRate >= 100 || tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
-                                </span>
-                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
-                                  (${formatNumber(invUsdProfit, 2)})
-                                </span>
-                              </>
-                            ) : invUpper === 'SYP' ? (
-                              <>
-                                <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", invUsdProfit >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400")}>
-                                  {formatNumber(sypProfit, sypRate >= 100 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
-                                </span>
-                                <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
-                                  (${formatNumber(invUsdProfit, 2)})
-                                </span>
-                              </>
-                            ) : (
-                              <span className={cn("font-black font-mono text-[11px] whitespace-nowrap", invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                                ${formatNumber(invUsdProfit, 2)}
-                              </span>
-                            )}
+                        ) : invUpper === 'SYP' ? (
+                          <div className="flex items-baseline gap-1">
+                            <span className="font-black text-foreground font-mono text-[13px]">
+                              {formatNumber(sypTotal, sypRate >= 100 ? 0 : 2)} <span className="text-[10px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
+                            </span>
+                            <span className="text-[9.5px] font-mono text-muted-foreground/80" dir="ltr">
+                              (${formatNumber(invUsdTotal, 2)})
+                            </span>
                           </div>
-                        </div>
+                        ) : (
+                          <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[13px]">
+                            ${formatNumber(invUsdTotal, 2)}
+                          </span>
+                        )}
+                      </div>
 
+                      {/* يسار: صافي الربح بدون حشو نصي وبألوان دلالية واضحة */}
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[10px] text-muted-foreground font-medium">{t('invoices.netProfit') || 'الربح'}:</span>
+                        {invUpper === 'TRY' ? (
+                          <div className="flex items-baseline gap-1">
+                            <span className={cn(
+                              "font-bold font-mono text-[11px]",
+                              tryProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            )}>
+                              {formatNumber(tryProfit, tryRate >= 100 || tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[9px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
+                            </span>
+                            <span className="text-[9px] font-mono text-muted-foreground/70" dir="ltr">
+                              (${formatNumber(invUsdProfit, 2)})
+                            </span>
+                          </div>
+                        ) : invUpper === 'SYP' ? (
+                          <div className="flex items-baseline gap-1">
+                            <span className={cn(
+                              "font-bold font-mono text-[11px]",
+                              invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            )}>
+                              {formatNumber(sypProfit, sypRate >= 100 ? 0 : 2)} <span className="text-[9px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
+                            </span>
+                            <span className="text-[9px] font-mono text-muted-foreground/70" dir="ltr">
+                              (${formatNumber(invUsdProfit, 2)})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className={cn(
+                            "font-bold font-mono text-[11px]",
+                            invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                          )}>
+                            ${formatNumber(invUsdProfit, 2)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
