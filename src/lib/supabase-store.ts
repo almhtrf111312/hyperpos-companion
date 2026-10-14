@@ -83,6 +83,31 @@ export const getCurrentUserId = (): string | null => {
   return null;
 };
 
+export const getCurrentUserName = (): string | null => {
+  try {
+    const cached = localStorage.getItem('hyperpos_session_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const name = parsed?.user?.user_metadata?.full_name || parsed?.user?.user_metadata?.name || parsed?.user?.email;
+      if (name) return name;
+    }
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const name = parsed?.user?.user_metadata?.full_name || parsed?.user?.user_metadata?.name || parsed?.user?.email;
+          if (name) return name;
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
 // Get user role (cached)
 export const getCurrentUserRole = async (): Promise<UserRole | null> => {
   if (currentUserRole) return currentUserRole;

@@ -320,7 +320,7 @@ export default function Invoices() {
 
   // Helper for computing display financial values for an invoice
   const getInvoiceFinancials = (inv: Invoice, forceStored: boolean = false) => {
-    let code: 'USD' | 'TRY' | 'SYP';
+    let code: string;
     let rate: number;
     let symbol: string;
 
@@ -341,29 +341,23 @@ export default function Invoices() {
       }
     } else {
       // 'stored': use the invoice's stored currency if present and valid
-      const invCurr = (inv.currency || '').toUpperCase();
-      const hasStoredForeign = invCurr === 'TRY' || invCurr === 'SYP';
+      const invCurr = (inv.currency || 'USD').toUpperCase();
+      const isForeign = invCurr !== 'USD' && invCurr !== '';
 
-      if (hasStoredForeign) {
-        code = invCurr as 'TRY' | 'SYP';
-        // إذا كان سعر الصرف المخزن في الفاتورة يساوي 1 (أو أقل/غير موجود)، يجب تجاهل الرقم 1 والاعتماد تلقائياً على سعر الصرف الفعلي للعملة من الإعدادات
+      if (isForeign) {
+        code = invCurr;
+        // إذا كان سعر الصرف المخزن في الفاتورة أكبر من 1، نعتمد سعر الصرف المخزن وقت البيع
         const hasValidStoredRate = typeof inv.exchangeRate === 'number' && inv.exchangeRate > 1;
         rate = hasValidStoredRate
           ? inv.exchangeRate
-          : (exchangeRates[code] || (code === 'TRY' ? 34 : 14500));
-        // رمز العملة: الأولوية لرمز العملة المخزن تاريخياً في الفاتورة inv.currencySymbol لضمان عدم تغيير الفواتير السابقة، ثم الرمز المخصص الحالي من الإعدادات
-        symbol = inv.currencySymbol || (code === 'TRY' ? (currencySymbols?.TRY || '₺') : (currencySymbols?.SYP || 'ل.س'));
-      } else if (currencyCode !== 'USD' && (enabledCurrencies.USD === false || !inv.currency || inv.currency === 'USD')) {
-        // System default is foreign (e.g. TRY) and either USD is disabled or invoice has no specific foreign currency
-        code = currencyCode;
-        rate = (code !== 'USD' && exchangeRate <= 1)
-          ? (exchangeRates[code] || (code === 'TRY' ? 34 : 14500))
-          : exchangeRate;
-        symbol = inv.currencySymbol || (code === 'TRY' ? (currencySymbols?.TRY || '₺') : (code === 'SYP' ? (currencySymbols?.SYP || 'ل.س') : '$'));
+          : (exchangeRates[code as 'TRY' | 'SYP'] || (code === 'TRY' ? 34 : (code === 'SYP' ? 14500 : 1)));
+        // رمز العملة: الأولوية لرمز العملة المخزن تاريخياً في الفاتورة inv.currencySymbol لضمان عدم تغيير الفواتير السابقة
+        symbol = inv.currencySymbol || (currencySymbols?.[code as 'TRY' | 'SYP'] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code)));
       } else {
+        // الفاتورة المباعة بالدولار تُعرض دائماً بالدولار ($) بسعر صرف 1
         code = 'USD';
         rate = 1;
-        symbol = inv.currencySymbol || '$';
+        symbol = '$';
       }
     }
 
@@ -376,7 +370,7 @@ export default function Invoices() {
     const baseProfit = inv.profit || 0;
     const displayProfit = roundCurrency(baseProfit * rate);
 
-    const invUpper = (inv.currency || '').toUpperCase();
+    const invUpper = (inv.currency || 'USD').toUpperCase();
     const tryRate = (invUpper === 'TRY' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 1)
       ? inv.exchangeRate
       : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
@@ -1434,6 +1428,7 @@ export default function Invoices() {
           ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
           <div class="total">
             الإجمالي: ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals)}
+            ${printFinancials.code !== 'USD' ? `<div style="font-size: 11px; font-weight: normal; color: #555; margin-top: 3px; font-family: monospace;" dir="ltr">(ما يعادل بالدولار: $${formatNumber(invoice.total || 0, 2)})</div>` : ''}
           </div>
           <div class="footer">${footer}</div>
         </body>
@@ -1875,33 +1870,10 @@ export default function Invoices() {
               </Card>
             ) : (
               filteredInvoices.map((invoice) => {
-                const financials = getInvoiceFinancials(invoice, true);
+                const financials = getInvoiceFinancials(invoice);
                 const invUsdTotal = invoice.total || 0;
                 const invUsdProfit = financials.baseProfit || 0;
                 const invUpper = (invoice.currency || 'USD').toUpperCase();
-                const invStoredRate = typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 0 ? invoice.exchangeRate : 1;
-
-                // Rates for secondary currencies
-                const tryRate = (invUpper === 'TRY' && invStoredRate > 1)
-                  ? invStoredRate
-                  : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
-
-                const sypRate = (invUpper === 'SYP' && invStoredRate > 1)
-                  ? invStoredRate
-                  : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
-
-                // Exact real selling prices and equivalents
-                const sypTotal = invUpper === 'SYP' && invStoredRate > 1
-                  ? Math.round(invUsdTotal * invStoredRate)
-                  : Math.round(invUsdTotal * sypRate);
-
-                const tryTotal = invUpper === 'TRY' && invStoredRate > 1
-                  ? Math.round((invUsdTotal * invStoredRate) * 100) / 100
-                  : Math.round((invUsdTotal * tryRate) * 100) / 100;
-
-                const sypProfit = Math.round(invUsdProfit * sypRate);
-                const tryProfit = Math.round((invUsdProfit * tryRate) * 100) / 100;
-
                 const itemCount = invoice.items?.filter(it => !it.refunded && it.quantity > 0).length || 0;
 
                 return (
@@ -2038,65 +2010,44 @@ export default function Invoices() {
                       {/* يمين: إجمالي الفاتورة وقيمتها المعروضة والمقابلة بالدولار */}
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-[10px] text-muted-foreground font-medium">{t('common.total') || 'الإجمالي'}:</span>
-                        {invUpper === 'TRY' ? (
-                          <div className="flex items-baseline gap-1">
-                            <span className="font-black text-foreground font-mono text-[13px]">
-                              {formatNumber(tryTotal, tryRate >= 100 || tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[10px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
-                            </span>
-                            <span className="text-[9.5px] font-mono text-muted-foreground/80" dir="ltr">
-                              (${formatNumber(invUsdTotal, 2)})
-                            </span>
-                          </div>
-                        ) : invUpper === 'SYP' ? (
-                          <div className="flex items-baseline gap-1">
-                            <span className="font-black text-foreground font-mono text-[13px]">
-                              {formatNumber(sypTotal, sypRate >= 100 ? 0 : 2)} <span className="text-[10px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
-                            </span>
-                            <span className="text-[9.5px] font-mono text-muted-foreground/80" dir="ltr">
-                              (${formatNumber(invUsdTotal, 2)})
-                            </span>
-                          </div>
-                        ) : (
+                        {displayCurrencyFilter === 'USD' || (displayCurrencyFilter === 'stored' && invUpper === 'USD') ? (
                           <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[13px]">
                             ${formatNumber(invUsdTotal, 2)}
                           </span>
+                        ) : (
+                          <div className="flex items-baseline gap-1">
+                            <span className="font-black text-foreground font-mono text-[13px]">
+                              {formatNumber(financials.displayTotal, financials.decimals)} <span className="text-[10px] font-sans font-normal text-muted-foreground">{financials.symbol}</span>
+                            </span>
+                            <span className="text-[9.5px] font-mono text-muted-foreground/80" dir="ltr">
+                              (${formatNumber(invUsdTotal, 2)})
+                            </span>
+                          </div>
                         )}
                       </div>
 
                       {/* يسار: صافي الربح بدون حشو نصي وبألوان دلالية واضحة */}
                       <div className="flex items-baseline gap-1">
                         <span className="text-[10px] text-muted-foreground font-medium">{t('invoices.netProfit') || 'الربح'}:</span>
-                        {invUpper === 'TRY' ? (
-                          <div className="flex items-baseline gap-1">
-                            <span className={cn(
-                              "font-bold font-mono text-[11px]",
-                              tryProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                            )}>
-                              {formatNumber(tryProfit, tryRate >= 100 || tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[9px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
-                            </span>
-                            <span className="text-[9px] font-mono text-muted-foreground/70" dir="ltr">
-                              (${formatNumber(invUsdProfit, 2)})
-                            </span>
-                          </div>
-                        ) : invUpper === 'SYP' ? (
-                          <div className="flex items-baseline gap-1">
-                            <span className={cn(
-                              "font-bold font-mono text-[11px]",
-                              invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                            )}>
-                              {formatNumber(sypProfit, sypRate >= 100 ? 0 : 2)} <span className="text-[9px] font-sans font-normal text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
-                            </span>
-                            <span className="text-[9px] font-mono text-muted-foreground/70" dir="ltr">
-                              (${formatNumber(invUsdProfit, 2)})
-                            </span>
-                          </div>
-                        ) : (
+                        {displayCurrencyFilter === 'USD' || (displayCurrencyFilter === 'stored' && invUpper === 'USD') ? (
                           <span className={cn(
                             "font-bold font-mono text-[11px]",
                             invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                           )}>
                             ${formatNumber(invUsdProfit, 2)}
                           </span>
+                        ) : (
+                          <div className="flex items-baseline gap-1">
+                            <span className={cn(
+                              "font-bold font-mono text-[11px]",
+                              financials.displayProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            )}>
+                              {formatNumber(financials.displayProfit, financials.decimals)} <span className="text-[9px] font-sans font-normal text-muted-foreground">{financials.symbol}</span>
+                            </span>
+                            <span className="text-[9px] font-mono text-muted-foreground/70" dir="ltr">
+                              (${formatNumber(invUsdProfit, 2)})
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2127,19 +2078,21 @@ export default function Invoices() {
           {selectedInvoice && (() => {
             const selectedFinancials = getInvoiceFinancials(selectedInvoice, true);
             const baseInvTotal = selectedInvoice.total || 0;
-            const tryRateForInv = (selectedInvoice.currency === 'TRY' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 1)
+            const c1Name = currencyNames?.TRY || 'ليرة تركية';
+            const c2Name = currencyNames?.SYP || 'ليرة سورية';
+            const c1Rate = (selectedInvoice.currency === 'TRY' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
               ? selectedInvoice.exchangeRate
-              : ((exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34);
-            const sypRateForInv = (selectedInvoice.currency === 'SYP' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 1)
+              : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 34);
+            const c2Rate = (selectedInvoice.currency === 'SYP' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
               ? selectedInvoice.exchangeRate
-              : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
+              : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 14500);
 
-            const trySymbolForInv = selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY || '₺') : (currencySymbols?.TRY || '₺');
-            const sypSymbolForInv = selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP || 'ل.س') : (currencySymbols?.SYP || 'ل.س');
+            const c1Symbol = selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY || '₺') : (currencySymbols?.TRY || '₺');
+            const c2Symbol = selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP || 'ل.س') : (currencySymbols?.SYP || 'ل.س');
 
             const totalUsdStr = formatCurrency(baseInvTotal, '$', 2);
-            const totalTryStr = formatCurrency(baseInvTotal * tryRateForInv, trySymbolForInv, tryRateForInv >= 100 ? 0 : 2);
-            const totalSypStr = formatCurrency(baseInvTotal * sypRateForInv, sypSymbolForInv, sypRateForInv >= 100 ? 0 : 2);
+            const totalC1Str = formatCurrency(baseInvTotal * c1Rate, c1Symbol, c1Rate >= 100 ? 0 : 2);
+            const totalC2Str = formatCurrency(baseInvTotal * c2Rate, c2Symbol, c2Rate >= 100 ? 0 : 2);
 
             return (
             <div className="space-y-4 p-5 overflow-y-auto">
@@ -2173,6 +2126,15 @@ export default function Invoices() {
                   <Badge variant={selectedInvoice.paymentType === 'cash' ? 'default' : 'destructive'}>
                     {selectedInvoice.paymentType === 'cash' ? t('invoices.cash') : t('invoices.credit')}
                   </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t('invoices.currency') || 'عملة الفاتورة'}:</span>
+                  <p className="font-semibold flex items-center gap-1.5 flex-wrap">
+                    <span>{selectedInvoice.currency === 'TRY' ? c1Name : selectedInvoice.currency === 'SYP' ? c2Name : (selectedInvoice.currency || 'USD')}</span>
+                    {selectedInvoice.currency && selectedInvoice.currency !== 'USD' && selectedInvoice.exchangeRate && (
+                      <span className="text-xs text-muted-foreground font-normal">(1$ = {selectedInvoice.exchangeRate} {selectedInvoice.currencySymbol || ''})</span>
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -2250,9 +2212,16 @@ export default function Invoices() {
                     <span className="text-destructive">-{formatCurrency(selectedInvoice.discount * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-lg font-bold">
+                <div className="flex justify-between items-baseline text-lg font-bold">
                   <span>{t('invoices.total')}:</span>
-                  <span className="text-primary">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                  <div className="text-left">
+                    <span className="text-primary">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    {selectedFinancials.code !== 'USD' && (
+                      <p className="text-xs font-normal text-muted-foreground" dir="ltr">
+                        (ما يعادل بالدولار: {formatCurrency(baseInvTotal, '$', 2)})
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && selectedInvoice.debtPaid !== undefined && selectedInvoice.debtPaid > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
@@ -2289,14 +2258,14 @@ export default function Invoices() {
                   </div>
                   {enabledCurrencies.TRY && (
                     <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
-                      <span className="text-muted-foreground text-[11px]">{t('invoices.valueInTRY') || 'القيمة بالليرة التركية'}:</span>
-                      <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalTryStr}</span>
+                      <span className="text-muted-foreground text-[11px]">القيمة بـ {c1Name}:</span>
+                      <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalC1Str}</span>
                     </div>
                   )}
                   {enabledCurrencies.SYP && (
                     <div className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
-                      <span className="text-muted-foreground text-[11px]">{t('invoices.valueInSYP') || 'القيمة بالليرة السورية'}:</span>
-                      <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalSypStr}</span>
+                      <span className="text-muted-foreground text-[11px]">القيمة بـ {c2Name}:</span>
+                      <span className="font-bold text-foreground text-sm whitespace-nowrap">{totalC2Str}</span>
                     </div>
                   )}
                 </div>

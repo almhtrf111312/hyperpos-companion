@@ -1261,6 +1261,7 @@ export default function Settings() {
 
       // Activate interactive save success state in floating action banner
       window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: { ...persisted, primaryCurrency, exchangeRates, currencyNames, currencySymbols, enabledCurrencies } }));
+      emitEvent(EVENTS.SETTINGS_UPDATED, { ...persisted, primaryCurrency, exchangeRates, currencyNames, currencySymbols, enabledCurrencies });
       setIsSaveSuccess(true);
       if (saveSuccessTimeoutRef.current) {
         clearTimeout(saveSuccessTimeoutRef.current);

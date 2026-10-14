@@ -142,6 +142,14 @@ const AppContent = () => {
     return () => window.removeEventListener(EVENTS.SETTINGS_UPDATED, checkState);
   }, [user?.id]);
 
+  // Setup wizard state (can also be launched on demand from Settings or Help)
+  const [manualShowSetup, setManualShowSetup] = useState(false);
+  useEffect(() => {
+    const handleOpenWizard = () => setManualShowSetup(true);
+    window.addEventListener('hyperpos:open-setup-wizard', handleOpenWizard);
+    return () => window.removeEventListener('hyperpos:open-setup-wizard', handleOpenWizard);
+  }, []);
+
   // Handle reset mode
   useEffect(() => {
     if (isReset) {
@@ -258,14 +266,6 @@ const AppContent = () => {
   if (!privacyAccepted) {
     return <PrivacyPolicyScreen onAccept={acceptPrivacy} />;
   }
-
-  // Setup wizard state (can also be launched on demand from Settings or Help)
-  const [manualShowSetup, setManualShowSetup] = useState(false);
-  useEffect(() => {
-    const handleOpenWizard = () => setManualShowSetup(true);
-    window.addEventListener('hyperpos:open-setup-wizard', handleOpenWizard);
-    return () => window.removeEventListener('hyperpos:open-setup-wizard', handleOpenWizard);
-  }, []);
 
   // Show setup wizard for brand new signups or on manual trigger
   const isNewSignup = (() => {

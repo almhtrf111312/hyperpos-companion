@@ -21,7 +21,7 @@ import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
-import { loadCurrencySymbols } from '@/hooks/use-currency';
+import { loadCurrencySymbols, loadCurrencyNames } from '@/hooks/use-currency';
 import { getLocalizedUnit } from '@/lib/product-units';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
@@ -131,21 +131,6 @@ const loadEnabledCurrencies = () => {
   }
 };
 
-const loadCurrencyNames = () => {
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { TRY: 'Turkish Lira', SYP: 'Syrian Pound' };
-    const parsed = JSON.parse(raw);
-    const names = parsed?.currencyNames;
-    return {
-      TRY: names?.TRY || 'Turkish Lira',
-      SYP: names?.SYP || 'Syrian Pound',
-    };
-  } catch {
-    return { TRY: 'Turkish Lira', SYP: 'Syrian Pound' };
-  }
-};
-
 interface CartItem {
   id: string;
   name: string;
@@ -163,7 +148,7 @@ interface CartItem {
   laborCost?: number;
 }
 
-type Currency = { code: 'USD' | 'TRY' | 'SYP'; symbol: string; name: string; rate: number };
+type Currency = { code: string; symbol: string; name: string; rate: number };
 
 // Keys for persistence across app background/foreground cycles
 export interface HeldCart {
@@ -653,7 +638,7 @@ export default function POS() {
     const symbols = loadCurrencySymbols();
     const enabled = loadEnabledCurrencies();
     const all: Currency[] = [
-      { code: 'USD', symbol: '$', name: t('currency.usd') || 'دولار', rate: 1 },
+      { code: 'USD', symbol: symbols.USD || '$', name: names.USD || t('currency.usd') || 'دولار', rate: 1 },
       { code: 'TRY', symbol: symbols.TRY || '₺', name: names.TRY || 'ليرة تركية', rate: rates.TRY },
       { code: 'SYP', symbol: symbols.SYP || 'ل.س', name: names.SYP || 'ليرة سورية', rate: rates.SYP },
     ];

@@ -43,9 +43,9 @@ export const loadCurrencySymbols = (): CurrencySymbols => {
     const parsed = JSON.parse(raw);
     const syms = parsed?.currencySymbols;
     return {
-      USD: '$',
-      TRY: (syms?.TRY && typeof syms.TRY === 'string') ? syms.TRY : '₺',
-      SYP: (syms?.SYP && typeof syms.SYP === 'string') ? syms.SYP : 'ل.س',
+      USD: (syms?.USD && typeof syms.USD === 'string' && syms.USD.trim()) ? syms.USD.trim() : '$',
+      TRY: (syms?.TRY && typeof syms.TRY === 'string' && syms.TRY.trim()) ? syms.TRY.trim() : '₺',
+      SYP: (syms?.SYP && typeof syms.SYP === 'string' && syms.SYP.trim()) ? syms.SYP.trim() : 'ل.س',
     };
   } catch {
     return { USD: '$', TRY: '₺', SYP: 'ل.س' };
@@ -59,9 +59,9 @@ export const loadCurrencyNames = (): CurrencyNames => {
     const parsed = JSON.parse(raw);
     const names = parsed?.currencyNames;
     return {
-      USD: names?.USD || 'دولار',
-      TRY: names?.TRY || 'ليرة تركية',
-      SYP: names?.SYP || 'ليرة سورية',
+      USD: (names?.USD && typeof names.USD === 'string' && names.USD.trim()) ? names.USD.trim() : 'دولار',
+      TRY: (names?.TRY && typeof names.TRY === 'string' && names.TRY.trim()) ? names.TRY.trim() : 'ليرة تركية',
+      SYP: (names?.SYP && typeof names.SYP === 'string' && names.SYP.trim()) ? names.SYP.trim() : 'ليرة سورية',
     };
   } catch {
     return { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
@@ -140,9 +140,9 @@ export const useCurrency = () => {
     const symbols = loadCurrencySymbols();
     const names = loadCurrencyNames();
 
-    let symbol = '$';
+    let symbol = symbols.USD || '$';
     let rate = 1;
-    let name = 'دولار';
+    let name = names.USD || 'دولار';
     if (code === 'TRY') {
       symbol = symbols.TRY;
       rate = rates.TRY;

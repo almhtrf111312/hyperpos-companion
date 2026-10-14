@@ -29,11 +29,22 @@ import {
   Coins,
   ShieldCheck,
   ChevronRight,
-  Receipt
+  Receipt,
+  Printer,
+  Camera,
+  ScanLine,
+  Keyboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn, formatNumber } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
@@ -42,7 +53,11 @@ import { savePartners, Partner } from '@/lib/partners-store';
 import { APP_FONTS, AppFontId, getStoredAppFont, setStoredAppFont } from '@/lib/app-font-config';
 import { UI_SCALE_OPTIONS, UIScaleId, getStoredUIScale, setStoredUIScale } from '@/lib/ui-scale-config';
 import { emitEvent, EVENTS } from '@/lib/events';
-import { saveStoreSettings } from '@/lib/supabase-store';
+import { saveStoreSettings, getCurrentUserId, getCurrentUserName } from '@/lib/supabase-store';
+import { getDefaultCategories } from '@/lib/store-type-config';
+import { saveCategories, loadCategories, Category } from '@/lib/categories-store';
+import { PREDEFINED_CURRENCIES } from '@/lib/currencies';
+import { openShift, loadShifts } from '@/lib/cashbox-store';
 
 interface SetupWizardProps {
   onComplete: () => void;
@@ -67,7 +82,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
 
-  // Step 1: Store info & Identity
+  // Step 1: Store info & Identity & Catalog Templates
   const [storeName, setStoreName] = useState(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_KEY);
@@ -87,20 +102,35 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [storePhone, setStorePhone] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [storeLogo, setStoreLogo] = useState<string>('');
+  const [seedCategories, setSeedCategories] = useState(true);
 
-  // Step 2: Currencies & Pricing
-  const [primaryCurrency, setPrimaryCurrency] = useState<'USD' | 'TRY' | 'SYP'>('USD');
-  const [enableTRY, setEnableTRY] = useState(true);
-  const [enableSYP, setEnableSYP] = useState(true);
-  const [tryRate, setTryRate] = useState<number>(32);
-  const [sypRate, setSypRate] = useState<number>(14500);
+  // Step 2: Currencies & Pricing (Flexible Dynamic Multi-Currency)
+  const [primaryCurrency, setPrimaryCurrency] = useState('USD');
 
-  // Step 3: Sales, Tax & Barcode
+  // Secondary Currency 1
+  const [sec1Enabled, setSec1Enabled] = useState(true);
+  const [sec1Code, setSec1Code] = useState('TRY');
+  const [sec1Name, setSec1Name] = useState('ليرة تركية');
+  const [sec1Symbol, setSec1Symbol] = useState('₺');
+  const [sec1Rate, setSec1Rate] = useState<number>(34);
+
+  // Secondary Currency 2
+  const [sec2Enabled, setSec2Enabled] = useState(true);
+  const [sec2Code, setSec2Code] = useState('SYP');
+  const [sec2Name, setSec2Name] = useState('ليرة سورية');
+  const [sec2Symbol, setSec2Symbol] = useState('ل.س');
+  const [sec2Rate, setSec2Rate] = useState<number>(14500);
+
+  // Step 3: Sales, Tax, Thermal Printing & Barcode
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [taxRate, setTaxRate] = useState<number>(5);
   const [discountPercentEnabled, setDiscountPercentEnabled] = useState(true);
   const [discountFixedEnabled, setDiscountFixedEnabled] = useState(true);
   const [barcodeScanMode, setBarcodeScanMode] = useState<'add' | 'search'>('add');
+  const [barcodeDevice, setBarcodeDevice] = useState<'camera' | 'scanner' | 'manual'>('camera');
+  const [paperSize, setPaperSize] = useState<'80mm' | '57mm'>('80mm');
+  const [receiptFooter, setReceiptFooter] = useState('شكراً لزيارتكم');
+  const [printAutoAfterSale, setPrintAutoAfterSale] = useState(false);
 
   // Step 4: Partners & Profits
   const [hasPartners, setHasPartners] = useState<'no' | 'yes'>('no');
@@ -108,11 +138,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     { id: '1', name: '', phone: '', capital: 0, sharePercentage: 50 },
   ]);
 
-  // Step 5: Typography & Appearance
+  // Step 5: Typography, Appearance & Opening Cash Float
   const [selectedFont, setSelectedFont] = useState<AppFontId>(() => getStoredAppFont());
   const [selectedScale, setSelectedScale] = useState<UIScaleId>(() => getStoredUIScale());
+  const [openingCash, setOpeningCash] = useState<string>('0');
+  const [openFirstShift, setOpenFirstShift] = useState(true);
 
-  // Load any existing settings on mount
+  // Load existing settings on mount if available
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
@@ -123,18 +155,65 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         if (parsed.storeSettings?.address) setStoreAddress(parsed.storeSettings.address);
         if (parsed.storeSettings?.logo) setStoreLogo(parsed.storeSettings.logo);
         if (parsed.primaryCurrency) setPrimaryCurrency(parsed.primaryCurrency);
-        if (parsed.exchangeRates?.TRY) setTryRate(Number(parsed.exchangeRates.TRY) || 32);
-        if (parsed.exchangeRates?.SYP) setSypRate(Number(parsed.exchangeRates.SYP) || 14500);
+
+        // Load currencies
+        if (parsed.enabledCurrencies) {
+          const nonUsd = Object.keys(parsed.enabledCurrencies).filter(c => c !== 'USD');
+          if (nonUsd.length > 0) {
+            const c1 = nonUsd[0];
+            setSec1Code(c1);
+            setSec1Enabled(!!parsed.enabledCurrencies[c1]);
+            if (parsed.currencyNames?.[c1]) setSec1Name(parsed.currencyNames[c1]);
+            if (parsed.currencySymbols?.[c1]) setSec1Symbol(parsed.currencySymbols[c1]);
+            if (parsed.exchangeRates?.[c1]) setSec1Rate(Number(parsed.exchangeRates[c1]) || 1);
+          }
+          if (nonUsd.length > 1) {
+            const c2 = nonUsd[1];
+            setSec2Code(c2);
+            setSec2Enabled(!!parsed.enabledCurrencies[c2]);
+            if (parsed.currencyNames?.[c2]) setSec2Name(parsed.currencyNames[c2]);
+            if (parsed.currencySymbols?.[c2]) setSec2Symbol(parsed.currencySymbols[c2]);
+            if (parsed.exchangeRates?.[c2]) setSec2Rate(Number(parsed.exchangeRates[c2]) || 1);
+          }
+        }
+
         if (parsed.taxEnabled !== undefined) setTaxEnabled(!!parsed.taxEnabled);
         if (parsed.taxRate !== undefined) setTaxRate(Number(parsed.taxRate) || 5);
         if (parsed.discountPercentEnabled !== undefined) setDiscountPercentEnabled(!!parsed.discountPercentEnabled);
         if (parsed.discountFixedEnabled !== undefined) setDiscountFixedEnabled(!!parsed.discountFixedEnabled);
         if (parsed.barcodeScanMode) setBarcodeScanMode(parsed.barcodeScanMode);
-        if (parsed.enabledCurrencies?.TRY !== undefined) setEnableTRY(!!parsed.enabledCurrencies.TRY);
-        if (parsed.enabledCurrencies?.SYP !== undefined) setEnableSYP(!!parsed.enabledCurrencies.SYP);
+        if (parsed.barcodeDeviceType) setBarcodeDevice(parsed.barcodeDeviceType);
+
+        if (parsed.printSettings) {
+          if (parsed.printSettings.paperSize) setPaperSize(parsed.printSettings.paperSize);
+          if (parsed.printSettings.footerText) setReceiptFooter(parsed.printSettings.footerText);
+          if (parsed.printSettings.autoPrint !== undefined) setPrintAutoAfterSale(!!parsed.printSettings.autoPrint);
+        }
       }
     } catch {}
   }, []);
+
+  // Handle predefined currency selection for secondary 1
+  const handleSelectSec1 = (code: string) => {
+    const found = PREDEFINED_CURRENCIES.find(c => c.code === code);
+    if (found) {
+      setSec1Code(found.code);
+      setSec1Name(found.name);
+      setSec1Symbol(found.symbol);
+      if (found.suggestedRate) setSec1Rate(found.suggestedRate);
+    }
+  };
+
+  // Handle predefined currency selection for secondary 2
+  const handleSelectSec2 = (code: string) => {
+    const found = PREDEFINED_CURRENCIES.find(c => c.code === code);
+    if (found) {
+      setSec2Code(found.code);
+      setSec2Name(found.name);
+      setSec2Symbol(found.symbol);
+      if (found.suggestedRate) setSec2Rate(found.suggestedRate);
+    }
+  };
 
   // Handle Logo Upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,24 +238,56 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     const rem = Math.max(0, 100 - totalShare);
     setPartners([
       ...partners,
-      { id: Date.now().toString(), name: '', phone: '', capital: 0, sharePercentage: rem }
+      {
+        id: Date.now().toString(),
+        name: '',
+        phone: '',
+        capital: 0,
+        sharePercentage: rem > 0 ? rem : 0,
+      },
     ]);
   };
 
   const handleRemovePartner = (id: string) => {
-    if (partners.length > 1) {
-      setPartners(partners.filter(p => p.id !== id));
+    if (partners.length <= 1) {
+      toast.error('يجب بقاء شريك واحد على الأقل عند تفعيل المشاركة');
+      return;
     }
+    setPartners(partners.filter(p => p.id !== id));
   };
 
-  const handleUpdatePartner = (id: string, field: keyof PartnerItem, value: any) => {
-    setPartners(partners.map(p => p.id === id ? { ...p, [field]: value } : p));
+  const handlePartnerChange = (id: string, field: keyof PartnerItem, value: any) => {
+    setPartners(partners.map(p => {
+      if (p.id !== id) return p;
+      return { ...p, [field]: value };
+    }));
   };
 
-  // Save all settings and finish wizard
+  // Finish Wizard & Save All Settings
   const handleFinish = async () => {
-    const finalStoreName = storeName.trim() || 'متجري التجاري';
+    const finalStoreName = storeName.trim() || 'متجري';
 
+    // 1. Seed categories if enabled and store categories are empty
+    if (seedCategories) {
+      try {
+        const existingCats = loadCategories();
+        if (existingCats.length === 0) {
+          const defaults = getDefaultCategories(storeType);
+          if (defaults && defaults.length > 0) {
+            const formattedCategories: Category[] = defaults.map((catName, idx) => ({
+              id: `${Date.now()}-${idx}`,
+              name: catName,
+              createdAt: new Date().toISOString(),
+            }));
+            saveCategories(formattedCategories);
+          }
+        }
+      } catch (e) {
+        console.warn('[SetupWizard] Categories seed fallback:', e);
+      }
+    }
+
+    // 2. Build full settings object
     const newSettings = {
       storeSettings: {
         name: finalStoreName,
@@ -186,29 +297,48 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         logo: storeLogo,
       },
       primaryCurrency,
-      enabledCurrencies: {
-        USD: true,
-        TRY: primaryCurrency === 'TRY' ? true : enableTRY,
-        SYP: primaryCurrency === 'SYP' ? true : enableSYP,
+      currencyNames: {
+        USD: 'دولار',
+        [sec1Code]: sec1Name.trim() || sec1Code,
+        [sec2Code]: sec2Name.trim() || sec2Code,
+        TRY: sec1Code === 'TRY' ? sec1Name : 'ليرة تركية',
+        SYP: sec2Code === 'SYP' ? sec2Name : 'ليرة سورية',
+      },
+      currencySymbols: {
+        USD: '$',
+        [sec1Code]: sec1Symbol.trim() || sec1Code,
+        [sec2Code]: sec2Symbol.trim() || sec2Code,
       },
       exchangeRates: {
         USD: '1',
-        TRY: String(tryRate || 32),
-        SYP: String(sypRate || 14500),
+        [sec1Code]: String(sec1Rate || 1),
+        [sec2Code]: String(sec2Rate || 1),
+        TRY: String(sec1Code === 'TRY' ? sec1Rate : 34),
+        SYP: String(sec2Code === 'SYP' ? sec2Rate : 14500),
       },
-      currencyNames: {
-        USD: 'دولار',
-        TRY: 'ليرة تركية',
-        SYP: 'ليرة سورية',
+      enabledCurrencies: {
+        USD: true,
+        [sec1Code]: sec1Enabled,
+        [sec2Code]: sec2Enabled,
+        TRY: sec1Code === 'TRY' ? sec1Enabled : false,
+        SYP: sec2Code === 'SYP' ? sec2Enabled : false,
       },
       taxEnabled,
       taxRate: taxEnabled ? Number(taxRate || 0) : 0,
       discountPercentEnabled,
       discountFixedEnabled,
-      barcodeScanMode,
+      barcodeScanMode: barcodeDevice === 'manual' ? 'search' : barcodeScanMode,
+      barcodeDeviceType: barcodeDevice,
+      printSettings: {
+        paperSize,
+        footerText: receiptFooter.trim(),
+        autoPrint: printAutoAfterSale,
+        showLogo: !!storeLogo,
+        showTaxNumber: taxEnabled,
+      },
     };
 
-    // 1. Local Storage save
+    // 3. Local Storage save
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
       localStorage.setItem(STORE_TYPE_KEY, storeType);
@@ -218,12 +348,25 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         inclusive: false,
         name: 'ضريبة القيمة المضافة'
       }));
+      localStorage.setItem('hyperpos_barcode_device', barcodeDevice);
       localStorage.setItem('hyperpos_setup_complete', 'true');
     } catch (e) {
       console.warn('[SetupWizard] Failed to save to localStorage:', e);
     }
 
-    // 2. Partners save if enabled
+    // 4. Opening Cash Float / Shift
+    const amount = parseFloat(openingCash) || 0;
+    if (openFirstShift || amount > 0) {
+      try {
+        const uid = getCurrentUserId() || 'offline_admin';
+        const uname = getCurrentUserName() || 'المدير';
+        openShift(amount, uid, uname);
+      } catch (e) {
+        console.warn('[SetupWizard] Open shift fallback:', e);
+      }
+    }
+
+    // 5. Partners save if enabled
     if (hasPartners === 'yes') {
       const valid = partners.filter(p => p.name.trim());
       if (valid.length > 0) {
@@ -263,7 +406,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       }
     }
 
-    // 3. Cloud store settings sync
+    // 6. Cloud store settings sync
     try {
       await saveStoreSettings({
         name: finalStoreName,
@@ -272,7 +415,13 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         address: storeAddress.trim(),
         logo_url: storeLogo,
         primary_currency: primaryCurrency,
-        exchange_rates: { USD: 1, TRY: tryRate || 32, SYP: sypRate || 14500 },
+        exchange_rates: {
+          USD: 1,
+          [sec1Code]: sec1Rate || 1,
+          [sec2Code]: sec2Rate || 1,
+          TRY: sec1Code === 'TRY' ? sec1Rate : 34,
+          SYP: sec2Code === 'SYP' ? sec2Rate : 14500,
+        },
         tax_enabled: taxEnabled,
         tax_rate: taxEnabled ? Number(taxRate || 0) : 0,
       });
@@ -280,7 +429,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       console.warn('[SetupWizard] Cloud settings save fallback:', e);
     }
 
-    // 4. Dispatch system events so POS, Sidebar, and Themes update immediately
+    // 7. Dispatch system events so POS, Sidebar, and Themes update immediately
     emitEvent(EVENTS.SETTINGS_UPDATED, newSettings);
     emitEvent(EVENTS.STORE_TYPE_CHANGED, storeType);
     window.dispatchEvent(new CustomEvent('setup:complete'));
@@ -298,48 +447,47 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     { id: 'phones', name: 'هواتف وإلكترونيات', icon: Smartphone, desc: 'أجهزة، إكسسوارات، بطاقات، وخدمات' },
     { id: 'clothing', name: 'ملابس وأزياء', icon: Layers, desc: 'مقاسات وألوان وأقمشة وتصنيفات' },
     { id: 'restaurant', name: 'مطعم أو كافيه', icon: UtensilsCrossed, desc: 'وجبات، مشروبات، وتناول محلي وسفري' },
-    { id: 'repair', name: 'خدمات وصيانة', icon: Wrench, desc: 'أجور عمالة، قطع غيار، وأوامر عمل' },
-    { id: 'general', name: 'تجزئة عامة ومتنوعة', icon: Store, desc: 'مخزون عام ومبيعات سريعة شاملة' },
+    { id: 'maintenance', name: 'خدمات وصيانة', icon: Wrench, desc: 'أجور عمالة، قطع غيار، وأوامر عمل' },
+    { id: 'general', name: 'تجزئة عامة ومتنوعة', icon: Boxes, desc: 'مخزون عام ومبيعات سريعة شاملة' },
+  ];
+
+  const stepsMeta = [
+    { num: 1, label: 'المتجر', icon: Store },
+    { num: 2, label: 'العملات', icon: Coins },
+    { num: 3, label: 'المبيعات والطباعة', icon: Receipt },
+    { num: 4, label: 'الشركاء', icon: Users },
+    { num: 5, label: 'المظهر والصندوق', icon: Palette },
   ];
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md overflow-y-auto flex items-center justify-center p-3 sm:p-6"
-      dir={direction}
-    >
-      <div className="w-full max-w-2xl bg-card border border-border/80 shadow-2xl rounded-3xl overflow-hidden flex flex-col my-auto transition-all animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto" dir={direction}>
+      <div className="w-full max-w-3xl bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden my-auto flex flex-col max-h-[96vh]">
         
-        {/* Header with Title & Progress Stepper */}
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 p-5 sm:p-6 pb-4">
-          <div className="flex items-center justify-between gap-4 mb-5">
+        {/* Header Bar */}
+        <div className="p-4 sm:p-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
-                <Sparkles className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/20">
+                <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                <h1 className="text-base sm:text-lg font-black text-foreground">
                   معالج الترحيب والإعداد الأولي
                 </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground">
                   تهيئة متجرك خطوة بخطوة للعمل بأعلى احترافية
                 </p>
               </div>
             </div>
 
-            <div className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full shrink-0">
+            <div className="text-xs font-bold px-3 py-1 rounded-full bg-primary/15 text-primary border border-primary/20">
               خطوة {step} من {totalSteps}
             </div>
           </div>
 
-          {/* Stepper Tabs Bar */}
+          {/* Stepper Tabs */}
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-            {[
-              { num: 1, label: 'المتجر', icon: Store },
-              { num: 2, label: 'العملات', icon: Coins },
-              { num: 3, label: 'المبيعات', icon: Receipt },
-              { num: 4, label: 'الشركاء', icon: Users },
-              { num: 5, label: 'المظهر', icon: Palette },
-            ].map((s) => {
+            {stepsMeta.map((s) => {
               const Icon = s.icon;
               const isActive = step === s.num;
               const isPast = step > s.num;
@@ -349,12 +497,12 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   type="button"
                   onClick={() => setStep(s.num)}
                   className={cn(
-                    "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all border text-center",
+                    "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all border text-center cursor-pointer",
                     isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm font-bold scale-[1.02]"
+                      ? "border-primary bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/25 scale-[1.02]"
                       : isPast
-                      ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/15 font-medium"
-                      : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/70"
+                      ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                      : "border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted/60"
                   )}
                 >
                   <div className="flex items-center gap-1">
@@ -372,9 +520,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:p-7 space-y-6 flex-1 min-h-[380px]">
+        <div className="p-5 sm:p-7 space-y-6 flex-1 min-h-[380px] overflow-y-auto">
           
-          {/* STEP 1: هوية المتجر وبيانات الفاتورة */}
+          {/* STEP 1: هوية المتجر وبيانات الفاتورة وقوالب التصنيفات */}
           {step === 1 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div>
@@ -415,7 +563,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                         type="button"
                         onClick={() => setStoreType(st.id)}
                         className={cn(
-                          "flex flex-col items-start p-3 rounded-xl border text-right transition-all",
+                          "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/30"
                             : "border-border/60 bg-card hover:bg-muted/40 hover:border-border"
@@ -519,6 +667,26 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
               </div>
 
+              {/* بطاقة توليد التصنيفات النموذجية تلقائياً حسب نوع النشاط */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-all">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Boxes className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-xs font-bold text-foreground">
+                      توليد تصنيفات تلقائية لنشاطك
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    إنشاء تصنيفات نموذجية شائعة تناسب نشاطك المختار لتكون جاهزة في شاشة البيع فوراً
+                  </p>
+                </div>
+                <Switch
+                  checked={seedCategories}
+                  onCheckedChange={setSeedCategories}
+                  className="data-[state=checked]:bg-primary shrink-0"
+                />
+              </div>
+
               {/* Notice */}
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-2.5 text-xs text-primary">
                 <HelpCircle className="w-4 h-4 shrink-0" />
@@ -529,16 +697,16 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
           )}
 
-          {/* STEP 2: العملات والأسعار */}
+          {/* STEP 2: إعداد العملات المرن والديناميكي وأسعار الصرف */}
           {step === 2 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                   <Coins className="w-5 h-5 text-primary" />
-                  العملات والأسعار وطريقة العرض
+                  نظام العملات الديناميكي وأسعار الصرف
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  اختر العملة اليومية للتداول وحدد أسعار الصرف لحساب الأرباح تلقائياً
+                  حدد العملة الافتراضية للبيع وخصص العملات الثانوية مع أسعار الصرف الحية
                 </p>
               </div>
 
@@ -549,9 +717,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
                   {[
-                    { code: 'USD' as const, symbol: '$', title: 'دولار أمريكي', badge: 'مرجع النظام' },
-                    { code: 'TRY' as const, symbol: '₺', title: 'ليرة تركية', badge: 'عملة يومية' },
-                    { code: 'SYP' as const, symbol: 'ل.س', title: 'ليرة سورية', badge: 'عملة محلية' },
+                    { code: 'USD', symbol: '$', title: 'دولار أمريكي', badge: 'مرجع النظام' },
+                    { code: sec1Code, symbol: sec1Symbol, title: sec1Name, badge: 'عملة ثانوية 1' },
+                    { code: sec2Code, symbol: sec2Symbol, title: sec2Name, badge: 'عملة ثانوية 2' },
                   ].map((curr) => {
                     const isSelected = primaryCurrency === curr.code;
                     return (
@@ -560,20 +728,20 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                         type="button"
                         onClick={() => {
                           setPrimaryCurrency(curr.code);
-                          if (curr.code === 'TRY') setEnableTRY(true);
-                          if (curr.code === 'SYP') setEnableSYP(true);
+                          if (curr.code === sec1Code) setSec1Enabled(true);
+                          if (curr.code === sec2Code) setSec2Enabled(true);
                         }}
                         className={cn(
-                          "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all relative",
+                          "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all relative cursor-pointer",
                           isSelected
-                            ? "border-primary bg-primary/10 shadow-sm"
+                            ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
                             : "border-border/60 bg-card hover:bg-muted/40"
                         )}
                       >
                         <span className="text-2xl font-black text-primary mb-1">
                           {curr.symbol}
                         </span>
-                        <span className="text-xs font-bold text-foreground">
+                        <span className="text-xs font-bold text-foreground truncate max-w-full">
                           {curr.title}
                         </span>
                         <span className="text-[10px] text-muted-foreground mt-0.5">
@@ -590,104 +758,186 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
               </div>
 
-              {/* Toggles to enable/disable specific currencies */}
-              <div className="space-y-2.5 pt-2 border-t border-border/50">
-                <label className="text-xs font-bold text-foreground">
-                  تفعيل أو إلغاء ظهور العملات في شاشات البيع
-                </label>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/60">
-                    <div>
-                      <p className="text-xs font-bold text-foreground">الليرة التركية (₺ - TRY)</p>
-                      <p className="text-[10px] text-muted-foreground">إظهار كخيار سداد وتبديل في السلة</p>
+              {/* Secondary Currency 1 Configuration Card */}
+              <div className="p-4 rounded-2xl border border-border/70 bg-card space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">
+                      1
                     </div>
-                    <Switch
-                      checked={enableTRY || primaryCurrency === 'TRY'}
-                      disabled={primaryCurrency === 'TRY'}
-                      onCheckedChange={setEnableTRY}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/60">
                     <div>
-                      <p className="text-xs font-bold text-foreground">الليرة السورية (ل.س - SYP)</p>
-                      <p className="text-[10px] text-muted-foreground">إظهار كخيار سداد وتبديل في السلة</p>
+                      <p className="text-xs font-bold text-foreground">العملة الثانوية الأولى</p>
+                      <p className="text-[10px] text-muted-foreground">خيار سداد وتبديل في سلة البيع والفواتير</p>
                     </div>
-                    <Switch
-                      checked={enableSYP || primaryCurrency === 'SYP'}
-                      disabled={primaryCurrency === 'SYP'}
-                      onCheckedChange={setEnableSYP}
-                    />
                   </div>
+                  <Switch
+                    checked={sec1Enabled || primaryCurrency === sec1Code}
+                    disabled={primaryCurrency === sec1Code}
+                    onCheckedChange={setSec1Enabled}
+                  />
                 </div>
+
+                {sec1Enabled && (
+                  <div className="space-y-3 pt-2 border-t border-border/50 animate-in fade-in duration-150">
+                    {/* Quick Pick Predefined Currency */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-muted-foreground">
+                        اختيار سريع من العملات الجاهزة:
+                      </label>
+                      <Select value={sec1Code} onValueChange={handleSelectSec1}>
+                        <SelectTrigger className="h-9 text-xs rounded-xl bg-background">
+                          <SelectValue placeholder="اختر عملة..." />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 z-[120]">
+                          {PREDEFINED_CURRENCIES.map(curr => (
+                            <SelectItem key={curr.code} value={curr.code} className="text-xs">
+                              <span className="flex items-center gap-2">
+                                <span className="font-bold font-mono">{curr.code}</span>
+                                <span>{curr.name}</span>
+                                <span className="text-muted-foreground">({curr.symbol})</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Custom Name, Symbol, and Exchange Rate */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground">اسم العملة:</label>
+                        <Input
+                          value={sec1Name}
+                          onChange={(e) => setSec1Name(e.target.value)}
+                          placeholder="الاسم"
+                          className="h-8 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground">الرمز:</label>
+                        <Input
+                          value={sec1Symbol}
+                          onChange={(e) => setSec1Symbol(e.target.value)}
+                          placeholder="الرمز"
+                          className="h-8 text-xs font-bold text-center"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground">1 $ = ({sec1Symbol})</label>
+                        <Input
+                          type="number"
+                          step="any"
+                          value={sec1Rate || ''}
+                          onChange={(e) => setSec1Rate(Number(e.target.value))}
+                          placeholder="سعر الصرف"
+                          className="h-8 text-xs font-bold text-primary font-mono text-center"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Exchange Rates Inputs */}
-              {(enableTRY || enableSYP || primaryCurrency !== 'USD') && (
-                <div className="space-y-3 pt-2 border-t border-border/50">
-                  <label className="text-xs font-bold text-foreground">
-                    تحديد أسعار الصرف المعتمدة مقابل 1 دولار ($)
-                  </label>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(enableTRY || primaryCurrency === 'TRY') && (
-                      <div className="p-3 bg-muted/30 border border-border/60 rounded-xl space-y-1.5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold">سعر الليرة التركية:</span>
-                          <span className="text-primary font-mono font-bold">1 $ = {tryRate} ₺</span>
-                        </div>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          value={tryRate || ''}
-                          onChange={(e) => setTryRate(Number(e.target.value))}
-                          placeholder="مثال: 32"
-                          className="h-9 text-xs font-bold bg-background"
-                        />
-                      </div>
-                    )}
-
-                    {(enableSYP || primaryCurrency === 'SYP') && (
-                      <div className="p-3 bg-muted/30 border border-border/60 rounded-xl space-y-1.5">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold">سعر الليرة السورية:</span>
-                          <span className="text-primary font-mono font-bold">1 $ = {formatNumber(sypRate)} ل.س</span>
-                        </div>
-                        <Input
-                          type="number"
-                          step="100"
-                          value={sypRate || ''}
-                          onChange={(e) => setSypRate(Number(e.target.value))}
-                          placeholder="مثال: 14500"
-                          className="h-9 text-xs font-bold bg-background"
-                        />
-                      </div>
-                    )}
+              {/* Secondary Currency 2 Configuration Card */}
+              <div className="p-4 rounded-2xl border border-border/70 bg-card space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                      2
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">العملة الثانوية الثانية</p>
+                      <p className="text-[10px] text-muted-foreground">خيار سداد وتبديل إضافي بالعملة المحلية</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={sec2Enabled || primaryCurrency === sec2Code}
+                    disabled={primaryCurrency === sec2Code}
+                    onCheckedChange={setSec2Enabled}
+                  />
                 </div>
-              )}
+
+                {sec2Enabled && (
+                  <div className="space-y-3 pt-2 border-t border-border/50 animate-in fade-in duration-150">
+                    {/* Quick Pick Predefined Currency */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-muted-foreground">
+                        اختيار سريع من العملات الجاهزة:
+                      </label>
+                      <Select value={sec2Code} onValueChange={handleSelectSec2}>
+                        <SelectTrigger className="h-9 text-xs rounded-xl bg-background">
+                          <SelectValue placeholder="اختر عملة..." />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 z-[120]">
+                          {PREDEFINED_CURRENCIES.map(curr => (
+                            <SelectItem key={curr.code} value={curr.code} className="text-xs">
+                              <span className="flex items-center gap-2">
+                                <span className="font-bold font-mono">{curr.code}</span>
+                                <span>{curr.name}</span>
+                                <span className="text-muted-foreground">({curr.symbol})</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Custom Name, Symbol, and Exchange Rate */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground">اسم العملة:</label>
+                        <Input
+                          value={sec2Name}
+                          onChange={(e) => setSec2Name(e.target.value)}
+                          placeholder="الاسم"
+                          className="h-8 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground">الرمز:</label>
+                        <Input
+                          value={sec2Symbol}
+                          onChange={(e) => setSec2Symbol(e.target.value)}
+                          placeholder="الرمز"
+                          className="h-8 text-xs font-bold text-center"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground">1 $ = ({sec2Symbol})</label>
+                        <Input
+                          type="number"
+                          step="any"
+                          value={sec2Rate || ''}
+                          onChange={(e) => setSec2Rate(Number(e.target.value))}
+                          placeholder="سعر الصرف"
+                          className="h-8 text-xs font-bold text-primary font-mono text-center"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Friendly Note */}
               <div className="p-3 bg-muted/50 border border-border/60 rounded-xl flex items-start gap-2.5 text-xs text-muted-foreground">
                 <Sparkles className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                 <span>
-                  ملاحظة: يمكنك تسعير بضاعتك بالعملة التي تناسبك، والنظام يقوم بحساب الفواتير والأرباح تلقائياً دون أي خربطة.
+                  ملاحظة: يحافظ النظام على الدولار (USD) كمرجع محاسبي داخلي مستقر للأرباح والمخزون، مع مرونة تامة في تسعير وعرض وقبض الفواتير بأي عملة تحددها.
                 </span>
               </div>
             </div>
           )}
 
-          {/* STEP 3: إعدادات المبيعات والضريبة والباركود */}
+          {/* STEP 3: إعدادات المبيعات والضريبة والطباعة الحرارية والباركود */}
           {step === 3 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-primary" />
-                  إعدادات المبيعات والضريبة والباركود
+                  المبيعات والضريبة وإعدادات الطباعة والباركود
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  تحكم بخصائص الفوترة والضرائب وسلوك ماسح الباركود
+                  تحكم بخصائص الفوترة، مقاس ورق الطابعة، وسلوك ماسح الباركود
                 </p>
               </div>
 
@@ -724,10 +974,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                     </div>
                   </div>
                 )}
-
-                <p className="text-[11px] text-muted-foreground">
-                  عند التفعيل، سيتم احتساب الضريبة بشكل منفصل وتوضيحها في الفاتورة للعميل.
-                </p>
               </div>
 
               {/* Discounts Toggles */}
@@ -751,48 +997,160 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
               </div>
 
-              {/* Barcode Scanner Behavior */}
+              {/* Thermal Printer Settings (إعدادات الفاتورة والطباعة الحرارية) */}
+              <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 space-y-3.5">
+                <div className="flex items-center gap-2">
+                  <Printer className="w-4 h-4 text-primary" />
+                  <p className="text-xs font-bold text-foreground">إعدادات إيصال الفاتورة والطباعة الحرارية</p>
+                </div>
+
+                {/* Paper Size Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-muted-foreground">مقاس ورق الطابعة الحرارية:</label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setPaperSize('80mm')}
+                      className={cn(
+                        "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                        paperSize === '80mm'
+                          ? "border-primary bg-primary/10 shadow-xs"
+                          : "border-border/60 bg-background hover:bg-muted/40"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-xs font-bold text-foreground">طابعة فواتير قياسية (80mm)</span>
+                        {paperSize === '80mm' && <Check className="w-4 h-4 text-primary" />}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        عرض 80 مم - ورق قياسي مناسب لكاشير المحلات ونقاط البيع
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaperSize('57mm')}
+                      className={cn(
+                        "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                        paperSize === '57mm'
+                          ? "border-primary bg-primary/10 shadow-xs"
+                          : "border-border/60 bg-background hover:bg-muted/40"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-xs font-bold text-foreground">طابعة بلوتوث صغيرة (57mm)</span>
+                        {paperSize === '57mm' && <Check className="w-4 h-4 text-primary" />}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        عرض 57 مم - ورق صغير محمول مناسب للمناديب والعمل الميداني
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Receipt Footer Text */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground">تذييل الفاتورة المطبوعة:</label>
+                  <Input
+                    value={receiptFooter}
+                    onChange={(e) => setReceiptFooter(e.target.value)}
+                    placeholder="مثال: شكراً لزيارتكم، نسعد بخدمتكم دائماً"
+                    className="h-9 text-xs bg-background"
+                  />
+                </div>
+
+                {/* Auto Print Toggle */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/60">
+                  <div>
+                    <p className="text-xs font-bold text-foreground">الطباعة التلقائية بعد كل عملية بيع</p>
+                    <p className="text-[10px] text-muted-foreground">إرسال الفاتورة للطابعة مباشرة فور الضغط على كاش أو آجل</p>
+                  </div>
+                  <Switch
+                    checked={printAutoAfterSale}
+                    onCheckedChange={setPrintAutoAfterSale}
+                  />
+                </div>
+              </div>
+
+              {/* Barcode Scanner Device & Behavior (3 Options) */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <Barcode className="w-4 h-4 text-primary" />
-                  سلوك قارئ الباركود عند المسح
+                  طريقة قراءة ومسح الباركود المفضلة
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <button
                     type="button"
-                    onClick={() => setBarcodeScanMode('add')}
+                    onClick={() => setBarcodeDevice('camera')}
                     className={cn(
-                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all",
-                      barcodeScanMode === 'add'
+                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                      barcodeDevice === 'camera'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-card hover:bg-muted/40"
                     )}
                   >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <span className="text-xs font-bold text-foreground">إضافة مباشرة للسلة</span>
-                      {barcodeScanMode === 'add' && <Check className="w-4 h-4 text-primary" />}
+                    <div className="flex items-center justify-between w-full mb-1.5">
+                      <div className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center",
+                        barcodeDevice === 'camera' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                      )}>
+                        <Camera className="w-4 h-4" />
+                      </div>
+                      {barcodeDevice === 'camera' && <Check className="w-4 h-4 text-primary" />}
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      إدراج المنتج فور قراءته (الأسرع للسوبرماركت والتجزئة)
+                    <span className="text-xs font-bold text-foreground block">كاميرا الهاتف / التابلت</span>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">
+                      مناسبة للعمل الميداني والمحلات الصغيرة دون أجهزة إضافية
                     </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setBarcodeScanMode('search')}
+                    onClick={() => setBarcodeDevice('scanner')}
                     className={cn(
-                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all",
-                      barcodeScanMode === 'search'
+                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                      barcodeDevice === 'scanner'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-card hover:bg-muted/40"
                     )}
                   >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <span className="text-xs font-bold text-foreground">طلب الكمية والسعر أولاً</span>
-                      {barcodeScanMode === 'search' && <Check className="w-4 h-4 text-primary" />}
+                    <div className="flex items-center justify-between w-full mb-1.5">
+                      <div className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center",
+                        barcodeDevice === 'scanner' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                      )}>
+                        <ScanLine className="w-4 h-4" />
+                      </div>
+                      {barcodeDevice === 'scanner' && <Check className="w-4 h-4 text-primary" />}
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      فتح نافذة لتأكيد الكمية والتعديل قبل الإضافة للسلة
+                    <span className="text-xs font-bold text-foreground block">قارئ خارجي (USB/BT)</span>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">
+                      مناسب لنقاط البيع المزدحمة والبيع السريع بتركيز مستمر
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBarcodeDevice('manual')}
+                    className={cn(
+                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                      barcodeDevice === 'manual'
+                        ? "border-primary bg-primary/10 shadow-xs"
+                        : "border-border/60 bg-card hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="flex items-center justify-between w-full mb-1.5">
+                      <div className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center",
+                        barcodeDevice === 'manual' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                      )}>
+                        <Keyboard className="w-4 h-4" />
+                      </div>
+                      {barcodeDevice === 'manual' && <Check className="w-4 h-4 text-primary" />}
+                    </div>
+                    <span className="text-xs font-bold text-foreground block">إدخال وبحث يدوي</span>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">
+                      للمحلات التي تبحث بالاسم والرمز أو لا تعتمد باركود للأصناف
                     </span>
                   </button>
                 </div>
@@ -800,172 +1158,158 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             </div>
           )}
 
-          {/* STEP 4: قسم الشركاء والأرباح */}
+          {/* STEP 4: الشركاء ورأس المال */}
           {step === 4 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  قسم الشركاء والأرباح
+                  إدارة الشركاء ورأس المال
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  توزيع أرباح المتجر آلياً وشفافية رأس المال دون دفاتر يدوية
+                  حدد ما إذا كان لديك شركاء في رأس المال والأرباح ليقوم النظام بتوزيعها تلقائياً
                 </p>
               </div>
 
-              {/* Commercial Explanation Card */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-muted/40 border border-primary/20 space-y-2.5">
-                <div className="flex items-center gap-2 text-primary font-bold text-xs sm:text-sm">
-                  <Sparkles className="w-4 h-4 shrink-0" />
-                  ما هو قسم الشركاء وكيف يفيدك؟
-                </div>
-                <p className="text-xs text-foreground/90 leading-relaxed">
-                  إذا كان معك شريك في رأس المال أو بنسبة من أرباح المتجر:
-                </p>
-                <div className="grid grid-cols-1 gap-2 pt-1">
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                    <span><strong>تسجيل الحصص:</strong> يمكنك تسجيل اسم الشريك ونسبته المئوية (مثل 30% أو 50%) بدقة.</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                    <span><strong>توزيع آلي فوري:</strong> يقوم البرنامج تلقائياً عند كل عملية بيع بحساب صافي الربح وتوزيع حصة الشريك بدقة دون دفاتر يدوية.</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                    <span><strong>تقارير مالية شفافة:</strong> يمكنك سحب تقرير مفصل لأرباح ومسحوبات كل شريك في أي وقت بضغطة زر.</span>
-                  </div>
-                </div>
+              {/* Has Partners Toggle */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setHasPartners('no')}
+                  className={cn(
+                    "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer",
+                    hasPartners === 'no'
+                      ? "border-primary bg-primary/10 shadow-xs"
+                      : "border-border/60 bg-muted/30 hover:bg-muted/50"
+                  )}
+                >
+                  <span className="text-xs font-bold text-foreground">متجر فردي (لا يوجد شركاء)</span>
+                  {hasPartners === 'no' && <Check className="w-4 h-4 text-primary" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setHasPartners('yes')}
+                  className={cn(
+                    "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer",
+                    hasPartners === 'yes'
+                      ? "border-primary bg-primary/10 shadow-xs"
+                      : "border-border/60 bg-muted/30 hover:bg-muted/50"
+                  )}
+                >
+                  <span className="text-xs font-bold text-foreground">يوجد شركاء في المحل</span>
+                  {hasPartners === 'yes' && <Check className="w-4 h-4 text-primary" />}
+                </button>
               </div>
 
-              {/* Partner Choice Radios */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-foreground">
-                  هل لديك شركاء في رأس المال أو أرباح المحل؟
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setHasPartners('no')}
-                    className={cn(
-                      "p-3 rounded-xl border text-center transition-all font-bold text-xs",
-                      hasPartners === 'no'
-                        ? "border-primary bg-primary/10 text-primary shadow-xs"
-                        : "border-border/60 bg-card text-muted-foreground hover:bg-muted/40"
-                    )}
-                  >
-                    لا، أعمل بمفردي (أو لاحقاً)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setHasPartners('yes')}
-                    className={cn(
-                      "p-3 rounded-xl border text-center transition-all font-bold text-xs",
-                      hasPartners === 'yes'
-                        ? "border-primary bg-primary/10 text-primary shadow-xs"
-                        : "border-border/60 bg-card text-muted-foreground hover:bg-muted/40"
-                    )}
-                  >
-                    نعم، لدي شركاء في المحل
-                  </button>
-                </div>
-              </div>
-
-              {/* Partner Input Rows */}
+              {/* Partners list if enabled */}
               {hasPartners === 'yes' && (
-                <div className="space-y-3 pt-2 border-t border-border/50 animate-in fade-in duration-200">
+                <div className="space-y-3 pt-2 border-t border-border/50 animate-in fade-in duration-150">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-foreground">قائمة الشركاء والحصص</label>
+                    <span className="text-xs font-bold text-foreground">قائمة الشركاء والحصص</span>
                     <Button
                       type="button"
-                      variant="outline"
                       size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1 rounded-lg"
                       onClick={handleAddPartner}
-                      className="h-7 text-xs rounded-lg"
                     >
-                      <Plus className="w-3.5 h-3.5 me-1" />
+                      <Plus className="w-3.5 h-3.5" />
                       إضافة شريك
                     </Button>
                   </div>
 
-                  <div className="space-y-2 max-h-56 overflow-y-auto pe-1">
-                    {partners.map((p, idx) => (
-                      <div key={p.id} className="p-3 bg-muted/40 border border-border/60 rounded-xl space-y-2">
+                  <div className="space-y-2.5">
+                    {partners.map((partner, index) => (
+                      <div
+                        key={partner.id}
+                        className="p-3 bg-muted/30 border border-border/60 rounded-xl space-y-2"
+                      >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-foreground">الشريك {idx + 1}</span>
+                          <span className="text-xs font-bold text-primary">شريك #{index + 1}</span>
                           {partners.length > 1 && (
                             <button
                               type="button"
-                              onClick={() => handleRemovePartner(p.id)}
-                              className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
+                              onClick={() => handleRemovePartner(partner.id)}
+                              className="text-destructive hover:opacity-80 p-1"
+                              title="حذف الشريك"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <Input
-                            placeholder="اسم الشريك"
-                            value={p.name}
-                            onChange={(e) => handleUpdatePartner(p.id, 'name', e.target.value)}
-                            className="h-8 text-xs font-medium"
-                          />
-                          <Input
-                            type="number"
-                            placeholder="رأس المال ($)"
-                            value={p.capital || ''}
-                            onChange={(e) => handleUpdatePartner(p.id, 'capital', Number(e.target.value))}
-                            className="h-8 text-xs"
-                          />
-                          <div className="flex items-center gap-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-muted-foreground">اسم الشريك:</label>
+                            <Input
+                              value={partner.name}
+                              onChange={(e) => handlePartnerChange(partner.id, 'name', e.target.value)}
+                              placeholder="الاسم الكامل"
+                              className="h-8 text-xs"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-muted-foreground">رقم الهاتف:</label>
+                            <Input
+                              value={partner.phone}
+                              onChange={(e) => handlePartnerChange(partner.id, 'phone', e.target.value)}
+                              placeholder="09..."
+                              className="h-8 text-xs"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-muted-foreground">رأس المال ($):</label>
                             <Input
                               type="number"
-                              min="1"
-                              max="100"
-                              placeholder="النسبة %"
-                              value={p.sharePercentage || ''}
-                              onChange={(e) => handleUpdatePartner(p.id, 'sharePercentage', Number(e.target.value))}
+                              value={partner.capital || ''}
+                              onChange={(e) => handlePartnerChange(partner.id, 'capital', Number(e.target.value))}
+                              placeholder="0.00"
                               className="h-8 text-xs font-bold text-center"
                             />
-                            <span className="text-xs font-bold text-muted-foreground">%</span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-muted-foreground">نسبة الأرباح (%):</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={partner.sharePercentage || ''}
+                              onChange={(e) => handlePartnerChange(partner.id, 'sharePercentage', Number(e.target.value))}
+                              placeholder="50"
+                              className="h-8 text-xs font-bold text-primary text-center"
+                            />
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 bg-muted/60 rounded-xl text-xs font-bold">
-                    <span>مجموع نسب الأرباح الموزعة:</span>
-                    <span className={cn(
-                      "font-mono",
-                      partners.reduce((s, p) => s + (p.sharePercentage || 0), 0) === 100
-                        ? "text-success"
-                        : "text-warning"
-                    )}>
-                      {partners.reduce((s, p) => s + (p.sharePercentage || 0), 0)}%
-                    </span>
-                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    يمكنك لاحقاً تخصيص نسب مختلفة لكل صنف وتعيين نسب المصاريف بالتفصيل من صفحة الشركاء.
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* STEP 5: الخطوط وحجم الواجهة والمظهر */}
+          {/* STEP 5: الخطوط وحجم الواجهة والمظهر ورصيد الصندوق الافتتاحي */}
           {step === 5 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                   <Palette className="w-5 h-5 text-primary" />
-                  الخطوط وحجم الواجهة والمظهر
+                  المظهر العام ورصيد الصندوق الافتتاحي
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  اختر الخط المناسب وحجم العرض المريح لعينيك أمام الشاشة
+                  اختر الخط المناسب، حجم العرض المريح، ورصيد الكاش الافتتاحي لبدء العمل فوراً
                 </p>
               </div>
 
-              {/* Font Family Selector in a clean row */}
+              {/* Font Family Selector */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-foreground">
                   نوع الخط العربي المفضل
@@ -982,7 +1326,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                           setStoredAppFont(f.id);
                         }}
                         className={cn(
-                          "py-2.5 px-3 rounded-xl border text-right transition-all flex items-center justify-between",
+                          "py-2.5 px-3 rounded-xl border text-right transition-all flex items-center justify-between cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
                             : "border-border/60 bg-card hover:bg-muted/40"
@@ -1023,7 +1367,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                           setStoredUIScale(scale.id);
                         }}
                         className={cn(
-                          "py-2 px-1 rounded-xl border text-center transition-all",
+                          "py-2 px-1 rounded-xl border text-center transition-all cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary text-primary-foreground font-bold shadow-xs scale-[1.02]"
                             : "border-border/60 bg-card text-foreground hover:bg-muted/40"
@@ -1047,7 +1391,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                     type="button"
                     onClick={() => setThemeMode('light')}
                     className={cn(
-                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all",
+                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all cursor-pointer",
                       themeMode === 'light'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-muted/40 hover:bg-muted/70"
@@ -1067,7 +1411,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                     type="button"
                     onClick={() => setThemeMode('dark')}
                     className={cn(
-                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all",
+                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all cursor-pointer",
                       themeMode === 'dark'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-muted/40 hover:bg-muted/70"
@@ -1085,6 +1429,50 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 </div>
               </div>
 
+              {/* بطاقة رصيد الصندوق الافتتاحي وبدء أول وردية */}
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <DollarSign className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">بدء أول وردية ورصيد الصندوق الافتتاحي</p>
+                      <p className="text-[11px] text-muted-foreground">رصيد الفكة / الصرافة الافتتاحي في درج الكاشير</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={openFirstShift}
+                    onCheckedChange={setOpenFirstShift}
+                    className="data-[state=checked]:bg-primary shrink-0"
+                  />
+                </div>
+
+                {openFirstShift && (
+                  <div className="pt-2 border-t border-primary/10 flex items-center justify-between gap-3 animate-in fade-in duration-150">
+                    <label className="text-xs font-bold text-foreground shrink-0">
+                      المبلغ الافتتاحي في الصندوق:
+                    </label>
+                    <div className="flex items-center gap-1.5 w-36">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={openingCash}
+                        onChange={(e) => setOpeningCash(e.target.value)}
+                        placeholder="0.00"
+                        className="h-9 text-xs font-bold text-center bg-background"
+                      />
+                      <span className="text-xs font-bold text-primary">$</span>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted-foreground">
+                  سيتم بدء أول وردية كاشير تلقائياً بهذا الرصيد لتكون شاشة البيع جاهزة فوراً.
+                </p>
+              </div>
+
               {/* Ready banner */}
               <div className="p-3.5 bg-success/10 border border-success/30 rounded-2xl flex items-center gap-3 text-success">
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
@@ -1098,7 +1486,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         </div>
 
         {/* Footer Navigation Bar */}
-        <div className="p-4 sm:p-6 bg-muted/30 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 sm:p-6 bg-muted/30 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
           {/* Back button */}
           <div className="w-full sm:w-auto">
             {step > 1 ? (
@@ -1106,7 +1494,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 type="button"
                 variant="outline"
                 onClick={() => setStep(step - 1)}
-                className="w-full sm:w-auto h-10 px-5 rounded-xl text-xs font-bold"
+                className="w-full sm:w-auto h-10 px-5 rounded-xl text-xs font-bold cursor-pointer"
               >
                 {isRTL ? <ArrowRight className="w-4 h-4 me-1.5" /> : <ArrowLeft className="w-4 h-4 me-1.5" />}
                 السابق
@@ -1116,7 +1504,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 type="button"
                 variant="ghost"
                 onClick={handleFinish}
-                className="w-full sm:w-auto h-10 px-4 rounded-xl text-xs text-muted-foreground hover:text-foreground"
+                className="w-full sm:w-auto h-10 px-4 rounded-xl text-xs text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 تخطي والبدء بالافتراضيات
               </Button>
@@ -1129,7 +1517,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <button
                 type="button"
                 onClick={handleFinish}
-                className="text-xs text-muted-foreground hover:text-foreground px-3 py-2 transition-colors hidden sm:block"
+                className="text-xs text-muted-foreground hover:text-foreground px-3 py-2 transition-colors hidden sm:block cursor-pointer"
               >
                 تخطي الباقي
               </button>
@@ -1139,7 +1527,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <Button
                 type="button"
                 onClick={() => setStep(step + 1)}
-                className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm shadow-primary/20"
+                className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm shadow-primary/20 cursor-pointer"
               >
                 التالي
                 {isRTL ? <ArrowLeft className="w-4 h-4 ms-1.5" /> : <ArrowRight className="w-4 h-4 ms-1.5" />}
@@ -1148,7 +1536,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               <Button
                 type="button"
                 onClick={handleFinish}
-                className="w-full sm:w-auto h-10 px-7 rounded-xl text-xs font-bold bg-success hover:bg-success/90 text-success-foreground shadow-md shadow-success/20 animate-pulse"
+                className="w-full sm:w-auto h-10 px-7 rounded-xl text-xs font-bold bg-success hover:bg-success/90 text-success-foreground shadow-md shadow-success/20 animate-pulse cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 me-1.5" />
                 ابدأ العمل الآن (حفظ وبدء البيع)

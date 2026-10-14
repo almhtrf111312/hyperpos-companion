@@ -132,7 +132,7 @@ interface CartItem {
 }
 
 interface Currency {
-  code: 'USD' | 'TRY' | 'SYP';
+  code: string;
   symbol: string;
   name: string;
   rate: number;
@@ -171,19 +171,22 @@ interface CartPanelProps {
   lastAddedItemId?: string | null;
 }
 
-function generateQuickCashOptions(totalAmount: number, currencyCode: 'USD' | 'TRY' | 'SYP'): number[] {
+function generateQuickCashOptions(totalAmount: number, currencyCode: string, exchangeRate: number = 1): number[] {
   if (totalAmount <= 0) return [];
   const options = new Set<number>();
-  const exact = currencyCode === 'SYP' ? Math.round(totalAmount) : Math.round(totalAmount * 100) / 100;
+  const isHighDenom = exchangeRate >= 100 || totalAmount >= 10000;
+  const isMidDenom = exchangeRate >= 5 || totalAmount >= 50;
+
+  const exact = isHighDenom ? Math.round(totalAmount) : Math.round(totalAmount * 100) / 100;
   options.add(exact);
 
-  if (currencyCode === 'SYP') {
+  if (isHighDenom) {
     const steps = [500, 1000, 2000, 5000, 10000, 25000, 50000, 100000];
     for (const step of steps) {
       const rounded = Math.ceil(totalAmount / step) * step;
       if (rounded > totalAmount) options.add(rounded);
     }
-  } else if (currencyCode === 'TRY') {
+  } else if (isMidDenom) {
     const steps = [5, 10, 20, 50, 100, 200, 500];
     for (const step of steps) {
       const rounded = Math.ceil(totalAmount / step) * step;
@@ -256,7 +259,7 @@ export function CartPanel({
   // Wholesale mode
   const [wholesaleMode, setWholesaleMode] = useState(false);
   const [receivedAmount, setReceivedAmount] = useState<number>(0);
-  const [receivedCurrencyCode, setReceivedCurrencyCode] = useState<'USD' | 'TRY' | 'SYP'>(() => selectedCurrency.code);
+  const [receivedCurrencyCode, setReceivedCurrencyCode] = useState<string>(() => selectedCurrency.code);
 
   // Fallback if the received currency was disabled in settings
   useEffect(() => {
@@ -377,8 +380,8 @@ export function CartPanel({
 
   // Quick cash denomination options
   const quickCashOptions = useMemo(() => {
-    return generateQuickCashOptions(totalInReceivedCurrency, activeReceivedCurrency.code);
-  }, [totalInReceivedCurrency, activeReceivedCurrency.code]);
+    return generateQuickCashOptions(totalInReceivedCurrency, activeReceivedCurrency.code, activeReceivedCurrency.rate);
+  }, [totalInReceivedCurrency, activeReceivedCurrency.code, activeReceivedCurrency.rate]);
 
   // الباقي للزبون (Change)
   const changeInReceivedCurrency = roundCurrency(Math.max(0, receivedAmount - totalInReceivedCurrency));
@@ -1636,7 +1639,7 @@ export function CartPanel({
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {currency.code === 'USD' ? '$USD' : currency.code === 'TRY' ? '₺TRY' : 'SYP'}
+                  {currency.symbol} {currency.code}
                 </button>
               ))}
             </div>
