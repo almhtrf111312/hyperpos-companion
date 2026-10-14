@@ -327,8 +327,10 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
           const fullSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
           const rates = fullSettings.exchangeRates || {};
           const enabled = fullSettings.enabledCurrencies || { USD: true, TRY: true, SYP: true };
-          const sypRate = Number(rates.SYP || 0);
-          const tryRate = Number(rates.TRY || 0);
+          const symbols = fullSettings.currencySymbols || { USD: '$', TRY: '₺', SYP: 'ل.س' };
+          const names = fullSettings.currencyNames || { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
+          const sypRate = Number(rates.SYP || 14500);
+          const tryRate = Number(rates.TRY || 34);
 
           const invSymbol = invoice.currencySymbol || '$';
           const invCode = (invoice.currency || (invSymbol === '₺' ? 'TRY' : invSymbol === 'ل.س' ? 'SYP' : 'USD')).toUpperCase();
@@ -345,10 +347,16 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
             parts.push(`المعادل بالدولار: $${formatNumber(baseUSD, 2)}`);
           }
           if (invCode !== 'TRY' && enabled.TRY !== false && tryRate > 0) {
-            parts.push(`المعادل بالتركي: ${formatNumber(baseUSD * tryRate, 2)} ₺`);
+            const c1Name = names.TRY || 'ليرة تركية';
+            const c1Symbol = symbols.TRY || '₺';
+            const c1Decimals = tryRate >= 100 ? 0 : 2;
+            parts.push(`${c1Name}: ${formatNumber(baseUSD * tryRate, c1Decimals)} ${c1Symbol}`);
           }
           if (invCode !== 'SYP' && enabled.SYP !== false && sypRate > 0) {
-            parts.push(`المعادل بالسوري: ${formatNumber(Math.round(baseUSD * sypRate))} ل.س`);
+            const c2Name = names.SYP || 'ليرة سورية';
+            const c2Symbol = symbols.SYP || 'ل.س';
+            const c2Decimals = sypRate >= 100 ? 0 : 2;
+            parts.push(`${c2Name}: ${formatNumber(baseUSD * sypRate, c2Decimals)} ${c2Symbol}`);
           }
 
           if (parts.length === 0) return '';

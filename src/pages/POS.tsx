@@ -638,9 +638,24 @@ export default function POS() {
     const symbols = loadCurrencySymbols();
     const enabled = loadEnabledCurrencies();
     const all: Currency[] = [
-      { code: 'USD', symbol: symbols.USD || '$', name: names.USD || t('currency.usd') || 'دولار', rate: 1 },
-      { code: 'TRY', symbol: symbols.TRY || '₺', name: names.TRY || 'ليرة تركية', rate: rates.TRY },
-      { code: 'SYP', symbol: symbols.SYP || 'ل.س', name: names.SYP || 'ليرة سورية', rate: rates.SYP },
+      { 
+        code: 'USD', 
+        symbol: (symbols?.USD && symbols.USD.trim()) || '$', 
+        name: (names?.USD && names.USD.trim()) || t('currency.usd') || 'دولار', 
+        rate: 1 
+      },
+      { 
+        code: 'TRY', 
+        symbol: (symbols?.TRY && symbols.TRY.trim()) || '₺', 
+        name: (names?.TRY && names.TRY.trim()) || 'ليرة تركية', 
+        rate: rates.TRY 
+      },
+      { 
+        code: 'SYP', 
+        symbol: (symbols?.SYP && symbols.SYP.trim()) || 'ل.س', 
+        name: (names?.SYP && names.SYP.trim()) || 'ليرة سورية', 
+        rate: rates.SYP 
+      },
     ];
     const filtered = all.filter(c => enabled[c.code] !== false);
     return filtered.length > 0 ? filtered : [all[0]];
@@ -655,9 +670,16 @@ export default function POS() {
     const code = loadDefaultCurrencyCode();
     const newCurr = currencies.find(c => c.code === code) || currencies[0];
     setSelectedCurrency(prev => {
-      const isStillAvailable = currencies.some(c => c.code === prev.code);
-      if (!isStillAvailable) return newCurr;
-      return prev.code !== newCurr.code || prev.rate !== newCurr.rate ? newCurr : prev;
+      const currentMatching = currencies.find(c => c.code === prev.code);
+      if (!currentMatching) return newCurr;
+      if (
+        currentMatching.symbol !== prev.symbol ||
+        currentMatching.name !== prev.name ||
+        currentMatching.rate !== prev.rate
+      ) {
+        return currentMatching;
+      }
+      return prev.code !== newCurr.code ? newCurr : prev;
     });
   }, [currencies]);
   const [customerName, setCustomerName] = useState<string>(() => {

@@ -351,13 +351,13 @@ export default function Invoices() {
         rate = hasValidStoredRate
           ? inv.exchangeRate
           : (exchangeRates[code as 'TRY' | 'SYP'] || (code === 'TRY' ? 34 : (code === 'SYP' ? 14500 : 1)));
-        // رمز العملة: الأولوية لرمز العملة المخزن تاريخياً في الفاتورة inv.currencySymbol لضمان عدم تغيير الفواتير السابقة
-        symbol = inv.currencySymbol || (currencySymbols?.[code as 'TRY' | 'SYP'] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code)));
+        // رمز العملة: الأولوية المطلقة لرمز العملة المخزن تاريخياً في الفاتورة inv.currencySymbol لضمان عدم تغيير الفواتير السابقة
+        symbol = inv.currencySymbol || currencySymbols?.[code as 'TRY' | 'SYP'] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
       } else {
         // الفاتورة المباعة بالدولار تُعرض دائماً بالدولار ($) بسعر صرف 1
         code = 'USD';
         rate = 1;
-        symbol = '$';
+        symbol = inv.currencySymbol || currencySymbols?.USD || '$';
       }
     }
 
@@ -2130,9 +2130,11 @@ export default function Invoices() {
                 <div>
                   <span className="text-muted-foreground">{t('invoices.currency') || 'عملة الفاتورة'}:</span>
                   <p className="font-semibold flex items-center gap-1.5 flex-wrap">
-                    <span>{selectedInvoice.currency === 'TRY' ? c1Name : selectedInvoice.currency === 'SYP' ? c2Name : (selectedInvoice.currency || 'USD')}</span>
-                    {selectedInvoice.currency && selectedInvoice.currency !== 'USD' && selectedInvoice.exchangeRate && (
-                      <span className="text-xs text-muted-foreground font-normal">(1$ = {selectedInvoice.exchangeRate} {selectedInvoice.currencySymbol || ''})</span>
+                    <span>{selectedInvoice.currency === 'TRY' ? c1Name : selectedInvoice.currency === 'SYP' ? c2Name : (currencyNames?.USD || selectedInvoice.currency || 'USD')}</span>
+                    {selectedInvoice.currency && selectedInvoice.currency !== 'USD' && (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (1$ = {selectedFinancials.rate} {selectedFinancials.symbol}) والمعادل بالدولار: ${formatNumber(baseInvTotal, 2)}
+                      </span>
                     )}
                   </p>
                 </div>

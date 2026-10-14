@@ -1638,8 +1638,9 @@ export function CartPanel({
                       ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
                       : "text-muted-foreground hover:text-foreground"
                   )}
+                  title={currency.name}
                 >
-                  {currency.symbol} {currency.code}
+                  {currency.symbol}{currency.name && currency.name !== currency.code && currency.name !== currency.symbol ? ` ${currency.name}` : ''}
                 </button>
               ))}
             </div>
@@ -1772,7 +1773,7 @@ export function CartPanel({
                     )}
                     title={`القبض بـ ${currency.name}`}
                   >
-                    {currency.symbol} {currency.code}
+                    {currency.symbol}{currency.name && currency.name !== currency.code && currency.name !== currency.symbol ? ` ${currency.name}` : ''}
                   </button>
                 ))}
               </div>

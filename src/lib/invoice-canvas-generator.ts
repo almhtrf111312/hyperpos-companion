@@ -602,23 +602,59 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
       const rates = fullSettings.exchangeRates || {};
       const enabled = fullSettings.enabledCurrencies || { USD: true, TRY: true, SYP: true };
-      const sypRate = Number(rates.SYP || 0);
-      const tryRate = Number(rates.TRY || 0);
+      const symbols = fullSettings.currencySymbols || { USD: '$', TRY: '₺', SYP: 'ل.س' };
+      const names = fullSettings.currencyNames || { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
+
+      const sypRate = Number(rates.SYP || 14500);
+      const tryRate = Number(rates.TRY || 34);
+
       const invSymbol = data.currencySymbol || '$';
+      const invCurrency = ((data as any).currency || (invSymbol === '₺' ? 'TRY' : (invSymbol === 'ل.س' ? 'SYP' : 'USD'))).toUpperCase();
+      
+      // 1. حساب المعادل بالدولار الأساسي أولاً
+      let baseUSD = Number((data as any).totalUSD);
+      if (typeof baseUSD !== 'number' || isNaN(baseUSD) || baseUSD <= 0) {
+        if (invCurrency === 'TRY' && tryRate > 0) {
+          baseUSD = data.total / tryRate;
+        } else if (invCurrency === 'SYP' && sypRate > 0) {
+          baseUSD = data.total / sypRate;
+        } else {
+          baseUSD = data.total;
+        }
+      }
+
       const parts: string[] = [];
-      if (invSymbol !== 'ل.س' && sypRate > 0 && enabled.SYP !== false) {
-        parts.push(`سوري: ${formatNumber(data.total * sypRate)} ل.س`);
+
+      // 2. إذا كانت الفاتورة بعملة غير الدولار، إضافة المعادل بالدولار
+      if (invCurrency !== 'USD' && enabled.USD !== false) {
+        parts.push(`المعادل بالدولار: $${formatNumber(baseUSD, 2)}`);
       }
-      if (invSymbol !== '₺' && tryRate > 0 && enabled.TRY !== false) {
-        parts.push(`تركي: ${formatNumber(data.total * tryRate)} ₺`);
+
+      // 3. العملة الثانوية الأولى
+      if (invCurrency !== 'TRY' && enabled.TRY !== false && tryRate > 0) {
+        const c1Name = names.TRY || 'ليرة تركية';
+        const c1Symbol = symbols.TRY || '₺';
+        const c1Decimals = tryRate >= 100 ? 0 : 2;
+        parts.push(`${c1Name}: ${formatNumber(baseUSD * tryRate, c1Decimals)} ${c1Symbol}`);
       }
+
+      // 4. العملة الثانوية الثانية
+      if (invCurrency !== 'SYP' && enabled.SYP !== false && sypRate > 0) {
+        const c2Name = names.SYP || 'ليرة سورية';
+        const c2Symbol = symbols.SYP || 'ل.س';
+        const c2Decimals = sypRate >= 100 ? 0 : 2;
+        parts.push(`${c2Name}: ${formatNumber(baseUSD * sypRate, c2Decimals)} ${c2Symbol}`);
+      }
+
       if (parts.length > 0) {
         detailsY += 20;
         ctx.fillStyle = '#0284c7';
         ctx.font = `11.5px ${FONT_FAMILY}`;
         ctx.fillText(`المعادل: ${parts.join(' | ')}`, detailsRightX, detailsY);
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[InvoiceCanvas] Failed to render alternative currencies:', e);
+    }
   }
 
   // عبارة شكر

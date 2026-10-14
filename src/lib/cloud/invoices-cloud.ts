@@ -54,6 +54,7 @@ export interface CloudInvoice {
   total: number;
   profit: number;
   currency: string;
+  currency_symbol?: string | null;
   exchange_rate: number;
   payment_type: string;
   status: string;
@@ -123,9 +124,18 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     : (discountPercentage > 0 ? (subtotal * discountPercentage) / 100 : 0);
 
   const rawCurrency = (cloud.currency || 'USD').toUpperCase();
-  let currencySymbol = '$';
-  if (rawCurrency === 'TRY') currencySymbol = '₺';
-  else if (rawCurrency === 'SYP') currencySymbol = 'ل.س';
+  const persistedSymbols = (() => {
+    try {
+      const s = localStorage.getItem('hyperpos_settings_v1');
+      if (s) {
+        const parsed = JSON.parse(s);
+        return parsed.currencySymbols as Record<string, string> | undefined;
+      }
+    } catch {}
+    return undefined;
+  })();
+
+  const currencySymbol = (cloud as any).currency_symbol || (rawCurrency === 'TRY' ? (persistedSymbols?.TRY || '₺') : (rawCurrency === 'SYP' ? (persistedSymbols?.SYP || 'ل.س') : '$'));
 
   const exchangeRate = Number(cloud.exchange_rate) || 1;
   const isForeign = rawCurrency !== 'USD' && exchangeRate > 0;
@@ -439,6 +449,7 @@ export const addInvoiceCloud = async (
     total: Math.round((invoice.total || 0) * 100) / 100,
     profit: Math.round((invoice.profit || 0) * 100) / 100,
     currency: invoice.currency,
+    currency_symbol: invoice.currencySymbol || null,
     exchange_rate: Number((invoice as any).exchangeRate) || 1,
     payment_type: invoice.paymentType,
     status: invoice.status,
