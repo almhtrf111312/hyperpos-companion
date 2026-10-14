@@ -28,6 +28,7 @@ export interface AtomicSaleBundle {
   taxAmount?: number;
   total: number;
   currency: string;
+  currencySymbol?: string;
   exchangeRate?: number;
   profit: number;
   warehouseId?: string;
@@ -204,6 +205,7 @@ async function fallbackDirectInsert(
         total: bundle.total,
         profit: bundle.profit,
         currency: bundle.currency,
+        currency_symbol: bundle.currencySymbol || null,
         payment_type: paymentType,
         status: 'active',
         warehouse_id: bundle.warehouseId || null,

@@ -54,18 +54,30 @@ export function formatNumber(num: number, decimals: number = 3): string {
 }
 
 // Format currency with Western numerals - uses Intl.NumberFormat for Android WebView compatibility
-export function formatCurrency(amount: number, symbol: string = '$', decimals: number = 2): string {
+export function formatCurrency(amount: number, symbol?: string, decimals: number = 2): string {
+  let effectiveSymbol = symbol;
+  if (!effectiveSymbol) {
+    try {
+      const s = typeof window !== 'undefined' ? localStorage.getItem('hyperpos_settings_v1') : null;
+      if (s) {
+        const parsed = JSON.parse(s);
+        effectiveSymbol = parsed.currencySymbols?.USD || parsed.currencySymbol || '$';
+      }
+    } catch {}
+    if (!effectiveSymbol) effectiveSymbol = '$';
+  }
+
   const formatter = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
     useGrouping: true,
   });
   const formatted = formatter.format(roundCurrency(amount));
-  const cleanSymbol = (symbol || '').trim();
+  const cleanSymbol = (effectiveSymbol || '').trim();
   if (cleanSymbol === 'ل.س' || cleanSymbol === 'SYP') {
     return `${formatted}\u00A0${cleanSymbol}`;
   }
-  return `${symbol}${formatted}`;
+  return `${effectiveSymbol}${formatted}`;
 }
 
 // Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)

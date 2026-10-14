@@ -72,6 +72,10 @@ export function RecentInvoices() {
     const dateStr = invoiceDate.toLocaleDateString('ar-SA');
     const timeStr = invoiceDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
 
+    const rate = (typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 0) ? invoice.exchangeRate : 1;
+    const isForeign = invoice.currency && invoice.currency !== 'USD';
+    const convRate = isForeign ? rate : 1;
+
     const shareData: InvoiceShareData = {
       id: invoice.id,
       storeName: storeSettings.name,
@@ -85,13 +89,16 @@ export function RecentInvoices() {
       items: invoice.items.map(item => ({
         name: item.name,
         quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.total,
+        unitPrice: item.price * convRate,
+        total: item.total * convRate,
       })),
-      subtotal: invoice.subtotal,
-      discount: invoice.discount,
-      total: invoice.totalInCurrency,
+      subtotal: invoice.subtotalInCurrency ?? (invoice.subtotal * convRate),
+      discount: invoice.discount * convRate,
+      total: invoice.totalInCurrency ?? (invoice.total * convRate),
       currencySymbol: invoice.currencySymbol,
+      currency: invoice.currency,
+      exchangeRate: rate,
+      totalUSD: invoice.total,
       paymentType: invoice.paymentType,
       type: invoice.type || 'sale',
     };

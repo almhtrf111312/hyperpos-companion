@@ -17,6 +17,7 @@ interface InvoiceSummaryProps {
   paymentType: 'cash' | 'debt';
   profit?: number;
   showProfit?: boolean;
+  usdSymbol?: string;
 }
 
 export function InvoiceSummaryDisplay({
@@ -34,6 +35,7 @@ export function InvoiceSummaryDisplay({
   paymentType,
   profit = 0,
   showProfit = false,
+  usdSymbol = '$',
 }: InvoiceSummaryProps) {
   const { t } = useLanguage();
 
@@ -45,14 +47,14 @@ export function InvoiceSummaryDisplay({
       {/* Subtotal */}
       <div className="flex justify-between">
         <span className="text-muted-foreground">{t('pos.subtotal')}</span>
-        <span>${formatNumber(subtotal)}</span>
+        <span>{usdSymbol}{formatNumber(subtotal)}</span>
       </div>
 
       {/* Discount */}
       {discountAmount > 0 && (
         <div className="flex justify-between text-success">
           <span>{t('pos.discount')}{discountType === 'percent' ? ` (${discount}%)` : ''}</span>
-          <span>-${formatNumber(discountAmount)}</span>
+          <span>-{usdSymbol}{formatNumber(discountAmount)}</span>
         </div>
       )}
 
@@ -62,7 +64,7 @@ export function InvoiceSummaryDisplay({
       {/* Total in USD */}
       <div className="flex justify-between font-bold text-base">
         <span>{t('pos.total')} (USD)</span>
-        <span className="text-primary">${formatNumber(total)}</span>
+        <span className="text-primary">{usdSymbol}{formatNumber(total)}</span>
       </div>
 
       {/* Total in Local Currency (if not USD) */}
@@ -92,7 +94,7 @@ export function InvoiceSummaryDisplay({
                 {currencySymbol}{formatNumber(paidAmount)}
                 {currencyCode !== 'USD' && (
                   <span className="text-xs text-muted-foreground mr-1">
-                    (${paidInUSD.toFixed(2)})
+                    ({usdSymbol}{paidInUSD.toFixed(2)})
                   </span>
                 )}
               </span>
@@ -101,7 +103,7 @@ export function InvoiceSummaryDisplay({
 
           <div className="flex justify-between text-destructive font-bold">
             <span>المتبقي (دين)</span>
-            <span>${formatNumber(remainingDebt)}</span>
+            <span>{usdSymbol}{formatNumber(remainingDebt)}</span>
           </div>
         </>
       )}
@@ -112,7 +114,7 @@ export function InvoiceSummaryDisplay({
           <hr className="border-border" />
           <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
             <span>الربح المتوقع</span>
-            <span>${formatNumber(profit)}</span>
+            <span>{usdSymbol}{formatNumber(profit)}</span>
           </div>
         </>
       )}

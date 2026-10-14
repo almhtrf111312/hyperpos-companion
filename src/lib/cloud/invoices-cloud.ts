@@ -135,7 +135,16 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     return undefined;
   })();
 
-  const currencySymbol = (cloud as any).currency_symbol || (rawCurrency === 'TRY' ? (persistedSymbols?.TRY || '₺') : (rawCurrency === 'SYP' ? (persistedSymbols?.SYP || 'ل.س') : '$'));
+  const currencySymbol = (cloud as any).currency_symbol ||
+    persistedSymbols?.[rawCurrency] ||
+    (rawCurrency === 'TRY' ? '₺' :
+      rawCurrency === 'SYP' ? 'ل.س' :
+      rawCurrency === 'USD' ? (persistedSymbols?.USD || '$') :
+      rawCurrency === 'JOD' ? 'د.أ' :
+      rawCurrency === 'SAR' ? 'ر.س' :
+      rawCurrency === 'KWD' ? 'د.ك' :
+      rawCurrency === 'AED' ? 'د.إ' :
+      (persistedSymbols?.USD || '$'));
 
   const exchangeRate = Number(cloud.exchange_rate) || 1;
   const isForeign = rawCurrency !== 'USD' && exchangeRate > 0;

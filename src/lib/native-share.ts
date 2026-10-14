@@ -217,6 +217,9 @@ export interface InvoiceShareData {
   discount?: number;
   total: number;
   currencySymbol: string;
+  currency?: string;
+  exchangeRate?: number;
+  totalUSD?: number;
   paymentType: 'cash' | 'debt' | 'split' | string;
   downPayment?: number;
   debtRemaining?: number;
@@ -315,6 +318,9 @@ export async function shareInvoice(data: InvoiceShareData): Promise<boolean> {
       taxRate: data.taxRate,
       total: data.total,
       currencySymbol: data.currencySymbol,
+      currency: data.currency,
+      exchangeRate: data.exchangeRate,
+      totalUSD: data.totalUSD,
       paymentType: data.paymentType,
       downPayment: data.downPayment,
       debtRemaining: data.debtRemaining,

@@ -121,6 +121,7 @@ interface PrintableInvoice {
   total: number;
   currencySymbol: string;
   currency?: string;
+  exchangeRate?: number;
   totalUSD?: number;
   paymentType: 'cash' | 'debt';
 }
@@ -337,26 +338,32 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
           
           let baseUSD = invoice.totalUSD;
           if (baseUSD === undefined || baseUSD === null) {
-            if (invCode === 'TRY' && tryRate > 0) baseUSD = invoice.total / tryRate;
-            else if (invCode === 'SYP' && sypRate > 0) baseUSD = invoice.total / sypRate;
-            else baseUSD = invoice.total;
+            if (invoice.exchangeRate && invoice.exchangeRate > 0 && invCode !== 'USD') {
+              baseUSD = invoice.total / invoice.exchangeRate;
+            } else if (invCode === 'TRY' && tryRate > 0) {
+              baseUSD = invoice.total / tryRate;
+            } else if (invCode === 'SYP' && sypRate > 0) {
+              baseUSD = invoice.total / sypRate;
+            } else {
+              baseUSD = invoice.total;
+            }
           }
 
           const parts: string[] = [];
           if (invCode !== 'USD' && enabled.USD !== false) {
-            parts.push(`المعادل بالدولار: $${formatNumber(baseUSD, 2)}`);
+            parts.push(`المعادل بالدولار: ${symbols.USD || '$'}${formatNumber(baseUSD, 2)}`);
           }
-          if (invCode !== 'TRY' && enabled.TRY !== false && tryRate > 0) {
-            const c1Name = names.TRY || 'ليرة تركية';
-            const c1Symbol = symbols.TRY || '₺';
-            const c1Decimals = tryRate >= 100 ? 0 : 2;
-            parts.push(`${c1Name}: ${formatNumber(baseUSD * tryRate, c1Decimals)} ${c1Symbol}`);
-          }
-          if (invCode !== 'SYP' && enabled.SYP !== false && sypRate > 0) {
-            const c2Name = names.SYP || 'ليرة سورية';
-            const c2Symbol = symbols.SYP || 'ل.س';
-            const c2Decimals = sypRate >= 100 ? 0 : 2;
-            parts.push(`${c2Name}: ${formatNumber(baseUSD * sypRate, c2Decimals)} ${c2Symbol}`);
+
+          for (const [code, isEnabled] of Object.entries(enabled)) {
+            const upperCode = code.toUpperCase();
+            if (upperCode === invCode || !isEnabled || upperCode === 'USD') continue;
+            const rate = Number(rates[upperCode] || (upperCode === 'TRY' ? tryRate : (upperCode === 'SYP' ? sypRate : 0)));
+            if (rate > 0) {
+              const cName = names[upperCode] || upperCode;
+              const cSymbol = symbols[upperCode] || upperCode;
+              const cDecimals = rate >= 100 ? 0 : 2;
+              parts.push(`${cName}: ${formatNumber(baseUSD * rate, cDecimals)} ${cSymbol}`);
+            }
           }
 
           if (parts.length === 0) return '';

@@ -267,6 +267,8 @@ export function CartPanel({
       setReceivedCurrencyCode(currencies[0]?.code || 'USD');
     }
   }, [currencies, receivedCurrencyCode]);
+
+  const usdSymbol = currencies.find(c => c.code === 'USD')?.symbol || '$';
   
 
   // Smart customer search feature
@@ -1315,13 +1317,16 @@ export function CartPanel({
       items: shareCart.map(item => ({
         name: item.name,
         quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.price * item.quantity,
+        unitPrice: roundCurrency(item.price * shareCurrency.rate),
+        total: roundCurrency(item.price * item.quantity * shareCurrency.rate),
       })),
-      subtotal: shareSubtotal,
-      discount: shareDiscountAmount,
+      subtotal: roundCurrency(shareSubtotal * shareCurrency.rate),
+      discount: roundCurrency(shareDiscountAmount * shareCurrency.rate),
       total: shareTotalInCurrency,
       currencySymbol: shareCurrency.symbol,
+      currency: shareCurrency.code,
+      exchangeRate: shareCurrency.rate,
+      totalUSD: (data ? roundCurrency(data.subtotal - data.discountAmount + data.taxAmount) : roundCurrency(total)),
       paymentType: sharePaymentType,
       downPayment: shareDownPayment,
       debtRemaining: shareDebtRemaining,
@@ -1795,24 +1800,24 @@ export function CartPanel({
               <div className="flex flex-wrap gap-1 text-[9px]">
                 {subtotal !== total && (
                   <span className="bg-muted/70 text-muted-foreground px-1.5 py-0.5 rounded">
-                    {wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.subtotal') || 'المجموع')}: ${formatNumber(subtotal)}
+                    {wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.subtotal') || 'المجموع')}: {selectedCurrency.symbol}{formatNumber(subtotal * activeRate)}
                   </span>
                 )}
                 {discount > 0 && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-medium">
-                    {t('pos.discount') || 'خصم'}: -{discountType === 'fixed' ? `${selectedCurrency.symbol}${formatNumber(discount)}` : `$${formatNumber(discountAmount)}`}
+                    {t('pos.discount') || 'خصم'}: -{discountType === 'fixed' ? `${selectedCurrency.symbol}${formatNumber(discount)}` : `${selectedCurrency.symbol}${formatNumber(discountAmount * activeRate)}`}
                   </span>
                 )}
                 {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
                   <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded">
-                    {t('pos.tax') || 'ض.'} {effectiveTaxRate}%: ${formatNumber(taxAmount)}
+                    {t('pos.tax') || 'ض.'} {effectiveTaxRate}%: {selectedCurrency.symbol}{formatNumber(taxAmount * activeRate)}
                   </span>
                 )}
                 {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
                   <div className="flex items-center justify-between gap-1 w-full flex-wrap">
                     <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
                       {t('pos.balance') || 'باقي للعميل'}: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                      {activeReceivedCurrency.code !== 'USD' && ` (${formatNumber(changeUSD)})`}
+                      {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(changeUSD)})`}
                     </span>
                     {receivedUSD > roundCurrency(total) + 0.01 && onUpdateItemPrice && (
                       <button
@@ -1821,7 +1826,7 @@ export function CartPanel({
                         className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-all flex items-center gap-1"
                         title={t('pos.setExtraProfit') || 'تعديل سعر الصنف واعتماد الزيادة كربح'}
                       >
-                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+${formatNumber(roundCurrency(receivedUSD - total))})</span>
+                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+{usdSymbol}{formatNumber(roundCurrency(receivedUSD - total))})</span>
                       </button>
                     )}
                   </div>
@@ -1840,7 +1845,7 @@ export function CartPanel({
 
                 {receivedAmount > 0 && wholesaleMode && (
                   <span className={cn("px-1.5 py-0.5 rounded font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
-                    {t('pos.profit') || 'ربح'}: {formatCurrency(wholesaleProfit || 0)}
+                    {t('pos.profit') || 'ربح'}: {formatCurrency(wholesaleProfit || 0, usdSymbol)}
                   </span>
                 )}
               </div>
@@ -1869,7 +1874,7 @@ export function CartPanel({
               <div className="flex items-center justify-between gap-1 font-bold">
                 <div className="flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <span>{t('pos.receivedShortage')} {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)} (${formatNumber(remainingUSD)})</span>
+                  <span>{t('pos.receivedShortage')} {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)} ({usdSymbol}{formatNumber(remainingUSD)})</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1881,7 +1886,7 @@ export function CartPanel({
                   className="flex-1 h-7 text-[11px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-500/40 rounded-lg"
                   title={t('pos.acceptAsDiscount') || 'اعتماد كخصم'}
                 >
-                  {t('pos.acceptAsDiscount') || 'اعتماد كخصم'} (-${formatNumber(remainingUSD)})
+                  {t('pos.acceptAsDiscount') || 'اعتماد كخصم'} (-{usdSymbol}{formatNumber(remainingUSD)})
                 </Button>
                 <Button
                   type="button"
@@ -1979,7 +1984,7 @@ export function CartPanel({
                     <span>{t('pos.receivedAmount') || 'المبلغ المقبوض'}:</span>
                     <span className="font-semibold text-foreground">
                       {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                      {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
+                      {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(receivedUSD)})`}
                     </span>
                   </div>
                   {changeInReceivedCurrency > 0 && (
@@ -1988,7 +1993,7 @@ export function CartPanel({
                         <span>{t('pos.balance') || 'الباقي للعميل'}:</span>
                         <span>
                           {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                          {activeReceivedCurrency.code !== 'USD' && ` (${formatNumber(changeUSD)})`}
+                          {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(changeUSD)})`}
                         </span>
                       </div>
                       {onUpdateItemPrice && receivedUSD > roundCurrency(total) + 0.01 && (
@@ -2158,7 +2163,7 @@ export function CartPanel({
                   <span>{t('pos.downPaymentCash')}</span>
                   <span>
                     {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                    {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(receivedUSD)})`}
+                    {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(receivedUSD)})`}
                   </span>
                 </div>
               )}
@@ -2166,7 +2171,7 @@ export function CartPanel({
                 <span>{t('pos.debtAmount') || 'مبلغ الدين'}:</span>
                 <span>
                   {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
-                  {activeReceivedCurrency.code !== 'USD' && ` ($${formatNumber(remainingUSD)})`}
+                  {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(remainingUSD)})`}
                 </span>
               </div>
             </div>

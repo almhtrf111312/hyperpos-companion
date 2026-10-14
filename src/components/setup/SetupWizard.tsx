@@ -81,6 +81,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const [step, setStep] = useState(1);
   const totalSteps = 5;
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([1]));
 
   // Step 1: Store info & Identity & Catalog Templates
   const [storeName, setStoreName] = useState(() => {
@@ -491,19 +492,27 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               const Icon = s.icon;
               const isActive = step === s.num;
               const isPast = step > s.num;
+              const isAccessible = visitedSteps.has(s.num);
               return (
                 <button
                   key={s.num}
                   type="button"
-                  onClick={() => setStep(s.num)}
+                  disabled={!isAccessible}
+                  onClick={() => {
+                    if (isAccessible) setStep(s.num);
+                  }}
                   className={cn(
-                    "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all border text-center cursor-pointer",
+                    "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all border text-center",
+                    !isAccessible && "opacity-40 cursor-not-allowed pointer-events-none",
                     isActive
-                      ? "border-primary bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/25 scale-[1.02]"
+                      ? "border-primary bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/25 scale-[1.02] cursor-pointer"
                       : isPast
-                      ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-                      : "border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                      ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 cursor-pointer"
+                      : isAccessible
+                      ? "border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted/60 cursor-pointer"
+                      : "border-border/40 bg-muted/20 text-muted-foreground/40"
                   )}
+                  title={isAccessible ? s.label : 'يرجى إكمال الخطوات السابقة أولاً'}
                 >
                   <div className="flex items-center gap-1">
                     <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -1489,7 +1498,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         <div className="p-4 sm:p-6 bg-muted/30 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
           {/* Back button */}
           <div className="w-full sm:w-auto">
-            {step > 1 ? (
+            {step > 1 && (
               <Button
                 type="button"
                 variant="outline"
@@ -1499,34 +1508,19 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 {isRTL ? <ArrowRight className="w-4 h-4 me-1.5" /> : <ArrowLeft className="w-4 h-4 me-1.5" />}
                 السابق
               </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleFinish}
-                className="w-full sm:w-auto h-10 px-4 rounded-xl text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                تخطي والبدء بالافتراضيات
-              </Button>
             )}
           </div>
 
           {/* Forward / Finish buttons */}
           <div className="w-full sm:w-auto flex items-center gap-2">
-            {step < totalSteps && (
-              <button
-                type="button"
-                onClick={handleFinish}
-                className="text-xs text-muted-foreground hover:text-foreground px-3 py-2 transition-colors hidden sm:block cursor-pointer"
-              >
-                تخطي الباقي
-              </button>
-            )}
-
             {step < totalSteps ? (
               <Button
                 type="button"
-                onClick={() => setStep(step + 1)}
+                onClick={() => {
+                  const nextStep = step + 1;
+                  setVisitedSteps(prev => new Set([...prev, nextStep]));
+                  setStep(nextStep);
+                }}
                 className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm shadow-primary/20 cursor-pointer"
               >
                 التالي
@@ -1535,8 +1529,15 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             ) : (
               <Button
                 type="button"
+                disabled={visitedSteps.size < totalSteps}
                 onClick={handleFinish}
-                className="w-full sm:w-auto h-10 px-7 rounded-xl text-xs font-bold bg-success hover:bg-success/90 text-success-foreground shadow-md shadow-success/20 animate-pulse cursor-pointer"
+                className={cn(
+                  "w-full sm:w-auto h-10 px-7 rounded-xl text-xs font-bold bg-success hover:bg-success/90 text-success-foreground shadow-md shadow-success/20 cursor-pointer",
+                  visitedSteps.size < totalSteps
+                    ? "opacity-50 cursor-not-allowed pointer-events-none"
+                    : "animate-pulse"
+                )}
+                title={visitedSteps.size < totalSteps ? 'يرجى مراجعة كافة الخطوات أولاً' : ''}
               >
                 <Sparkles className="w-4 h-4 me-1.5" />
                 ابدأ العمل الآن (حفظ وبدء البيع)
