@@ -244,6 +244,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           trackCapital: syncObj.trackCapital ?? false,
           initialCapital: Number(syncObj.initialCapital) || 0,
           currencyNames: syncObj.currencyNames,
+          currencySymbols: syncObj.currencySymbols,
           backupSettings: syncObj.backupSettings,
         };
         
@@ -468,6 +469,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           trackCapital: syncSettingsObj.trackCapital ?? existing.trackCapital ?? false,
           initialCapital: syncSettingsObj.initialCapital !== undefined ? (Number(syncSettingsObj.initialCapital) || 0) : (existing.initialCapital ?? 0),
           currencyNames: syncSettingsObj.currencyNames ?? existing.currencyNames,
+          currencySymbols: syncSettingsObj.currencySymbols ?? existing.currencySymbols,
           backupSettings: syncSettingsObj.backupSettings ?? existing.backupSettings,
           notificationSettings: cloudSettings.notification_settings ?? existing.notificationSettings,
           printSettings: cloudSettings.print_settings ?? existing.printSettings,

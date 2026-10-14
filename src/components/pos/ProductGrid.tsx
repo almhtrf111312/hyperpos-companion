@@ -84,7 +84,7 @@ export function ProductGrid({
     const rate = selectedCurrency?.rate || 1;
     const symbol = selectedCurrency?.symbol || '$';
     const converted = usdPrice * rate;
-    const decimals = selectedCurrency?.code === 'SYP' ? 0 : 2;
+    const decimals = (selectedCurrency?.rate && selectedCurrency.rate >= 100) ? 0 : 2;
 
     return `${symbol}${formatNumber(converted, decimals)}`;
   };

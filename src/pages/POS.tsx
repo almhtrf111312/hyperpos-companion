@@ -21,6 +21,7 @@ import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
+import { loadCurrencySymbols } from '@/hooks/use-currency';
 import { getLocalizedUnit } from '@/lib/product-units';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
@@ -649,11 +650,12 @@ export default function POS() {
     const _ = settingsRev;
     const rates = loadExchangeRates();
     const names = loadCurrencyNames();
+    const symbols = loadCurrencySymbols();
     const enabled = loadEnabledCurrencies();
     const all: Currency[] = [
       { code: 'USD', symbol: '$', name: t('currency.usd') || 'دولار', rate: 1 },
-      { code: 'TRY', symbol: '₺', name: names.TRY || 'ليرة تركية', rate: rates.TRY },
-      { code: 'SYP', symbol: 'ل.س', name: names.SYP || 'ليرة سورية', rate: rates.SYP },
+      { code: 'TRY', symbol: symbols.TRY || '₺', name: names.TRY || 'ليرة تركية', rate: rates.TRY },
+      { code: 'SYP', symbol: symbols.SYP || 'ل.س', name: names.SYP || 'ليرة سورية', rate: rates.SYP },
     ];
     const filtered = all.filter(c => enabled[c.code] !== false);
     return filtered.length > 0 ? filtered : [all[0]];

@@ -1019,7 +1019,8 @@ export function CartPanel({
       const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
       const singleName = isSingle ? cartSnapshot[0].name : undefined;
       const totalDebtSale = downPaymentSnapshot + debtRemainingSnapshot;
-      const formattedDebtPrice = `${selectedCurrency.symbol}${formatNumber(totalDebtSale * (selectedCurrency.rate || 1), 2)}`;
+      const debtDecimals = (selectedCurrency?.rate && selectedCurrency.rate >= 100) ? 0 : 2;
+      const formattedDebtPrice = `${selectedCurrency.symbol}${formatNumber(totalDebtSale * (selectedCurrency.rate || 1), debtDecimals)}`;
 
       // ✅ إشعار نهائي موحد وحيد لعملية البيع المؤجل أو المركب
       if (downPaymentSnapshot > 0) {
@@ -1031,7 +1032,7 @@ export function CartPanel({
           itemCount: totalPieces,
           price: formattedDebtPrice,
           currency: selectedCurrency.symbol,
-          description: `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), 2)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), 2)}`,
+          description: `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), debtDecimals)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), debtDecimals)}`,
         });
       } else {
         showToast.success(t('pos.debtSaleRecorded') || 'فاتورة بيع مؤجل', {

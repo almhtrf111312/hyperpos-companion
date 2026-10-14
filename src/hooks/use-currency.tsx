@@ -9,6 +9,18 @@ export interface EnabledCurrencies {
   SYP: boolean;
 }
 
+export interface CurrencySymbols {
+  USD: string;
+  TRY: string;
+  SYP: string;
+}
+
+export interface CurrencyNames {
+  USD: string;
+  TRY: string;
+  SYP: string;
+}
+
 export const loadExchangeRates = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -21,6 +33,38 @@ export const loadExchangeRates = () => {
     };
   } catch {
     return { TRY: 32, SYP: 14500 };
+  }
+};
+
+export const loadCurrencySymbols = (): CurrencySymbols => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return { USD: '$', TRY: '₺', SYP: 'ل.س' };
+    const parsed = JSON.parse(raw);
+    const syms = parsed?.currencySymbols;
+    return {
+      USD: '$',
+      TRY: (syms?.TRY && typeof syms.TRY === 'string') ? syms.TRY : '₺',
+      SYP: (syms?.SYP && typeof syms.SYP === 'string') ? syms.SYP : 'ل.س',
+    };
+  } catch {
+    return { USD: '$', TRY: '₺', SYP: 'ل.س' };
+  }
+};
+
+export const loadCurrencyNames = (): CurrencyNames => {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
+    const parsed = JSON.parse(raw);
+    const names = parsed?.currencyNames;
+    return {
+      USD: names?.USD || 'دولار',
+      TRY: names?.TRY || 'ليرة تركية',
+      SYP: names?.SYP || 'ليرة سورية',
+    };
+  } catch {
+    return { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
   }
 };
 
@@ -93,16 +137,34 @@ export const useCurrency = () => {
     const code = loadDefaultCurrencyCode();
     const rates = loadExchangeRates();
     const enabled = loadEnabledCurrencies();
+    const symbols = loadCurrencySymbols();
+    const names = loadCurrencyNames();
+
     let symbol = '$';
     let rate = 1;
-    if (code === 'TRY') { symbol = '₺'; rate = rates.TRY; }
-    else if (code === 'SYP') { symbol = 'ل.س'; rate = rates.SYP; }
+    let name = 'دولار';
+    if (code === 'TRY') {
+      symbol = symbols.TRY;
+      rate = rates.TRY;
+      name = names.TRY;
+    } else if (code === 'SYP') {
+      symbol = symbols.SYP;
+      rate = rates.SYP;
+      name = names.SYP;
+    }
+
+    const decimals = rate >= 100 ? 0 : 2;
+
     return {
       currencyCode: code,
       currencySymbol: symbol,
+      currencyName: name,
       exchangeRate: rate,
       exchangeRates: rates,
+      currencySymbols: symbols,
+      currencyNames: names,
       enabledCurrencies: enabled,
+      decimals,
     };
   }, [settingsRev]);
 };

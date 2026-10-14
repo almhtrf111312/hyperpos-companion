@@ -282,6 +282,8 @@ export default function Invoices() {
   const {
     currencyCode,
     currencySymbol,
+    currencySymbols,
+    currencyNames,
     exchangeRate,
     exchangeRates,
     enabledCurrencies
@@ -328,10 +330,10 @@ export default function Invoices() {
       code = target;
       if (code === 'TRY') {
         rate = (exchangeRates.TRY && exchangeRates.TRY > 1) ? exchangeRates.TRY : 34;
-        symbol = '₺';
+        symbol = currencySymbols?.TRY || '₺';
       } else if (code === 'SYP') {
         rate = (exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500;
-        symbol = 'ل.س';
+        symbol = currencySymbols?.SYP || 'ل.س';
       } else {
         code = 'USD';
         rate = 1;
@@ -349,23 +351,23 @@ export default function Invoices() {
         rate = hasValidStoredRate
           ? inv.exchangeRate
           : (exchangeRates[code] || (code === 'TRY' ? 34 : 14500));
-        // رمز العملة: إذا كانت العملة TRY يكون دائماً '₺'، وإذا كانت SYP يكون دائماً 'ل.س' (منع ظهور '$' نهائياً بجانب أرباح أو إجماليات الليرة السورية أو التركية)
-        symbol = code === 'TRY' ? '₺' : 'ل.س';
+        // رمز العملة: الأولوية لرمز العملة المخزن تاريخياً في الفاتورة inv.currencySymbol لضمان عدم تغيير الفواتير السابقة، ثم الرمز المخصص الحالي من الإعدادات
+        symbol = inv.currencySymbol || (code === 'TRY' ? (currencySymbols?.TRY || '₺') : (currencySymbols?.SYP || 'ل.س'));
       } else if (currencyCode !== 'USD' && (enabledCurrencies.USD === false || !inv.currency || inv.currency === 'USD')) {
         // System default is foreign (e.g. TRY) and either USD is disabled or invoice has no specific foreign currency
         code = currencyCode;
         rate = (code !== 'USD' && exchangeRate <= 1)
           ? (exchangeRates[code] || (code === 'TRY' ? 34 : 14500))
           : exchangeRate;
-        symbol = code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : '$');
+        symbol = inv.currencySymbol || (code === 'TRY' ? (currencySymbols?.TRY || '₺') : (code === 'SYP' ? (currencySymbols?.SYP || 'ل.س') : '$'));
       } else {
         code = 'USD';
         rate = 1;
-        symbol = '$';
+        symbol = inv.currencySymbol || '$';
       }
     }
 
-    const decimals = code === 'SYP' ? 0 : 2;
+    const decimals = rate >= 100 ? 0 : 2;
 
     // الإجمالي المعروض: إجمالي الفاتورة الأساسي (inv.total) مضروباً في سعر الصرف المعتمد
     const displayTotal = roundCurrency((inv.total || 0) * rate);
@@ -404,8 +406,8 @@ export default function Invoices() {
     : ((exchangeRates[statCurrencyCode] && exchangeRates[statCurrencyCode] > 1)
         ? exchangeRates[statCurrencyCode]
         : (statCurrencyCode === 'TRY' ? 34 : 14500));
-  const statCurrencySymbol = statCurrencyCode === 'USD' ? '$' : (statCurrencyCode === 'TRY' ? '₺' : 'ل.س');
-  const statDecimals = statCurrencyCode === 'SYP' ? 0 : 2;
+  const statCurrencySymbol = statCurrencyCode === 'USD' ? '$' : (currencySymbols?.[statCurrencyCode] || (statCurrencyCode === 'TRY' ? '₺' : 'ل.س'));
+  const statDecimals = statExchangeRate >= 100 ? 0 : 2;
 
   // مواءمة مبيعات اليوم مع فواتير اليوم الفعلية المعروضة لمنع أي تفاوت عند منتصف الليل
   const computedTodaySales = useMemo(() => {
@@ -1773,8 +1775,8 @@ export default function Invoices() {
                   <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.displayCurrency')} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="stored">{t('invoices.asInInvoice')}</SelectItem>
-                    {enabledCurrencies.TRY && <SelectItem value="TRY">₺ {t('currencies.try')}</SelectItem>}
-                    {enabledCurrencies.SYP && <SelectItem value="SYP">{t('currencies.syp')}</SelectItem>}
+                    {enabledCurrencies.TRY && <SelectItem value="TRY">{currencySymbols?.TRY || '₺'} {currencyNames?.TRY || t('currencies.try')}</SelectItem>}
+                    {enabledCurrencies.SYP && <SelectItem value="SYP">{currencySymbols?.SYP || 'ل.س'} {currencyNames?.SYP || t('currencies.syp')}</SelectItem>}
                     {enabledCurrencies.USD !== false && <SelectItem value="USD">$ {t('currencies.usd')}</SelectItem>}
                   </SelectContent>
                 </Select>
@@ -2047,7 +2049,7 @@ export default function Invoices() {
                             {invUpper === 'TRY' ? (
                               <>
                                 <span className="font-black text-sky-700 dark:text-sky-400 font-mono text-[10.5px] whitespace-nowrap">
-                                  {formatNumber(tryTotal, tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
+                                  {formatNumber(tryTotal, tryRate >= 100 || tryTotal % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
                                 </span>
                                 <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
                                   (${formatNumber(invUsdTotal, 2)})
@@ -2056,7 +2058,7 @@ export default function Invoices() {
                             ) : invUpper === 'SYP' ? (
                               <>
                                 <span className="font-black text-foreground font-mono text-[10.5px] whitespace-nowrap">
-                                  {formatNumber(sypTotal, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
+                                  {formatNumber(sypTotal, sypRate >= 100 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
                                 </span>
                                 <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
                                   (${formatNumber(invUsdTotal, 2)})
@@ -2085,7 +2087,7 @@ export default function Invoices() {
                             {invUpper === 'TRY' ? (
                               <>
                                 <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", tryProfit >= 0 ? "text-sky-700 dark:text-sky-400" : "text-rose-600 dark:text-rose-400")}>
-                                  {formatNumber(tryProfit, tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">₺</span>
+                                  {formatNumber(tryProfit, tryRate >= 100 || tryProfit % 1 === 0 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.TRY || '₺'}</span>
                                 </span>
                                 <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
                                   (${formatNumber(invUsdProfit, 2)})
@@ -2094,7 +2096,7 @@ export default function Invoices() {
                             ) : invUpper === 'SYP' ? (
                               <>
                                 <span className={cn("font-black font-mono text-[10.5px] whitespace-nowrap", invUsdProfit >= 0 ? "text-foreground" : "text-rose-600 dark:text-rose-400")}>
-                                  {formatNumber(sypProfit, 0)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">ل.س</span>
+                                  {formatNumber(sypProfit, sypRate >= 100 ? 0 : 2)} <span className="text-[8.5px] font-sans font-medium text-muted-foreground">{invoice.currencySymbol || currencySymbols?.SYP || 'ل.س'}</span>
                                 </span>
                                 <span className="text-[9.5px] font-mono text-muted-foreground whitespace-nowrap" dir="ltr">
                                   (${formatNumber(invUsdProfit, 2)})
@@ -2144,9 +2146,12 @@ export default function Invoices() {
               ? selectedInvoice.exchangeRate
               : ((exchangeRates.SYP && exchangeRates.SYP > 1) ? exchangeRates.SYP : 14500);
 
+            const trySymbolForInv = selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY || '₺') : (currencySymbols?.TRY || '₺');
+            const sypSymbolForInv = selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP || 'ل.س') : (currencySymbols?.SYP || 'ل.س');
+
             const totalUsdStr = formatCurrency(baseInvTotal, '$', 2);
-            const totalTryStr = formatCurrency(baseInvTotal * tryRateForInv, '₺', 2);
-            const totalSypStr = formatCurrency(baseInvTotal * sypRateForInv, 'ل.س', 0);
+            const totalTryStr = formatCurrency(baseInvTotal * tryRateForInv, trySymbolForInv, tryRateForInv >= 100 ? 0 : 2);
+            const totalSypStr = formatCurrency(baseInvTotal * sypRateForInv, sypSymbolForInv, sypRateForInv >= 100 ? 0 : 2);
 
             return (
             <div className="space-y-4 p-5 overflow-y-auto">
@@ -2766,7 +2771,7 @@ export default function Invoices() {
                     <span className="font-bold text-destructive block">{formatCurrency(selectedDebtForPayment.remainingDebt)}</span>
                     {paymentCurrency !== 'USD' && (
                       <span className="text-xs text-muted-foreground block font-mono">
-                        ≈ {formatNumber(maxInCurrency)} {paymentCurrency === 'TRY' ? '₺' : 'ل.س'}
+                        ≈ {formatNumber(maxInCurrency)} {currencySymbols?.[paymentCurrency] || (paymentCurrency === 'TRY' ? '₺' : 'ل.س')}
                       </span>
                     )}
                   </div>
@@ -2813,8 +2818,8 @@ export default function Invoices() {
                           : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                       )}
                     >
-                      <span className="text-sm font-bold">₺ {t('currencies.try')}</span>
-                      <span className="text-xs font-normal opacity-80">(TRY)</span>
+                      <span className="text-sm font-bold">{currencySymbols?.TRY || '₺'} {currencyNames?.TRY || t('currencies.try')}</span>
+                      <span className="text-xs font-normal opacity-80">({currencySymbols?.TRY || 'TRY'})</span>
                     </button>
                   )}
                   {enabledCurrencies.SYP && (
@@ -2833,15 +2838,15 @@ export default function Invoices() {
                           : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
                       )}
                     >
-                      <span className="text-sm font-bold">{t('currencies.syp')}</span>
-                      <span className="text-xs font-normal opacity-80">(SYP)</span>
+                      <span className="text-sm font-bold">{currencySymbols?.SYP || 'ل.س'} {currencyNames?.SYP || t('currencies.syp')}</span>
+                      <span className="text-xs font-normal opacity-80">({currencySymbols?.SYP || 'SYP'})</span>
                     </button>
                   )}
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
                     <span>{t('invoices.exchangeRate') || 'سعر الصرف المعتمد'}:</span>
-                    <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {paymentCurrency}</span>
+                    <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {currencySymbols?.[paymentCurrency] || paymentCurrency}</span>
                   </p>
                 )}
               </div>
@@ -2850,7 +2855,7 @@ export default function Invoices() {
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-sm font-medium">
-                    {t('invoices.paymentAmount')} ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
+                    {t('invoices.paymentAmount')} ({paymentCurrency === 'USD' ? '$' : (currencySymbols?.[paymentCurrency] || (paymentCurrency === 'TRY' ? '₺' : 'ل.س'))})
                   </label>
                   {paymentCurrency !== 'USD' && amountUSD > 0 && (
                     <span className="text-xs font-bold text-success font-mono">
@@ -2885,7 +2890,7 @@ export default function Invoices() {
                     disabled={isSubmittingPayment}
                     onClick={() => setPaymentAmountInput(String(maxInCurrency))}
                   >
-                    {t('debts.payFull') || 'تسديد كامل'} ({maxInCurrency} {paymentCurrency})
+                    {t('debts.payFull') || 'تسديد كامل'} ({maxInCurrency} {currencySymbols?.[paymentCurrency] || paymentCurrency})
                   </Button>
                   <Button
                     variant="outline"
