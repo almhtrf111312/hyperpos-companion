@@ -228,6 +228,22 @@ const loadInvoicesFromLocalCache = (): Invoice[] | null => {
   return null;
 };
 
+/**
+ * تسجيل فاتورة بيع منفذة محلياً فوراً في كاش الفواتير وذاكرة الجهاز وإطلاق حدث التحديث
+ * يضمن ظهور الفاتورة للمستخدم في شاشة الفواتير بسرعة 0ms حتى في حالة عدم توفر الإنترنت
+ */
+export const recordOfflineInvoiceLocal = (offlineInvoice: Invoice) => {
+  try {
+    const currentList = invoicesCache || loadInvoicesFromLocalCache() || [];
+    invoicesCache = [offlineInvoice, ...currentList.filter(i => i.id !== offlineInvoice.id)];
+    cacheTimestamp = Date.now();
+    saveInvoicesToLocalCache(invoicesCache);
+    emitEvent(EVENTS.INVOICES_UPDATED, invoicesCache);
+  } catch (err) {
+    console.warn('[InvoicesCloud] recordOfflineInvoiceLocal failed:', err);
+  }
+};
+
 // Generate invoice number — uses central RPC for cross-device uniqueness, falls back to date-based scan
 const getNextInvoiceNumber = async (): Promise<string> => {
   const date = new Date();
@@ -324,12 +340,12 @@ export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
   const localInvoices = loadInvoicesFromLocalCache();
   if (!coldStartServed && localInvoices && localInvoices.length > 0) {
     coldStartServed = true;
-    invoicesCache = localInvoices;
+    invoicesCache = mergeSyncQueueInvoices(localInvoices);
     cacheTimestamp = Date.now();
     void fetchInvoicesFromCloud(userId).then((fresh) => {
       emitEvent(EVENTS.INVOICES_UPDATED, fresh);
     }).catch(() => { /* keep saved copy */ });
-    return mergeSyncQueueInvoices(localInvoices);
+    return invoicesCache;
   }
   coldStartServed = true;
 
@@ -358,9 +374,9 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
       const localInvoices = loadInvoicesFromLocalCache();
       if (localInvoices && localInvoices.length > 0) {
         console.log('[InvoicesCloud] ⚠️ Cloud returned empty, using local cache');
-        invoicesCache = localInvoices;
+        invoicesCache = mergeSyncQueueInvoices(localInvoices);
         cacheTimestamp = Date.now();
-        return mergeSyncQueueInvoices(localInvoices);
+        return invoicesCache;
       }
     }
 
@@ -412,7 +428,9 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
       })
     );
 
-    invoicesCache = invoicesWithItems;
+    // دمج العمليات المعلقة في طابور المزامنة لمنع اختفاء الفواتير غير المرفوعة
+    const mergedWithQueue = mergeSyncQueueInvoices(invoicesWithItems);
+    invoicesCache = mergedWithQueue;
     cacheTimestamp = Date.now();
 
     // Save to local cache for offline access
@@ -1131,23 +1149,47 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
           ? bundle.currencySymbol
           : (rawCurr === 'USD' ? (persistedSymbols?.USD || '$') : (persistedSymbols?.[rawCurr] || (rawCurr === 'TRY' ? '₺' : rawCurr === 'SYP' ? 'ل.س' : rawCurr)));
 
+        const items = (bundle.items || []).map((it: any) => ({
+          id: it.id,
+          name: it.name,
+          price: Number(it.price) || 0,
+          quantity: Number(it.quantity) || 1,
+          total: Number(it.total) || (Number(it.price) || 0) * (Number(it.quantity) || 1),
+          costPrice: Number(it.costPrice) || 0,
+          profit: typeof it.profit === 'number' ? it.profit : ((Number(it.price) || 0) - (Number(it.costPrice) || 0)) * (Number(it.quantity) || 1),
+          category: it.category || 'عام',
+        }));
+
+        const discount = Number(bundle.discount) || 0;
+        const totalDiscountedProfit = items.reduce((sum: number, it: any) => sum + (it.profit || 0), 0) - discount;
+        const computedProfit = typeof bundle.profit === 'number' ? bundle.profit : totalDiscountedProfit;
+        const computedPartsCost = typeof bundle.cogs === 'number'
+          ? bundle.cogs
+          : items.reduce((sum: number, it: any) => sum + ((it.costPrice || 0) * (it.quantity || 1)), 0);
+
+        const invId = bundle.invoiceNumber || data?.invoiceNumber || data?.operationId || data?.localId || op.id;
+
         queueInvoices.push({
-          id: data?.operationId || data?.localId || op.id,
+          id: invId,
           type: (bundle.type as InvoiceType) || 'sale',
           customerName: bundle.customerName || 'عميل نقدي',
           customerPhone: bundle.customerPhone || undefined,
-          items: bundle.items || [],
-          subtotal: bundle.subtotal || 0,
-          discount: bundle.discount || 0,
-          discountPercentage: bundle.discountPercentage || 0,
-          taxRate: bundle.taxRate || 0,
-          taxAmount: bundle.taxAmount || 0,
-          total: bundle.total || 0,
-          totalInCurrency: bundle.totalInCurrency || bundle.total || 0,
+          items,
+          subtotal: Number(bundle.subtotal) || 0,
+          subtotalInCurrency: Number(bundle.totalInCurrency) || Number(bundle.subtotal) || 0,
+          discount,
+          discountPercentage: Number(bundle.discountPercentage) || 0,
+          taxRate: Number(bundle.taxRate) || 0,
+          taxAmount: Number(bundle.taxAmount) || 0,
+          total: Number(bundle.total) || 0,
+          totalInCurrency: Number(bundle.totalInCurrency) || Number(bundle.total) || 0,
           currency: rawCurr,
           currencySymbol: sym,
-          paymentType: op.type === 'debt_sale_bundle' ? 'debt' : (bundle.paymentType || 'cash'),
-          status: (bundle.status as InvoiceStatus) || 'pending',
+          exchangeRate: Number(bundle.exchangeRate) || 1,
+          profit: computedProfit,
+          partsCost: computedPartsCost,
+          paymentType: op.type === 'debt_sale_bundle' ? ((Number(bundle.downPayment) || 0) > 0 ? 'split' : 'debt') : (bundle.paymentType || 'cash'),
+          status: op.type === 'debt_sale_bundle' ? ((Number(bundle.downPayment) || 0) >= (Number(bundle.total) || 0) ? 'paid' : 'pending') : (bundle.status as InvoiceStatus || 'paid'),
           serviceDescription: bundle.notes || undefined,
           createdAt: op.timestamp || op.createdAt || new Date().toISOString(),
           updatedAt: op.timestamp || op.createdAt || new Date().toISOString(),
@@ -1155,8 +1197,8 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
           sync_failed: isFailed,
           cashierId: bundle.cashierId,
           cashierName: bundle.cashierName,
-          debtPaid: bundle.downPayment || 0,
-          debtRemaining: (bundle.total || 0) - (bundle.downPayment || 0)
+          debtPaid: Number(bundle.downPayment) || 0,
+          debtRemaining: (Number(bundle.total) || 0) - (Number(bundle.downPayment) || 0)
         });
       }
     }

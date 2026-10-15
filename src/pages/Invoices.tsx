@@ -384,7 +384,18 @@ export default function Invoices() {
     const displayTotal = roundCurrency((inv.total || 0) * rate);
 
     // صافي الربح المعروض: ربح الفاتورة الأساسي (inv.profit) مضروباً في سعر الصرف المعتمد
-    const baseProfit = inv.profit || 0;
+    let baseProfit = typeof inv.profit === 'number' && !isNaN(inv.profit) ? inv.profit : 0;
+    if (baseProfit === 0 && Array.isArray(inv.items) && inv.items.length > 0) {
+      const itemsComputedProfit = inv.items.reduce((sum, item) => {
+        const itemProfit = typeof item.profit === 'number'
+          ? item.profit
+          : ((Number(item.price) || 0) - (Number(item.costPrice) || 0)) * (Number(item.quantity) || 1);
+        return sum + itemProfit;
+      }, 0) - (Number(inv.discount) || 0);
+      if (itemsComputedProfit !== 0) {
+        baseProfit = roundCurrency(itemsComputedProfit);
+      }
+    }
     const displayProfit = roundCurrency(baseProfit * rate);
 
     const invUpper = (inv.currency || 'USD').toUpperCase();
@@ -2000,10 +2011,12 @@ export default function Invoices() {
                       {/* شارة حالة المزامنة غير المكتملة */}
                       {invoice.pending_sync && (
                         <span className={cn(
-                          "text-[8.5px] px-1.5 py-0.5 rounded border font-semibold",
-                          invoice.sync_failed ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20"
+                          "text-[8.5px] px-1.5 py-0.5 rounded border font-semibold flex items-center gap-1",
+                          invoice.sync_failed
+                            ? "bg-destructive/10 text-destructive border-destructive/20"
+                            : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
                         )}>
-                          {invoice.sync_failed ? (t('invoices.syncFailed') || 'فشل الرفع') : (t('invoices.notSynced') || 'قيد المزامنة')}
+                          {invoice.sync_failed ? (t('invoices.syncFailed') || 'فشل الرفع ⚠️') : (t('invoices.syncPending') || 'قيد المزامنة ⏳')}
                         </span>
                       )}
 
@@ -2124,7 +2137,19 @@ export default function Invoices() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">{t('invoices.invoiceNumber')}:</span>
-                  <p className="font-semibold">{selectedInvoice.id}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="font-semibold">{selectedInvoice.id}</p>
+                    {selectedInvoice.pending_sync && (
+                      <span className={cn(
+                        "text-[9px] px-1.5 py-0.5 rounded border font-semibold flex items-center gap-1",
+                        selectedInvoice.sync_failed
+                          ? "bg-destructive/10 text-destructive border-destructive/20"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      )}>
+                        {selectedInvoice.sync_failed ? (t('invoices.syncFailed') || 'فشل الرفع ⚠️') : (t('invoices.syncPending') || 'قيد المزامنة ⏳')}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t('invoices.date')}:</span>

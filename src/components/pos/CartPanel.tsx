@@ -58,11 +58,35 @@ import { BackgroundSyncIndicator, useSyncState } from './BackgroundSyncIndicator
 import { addUniqueOperation } from '@/lib/sync-queue';
 import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
+import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
 
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 
 const isRepairStoreType = () => getCurrentStoreType() === 'repair';
+
+// Helper to retrieve fallback cost price from local product cache if item.costPrice is missing or 0
+const getFallbackCostPrice = (productId: string): number => {
+  try {
+    const cached = localStorage.getItem('hyperpos_products_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const list = parsed.products || (Array.isArray(parsed) ? parsed : null);
+      if (Array.isArray(list)) {
+        const p = list.find((x: any) => x && (x.id === productId || String(x.id) === String(productId)));
+        if (p && typeof p.costPrice === 'number' && p.costPrice > 0) {
+          return p.costPrice;
+        }
+        if (p && typeof p.cost_price === 'number' && p.cost_price > 0) {
+          return p.cost_price;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return 0;
+};
 
 // EditablePrice: local string state during editing, commits on blur/Enter
 function EditablePrice({ value, onChange, className }: { value: number; className?: string; onChange: (v: number) => void }) {
@@ -679,10 +703,11 @@ export function CartPanel({
           if (item.bulkCostPrice && item.bulkCostPrice > 0) {
             itemCostPrice = item.bulkCostPrice;
           } else {
-            itemCostPrice = (item.costPrice || 0) * (item.conversionFactor || 1);
+            const baseCost = (item.costPrice && item.costPrice > 0) ? item.costPrice : getFallbackCostPrice(item.id);
+            itemCostPrice = baseCost * (item.conversionFactor || 1);
           }
         } else {
-          itemCostPrice = item.costPrice || 0;
+          itemCostPrice = (item.costPrice && item.costPrice > 0) ? item.costPrice : getFallbackCostPrice(item.id);
         }
 
         const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
@@ -731,6 +756,7 @@ export function CartPanel({
       addUniqueOperation('invoice_create', {
         operationId,
         bundle: {
+          invoiceNumber,
           customerName: customerNameSnapshot || 'عميل نقدي',
           items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit - i.total * discountRatio) })),
           subtotal,
@@ -754,6 +780,45 @@ export function CartPanel({
           wholesaleMode,
         },
       }, operationId);
+
+      // ✅ تسجيل الفاتورة محلياً فوراً لتظهر في قائمة الفواتير بدون انتظار الإنترنت (0ms)
+      const offlineCashInvoice: Invoice = {
+        id: invoiceNumber,
+        type: 'sale',
+        customerName: customerNameSnapshot || 'عميل نقدي',
+        items: localItems.map(i => ({
+          id: i.id,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          total: i.total,
+          costPrice: i.costPrice,
+          profit: roundCurrency(i.profit - i.total * discountRatio),
+          category: i.category,
+        })),
+        subtotal,
+        subtotalInCurrency: roundCurrency(totalSnapshot * activeRate),
+        discount: effectiveDiscountAmount,
+        discountPercentage: discountType === 'percent' ? discount : 0,
+        taxRate: effectiveTaxRate,
+        taxAmount,
+        total: totalSnapshot,
+        totalInCurrency: roundCurrency(totalSnapshot * activeRate),
+        currency: selectedCurrency.code,
+        currencySymbol: effectiveCurrencySymbol,
+        exchangeRate: activeRate,
+        profit: discountedProfit,
+        partsCost: totalCOGS,
+        paymentType: 'cash',
+        status: 'paid',
+        pending_sync: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        cashierId: user?.id,
+        cashierName: profile?.full_name || user?.email || undefined,
+        warehouseId: stockWarehouseId,
+      };
+      recordOfflineInvoiceLocal(offlineCashInvoice);
 
       // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
       addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
@@ -950,10 +1015,11 @@ export function CartPanel({
           if (item.bulkCostPrice && item.bulkCostPrice > 0) {
             itemCostPrice = item.bulkCostPrice;
           } else {
-            itemCostPrice = (item.costPrice || 0) * (item.conversionFactor || 1);
+            const baseCost = (item.costPrice && item.costPrice > 0) ? item.costPrice : getFallbackCostPrice(item.id);
+            itemCostPrice = baseCost * (item.conversionFactor || 1);
           }
         } else {
-          itemCostPrice = item.costPrice || 0;
+          itemCostPrice = (item.costPrice && item.costPrice > 0) ? item.costPrice : getFallbackCostPrice(item.id);
         }
 
         const itemNetPrice = taxMode === 'gross' && effectiveTaxRate > 0 ? item.price / (1 + effectiveTaxRate / 100) : item.price;
@@ -992,6 +1058,7 @@ export function CartPanel({
 
       // ✅ إضافة فاتورة الدين للطابور فوراً (محلياً - 0ms)
       const bundle = {
+        invoiceNumber,
         customerName: customerNameSnapshot,
         customerPhone: customerPhoneSnapshot || '',
         items: localItems,
@@ -1030,6 +1097,48 @@ export function CartPanel({
       }
 
       addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
+
+      // ✅ تسجيل الفاتورة محلياً فوراً لتظهر في قائمة الفواتير بدون انتظار الإنترنت (0ms)
+      const offlineDebtInvoice: Invoice = {
+        id: invoiceNumber,
+        type: 'sale',
+        customerName: customerNameSnapshot || (downPaymentSnapshot > 0 ? 'عميل بيع مركب' : 'عميل دين'),
+        customerPhone: customerPhoneSnapshot || undefined,
+        items: localItems.map(i => ({
+          id: i.id,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          total: i.total,
+          costPrice: i.costPrice,
+          profit: i.profit,
+          category: i.category,
+        })),
+        subtotal,
+        subtotalInCurrency: totalInCurrency,
+        discount: discountAmount,
+        discountPercentage: discountType === 'percent' ? discount : 0,
+        taxRate: effectiveTaxRate,
+        taxAmount,
+        total: totalSnapshot,
+        totalInCurrency,
+        currency: selectedCurrency.code,
+        currencySymbol: effectiveCurrencySymbol,
+        exchangeRate: selectedCurrency.rate || activeRate || 1,
+        profit: discountedProfit,
+        partsCost: totalCOGS,
+        paymentType: 'debt',
+        status: downPaymentSnapshot >= totalSnapshot ? 'paid' : 'pending',
+        pending_sync: true,
+        debtPaid: downPaymentSnapshot,
+        debtRemaining: totalSnapshot - downPaymentSnapshot,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        cashierId: user?.id,
+        cashierName: profile?.full_name || user?.email || undefined,
+        warehouseId: stockWarehouseId,
+      };
+      recordOfflineInvoiceLocal(offlineDebtInvoice);
 
       // ✅ تسجيل الدفعة النقدية المقبوضة في الصندوق والوردية النشطة فوراً
       if (downPaymentSnapshot > 0) {
