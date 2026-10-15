@@ -8,7 +8,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Share as CapacitorShare } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { formatNumber } from './utils';
+import { formatNumber, formatCurrency } from './utils';
 import {
   InvoiceCanvasData,
   DebtStatementCanvasData,
@@ -253,7 +253,7 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
 
   const itemsList = type !== 'maintenance'
     ? items.map(item =>
-      `• ${item.name} × ${item.quantity} = ${currencySymbol}${formatNumber(item.total)}`
+      `• ${item.name} × ${item.quantity} = ${formatCurrency(item.total, currencySymbol)}`
     ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
@@ -279,9 +279,9 @@ ${type !== 'maintenance' ? '🛒 المواد:' : '🔧 الخدمة:'}
 ${itemsList}
 
 ────────────────
-${items.length > 1 ? `📊 المجموع الفرعي: ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: ${currencySymbol}${formatNumber(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${currencySymbol}${formatNumber(data.taxAmount)}\n` : ''}💰 الإجمالي: ${currencySymbol}${formatNumber(total)}
+${items.length > 1 ? `📊 المجموع الفرعي: ${formatCurrency(subtotal, currencySymbol)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: -${formatCurrency(discount, currencySymbol)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${formatCurrency(data.taxAmount, currencySymbol)}\n` : ''}💰 الإجمالي: ${formatCurrency(total, currencySymbol)}${data.currency && data.currency !== 'USD' && data.totalUSD ? ` (المعادل: $${formatNumber(data.totalUSD, 2)})` : ''}
 💳 طريقة الدفع: ${paymentLabel}
-${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPayment > 0)) ? (downPayment && downPayment > 0 ? `💵 المدفوع نقداً: ${currencySymbol}${formatNumber(downPayment)}\n📋 المتبقي كدين: ${currencySymbol}${formatNumber(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : (total - downPayment))}\n` : `📋 مستحق كدين: ${currencySymbol}${formatNumber(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : total)}\n`) : ''}
+${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPayment > 0)) ? (downPayment && downPayment > 0 ? `💵 المدفوع نقداً: ${formatCurrency(downPayment, currencySymbol)}\n📋 المتبقي كدين: ${formatCurrency(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : (total - downPayment), currencySymbol)}\n` : `📋 مستحق كدين: ${formatCurrency(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : total, currencySymbol)}\n`) : ''}
 
 ────────────────
 ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
@@ -401,8 +401,8 @@ export function generateDebtShareText(data: DebtShareData): string {
 ${customerPhone ? `📱 الهاتف: ${customerPhone}` : ''}
 ${invoiceId ? `📄 رقم الفاتورة: ${invoiceId}` : ''}
 
-💰 إجمالي الدين: ${currencySymbol}${formatNumber(totalDebt)}
-💵 المتبقي: ${currencySymbol}${formatNumber(remainingDebt)}
+💰 إجمالي الدين: ${formatCurrency(totalDebt, currencySymbol)}
+💵 المتبقي: ${formatCurrency(remainingDebt, currencySymbol)}
 ${dueDate ? `📅 تاريخ الاستحقاق: ${dueDate}` : ''}
 
 ────────────────

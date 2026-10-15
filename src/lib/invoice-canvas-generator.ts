@@ -164,12 +164,46 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
 }
 
 /**
+ * دالة مساعدة لتنسيق الأسعار والعملات على الكانفاس بدون تكرار أو كتابة دولار أمام العملات المحلية
+ */
+function formatCanvasPrice(amount: number, symbol: string, decimals?: number): string {
+  const cleanSymbol = (symbol || '').trim();
+  const numDecimals = decimals !== undefined ? decimals : ((cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') ? 2 : (amount >= 100 ? 0 : 2));
+  const numStr = formatNumber(amount, numDecimals);
+  if (cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') {
+    return `${cleanSymbol}${numStr}`;
+  }
+  return `${numStr} ${cleanSymbol}`;
+}
+
+/**
  * إنشاء صورة فاتورة متكاملة عالية الدقة عبر HTML5 Canvas
  * العرض ثابت 720px والارتفاع يتمدد ديناميكياً مع عدد المواد
  */
 export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HTMLCanvasElement> {
   const storeSettings = getStoreSettings();
   const printSettings = getPrintSettings();
+
+  const rawSymbol = (data.currencySymbol || '').trim();
+  const rawCurrency = (data.currency || '').toUpperCase();
+  const hasRate = typeof data.exchangeRate === 'number' && data.exchangeRate > 0;
+  const isForeign = (rawCurrency !== '' && rawCurrency !== 'USD') || (hasRate && data.exchangeRate! > 1);
+
+  let effectiveSymbol = rawSymbol;
+  if (isForeign) {
+    if (!effectiveSymbol || effectiveSymbol === '$') {
+      try {
+        const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
+        const code = (rawCurrency && rawCurrency !== 'USD') ? rawCurrency : (fullSettings.currencyCode || 'TRY');
+        const symbols = fullSettings.currencySymbols || {};
+        effectiveSymbol = symbols[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
+      } catch {
+        effectiveSymbol = rawCurrency || '₺';
+      }
+    }
+  } else {
+    if (!effectiveSymbol) effectiveSymbol = '$';
+  }
 
   const storeName = data.storeName || storeSettings.name || 'FlowPOS Pro';
   const storePhone = data.storePhone || storeSettings.phone || '';
@@ -462,7 +496,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       ctx.fillStyle = '#334155';
       ctx.font = `12.5px ${FONT_FAMILY}`;
       ctx.textAlign = 'center';
-      ctx.fillText(`${data.currencySymbol}${formatNumber(item.unitPrice)}`, colPriceX, centerY);
+      ctx.fillText(formatCanvasPrice(item.unitPrice, effectiveSymbol), colPriceX, centerY);
 
       // الكمية
       ctx.fillStyle = '#0f172a';
@@ -474,7 +508,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       ctx.fillStyle = '#0f172a';
       ctx.font = `bold 13px ${FONT_FAMILY}`;
       ctx.textAlign = 'center';
-      ctx.fillText(`${data.currencySymbol}${formatNumber(item.total)}`, colTotalX, centerY);
+      ctx.fillText(formatCanvasPrice(item.total, effectiveSymbol), colTotalX, centerY);
 
       currentY += ROW_HEIGHT;
     });
@@ -503,7 +537,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.textAlign = 'left';
   ctx.fillStyle = '#0f172a';
   ctx.font = `bold 14px ${FONT_FAMILY}`;
-  ctx.fillText(`${data.currencySymbol}${formatNumber(data.subtotal)}`, financeLeftX, lineY);
+  ctx.fillText(formatCanvasPrice(data.subtotal, effectiveSymbol), financeLeftX, lineY);
 
   // الخصم (بارز بلون أخضر زمردي مع علامة سالب)
   if (data.discount && data.discount > 0) {
@@ -515,7 +549,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
 
     ctx.textAlign = 'left';
     ctx.font = `bold 14px ${FONT_FAMILY}`;
-    ctx.fillText(`-${data.currencySymbol}${formatNumber(data.discount)}`, financeLeftX, lineY);
+    ctx.fillText(`-${formatCanvasPrice(data.discount, effectiveSymbol)}`, financeLeftX, lineY);
   }
 
   // الضريبة (إن وجدت)
@@ -529,7 +563,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
     ctx.textAlign = 'left';
     ctx.fillStyle = '#0f172a';
     ctx.font = `bold 14px ${FONT_FAMILY}`;
-    ctx.fillText(`+${data.currencySymbol}${formatNumber(data.taxAmount)}`, financeLeftX, lineY);
+    ctx.fillText(`+${formatCanvasPrice(data.taxAmount, effectiveSymbol)}`, financeLeftX, lineY);
   }
 
   // شريط الإجمالي النهائي الكحلي العريض في الأسفل
@@ -546,7 +580,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.fillStyle = '#38bdf8';
   ctx.font = `bold 20px ${FONT_FAMILY}`;
   ctx.textAlign = 'left';
-  ctx.fillText(`${data.currencySymbol}${formatNumber(data.total)}`, financeLeftX, totalRibbonY + (totalRibbonHeight / 2));
+  ctx.fillText(formatCanvasPrice(data.total, effectiveSymbol), financeLeftX, totalRibbonY + (totalRibbonHeight / 2));
 
   // ب) صندوق تفاصيل الدفع وبيانات المتجر في اليمين
   const detailsBoxX = 30 + boxWidth + 16;
@@ -575,19 +609,19 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       detailsY += 24;
       ctx.fillStyle = '#16a34a';
       ctx.font = `12px ${FONT_FAMILY}`;
-      ctx.fillText(`المدفوع نقداً: ${data.currencySymbol}${formatNumber(data.downPayment)}`, detailsRightX, detailsY);
+      ctx.fillText(`المدفوع نقداً: ${formatCanvasPrice(data.downPayment, effectiveSymbol)}`, detailsRightX, detailsY);
 
       detailsY += 20;
       ctx.fillStyle = '#dc2626';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
       const debtAmount = data.debtRemaining !== undefined && data.debtRemaining !== null ? data.debtRemaining : (data.total - data.downPayment);
-      ctx.fillText(`المتبقي كدين: ${data.currencySymbol}${formatNumber(debtAmount)}`, detailsRightX, detailsY);
+      ctx.fillText(`المتبقي كدين: ${formatCanvasPrice(debtAmount, effectiveSymbol)}`, detailsRightX, detailsY);
     } else {
       detailsY += 24;
       ctx.fillStyle = '#dc2626';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
       const debtAmount = data.debtRemaining !== undefined && data.debtRemaining !== null ? data.debtRemaining : data.total;
-      ctx.fillText(`مستحق كدين: ${data.currencySymbol}${formatNumber(debtAmount)}`, detailsRightX, detailsY);
+      ctx.fillText(`مستحق كدين: ${formatCanvasPrice(debtAmount, effectiveSymbol)}`, detailsRightX, detailsY);
     }
   }
 
@@ -611,8 +645,8 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       const sypRate = Number(rates.SYP || 14500);
       const tryRate = Number(rates.TRY || 34);
 
-      const invSymbol = data.currencySymbol || '$';
-      const invCurrency = (data.currency || (invSymbol === '₺' ? 'TRY' : (invSymbol === 'ل.س' ? 'SYP' : 'USD'))).toUpperCase();
+      const invSymbol = effectiveSymbol;
+      const invCurrency = (data.currency || (invSymbol === '₺' ? 'TRY' : (invSymbol === 'ل.س' ? 'SYP' : (invSymbol === '$' ? 'USD' : invSymbol)))).toUpperCase();
       const invRate = Number(data.exchangeRate) || (invCurrency === 'TRY' ? tryRate : (invCurrency === 'SYP' ? sypRate : 1));
       
       // 1. حساب المعادل بالدولار الأساسي أولاً
@@ -641,7 +675,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
           const cName = names[upperCode] || upperCode;
           const cSymbol = symbols[upperCode] || upperCode;
           const cDecimals = rate >= 100 ? 0 : 2;
-          parts.push(`${cName}: ${formatNumber(baseUSD * rate, cDecimals)} ${cSymbol}`);
+          parts.push(`${cName}: ${formatCanvasPrice(baseUSD * rate, cSymbol, cDecimals)}`);
         }
       }
 
@@ -706,6 +740,20 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   const storeAddress = data.storeAddress || storeSettings.address || '';
   const storeLogoUrl = data.storeLogo || storeSettings.logo || '';
   const footerNote = data.footerNote || printSettings.footer || 'نرجو التواصل لتسوية المبلغ المطلوب. شاكرين تعاونكم معنا 🙏';
+
+  const rawDebtSymbol = (data.currencySymbol || '').trim();
+  let effectiveDebtSymbol = rawDebtSymbol;
+  if (!effectiveDebtSymbol || effectiveDebtSymbol === '$') {
+    try {
+      const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
+      const code = fullSettings.currencyCode || 'USD';
+      if (code !== 'USD') {
+        const symbols = fullSettings.currencySymbols || {};
+        effectiveDebtSymbol = symbols[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
+      }
+    } catch {}
+  }
+  if (!effectiveDebtSymbol) effectiveDebtSymbol = '$';
 
   const LOGICAL_WIDTH = 720;
   const HEADER_HEIGHT = 135;
@@ -860,7 +908,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('إجمالي التعاملات', card1X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = '#0284c7';
   ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillText(`${data.currencySymbol}${formatNumber(data.totalPurchases)}`, card1X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(data.totalPurchases, effectiveDebtSymbol), card1X + (cardW / 2), summaryCardsY + 52);
 
   // بطاقة 2: إجمالي المسدد
   const card2X = 30 + cardW + 10;
@@ -870,7 +918,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('إجمالي المسدد', card2X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = '#16a34a';
   ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillText(`${data.currencySymbol}${formatNumber(data.totalPaid)}`, card2X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(data.totalPaid, effectiveDebtSymbol), card2X + (cardW / 2), summaryCardsY + 52);
 
   // بطاقة 3: الرصيد المتبقي (الديون)
   const card3X = 30;
@@ -880,7 +928,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('الرصيد المتبقي (الديون)', card3X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = data.totalDebt > 0 ? '#dc2626' : '#16a34a';
   ctx.font = `bold 19px ${FONT_FAMILY}`;
-  ctx.fillText(`${data.currencySymbol}${formatNumber(data.totalDebt)}`, card3X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(data.totalDebt, effectiveDebtSymbol), card3X + (cardW / 2), summaryCardsY + 52);
 
   // 4. جدول حركات الحساب
   const tableY = summaryCardsY + SUMMARY_CARDS_HEIGHT + 14;
@@ -950,15 +998,15 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
 
       ctx.fillStyle = '#0f172a';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
-      ctx.fillText(`${data.currencySymbol}${formatNumber(tx.total)}`, col5, centerY);
+      ctx.fillText(formatCanvasPrice(tx.total, effectiveDebtSymbol), col5, centerY);
 
       ctx.fillStyle = '#16a34a';
       ctx.font = `12px ${FONT_FAMILY}`;
-      ctx.fillText(`${data.currencySymbol}${formatNumber(tx.paid)}`, col6, centerY);
+      ctx.fillText(formatCanvasPrice(tx.paid, effectiveDebtSymbol), col6, centerY);
 
       ctx.fillStyle = tx.remaining > 0 ? '#dc2626' : '#16a34a';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
-      ctx.fillText(`${data.currencySymbol}${formatNumber(tx.remaining)}`, col7, centerY);
+      ctx.fillText(formatCanvasPrice(tx.remaining, effectiveDebtSymbol), col7, centerY);
 
       currentY += ROW_HEIGHT;
     });

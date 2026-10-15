@@ -8,7 +8,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { formatNumber } from './utils';
+import { formatNumber, formatCurrency } from './utils';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
 
@@ -130,11 +130,32 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
   const store = getStoreSettings();
   const printSettings = getPrintSettings();
 
+  const rawSymbol = (invoice.currencySymbol || '').trim();
+  const rawCurrency = (invoice.currency || '').toUpperCase();
+  const hasRate = typeof invoice.exchangeRate === 'number' && invoice.exchangeRate > 0;
+  const isForeign = (rawCurrency !== '' && rawCurrency !== 'USD') || (hasRate && invoice.exchangeRate! > 1);
+
+  let effectiveSymbol = rawSymbol;
+  if (isForeign) {
+    if (!effectiveSymbol || effectiveSymbol === '$') {
+      try {
+        const fullSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+        const code = (rawCurrency && rawCurrency !== 'USD') ? rawCurrency : (fullSettings.currencyCode || 'TRY');
+        const symbols = fullSettings.currencySymbols || {};
+        effectiveSymbol = symbols[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
+      } catch {
+        effectiveSymbol = rawCurrency || '₺';
+      }
+    }
+  } else {
+    if (!effectiveSymbol) effectiveSymbol = '$';
+  }
+
   const itemsHTML = invoice.items.map(item => `
     <tr>
       <td style="text-align: right; padding: 4px 0; font-size: 12px;">${item.name}</td>
       <td style="text-align: center; padding: 4px 0; font-size: 12px;">${item.quantity}</td>
-      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${invoice.currencySymbol}${formatNumber(item.total)}</td>
+      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${formatCurrency(item.total, effectiveSymbol)}</td>
     </tr>
   `).join('');
 
@@ -299,27 +320,27 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
       ${invoice.items.length > 1 ? `
         <div class="total-row">
           <span>المجموع الفرعي:</span>
-          <span>${invoice.currencySymbol}${formatNumber(invoice.subtotal)}</span>
+          <span>${formatCurrency(invoice.subtotal, effectiveSymbol)}</span>
         </div>
       ` : ''}
       
       ${invoice.discountAmount && invoice.discountAmount > 0 ? `
         <div class="total-row">
           <span>الخصم${invoice.discount ? ` (${invoice.discount}%)` : ''}:</span>
-          <span>-${invoice.currencySymbol}${formatNumber(invoice.discountAmount!)}</span>
+          <span>-${formatCurrency(invoice.discountAmount!, effectiveSymbol)}</span>
         </div>
       ` : ''}
 
       ${invoice.tax && invoice.tax > 0 ? `
         <div class="total-row">
           <span>الضريبة:</span>
-          <span>${invoice.currencySymbol}${formatNumber(invoice.tax!)}</span>
+          <span>${formatCurrency(invoice.tax!, effectiveSymbol)}</span>
         </div>
       ` : ''}
 
       <div class="total-row grand-total">
         <span>الإجمالي:</span>
-        <span>${invoice.currencySymbol}${formatNumber(invoice.total)}</span>
+        <span>${formatCurrency(invoice.total, effectiveSymbol)}</span>
       </div>
 
       ${(() => {
@@ -333,8 +354,8 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
           const sypRate = Number(rates.SYP || 14500);
           const tryRate = Number(rates.TRY || 34);
 
-          const invSymbol = invoice.currencySymbol || '$';
-          const invCode = (invoice.currency || (invSymbol === '₺' ? 'TRY' : invSymbol === 'ل.س' ? 'SYP' : 'USD')).toUpperCase();
+          const invSymbol = effectiveSymbol;
+          const invCode = (invoice.currency || (invSymbol === '₺' ? 'TRY' : invSymbol === 'ل.س' ? 'SYP' : (invSymbol === '$' ? 'USD' : invSymbol))).toUpperCase();
           
           let baseUSD = invoice.totalUSD;
           if (baseUSD === undefined || baseUSD === null) {
@@ -362,7 +383,7 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
               const cName = names[upperCode] || upperCode;
               const cSymbol = symbols[upperCode] || upperCode;
               const cDecimals = rate >= 100 ? 0 : 2;
-              parts.push(`${cName}: ${formatNumber(baseUSD * rate, cDecimals)} ${cSymbol}`);
+              parts.push(`${cName}: ${formatCurrency(baseUSD * rate, cSymbol, cDecimals)}`);
             }
           }
 

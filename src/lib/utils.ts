@@ -61,7 +61,8 @@ export function formatCurrency(amount: number, symbol?: string, decimals: number
       const s = typeof window !== 'undefined' ? localStorage.getItem('hyperpos_settings_v1') : null;
       if (s) {
         const parsed = JSON.parse(s);
-        effectiveSymbol = parsed.currencySymbols?.USD || parsed.currencySymbol || '$';
+        const activeCode = parsed.currencyCode || parsed.defaultCurrency || 'USD';
+        effectiveSymbol = parsed.currencySymbol || parsed.currencySymbols?.[activeCode] || parsed.currencySymbols?.USD || '$';
       }
     } catch {}
     if (!effectiveSymbol) effectiveSymbol = '$';
@@ -74,10 +75,14 @@ export function formatCurrency(amount: number, symbol?: string, decimals: number
   });
   const formatted = formatter.format(roundCurrency(amount));
   const cleanSymbol = (effectiveSymbol || '').trim();
-  if (cleanSymbol === 'ل.س' || cleanSymbol === 'SYP') {
-    return `${formatted}\u00A0${cleanSymbol}`;
+
+  // علامات العملات الغربية تسبق الرقم ($46, €46, £46)
+  if (cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') {
+    return `${cleanSymbol}${formatted}`;
   }
-  return `${effectiveSymbol}${formatted}`;
+
+  // كافة الرموز الأخرى (العملات العربية مثل ل.ل، د.أ، د.ك، ل.س أو ₺ أو أي كود/رمز) توضع بعد الرقم بفاصل غير منكسر
+  return `${formatted}\u00A0${cleanSymbol}`;
 }
 
 // Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)
