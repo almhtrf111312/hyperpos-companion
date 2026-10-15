@@ -57,10 +57,11 @@ import { saveStoreSettings, getCurrentUserId, getCurrentUserName } from '@/lib/s
 import { getDefaultCategories } from '@/lib/store-type-config';
 import { saveCategories, loadCategories, Category } from '@/lib/categories-store';
 import { PREDEFINED_CURRENCIES } from '@/lib/currencies';
-import { openShift, loadShifts } from '@/lib/cashbox-store';
+import { openShift, loadShifts, getActiveShift } from '@/lib/cashbox-store';
 
 interface SetupWizardProps {
   onComplete: () => void;
+  isPreview?: boolean;
 }
 
 interface PartnerItem {
@@ -75,9 +76,62 @@ const SETTINGS_KEY = 'hyperpos_settings_v1';
 const STORE_TYPE_KEY = 'hyperpos_store_type';
 const TAX_KEY = 'hyperpos_tax_settings';
 
-export function SetupWizard({ onComplete }: SetupWizardProps) {
+const getInitialStoredSettings = (): Record<string, any> | null => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
+const getInitialCurrencies = () => {
+  const settings = getInitialStoredSettings();
+  const enabledMap = (settings?.enabledCurrencies || {}) as Record<string, boolean>;
+  const namesMap = (settings?.currencyNames || {}) as Record<string, string>;
+  const symbolsMap = (settings?.currencySymbols || {}) as Record<string, string>;
+  const ratesMap = (settings?.exchangeRates || {}) as Record<string, any>;
+
+  // 1. Identify non-USD currencies that are explicitly enabled (true)
+  const activeNonUsd = Object.keys(enabledMap).filter(code => code !== 'USD' && enabledMap[code] === true);
+
+  // 2. Identify other non-USD currencies that exist in names, symbols, or rates
+  const otherConfigured = Object.keys({ ...namesMap, ...symbolsMap, ...ratesMap })
+    .filter(code => code !== 'USD' && !activeNonUsd.includes(code));
+
+  // Prioritize actively enabled currencies first, then any other configured currencies
+  const candidateCodes = [...activeNonUsd, ...otherConfigured];
+
+  // Resolve Secondary Currency 1
+  const c1Code = candidateCodes[0] || 'TRY';
+  const c1Predefined = PREDEFINED_CURRENCIES.find(c => c.code === c1Code);
+  const c1Enabled = enabledMap[c1Code] !== undefined ? !!enabledMap[c1Code] : true;
+  const c1Name = namesMap[c1Code] || c1Predefined?.name || (c1Code === 'TRY' ? 'ليرة تركية' : c1Code);
+  const c1Symbol = symbolsMap[c1Code] || c1Predefined?.symbol || (c1Code === 'TRY' ? '₺' : c1Code);
+  const c1Rate = Number(ratesMap[c1Code]) || c1Predefined?.suggestedRate || (c1Code === 'TRY' ? 34 : 1);
+
+  // Resolve Secondary Currency 2
+  const c2Code = candidateCodes[1] || (c1Code === 'SYP' ? 'TRY' : 'SYP');
+  const c2Predefined = PREDEFINED_CURRENCIES.find(c => c.code === c2Code);
+  const c2Enabled = enabledMap[c2Code] !== undefined ? !!enabledMap[c2Code] : (candidateCodes.length > 1 ? false : true);
+  const c2Name = namesMap[c2Code] || c2Predefined?.name || (c2Code === 'SYP' ? 'ليرة سورية' : c2Code);
+  const c2Symbol = symbolsMap[c2Code] || c2Predefined?.symbol || (c2Code === 'SYP' ? 'ل.س' : c2Code);
+  const c2Rate = Number(ratesMap[c2Code]) || c2Predefined?.suggestedRate || (c2Code === 'SYP' ? 14500 : 1);
+
+  return {
+    primaryCurrency: settings?.primaryCurrency || 'USD',
+    c1: { code: c1Code, enabled: c1Enabled, name: c1Name, symbol: c1Symbol, rate: c1Rate },
+    c2: { code: c2Code, enabled: c2Enabled, name: c2Name, symbol: c2Symbol, rate: c2Rate },
+  };
+};
+
+export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
   const { isRTL, direction } = useLanguage();
   const { mode: themeMode, setMode: setThemeMode } = useTheme();
+
+  // Check if we are in preview mode or if setup was already previously completed
+  const isAlreadySetup = typeof isPreview === 'boolean'
+    ? isPreview
+    : (localStorage.getItem('hyperpos_setup_complete') === 'true' && sessionStorage.getItem('hyperpos_just_signed_up') !== 'true');
 
   const [step, setStep] = useState(1);
   const totalSteps = 5;
@@ -85,53 +139,84 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
   // Step 1: Store info & Identity & Catalog Templates
   const [storeName, setStoreName] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SETTINGS_KEY);
-      if (saved) return JSON.parse(saved)?.storeSettings?.name || '';
-    } catch {}
-    return '';
+    const s = getInitialStoredSettings();
+    return s?.storeSettings?.name || '';
   });
 
   const [storeType, setStoreType] = useState<string>(() => {
-    try {
-      return localStorage.getItem(STORE_TYPE_KEY) || 'grocery';
-    } catch {
-      return 'grocery';
-    }
+    const s = getInitialStoredSettings();
+    return localStorage.getItem(STORE_TYPE_KEY) || s?.storeSettings?.type || 'grocery';
   });
 
-  const [storePhone, setStorePhone] = useState('');
-  const [storeAddress, setStoreAddress] = useState('');
-  const [storeLogo, setStoreLogo] = useState<string>('');
+  const [storePhone, setStorePhone] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.storeSettings?.phone || '';
+  });
+  const [storeAddress, setStoreAddress] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.storeSettings?.address || '';
+  });
+  const [storeLogo, setStoreLogo] = useState<string>(() => {
+    const s = getInitialStoredSettings();
+    return s?.storeSettings?.logo || '';
+  });
   const [seedCategories, setSeedCategories] = useState(true);
 
   // Step 2: Currencies & Pricing (Flexible Dynamic Multi-Currency)
-  const [primaryCurrency, setPrimaryCurrency] = useState('USD');
+  const initialCurrencies = getInitialCurrencies();
+  const [primaryCurrency, setPrimaryCurrency] = useState(initialCurrencies.primaryCurrency);
 
   // Secondary Currency 1
-  const [sec1Enabled, setSec1Enabled] = useState(true);
-  const [sec1Code, setSec1Code] = useState('TRY');
-  const [sec1Name, setSec1Name] = useState('ليرة تركية');
-  const [sec1Symbol, setSec1Symbol] = useState('₺');
-  const [sec1Rate, setSec1Rate] = useState<number>(34);
+  const [sec1Enabled, setSec1Enabled] = useState(initialCurrencies.c1.enabled);
+  const [sec1Code, setSec1Code] = useState(initialCurrencies.c1.code);
+  const [sec1Name, setSec1Name] = useState(initialCurrencies.c1.name);
+  const [sec1Symbol, setSec1Symbol] = useState(initialCurrencies.c1.symbol);
+  const [sec1Rate, setSec1Rate] = useState<number>(initialCurrencies.c1.rate);
 
   // Secondary Currency 2
-  const [sec2Enabled, setSec2Enabled] = useState(true);
-  const [sec2Code, setSec2Code] = useState('SYP');
-  const [sec2Name, setSec2Name] = useState('ليرة سورية');
-  const [sec2Symbol, setSec2Symbol] = useState('ل.س');
-  const [sec2Rate, setSec2Rate] = useState<number>(14500);
+  const [sec2Enabled, setSec2Enabled] = useState(initialCurrencies.c2.enabled);
+  const [sec2Code, setSec2Code] = useState(initialCurrencies.c2.code);
+  const [sec2Name, setSec2Name] = useState(initialCurrencies.c2.name);
+  const [sec2Symbol, setSec2Symbol] = useState(initialCurrencies.c2.symbol);
+  const [sec2Rate, setSec2Rate] = useState<number>(initialCurrencies.c2.rate);
 
   // Step 3: Sales, Tax, Thermal Printing & Barcode
-  const [taxEnabled, setTaxEnabled] = useState(false);
-  const [taxRate, setTaxRate] = useState<number>(5);
-  const [discountPercentEnabled, setDiscountPercentEnabled] = useState(true);
-  const [discountFixedEnabled, setDiscountFixedEnabled] = useState(true);
-  const [barcodeScanMode, setBarcodeScanMode] = useState<'add' | 'search'>('add');
-  const [barcodeDevice, setBarcodeDevice] = useState<'camera' | 'scanner' | 'manual'>('camera');
-  const [paperSize, setPaperSize] = useState<'80mm' | '57mm'>('80mm');
-  const [receiptFooter, setReceiptFooter] = useState('شكراً لزيارتكم');
-  const [printAutoAfterSale, setPrintAutoAfterSale] = useState(false);
+  const [taxEnabled, setTaxEnabled] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.taxEnabled ?? false;
+  });
+  const [taxRate, setTaxRate] = useState<number>(() => {
+    const s = getInitialStoredSettings();
+    return Number(s?.taxRate) || 5;
+  });
+  const [discountPercentEnabled, setDiscountPercentEnabled] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.discountPercentEnabled ?? true;
+  });
+  const [discountFixedEnabled, setDiscountFixedEnabled] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.discountFixedEnabled ?? true;
+  });
+  const [barcodeScanMode, setBarcodeScanMode] = useState<'add' | 'search'>(() => {
+    const s = getInitialStoredSettings();
+    return s?.barcodeScanMode || 'add';
+  });
+  const [barcodeDevice, setBarcodeDevice] = useState<'camera' | 'scanner' | 'manual'>(() => {
+    const s = getInitialStoredSettings();
+    return s?.barcodeDeviceType || (localStorage.getItem('hyperpos_barcode_device') as any) || 'camera';
+  });
+  const [paperSize, setPaperSize] = useState<'80mm' | '57mm'>(() => {
+    const s = getInitialStoredSettings();
+    return s?.printSettings?.paperSize || '80mm';
+  });
+  const [receiptFooter, setReceiptFooter] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.printSettings?.footerText || 'شكراً لزيارتكم';
+  });
+  const [printAutoAfterSale, setPrintAutoAfterSale] = useState(() => {
+    const s = getInitialStoredSettings();
+    return s?.printSettings?.autoPrint ?? false;
+  });
 
   // Step 4: Partners & Profits
   const [hasPartners, setHasPartners] = useState<'no' | 'yes'>('no');
@@ -145,53 +230,28 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [openingCash, setOpeningCash] = useState<string>('0');
   const [openFirstShift, setOpenFirstShift] = useState(true);
 
-  // Load existing settings on mount if available
+  // Load existing settings on mount and sync missing fields from cloud if available
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.storeSettings?.name) setStoreName(parsed.storeSettings.name);
-        if (parsed.storeSettings?.phone) setStorePhone(parsed.storeSettings.phone);
-        if (parsed.storeSettings?.address) setStoreAddress(parsed.storeSettings.address);
-        if (parsed.storeSettings?.logo) setStoreLogo(parsed.storeSettings.logo);
-        if (parsed.primaryCurrency) setPrimaryCurrency(parsed.primaryCurrency);
+    let isMounted = true;
 
-        // Load currencies
-        if (parsed.enabledCurrencies) {
-          const nonUsd = Object.keys(parsed.enabledCurrencies).filter(c => c !== 'USD');
-          if (nonUsd.length > 0) {
-            const c1 = nonUsd[0];
-            setSec1Code(c1);
-            setSec1Enabled(!!parsed.enabledCurrencies[c1]);
-            if (parsed.currencyNames?.[c1]) setSec1Name(parsed.currencyNames[c1]);
-            if (parsed.currencySymbols?.[c1]) setSec1Symbol(parsed.currencySymbols[c1]);
-            if (parsed.exchangeRates?.[c1]) setSec1Rate(Number(parsed.exchangeRates[c1]) || 1);
-          }
-          if (nonUsd.length > 1) {
-            const c2 = nonUsd[1];
-            setSec2Code(c2);
-            setSec2Enabled(!!parsed.enabledCurrencies[c2]);
-            if (parsed.currencyNames?.[c2]) setSec2Name(parsed.currencyNames[c2]);
-            if (parsed.currencySymbols?.[c2]) setSec2Symbol(parsed.currencySymbols[c2]);
-            if (parsed.exchangeRates?.[c2]) setSec2Rate(Number(parsed.exchangeRates[c2]) || 1);
-          }
-        }
+    // Background fetch from cloud to enrich any missing data if online
+    import('@/lib/supabase-store').then(({ fetchStoreSettings }) => {
+      fetchStoreSettings().then((cloud) => {
+        if (!isMounted || !cloud) return;
+        if (cloud.name) setStoreName((prev) => prev || cloud.name || '');
+        if (cloud.phone) setStorePhone((prev) => prev || cloud.phone || '');
+        if (cloud.address) setStoreAddress((prev) => prev || cloud.address || '');
+        if (cloud.logo_url) setStoreLogo((prev) => prev || cloud.logo_url || '');
+        if (cloud.store_type) setStoreType((prev) => prev || cloud.store_type || 'grocery');
+        if (cloud.primary_currency) setPrimaryCurrency((prev) => prev || cloud.primary_currency || 'USD');
+        if (cloud.tax_enabled !== undefined) setTaxEnabled((prev) => prev ?? !!cloud.tax_enabled);
+        if (cloud.tax_rate !== undefined) setTaxRate((prev) => prev || Number(cloud.tax_rate) || 5);
+      }).catch(() => {});
+    }).catch(() => {});
 
-        if (parsed.taxEnabled !== undefined) setTaxEnabled(!!parsed.taxEnabled);
-        if (parsed.taxRate !== undefined) setTaxRate(Number(parsed.taxRate) || 5);
-        if (parsed.discountPercentEnabled !== undefined) setDiscountPercentEnabled(!!parsed.discountPercentEnabled);
-        if (parsed.discountFixedEnabled !== undefined) setDiscountFixedEnabled(!!parsed.discountFixedEnabled);
-        if (parsed.barcodeScanMode) setBarcodeScanMode(parsed.barcodeScanMode);
-        if (parsed.barcodeDeviceType) setBarcodeDevice(parsed.barcodeDeviceType);
-
-        if (parsed.printSettings) {
-          if (parsed.printSettings.paperSize) setPaperSize(parsed.printSettings.paperSize);
-          if (parsed.printSettings.footerText) setReceiptFooter(parsed.printSettings.footerText);
-          if (parsed.printSettings.autoPrint !== undefined) setPrintAutoAfterSale(!!parsed.printSettings.autoPrint);
-        }
-      }
-    } catch {}
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Handle predefined currency selection for secondary 1
@@ -288,41 +348,47 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       }
     }
 
-    // 2. Build full settings object
+    // 2. Read previous settings to safely merge
+    let prevSettings: Record<string, any> = {};
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) prevSettings = JSON.parse(raw);
+    } catch {}
+
     const newSettings = {
+      ...prevSettings,
       storeSettings: {
+        ...(prevSettings.storeSettings || {}),
         name: finalStoreName,
         type: storeType,
         phone: storePhone.trim(),
         address: storeAddress.trim(),
         logo: storeLogo,
       },
-      primaryCurrency,
+      primaryCurrency: primaryCurrency || prevSettings.primaryCurrency || 'USD',
       currencyNames: {
-        USD: 'دولار',
+        ...(prevSettings.currencyNames || {}),
+        USD: prevSettings.currencyNames?.USD || 'دولار',
         [sec1Code]: sec1Name.trim() || sec1Code,
         [sec2Code]: sec2Name.trim() || sec2Code,
-        TRY: sec1Code === 'TRY' ? sec1Name : 'ليرة تركية',
-        SYP: sec2Code === 'SYP' ? sec2Name : 'ليرة سورية',
       },
       currencySymbols: {
-        USD: '$',
+        ...(prevSettings.currencySymbols || {}),
+        USD: prevSettings.currencySymbols?.USD || '$',
         [sec1Code]: sec1Symbol.trim() || sec1Code,
         [sec2Code]: sec2Symbol.trim() || sec2Code,
       },
       exchangeRates: {
+        ...(prevSettings.exchangeRates || {}),
         USD: '1',
         [sec1Code]: String(sec1Rate || 1),
         [sec2Code]: String(sec2Rate || 1),
-        TRY: String(sec1Code === 'TRY' ? sec1Rate : 34),
-        SYP: String(sec2Code === 'SYP' ? sec2Rate : 14500),
       },
       enabledCurrencies: {
+        ...(prevSettings.enabledCurrencies || {}),
         USD: true,
         [sec1Code]: sec1Enabled,
         [sec2Code]: sec2Enabled,
-        TRY: sec1Code === 'TRY' ? sec1Enabled : false,
-        SYP: sec2Code === 'SYP' ? sec2Enabled : false,
       },
       taxEnabled,
       taxRate: taxEnabled ? Number(taxRate || 0) : 0,
@@ -331,6 +397,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       barcodeScanMode: barcodeDevice === 'manual' ? 'search' : barcodeScanMode,
       barcodeDeviceType: barcodeDevice,
       printSettings: {
+        ...(prevSettings.printSettings || {}),
         paperSize,
         footerText: receiptFooter.trim(),
         autoPrint: printAutoAfterSale,
@@ -343,11 +410,17 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
       localStorage.setItem(STORE_TYPE_KEY, storeType);
+      let prevTax: Record<string, any> = {};
+      try {
+        const rawTax = localStorage.getItem(TAX_KEY);
+        if (rawTax) prevTax = JSON.parse(rawTax);
+      } catch {}
       localStorage.setItem(TAX_KEY, JSON.stringify({
+        ...prevTax,
         enabled: taxEnabled,
         rate: taxRate,
-        inclusive: false,
-        name: 'ضريبة القيمة المضافة'
+        inclusive: prevTax.inclusive ?? false,
+        name: prevTax.name || 'ضريبة القيمة المضافة'
       }));
       localStorage.setItem('hyperpos_barcode_device', barcodeDevice);
       localStorage.setItem('hyperpos_setup_complete', 'true');
@@ -357,7 +430,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
     // 4. Opening Cash Float / Shift
     const amount = parseFloat(openingCash) || 0;
-    if (openFirstShift || amount > 0) {
+    const existingActiveShift = getActiveShift();
+    if (!existingActiveShift && (openFirstShift || amount > 0)) {
       try {
         const uid = getCurrentUserId() || 'offline_admin';
         const uname = getCurrentUserName() || 'المدير';
@@ -409,6 +483,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 
     // 6. Cloud store settings sync
     try {
+      const existingCloudRates = (prevSettings.exchangeRates && typeof prevSettings.exchangeRates === 'object')
+        ? Object.fromEntries(Object.entries(prevSettings.exchangeRates).map(([k, v]) => [k, Number(v) || 1]))
+        : {};
+
       await saveStoreSettings({
         name: finalStoreName,
         store_type: storeType,
@@ -417,11 +495,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         logo_url: storeLogo,
         primary_currency: primaryCurrency,
         exchange_rates: {
+          ...existingCloudRates,
           USD: 1,
           [sec1Code]: sec1Rate || 1,
           [sec2Code]: sec2Rate || 1,
-          TRY: sec1Code === 'TRY' ? sec1Rate : 34,
-          SYP: sec2Code === 'SYP' ? sec2Rate : 14500,
         },
         tax_enabled: taxEnabled,
         tax_rate: taxEnabled ? Number(taxRate || 0) : 0,
@@ -481,8 +558,23 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               </div>
             </div>
 
-            <div className="text-xs font-bold px-3 py-1 rounded-full bg-primary/15 text-primary border border-primary/20">
-              خطوة {step} من {totalSteps}
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-bold px-3 py-1 rounded-full bg-primary/15 text-primary border border-primary/20">
+                خطوة {step} من {totalSteps}
+              </div>
+
+              {/* زر إغلاق / خروج بدون حفظ (Preview Mode) */}
+              {isAlreadySetup && (
+                <button
+                  type="button"
+                  onClick={() => onComplete()}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/70 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                  title="إغلاق المعاينة دون حفظ أي تعديلات"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>إغلاق</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1497,7 +1589,17 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         {/* Footer Navigation Bar */}
         <div className="p-4 sm:p-6 bg-muted/30 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
           {/* Back button */}
-          <div className="w-full sm:w-auto">
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            {isAlreadySetup && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onComplete()}
+                className="w-full sm:w-auto h-10 px-4 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                إغلاق المعاينة
+              </Button>
+            )}
             {step > 1 && (
               <Button
                 type="button"

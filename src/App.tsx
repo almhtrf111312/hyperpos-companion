@@ -281,14 +281,12 @@ const AppContent = () => {
   // Show setup wizard on manual trigger (from Settings or Help)
   if (manualShowSetup) {
     return (
-      <SetupWizard onComplete={() => {
-        try {
-          sessionStorage.removeItem('hyperpos_just_signed_up');
-          localStorage.setItem('hyperpos_setup_complete', 'true');
-        } catch {}
-        setSetupComplete(true);
-        setManualShowSetup(false);
-      }} />
+      <SetupWizard
+        isPreview={true}
+        onComplete={() => {
+          setManualShowSetup(false);
+        }}
+      />
     );
   }
 
