@@ -2840,18 +2840,20 @@ export default function Settings() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 border-t border-border/40 pt-2">
-                        {!user.isOwner && (
+                        {(!user.isOwner || isBoss || user.role === 'cashier') && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="flex-1 h-8 gap-1 text-xs"
+                            className="flex-1 h-8 gap-1 text-xs border-primary/30 text-primary hover:bg-primary/10 hover:text-primary transition-colors font-medium shadow-none"
                             onClick={() => {
-                              setPasswordChangeUserId(user.user_id);
+                              setPasswordChangeUserId(user.user_id || user.id);
+                              setSelectedUser(user);
                               setPasswordDialogOpen(true);
                             }}
+                            title={isRTL ? 'تغيير كلمة المرور' : 'Change Password'}
                           >
-                            <Key className="w-3 h-3" />
-                            <span>{t('settings.password')}</span>
+                            <Key className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span>{isRTL ? 'كلمة المرور' : t('settings.password')}</span>
                           </Button>
                         )}
                         <Button variant="ghost" size="sm" className="flex-1 h-8 gap-1 text-xs" onClick={() => handleEditUser(user)}>
@@ -3727,6 +3729,32 @@ export default function Settings() {
                 placeholder={t('settings.usernamePlaceholder')}
               />
             </div>
+            {selectedUser && (
+              <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <Key className="w-4 h-4 text-primary shrink-0" />
+                    <span>{isRTL ? 'كلمة مرور المستخدم' : 'User Password'}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isRTL ? 'تعيين أو تغيير كلمة المرور لهذا المستخدم مباشرة' : 'Directly set or change this user\'s password'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 h-8 gap-1.5 border-primary/40 text-primary hover:bg-primary/10 font-medium"
+                  onClick={() => {
+                    setPasswordChangeUserId(selectedUser.user_id || selectedUser.id);
+                    setPasswordDialogOpen(true);
+                  }}
+                >
+                  <Key className="w-3.5 h-3.5 text-primary" />
+                  <span>{isRTL ? 'تعيين كلمة مرور جديدة' : 'Set New Password'}</span>
+                </Button>
+              </div>
+            )}
             {!selectedUser && (
               <>
                 <div className="space-y-2">
@@ -3903,9 +3931,13 @@ export default function Settings() {
         open={passwordDialogOpen}
         onOpenChange={(open) => {
           setPasswordDialogOpen(open);
-          if (!open) setPasswordChangeUserId(null);
+          if (!open) {
+            setPasswordChangeUserId(null);
+          }
         }}
-        userId={passwordChangeUserId || undefined}
+        userId={passwordChangeUserId || selectedUser?.user_id || selectedUser?.id || undefined}
+        userName={users.find(u => (u.user_id === passwordChangeUserId || u.id === passwordChangeUserId))?.name || selectedUser?.name}
+        isOwnPassword={passwordChangeUserId ? passwordChangeUserId === currentUser?.id : false}
       />
 
       {/* Transfer License Dialog */}

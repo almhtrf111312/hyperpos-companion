@@ -746,88 +746,18 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
   return true;
 }
 
-// Delete all user data (for data reset)
+// Delete all user data (for data reset via unified RPC)
 export async function deleteAllUserData(): Promise<boolean> {
-  const userId = getCurrentUserId();
-  if (!userId) return false;
-
-  // ✅ الترتيب مهم جداً - يجب حذف الجداول المرتبطة أولاً بسبب المفاتيح الأجنبية
-  // المرحلة 1: حذف الجداول المرتبطة بالمنتجات والمخازن أولاً
-  const phase1Tables = [
-    'stock_transfer_items',  // مرتبط بـ products و stock_transfers
-    'warehouse_stock',       // مرتبط بـ products و warehouses
-    'invoice_items',         // مرتبط بـ invoices
-  ];
-
-  // المرحلة 2: حذف الجداول التي تعتمد عليها المرحلة 1
-  const phase2Tables = [
-    'stock_transfers',       // يعتمد على warehouses
-    'invoices',
-    'debts',
-    'expenses',
-    'recurring_expenses',
-    'maintenance_services',
-    'partners',
-  ];
-
-  // المرحلة 3: حذف الجداول الأساسية
-  const phase3Tables = [
-    'products',
-    'categories',
-    'customers',
-    'warehouses',
-  ];
-
   try {
-    // حذف المرحلة 1
-    for (const table of phase1Tables) {
-      const { error } = await sb
-        .from(table)
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // حذف كل شيء
-
-      if (error) {
-        console.error(`Error deleting from ${table}:`, error);
-        // محاولة الحذف بطريقة بديلة للجداول المرتبطة
-        if (table === 'stock_transfer_items' || table === 'warehouse_stock') {
-          // جلب IDs المنتجات للمستخدم أولاً
-          const { data: products } = await sb
-            .from('products')
-            .select('id')
-            .eq('user_id', userId);
-
-          const productRows = (products || []) as Array<{ id: string }>;
-          if (productRows.length > 0) {
-            const productIds = productRows.map(p => p.id);
-            await sb
-              .from(table)
-              .delete()
-              .in('product_id', productIds);
-          }
-        }
-      }
+    const { error } = await supabase.rpc('reset_user_store_data');
+    if (error) {
+      console.error('[deleteAllUserData] RPC reset_user_store_data error:', error);
+      return false;
     }
-
-    // حذف المرحلة 2
-    for (const table of phase2Tables) {
-      await sb
-        .from(table)
-        .delete()
-        .eq('user_id', userId);
-    }
-
-    // حذف المرحلة 3
-    for (const table of phase3Tables) {
-      await sb
-        .from(table)
-        .delete()
-        .eq('user_id', userId);
-    }
-
-    console.log('[deleteAllUserData] All user data deleted successfully');
+    console.log('[deleteAllUserData] reset_user_store_data executed successfully');
     return true;
   } catch (error) {
-    console.error('Error deleting user data:', error);
+    console.error('Error deleting user data via RPC reset_user_store_data:', error);
     return false;
   }
 }

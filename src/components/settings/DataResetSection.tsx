@@ -73,20 +73,20 @@ export default function DataResetSection() {
       const success = await clearAllDataCompletely();
 
       if (success) {
-        toast.success(t('settings.resetDataSuccess', language), {
+        setShowConfirmDialog(false);
+        toast.success(t('settings.resetDataSuccess', language) || 'تمت إعادة ضبط وحذف كافة البيانات بنجاح', {
           icon: <CheckCircle className="h-5 w-5 text-green-500" />,
           description: navigator.onLine 
-            ? undefined 
-            : 'سيتم مسح البيانات السحابية عند عودة الإنترنت',
+            ? 'تم حذف جميع البيانات من السحابة والذاكرة المحلية بنجاح' 
+            : 'تم مسح البيانات محلياً وسيتم مسح السحابة عند عودة الإنترنت',
         });
-        setShowConfirmDialog(false);
         
-        // Reload the page to refresh all data
+        // إعادة التوجيه إلى الصفحة الرئيسية بدلاً من مجرد reload
         setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+          window.location.href = '/';
+        }, 1200);
       } else {
-        setError(t('settings.resetDataFailed', language));
+        setError(t('settings.resetDataFailed', language) || 'فشل في إعادة ضبط البيانات');
       }
     } catch (err) {
       console.error('Reset error:', err);
