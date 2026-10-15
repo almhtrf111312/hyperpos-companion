@@ -46,6 +46,7 @@ import {
   ChevronRight,
   KeyRound,
   Wrench,
+  Terminal,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -82,6 +83,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
+import { ErrorRadarPanel } from '@/components/boss/ErrorRadarPanel';
+import { getUnresolvedErrorCount, subscribeToErrorRadar } from '@/lib/error-radar';
 
 interface CashierInfo {
   user_id: string;
@@ -248,6 +251,17 @@ export default function BossPanel() {
 
   // Expanded owners (to show/hide cashier list)
   const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set());
+
+  // Error Radar unresolved issues badge counter
+  const [unresolvedErrorsCount, setUnresolvedErrorsCount] = useState<number>(0);
+
+  useEffect(() => {
+    setUnresolvedErrorsCount(getUnresolvedErrorCount());
+    const unsub = subscribeToErrorRadar(() => {
+      setUnresolvedErrorsCount(getUnresolvedErrorCount());
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!roleLoading && !isBoss) {
@@ -1246,7 +1260,7 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
             <TabsTrigger
               value="users"
               className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
@@ -1286,6 +1300,18 @@ export default function BossPanel() {
             >
               <Wrench className="w-4 h-4 shrink-0" />
               <span className="leading-tight">النظام</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="radar"
+              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Terminal className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">رادار الأخطاء</span>
+              {unresolvedErrorsCount > 0 && (
+                <span className="absolute top-1 end-1 sm:static w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {unresolvedErrorsCount}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -2066,6 +2092,11 @@ export default function BossPanel() {
                 <SystemDiagnostics />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Tab 6: Error Radar */}
+          <TabsContent value="radar" className="space-y-4">
+            <ErrorRadarPanel />
           </TabsContent>
         </Tabs>
 

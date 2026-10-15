@@ -8,6 +8,10 @@ import { applyAppFontToDOM, getStoredAppFont } from "./lib/app-font-config";
 import { applyUIScaleToDOM, getStoredUIScale } from "./lib/ui-scale-config";
 import App from "./App.tsx";
 import "./index.css";
+import { initErrorRadar, captureError } from "./lib/error-radar";
+
+// Initialize Error Radar listeners as early as possible
+initErrorRadar();
 
 // Initialize font, scale, and language layout immediately on startup
 applyAppFontToDOM(getStoredAppFont());
@@ -59,14 +63,28 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[GlobalCrash] Uncaught root error:', error, errorInfo);
+    try {
+      captureError(error, {
+        source: 'react_boundary',
+        severity: 'critical',
+        componentStack: errorInfo?.componentStack || undefined,
+      });
+    } catch {
+      // Non-blocking
+    }
   }
 
-  handleReload = () => {
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  handleGoHome = () => {
     try {
-      localStorage.removeItem('device_binding_cache');
-      sessionStorage.removeItem('hyperpos_auto_login_attempted');
+      if (typeof window !== 'undefined') {
+        window.location.hash = '#/';
+      }
     } catch { /* ignore */ }
-    window.location.reload();
+    this.setState({ hasError: false, error: null });
   };
 
   render() {
@@ -77,23 +95,36 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
           alignItems: 'center', justifyContent: 'center',
           backgroundColor: '#0a0a0a', color: '#fff',
           padding: '24px', textAlign: 'center', fontFamily: 'system-ui, sans-serif',
+          direction: 'rtl',
         }}>
           <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: '#ef4444' }}>
-            حدث خطأ أثناء تحميل التطبيق
+            حدث خطأ أثناء تحميل واجهة التطبيق
           </h2>
-          <p style={{ fontSize: '0.875rem', color: '#a1a1aa', maxWidth: '360px', marginBottom: '20px' }}>
-            {this.state.error?.message || 'تعذر تشغيل واجهة النظام'}
+          <p style={{ fontSize: '0.875rem', color: '#a1a1aa', maxWidth: '380px', marginBottom: '24px', lineHeight: '1.5' }}>
+            تم تسجيل تقرير المشكلة في رادار الأخطاء لمراجعته من قِبل الإدارة. يمكنك العودة للشاشة الرئيسية أو إعادة المحاولة بأمان.
           </p>
-          <button
-            onClick={this.handleReload}
-            style={{
-              backgroundColor: '#2563eb', color: '#fff', border: 'none',
-              padding: '10px 20px', borderRadius: '8px',
-              fontSize: '0.875rem', cursor: 'pointer',
-            }}
-          >
-            إعادة المحاولة ومسح الكاش المؤقت
-          </button>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={this.handleGoHome}
+              style={{
+                backgroundColor: '#2563eb', color: '#fff', border: 'none',
+                padding: '10px 18px', borderRadius: '8px',
+                fontSize: '0.875rem', cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              العودة للرئيسية (نقطة البيع)
+            </button>
+            <button
+              onClick={this.handleRetry}
+              style={{
+                backgroundColor: '#27272a', color: '#e4e4e7', border: '1px solid #3f3f46',
+                padding: '10px 18px', borderRadius: '8px',
+                fontSize: '0.875rem', cursor: 'pointer', fontWeight: 500,
+              }}
+            >
+              إعادة المحاولة
+            </button>
+          </div>
         </div>
       );
     }

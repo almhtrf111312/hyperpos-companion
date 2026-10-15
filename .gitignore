@@ -38,3 +38,8 @@ ECC/
 .agents/
 
 .antigravity/
+
+# Temporary local recordings & scratch files
+record_mobile_tour.mjs
+recordings/
+scratch/
