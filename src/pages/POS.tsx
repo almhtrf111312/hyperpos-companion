@@ -657,6 +657,30 @@ export default function POS() {
         rate: rates.SYP 
       },
     ];
+
+    // تضمين أي عملات مخصصة أخرى مفعلة في الإعدادات
+    try {
+      const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const customRates = parsed?.exchangeRates || {};
+        const customSymbols = parsed?.currencySymbols || {};
+        const customNames = parsed?.currencyNames || {};
+        const customEnabled = parsed?.enabledCurrencies || {};
+        
+        Object.keys(customEnabled).forEach(code => {
+          if (!all.some(c => c.code === code) && customEnabled[code] !== false) {
+            all.push({
+              code,
+              symbol: (customSymbols[code] && typeof customSymbols[code] === 'string' && customSymbols[code].trim()) || code,
+              name: (customNames[code] && typeof customNames[code] === 'string' && customNames[code].trim()) || code,
+              rate: Number(customRates[code] ?? 1) || 1,
+            });
+          }
+        });
+      }
+    } catch {}
+
     const filtered = all.filter(c => enabled[c.code] !== false);
     return filtered.length > 0 ? filtered : [all[0]];
   }, [settingsRev, t]);
@@ -668,18 +692,14 @@ export default function POS() {
 
   useEffect(() => {
     const code = loadDefaultCurrencyCode();
-    const newCurr = currencies.find(c => c.code === code) || currencies[0];
+    const defaultCurr = currencies.find(c => c.code === code) || currencies[0];
     setSelectedCurrency(prev => {
+      // الحفاظ على اختيار المستخدم طالما أن العملة لا تزال مفعلة وموجودة، مع تحديث بياناتها
       const currentMatching = currencies.find(c => c.code === prev.code);
-      if (!currentMatching) return newCurr;
-      if (
-        currentMatching.symbol !== prev.symbol ||
-        currentMatching.name !== prev.name ||
-        currentMatching.rate !== prev.rate
-      ) {
+      if (currentMatching) {
         return currentMatching;
       }
-      return prev.code !== newCurr.code ? newCurr : prev;
+      return defaultCurr;
     });
   }, [currencies]);
   const [customerName, setCustomerName] = useState<string>(() => {

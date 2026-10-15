@@ -261,12 +261,25 @@ export function CartPanel({
   const [receivedAmount, setReceivedAmount] = useState<number>(0);
   const [receivedCurrencyCode, setReceivedCurrencyCode] = useState<string>(() => selectedCurrency.code);
 
+  // مزامنة عملة المبلغ المقبوض تلقائياً مع العملة المحددة للسلة وتصفير المقبوض
+  useEffect(() => {
+    setReceivedCurrencyCode(selectedCurrency.code);
+    setReceivedAmount(0);
+  }, [selectedCurrency.code]);
+
   // Fallback if the received currency was disabled in settings
   useEffect(() => {
     if (!currencies.some(c => c.code === receivedCurrencyCode)) {
       setReceivedCurrencyCode(currencies[0]?.code || 'USD');
     }
   }, [currencies, receivedCurrencyCode]);
+
+  // تصفير المبلغ المقبوض عند تفريغ السلة
+  useEffect(() => {
+    if (cart.length === 0) {
+      setReceivedAmount(0);
+    }
+  }, [cart.length]);
 
   const usdSymbol = currencies.find(c => c.code === 'USD')?.symbol || '$';
   
@@ -421,8 +434,14 @@ export function CartPanel({
     paymentType: 'cash' | 'debt' | 'split' = 'cash',
     downPayment: number = 0,
     debtRemaining: number = 0,
-    invoiceNum?: string
+    invoiceNum?: string,
+    customCurrencySymbol?: string
   ) => {
+    const symbolToUse = customCurrencySymbol || (
+      selectedCurrency.code !== 'USD' && selectedCurrency.symbol === '$'
+        ? (selectedCurrency.code === 'TRY' ? '₺' : selectedCurrency.code === 'SYP' ? 'ل.س' : selectedCurrency.code)
+        : selectedCurrency.symbol
+    );
     setLastSale({
       cart: [...cartData],
       customerName: custName,
@@ -431,7 +450,10 @@ export function CartPanel({
       discount,
       discountAmount,
       discountType,
-      selectedCurrency,
+      selectedCurrency: {
+        ...selectedCurrency,
+        symbol: symbolToUse,
+      },
       taxAmount,
       effectiveTaxRate,
       paymentType,
@@ -585,12 +607,33 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
+    // دقة تحديد رمز العملة الفعلي لضمان عدم تسرب $ إذا كانت العملة غير الدولار
+    const effectiveCurrencySymbol = (() => {
+      if (selectedCurrency.code === 'USD') {
+        return (selectedCurrency.symbol && selectedCurrency.symbol.trim()) || '$';
+      }
+      if (selectedCurrency.symbol && selectedCurrency.symbol.trim() && selectedCurrency.symbol.trim() !== '$') {
+        return selectedCurrency.symbol.trim();
+      }
+      try {
+        const rawSettings = localStorage.getItem('hyperpos_settings_v1');
+        if (rawSettings) {
+          const parsed = JSON.parse(rawSettings);
+          const sym = parsed?.currencySymbols?.[selectedCurrency.code];
+          if (sym && typeof sym === 'string' && sym.trim() && sym.trim() !== '$') {
+            return sym.trim();
+          }
+        }
+      } catch { /* ignore */ }
+      return selectedCurrency.code === 'TRY' ? '₺' : selectedCurrency.code === 'SYP' ? 'ل.س' : selectedCurrency.code;
+    })();
+
     // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     const invoiceNumber = getNextInvoiceNumber();
     (window as any).__posSuppressExitUntil = Date.now() + 4000;
     setShowCashDialog(false);
     onClose?.();
-    saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash', 0, 0, invoiceNumber);
+    saveSaleSnapshot(cartSnapshot, customerNameSnapshot || 'عميل نقدي', 'cash', 0, 0, invoiceNumber, effectiveCurrencySymbol);
     onClearCart();
     startSync('جاري حفظ الفاتورة...', false);
 
@@ -699,7 +742,7 @@ export function CartPanel({
           totalInCurrency: roundCurrency(totalSnapshot * activeRate),
 
           currency: selectedCurrency.code,
-          currencySymbol: selectedCurrency.symbol,
+          currencySymbol: effectiveCurrencySymbol,
           exchangeRate: activeRate,
           profit: discountedProfit,
           cogs: totalCOGS,
@@ -741,7 +784,7 @@ export function CartPanel({
       const totalPieces = cartSnapshot.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
       const isSingle = cartSnapshot.length === 1 && totalPieces === 1;
       const singleName = isSingle ? cartSnapshot[0].name : undefined;
-      const formattedTotal = `${activeReceivedCurrency.symbol}${formatNumber(receivedAmount || (totalSnapshot * (activeReceivedCurrency.rate || 1)), 2)}`;
+      const formattedTotal = `${effectiveCurrencySymbol}${formatNumber(receivedAmount || (totalSnapshot * activeRate), 2)}`;
 
       // ✅ إشعار نهائي موحد وحيد لعملية البيع يوضح رقم الفاتورة والإجمالي بدقة
       showToast.success('فاتورة مكتملة', {
@@ -751,7 +794,7 @@ export function CartPanel({
         isMultiple: !isSingle,
         itemCount: totalPieces,
         price: formattedTotal,
-        currency: activeReceivedCurrency.symbol,
+        currency: effectiveCurrencySymbol,
       });
 
       startSync('جاري رفع الفاتورة للسحابة...', false);
@@ -825,6 +868,27 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
+    // دقة تحديد رمز العملة الفعلي لضمان عدم تسرب $ إذا كانت العملة غير الدولار
+    const effectiveCurrencySymbol = (() => {
+      if (selectedCurrency.code === 'USD') {
+        return (selectedCurrency.symbol && selectedCurrency.symbol.trim()) || '$';
+      }
+      if (selectedCurrency.symbol && selectedCurrency.symbol.trim() && selectedCurrency.symbol.trim() !== '$') {
+        return selectedCurrency.symbol.trim();
+      }
+      try {
+        const rawSettings = localStorage.getItem('hyperpos_settings_v1');
+        if (rawSettings) {
+          const parsed = JSON.parse(rawSettings);
+          const sym = parsed?.currencySymbols?.[selectedCurrency.code];
+          if (sym && typeof sym === 'string' && sym.trim() && sym.trim() !== '$') {
+            return sym.trim();
+          }
+        }
+      } catch { /* ignore */ }
+      return selectedCurrency.code === 'TRY' ? '₺' : selectedCurrency.code === 'SYP' ? 'ل.س' : selectedCurrency.code;
+    })();
+
     // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     const invoiceNumber = getNextInvoiceNumber();
     (window as any).__posSuppressExitUntil = Date.now() + 4000;
@@ -836,7 +900,8 @@ export function CartPanel({
       downPaymentSnapshot > 0 ? 'split' : 'debt',
       downPaymentSnapshot,
       debtRemainingSnapshot,
-      invoiceNumber
+      invoiceNumber,
+      effectiveCurrencySymbol
     );
     onClearCart();
     startSync(
@@ -939,7 +1004,7 @@ export function CartPanel({
         total: totalSnapshot,
         totalInCurrency,
         currency: selectedCurrency.code,
-        currencySymbol: selectedCurrency.symbol,
+        currencySymbol: effectiveCurrencySymbol,
         exchangeRate: selectedCurrency.rate || activeRate || 1,
         profit: discountedProfit,
         cogs: totalCOGS,
@@ -1735,7 +1800,7 @@ export function CartPanel({
             </div>
           )}
 
-          {/* Row 3: Received Amount with Currency Selector */}
+          {/* Row 3: Received Amount */}
           <div className="space-y-1">
             <div className={cn(
               "box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
@@ -1758,30 +1823,14 @@ export function CartPanel({
                 )}
                 min="0"
               />
-              
-              {/* أزرار اختيار عملة المبلغ المقبوض (USD أو العملات الثانوية) */}
-              <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-md flex-shrink-0">
-                {currencies.map((currency) => (
-                  <button
-                    key={currency.code}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setReceivedCurrencyCode(currency.code);
-                    }}
-                    className={cn(
-                      "px-1.5 py-0.5 text-[9px] font-bold rounded transition-all leading-none",
-                      activeReceivedCurrency.code === currency.code
-                        ? "bg-primary text-primary-foreground shadow-sm scale-105"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                    title={`القبض بـ ${currency.name}`}
-                  >
-                    {currency.symbol}{currency.name && currency.name !== currency.code && currency.name !== currency.symbol ? ` ${currency.name}` : ''}
-                  </button>
-                ))}
-              </div>
+              <span className={cn(
+                "flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md text-[11px] font-bold flex-shrink-0 transition-colors select-none",
+                receivedAmount > 0
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/50 text-muted-foreground border border-border/60"
+              )}>
+                {activeReceivedCurrency.symbol}
+              </span>
             </div>
 
             {/* بيان توضيحي لقيمة المقبوض بالدولار إذا أُدخل بعملة ثانوية */}

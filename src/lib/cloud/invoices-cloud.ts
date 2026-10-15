@@ -137,14 +137,16 @@ function toInvoice(cloud: CloudInvoice): Invoice {
 
   const currencySymbol = (cloud as any).currency_symbol ||
     persistedSymbols?.[rawCurrency] ||
-    (rawCurrency === 'TRY' ? '₺' :
-      rawCurrency === 'SYP' ? 'ل.س' :
+    (rawCurrency === 'TRY' ? (persistedSymbols?.TRY || '₺') :
+      rawCurrency === 'SYP' ? (persistedSymbols?.SYP || 'ل.س') :
       rawCurrency === 'USD' ? (persistedSymbols?.USD || '$') :
       rawCurrency === 'JOD' ? 'د.أ' :
       rawCurrency === 'SAR' ? 'ر.س' :
       rawCurrency === 'KWD' ? 'د.ك' :
       rawCurrency === 'AED' ? 'د.إ' :
-      (persistedSymbols?.USD || '$'));
+      rawCurrency === 'LBP' ? 'ل.ل' :
+      rawCurrency === 'EUR' ? '€' :
+      (rawCurrency !== 'USD' ? rawCurrency : (persistedSymbols?.USD || '$')));
 
   const exchangeRate = Number(cloud.exchange_rate) || 1;
   const isForeign = rawCurrency !== 'USD' && exchangeRate > 0;
@@ -1108,12 +1110,27 @@ export const updateInvoiceByNumberCloud = async (
 function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
   try {
     const pending = getPendingOperations();
+    const persistedSymbols = (() => {
+      try {
+        const s = localStorage.getItem('hyperpos_settings_v1');
+        if (s) {
+          const parsed = JSON.parse(s);
+          return parsed.currencySymbols as Record<string, string> | undefined;
+        }
+      } catch {}
+      return undefined;
+    })();
     const queueInvoices: Invoice[] = [];
     for (const op of pending) {
       if (op.type === 'invoice_create' || op.type === 'debt_sale_bundle') {
         const data = op.data as Record<string, any>;
         const bundle = (data?.bundle || {}) as Record<string, any>;
         const isFailed = op.status === 'failed';
+        const rawCurr = (bundle.currency || 'USD').toUpperCase();
+        const sym = (bundle.currencySymbol && bundle.currencySymbol !== '$')
+          ? bundle.currencySymbol
+          : (rawCurr === 'USD' ? (persistedSymbols?.USD || '$') : (persistedSymbols?.[rawCurr] || (rawCurr === 'TRY' ? '₺' : rawCurr === 'SYP' ? 'ل.س' : rawCurr)));
+
         queueInvoices.push({
           id: data?.operationId || data?.localId || op.id,
           type: (bundle.type as InvoiceType) || 'sale',
@@ -1127,8 +1144,8 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
           taxAmount: bundle.taxAmount || 0,
           total: bundle.total || 0,
           totalInCurrency: bundle.totalInCurrency || bundle.total || 0,
-          currency: bundle.currency || 'USD',
-          currencySymbol: bundle.currencySymbol || '$',
+          currency: rawCurr,
+          currencySymbol: sym,
           paymentType: op.type === 'debt_sale_bundle' ? 'debt' : (bundle.paymentType || 'cash'),
           status: (bundle.status as InvoiceStatus) || 'pending',
           serviceDescription: bundle.notes || undefined,
