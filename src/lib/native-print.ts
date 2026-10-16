@@ -9,6 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { formatNumber, formatCurrency } from './utils';
+import { isGuestDemoMode } from './demo-data';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
 
@@ -277,6 +278,24 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
     }
     .cash { background: #d4edda; color: #155724; }
     .debt { background: #fff3cd; color: #856404; }
+    ${isGuestDemoMode() ? `
+      .receipt { position: relative; overflow: hidden; }
+      .receipt::before {
+        content: "نسخة تجريبية - Flow POS Pro";
+        position: absolute;
+        top: 35%;
+        left: -10%;
+        right: -10%;
+        transform: rotate(-25deg);
+        font-size: 24px;
+        font-weight: 900;
+        color: rgba(225, 29, 72, 0.12);
+        text-align: center;
+        pointer-events: none;
+        z-index: 999;
+        white-space: nowrap;
+      }
+    ` : ''}
   </style>
 </head>
 <body>
@@ -410,6 +429,12 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
       ${printSettings.footer}
       <br/>
       <small style="color: #999;">FlowPOS Pro</small>
+      ${isGuestDemoMode() ? `
+        <div style="margin-top: 10px; padding: 6px; border: 2px dashed #e11d48; color: #e11d48; font-weight: bold; font-size: 13px; text-align: center; border-radius: 4px; background: #fff1f2;">
+          ⚠️ نسخة تجريبية - Flow POS Pro ⚠️
+          <div style="font-size: 10px; font-weight: normal; color: #be123c; margin-top: 2px;">غير معتمدة كفاتورة رسمية أو محاسبية</div>
+        </div>
+      ` : ''}
     </div>
   </div>
 </body>

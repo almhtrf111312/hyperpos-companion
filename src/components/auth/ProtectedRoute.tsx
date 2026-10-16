@@ -3,12 +3,18 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, checkUserAccountStatus } from '@/hooks/use-auth';
 import { Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  // Fast path for isolated guest demo mode
+  if (isGuestDemoMode()) {
+    return <>{children}</>;
+  }
+
   const { user, isLoading, isAutoLoginChecking, signOut } = useAuth();
   const location = useLocation();
   const [isAccountBlocked, setIsAccountBlocked] = useState(false);

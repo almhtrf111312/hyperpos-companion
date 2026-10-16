@@ -10,6 +10,7 @@ import {
   isCashierUser
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { isGuestDemoMode } from '../demo-data';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { updateInvoiceCloud } from './invoices-cloud';
 import { supabase } from '@/integrations/supabase/client';
@@ -135,6 +136,11 @@ export const getNextManualDebtId = async (): Promise<string> => {
 // Load debts
 // ✅ Owners see all debts, cashiers see only their own
 const fetchFresh_loadDebtsCloud = async (): Promise<Debt[]> => {
+  if (isGuestDemoMode()) {
+    const local = loadDebtsLocally() || [];
+    debtsCache = local;
+    return local;
+  }
   // 1. Offline fast-path
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     const local = loadDebtsLocally();
@@ -270,6 +276,34 @@ export const invalidateDebtsCache = () => {
 export const addDebtCloud = async (
   debtData: Omit<Debt, 'id' | 'createdAt' | 'updatedAt' | 'totalPaid' | 'remainingDebt' | 'status'>
 ): Promise<Debt | null> => {
+  if (isGuestDemoMode()) {
+    const today = new Date().toISOString().split('T')[0];
+    const id = `demo_debt_${Date.now()}`;
+    const nowIso = new Date().toISOString();
+    const localDebt: Debt = {
+      id,
+      invoiceId: debtData.invoiceId || '',
+      customerName: debtData.customerName,
+      customerPhone: debtData.customerPhone || '',
+      totalDebt: debtData.totalDebt,
+      totalPaid: 0,
+      remainingDebt: debtData.totalDebt,
+      dueDate: debtData.dueDate || '',
+      status: (debtData.dueDate && debtData.dueDate < today ? 'overdue' : 'due') as DebtStatus,
+      notes: debtData.notes,
+      isCashDebt: debtData.isCashDebt || false,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      cashierId: 'guest-demo-user',
+      cashierName: 'مستخدم تجريبي (Demo)',
+    };
+    const existing = debtsCache || loadDebtsLocally() || [];
+    const list = [localDebt, ...existing.filter(d => d.id !== localDebt.id)];
+    debtsCache = list;
+    saveDebtsLocally(list);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return localDebt;
+  }
   const today = new Date().toISOString().split('T')[0];
 
   // ✅ جلب معرف المستخدم من المتغير أو مباشرة من supabase
@@ -360,6 +394,27 @@ export const recordPaymentCloud = async (
   amount: number,
   operationId?: string
 ): Promise<Debt | null> => {
+  if (isGuestDemoMode()) {
+    const debts = debtsCache || loadDebtsLocally() || [];
+    const target = debts.find(d => d.id === debtId);
+    if (!target) throw new Error('الدين غير موجود');
+    const newPaid = Math.min(target.totalDebt, (target.totalPaid || 0) + amount);
+    const newRemaining = Math.max(0, target.totalDebt - newPaid);
+    const newStatus: DebtStatus = newRemaining === 0 ? 'fully_paid' : 'partially_paid';
+    const updatedDebt: Debt = {
+      ...target,
+      totalPaid: newPaid,
+      remainingDebt: newRemaining,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+    const list = debts.map(d => d.id === debtId ? updatedDebt : d);
+    debtsCache = list;
+    saveDebtsLocally(list);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    return updatedDebt;
+  }
   const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const amt = Math.round(amount * 100) / 100;
   const queuePayment = (): Debt | null => {
@@ -458,6 +513,13 @@ export const deleteDebtByInvoiceIdCloud = async (invoiceId: string): Promise<boo
 
 // Delete debt by ID — مع عكس الفاتورة + العميل + أرباح الشركاء
 export const deleteDebtCloud = async (debtId: string): Promise<boolean> => {
+  if (isGuestDemoMode()) {
+    const currentList = (debtsCache || loadDebtsLocally() || []).filter(d => d.id !== debtId);
+    debtsCache = currentList;
+    saveDebtsLocally(currentList);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    return true;
+  }
   // 1. قراءة الدين قبل الحذف
   const debts = await loadDebtsCloud();
   const debt = debts.find(d => d.id === debtId);

@@ -7,6 +7,7 @@ import {
   getCurrentUserId 
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { isGuestDemoMode } from '../demo-data';
 
 export interface CloudCategory {
   id: string;
@@ -63,6 +64,21 @@ let defaultCreationPromise: Promise<void> | null = null;
 
 // Load categories from cloud
 export const loadCategoriesCloud = async (): Promise<Category[]> => {
+  if (isGuestDemoMode()) {
+    const local = loadCategoriesLocally();
+    if (local && local.length > 0) {
+      categoriesCache = local;
+      return local;
+    }
+    const defaults = getDefaultCategoryNames().map(name => ({
+      id: `demo_cat_${name}`,
+      name,
+      createdAt: new Date().toISOString()
+    }));
+    categoriesCache = defaults;
+    saveCategoriesLocally(defaults);
+    return defaults;
+  }
   const userId = getCurrentUserId();
   if (!userId) return [];
 
@@ -219,6 +235,18 @@ export const deduplicateCategoriesCloud = async (): Promise<{ removed: number; r
 
 // Add category
 export const addCategoryCloud = async (name: string): Promise<Category | null> => {
+  if (isGuestDemoMode()) {
+    const newCategory: Category = {
+      id: `demo_cat_${Date.now()}`,
+      name: name.trim(),
+      createdAt: new Date().toISOString()
+    };
+    const list = [...(categoriesCache || loadCategoriesLocally() || []), newCategory];
+    categoriesCache = list;
+    saveCategoriesLocally(list);
+    emitEvent(EVENTS.CATEGORIES_UPDATED, null);
+    return newCategory;
+  }
   const trimmedName = name.trim();
   if (!trimmedName) return null;
 
@@ -273,6 +301,13 @@ export const updateCategoryCloud = async (id: string, name: string): Promise<boo
 
 // Delete category
 export const deleteCategoryCloud = async (id: string): Promise<boolean> => {
+  if (isGuestDemoMode()) {
+    const list = (categoriesCache || loadCategoriesLocally() || []).filter(c => c.id !== id);
+    categoriesCache = list;
+    saveCategoriesLocally(list);
+    emitEvent(EVENTS.CATEGORIES_UPDATED, null);
+    return true;
+  }
   const success = await deleteFromSupabase('categories', id);
   
   if (success) {

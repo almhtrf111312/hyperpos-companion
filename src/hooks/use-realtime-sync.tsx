@@ -5,6 +5,7 @@ import { useAuth } from './use-auth';
 import { EVENTS, emitEvent } from '@/lib/events';
 import { invalidateAllCaches } from '@/lib/cloud';
 import { fetchStoreSettings, getOwnerIdForInsert } from '@/lib/supabase-store';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -47,6 +48,11 @@ export function useRealtimeSync() {
   };
 
   useEffect(() => {
+    // In Guest Demo Mode, do not connect to Supabase realtime channels
+    if (isGuestDemoMode()) {
+      return;
+    }
+
     if (!user) {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);

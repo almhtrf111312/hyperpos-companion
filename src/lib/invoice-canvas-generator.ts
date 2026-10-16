@@ -6,6 +6,7 @@
  */
 
 import { formatNumber } from './utils';
+import { isGuestDemoMode } from './demo-data';
 import { getStoreSettings, getPrintSettings } from './print-utils';
 
 export interface InvoiceCanvasItem {
@@ -223,7 +224,8 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   const FOOTER_BAR_HEIGHT = 45;
   const PADDING = 20;
 
-  const LOGICAL_HEIGHT = HEADER_HEIGHT + META_CARD_HEIGHT + TABLE_HEIGHT + SUMMARY_HEIGHT + FOOTER_BAR_HEIGHT + (PADDING * 3);
+  const DEMO_EXTRA_HEIGHT = isGuestDemoMode() ? 35 : 0;
+  const LOGICAL_HEIGHT = HEADER_HEIGHT + META_CARD_HEIGHT + TABLE_HEIGHT + SUMMARY_HEIGHT + FOOTER_BAR_HEIGHT + (PADDING * 3) + DEMO_EXTRA_HEIGHT;
 
   // دقة عالية 2x لشاشات Retina
   const SCALE = 2;
@@ -711,6 +713,25 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('FlowPOS Pro • نظام إدارة نقاط البيع والمبيعات', LOGICAL_WIDTH / 2, bottomBarY + 16);
+
+  if (isGuestDemoMode()) {
+    ctx.save();
+    ctx.translate(LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2);
+    ctx.rotate(-Math.PI / 6);
+    ctx.font = `bold 38px ${FONT_FAMILY}`;
+    ctx.fillStyle = 'rgba(225, 29, 72, 0.12)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('نسخة تجريبية - Flow POS Pro', 0, 0);
+    ctx.restore();
+
+    drawRoundedRect(ctx, 30, bottomBarY + 30, LOGICAL_WIDTH - 60, 26, 6, '#fff1f2', '#e11d48', 1.5);
+    ctx.fillStyle = '#be123c';
+    ctx.font = `bold 12px ${FONT_FAMILY}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️ نسخة تجريبية - غير معتمدة كفاتورة رسمية أو محاسبية', LOGICAL_WIDTH / 2, bottomBarY + 43);
+  }
 
   return canvas;
 }

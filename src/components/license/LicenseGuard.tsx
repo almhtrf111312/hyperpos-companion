@@ -14,6 +14,7 @@ import { Key, Clock } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 interface LicenseGuardProps {
   children: ReactNode;
@@ -114,6 +115,11 @@ function LicenseChoiceScreen({ onChooseActivation, onChooseTrial, isStartingTria
 }
 
 export function LicenseGuard({ children }: LicenseGuardProps) {
+  // Fast path for isolated guest demo mode
+  if (isGuestDemoMode()) {
+    return <>{children}</>;
+  }
+
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role, dataEncrypted, isRevoked } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();

@@ -7,6 +7,7 @@ import {
   getCurrentUserId 
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { isGuestDemoMode } from '../demo-data';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
 import { addToQueue, getPendingOperations } from '../sync-queue';
@@ -116,6 +117,11 @@ const refreshCustomersInBackground = async () => {
 
 // Load customers — local-first: serve cache instantly, refresh in background
 export const loadCustomersCloud = async (): Promise<Customer[]> => {
+  if (isGuestDemoMode()) {
+    const local = loadCustomersLocally() || [];
+    customersCache = local;
+    return local;
+  }
   // Fast offline return: instant local cache + queue
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     const local = loadCustomersLocally();
@@ -166,6 +172,9 @@ export const loadCustomersCloud = async (): Promise<Customer[]> => {
 
 // ✅ تحميل العملاء مع أسماء الكاشير بأمان دون تعليق أو أخطاء أوفلاين
 export const loadCustomersWithCashierNamesCloud = async (): Promise<Customer[]> => {
+  if (isGuestDemoMode()) {
+    return loadCustomersCloud();
+  }
   const customers = await loadCustomersCloud();
   
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -205,6 +214,27 @@ export const invalidateCustomersCache = () => {
 export const addCustomerCloud = async (
   customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalPurchases' | 'totalDebt' | 'invoiceCount' | 'lastPurchase'>
 ): Promise<Customer | null> => {
+  if (isGuestDemoMode()) {
+    const nowIso = new Date().toISOString();
+    const id = `demo_cust_${Date.now()}`;
+    const local: Customer = {
+      id,
+      name: customer.name.trim(),
+      phone: customer.phone || '',
+      email: customer.email || undefined,
+      address: customer.address || undefined,
+      totalPurchases: 0,
+      totalDebt: 0,
+      invoiceCount: 0,
+      lastPurchase: '',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      cashierId: 'guest-demo-user',
+      cashierName: 'مستخدم تجريبي (Demo)',
+    };
+    commitLocal([local, ...(customersCache || loadCustomersLocally() || [])]);
+    return local;
+  }
   const normalizedName = customer.name.trim();
 
   // ✅ التحقق من عدم وجود عميل بنفس الاسم

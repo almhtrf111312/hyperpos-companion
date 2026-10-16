@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { invalidateInvoicesCache } from './invoices-cloud';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
@@ -102,6 +103,24 @@ export async function processPosSaleAtomic(
   paymentType: 'cash' | 'debt',
   bundle: AtomicSaleBundle,
 ): Promise<AtomicSaleResult> {
+  if (isGuestDemoMode()) {
+    return {
+      success: true,
+      alreadyProcessed: false,
+      invoiceId: operationId,
+      invoiceNumber: `INV-DEMO-${Date.now().toString().slice(-4)}`,
+      subtotal: bundle.subtotal,
+      discount: bundle.discount,
+      taxAmount: bundle.taxAmount || 0,
+      total: bundle.total,
+      cogs: 0,
+      profit: bundle.profit,
+      debtPaid: bundle.downPayment || 0,
+      debtRemaining: Math.max(0, bundle.total - (bundle.downPayment || 0)),
+      stockShortage: false,
+    };
+  }
+
   if (!operationId || operationId.length < 8) throw new Error('Missing or invalid sale operation id');
 
   const rpcItems = buildRpcItems(bundle);

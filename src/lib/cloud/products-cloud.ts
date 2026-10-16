@@ -8,6 +8,7 @@ import {
   getCurrentUserId
 } from '../supabase-store';
 import { emitEvent, EVENTS } from '../events';
+import { isGuestDemoMode } from '../demo-data';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -456,6 +457,15 @@ export const updateProductsQuantitiesInCache = (
 
 // Load products from cloud with incremental sync (delta sync)
 const loadProductsCloudInternal = async (): Promise<Product[]> => {
+  if (isGuestDemoMode()) {
+    if (!productsCache) {
+      const local = await loadFromLocalCache();
+      if (local && local.length > 0) {
+        productsCache = local;
+      }
+    }
+    return (productsCache || []).filter(p => !isProductArchivedOrDeleted(p));
+  }
   const userId = getCurrentUserId();
 
   // 1. Pre-populate memory cache from local IndexedDB immediately if not yet in memory
@@ -762,7 +772,7 @@ export const clearProductsLocalCache = () => {
 
 // ✅ Refresh products from cloud in background (non-blocking) + purge stale IDB entries
 export const refreshProductsFromCloud = async (): Promise<Product[]> => {
-  if (!navigator.onLine) return productsCache || [];
+  if (isGuestDemoMode() || !navigator.onLine) return productsCache || [];
   const userId = getCurrentUserId();
   if (!userId) return productsCache || [];
   cacheTimestamp = 0; // bypass memory TTL
@@ -843,6 +853,23 @@ export const validateCartProducts = async (
 
 // Add product to cloud
 export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): Promise<Product | null> => {
+  if (isGuestDemoMode()) {
+    const tempId = `demo_prod_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const demoProduct: Product = {
+      ...product,
+      id: tempId,
+      status: getStatus(product.quantity || 0, product.minStockLevel),
+    };
+    if (productsCache) {
+      productsCache.unshift(demoProduct);
+    } else {
+      productsCache = [demoProduct];
+    }
+    cacheTimestamp = Date.now();
+    saveToLocalCache(productsCache);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return demoProduct;
+  }
   const cloudData = toCloudProduct(product);
 
   // === OFFLINE SUPPORT ===
@@ -910,6 +937,23 @@ export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): 
 
 // Update product in cloud
 export const updateProductCloud = async (id: string, data: Partial<Omit<Product, 'id' | 'status'>>): Promise<boolean> => {
+  if (isGuestDemoMode()) {
+    if (data.archived === true) {
+      removeProductFromLocalCache(id);
+    } else if (productsCache) {
+      const idx = productsCache.findIndex(p => p.id === id);
+      if (idx !== -1) {
+        productsCache = productsCache.map(p =>
+          p.id === id ? { ...p, ...data, archived: false, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
+        );
+      }
+      cacheTimestamp = Date.now();
+      saveToLocalCache(productsCache);
+      updateProductInIDB(id, { ...data, archived: false }).catch(() => {});
+    }
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return true;
+  }
   const updates: Record<string, unknown> = {};
 
   if (data.name !== undefined) updates.name = data.name;
@@ -1127,6 +1171,12 @@ export const restoreArchivedProductCloud = async (
 
 // Hard delete product atomic — حذف المنتج ومخزونه كلياً ونهائياً من السحابة والذاكرة المحلية و IndexedDB
 export const deleteProductCloud = async (id: string): Promise<boolean> => {
+  if (isGuestDemoMode()) {
+    removeProductFromLocalCache(id);
+    emitEvent(EVENTS.PRODUCT_DELETED, id);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
+    return true;
+  }
   const userId = getCurrentUserId();
   if (!userId) return false;
 

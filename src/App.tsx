@@ -23,6 +23,7 @@ import { Loader2, Store, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
 import { LicenseGuard } from "./components/license/LicenseGuard";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
+import { DemoModeBanner } from "./components/demo/DemoModeBanner";
 import { CloudSyncProvider } from "./providers/CloudSyncProvider";
 import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { checkSettingsVersion } from "./lib/settings-version";
@@ -441,6 +442,7 @@ const App = () => (
                         {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
                         <LicenseWarningBadge />
                         <OfflineProtectionBanner />
+                        <DemoModeBanner />
                         <LicenseGuard>
                           <AppContent />
                         </LicenseGuard>

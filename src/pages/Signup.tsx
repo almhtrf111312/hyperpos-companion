@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Loader2, Store, Eye, EyeOff, Phone } from 'lucide-react';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
+import { clearGuestDemoData } from '@/lib/demo-data';
 
 export default function Signup() {
   const [fullName, setFullName] = useState('');
@@ -65,6 +66,7 @@ export default function Signup() {
     }
 
     setIsLoading(true);
+    await clearGuestDemoData(true);
 
     const { error } = await signUp(email, password, fullName, phone);
 

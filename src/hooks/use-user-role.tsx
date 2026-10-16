@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 import { secureSet, secureGet, secureRemove } from '@/lib/secure-storage';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 export type AppRole = 'boss' | 'admin' | 'cashier';
 
@@ -77,6 +78,11 @@ function setCachedRole(userId: string, role: AppRole, ownerId: string) {
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const [state, setState] = useState<UserRoleState>(() => {
+    // In Guest Demo Mode, immediately return full admin rights
+    if (typeof window !== 'undefined' && isGuestDemoMode()) {
+      return buildStateFromRole('admin', 'guest-demo-user');
+    }
+
     // Try to load encrypted cached role immediately for instant offline UI
     if (typeof window !== 'undefined') {
       try {
@@ -107,6 +113,12 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   });
 
   const fetchRole = useCallback(async () => {
+    // If in demo mode, lock to admin without network calls
+    if (isGuestDemoMode() || user?.id === 'guest-demo-user') {
+      setState(buildStateFromRole('admin', 'guest-demo-user'));
+      return;
+    }
+
     if (!user) {
       setState({
         role: null,

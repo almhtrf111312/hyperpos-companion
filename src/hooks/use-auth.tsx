@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { toast } from 'sonner';
+import { isGuestDemoMode, clearGuestDemoData } from '@/lib/demo-data';
 
 // Helper function to check if account is active and license is not revoked
 export async function checkUserAccountStatus(userId: string, timeoutMs: number = 1500): Promise<{ blocked: boolean; reason?: string }> {
@@ -149,6 +150,28 @@ const cacheSession = (session: Session | null) => {
 // Get cached session for immediate UI restore (checks SESSION_CACHE_KEY and Supabase auth token keys)
 const getCachedSession = (): { user: User | null; session: Session | null } => {
   try {
+    // 0. Guest Demo Mode check - instant offline demo identity
+    if (isGuestDemoMode()) {
+      const demoUser = {
+        id: 'guest-demo-user',
+        email: 'guest@flowpos.demo',
+        role: 'authenticated',
+        aud: 'authenticated',
+        app_metadata: {},
+        user_metadata: { full_name: 'مستخدم تجريبي (Demo)' },
+        created_at: new Date().toISOString(),
+      } as unknown as User;
+      const demoSession = {
+        access_token: 'demo-token',
+        token_type: 'bearer',
+        expires_in: 86400,
+        expires_at: Math.floor(Date.now() / 1000) + 86400,
+        refresh_token: 'demo-refresh',
+        user: demoUser,
+      } as unknown as Session;
+      return { user: demoUser, session: demoSession };
+    }
+
     // 1. Check custom hyperpos_session_cache
     const cached = localStorage.getItem(SESSION_CACHE_KEY);
     if (cached) {
@@ -249,6 +272,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        // In Guest Demo Mode, never let Supabase remote auth events overwrite the demo identity unless explicit SIGNED_OUT
+        if (isGuestDemoMode() && event !== 'SIGNED_OUT') {
+          return;
+        }
+
         // Strict Offline-First: If supabase reports no session but we have local cache, ignore empty event
         if (!currentSession?.user && getCachedSession().user && event !== 'SIGNED_OUT') {
           return;
@@ -292,6 +320,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const AUTO_LOGIN_TIMEOUT_MS = 1500;
 
       try {
+        // Skip auto-login in Guest Demo Mode
+        if (isGuestDemoMode()) {
+          return true;
+        }
+
         // If we already have a user, do not auto-login
         if (user || cachedInitial.user) {
           return true;
@@ -373,6 +406,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAutoLoginChecking(false);
       setIsLoading(false);
     }, 1500);
+
+    // If in Guest Demo Mode, keep the local mock identity and skip network verification
+    if (isGuestDemoMode()) {
+      setIsLoading(false);
+      setIsAutoLoginChecking(false);
+      return () => {
+        clearTimeout(loadingSafetyTimer);
+        subscription.unsubscribe();
+      };
+    }
 
     // Check for existing session and verify user without blocking UI
     const sessionPromise = supabase.auth.getSession();
@@ -473,6 +516,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string, rememberMe: boolean = false): Promise<{ error: Error | null; data?: { user: User; session: Session } }> => {
     try {
+      // Cleanly wipe any demo leftovers before establishing real user session
+      if (isGuestDemoMode()) {
+        await clearGuestDemoData(true);
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -561,6 +609,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
     try {
+      // Cleanly wipe any demo leftovers before registering real user
+      if (isGuestDemoMode()) {
+        await clearGuestDemoData(true);
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -584,6 +637,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // If in demo mode, clean up demo data and return immediately
+    if (isGuestDemoMode()) {
+      await clearGuestDemoData(true);
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      cacheSession(null);
+      setIsLoading(false);
+      return;
+    }
+
     // Log logout before signing out
     if (user) {
       import('@/lib/activity-log').then(({ addActivityLog }) => {

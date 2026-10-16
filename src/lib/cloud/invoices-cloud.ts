@@ -14,6 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
+import { isGuestDemoMode } from '../demo-data';
 import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { logActivity, diffFields } from '../activity-log';
@@ -238,7 +239,7 @@ const getNextInvoiceNumber = async (): Promise<string> => {
   const datePrefix = `${year}${month}${day}`;
 
   // If offline, generate sequentially from local cache immediately
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (isGuestDemoMode() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
     const local = loadInvoicesFromLocalCache() || [];
     const todayInvoices = local.filter(inv => inv.id && inv.id.startsWith(datePrefix));
     const nextNumber = todayInvoices.length + 1;
@@ -287,6 +288,11 @@ let coldStartServed = false;
 // Load invoices
 // ✅ Owners see all invoices, cashiers see only their own
 export const loadInvoicesCloud = async (): Promise<Invoice[]> => {
+  if (isGuestDemoMode()) {
+    const localInvoices = loadInvoicesFromLocalCache() || [];
+    invoicesCache = localInvoices;
+    return localInvoices;
+  }
   // 1. Instant offline fast-path: zero network delay, instant local cache + queue
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     const localInvoices = loadInvoicesFromLocalCache();
@@ -611,6 +617,17 @@ export const updateInvoiceCloud = async (
   id: string,
   updates: Partial<Invoice>
 ): Promise<Invoice | null> => {
+  if (isGuestDemoMode()) {
+    const invoices = loadInvoicesFromLocalCache() || invoicesCache || [];
+    const invoice = invoices.find(inv => inv.id === id);
+    if (!invoice) return null;
+    const updatedInvoice = { ...invoice, ...updates, updatedAt: new Date().toISOString() };
+    const currentList = invoices.map(inv => inv.id === id ? updatedInvoice : inv);
+    invoicesCache = currentList;
+    saveInvoicesToLocalCache(currentList);
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    return updatedInvoice;
+  }
   if (updates.status === 'refunded') {
     console.warn('[updateInvoiceCloud] Refunded status is protected; use refundInvoiceCloud');
     return null;
@@ -703,6 +720,13 @@ const refreshCustomerStatsAfterDelete = async (customerId: string | null) => {
 };
 
 export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
+  if (isGuestDemoMode()) {
+    const currentList = (invoicesCache || loadInvoicesFromLocalCache() || []).filter(i => i.id !== id);
+    invoicesCache = currentList;
+    saveInvoicesToLocalCache(currentList);
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    return true;
+  }
   // Find by invoice_number
   const { data: cloudInvoice } = await sb
     .from('invoices')
@@ -779,6 +803,39 @@ export const refundInvoiceCloud = async (id: string, source: 'online' | 'offline
 };
 
 const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sync'): Promise<RefundResult | boolean> => {
+  if (isGuestDemoMode()) {
+    const invoices = loadInvoicesFromLocalCache() || invoicesCache || [];
+    const targetInvoice = invoices.find(inv => inv.id === id);
+    if (!targetInvoice) return failedRefund('الفاتورة غير موجودة');
+    if (targetInvoice.status === 'refunded') {
+      return { success: false, alreadyRefunded: true, restoredItemsCount: 0, restoredUnitsCount: 0, deletedDebtAmount: 0, customerBalanceBefore: 0, customerBalanceAfter: 0, customerName: targetInvoice.customerName, invoiceTotal: targetInvoice.total, invoiceCurrency: targetInvoice.currency, debtPaidAmount: 0, cashToRefund: 0 };
+    }
+    const updatedInvoice = { ...targetInvoice, status: 'refunded' as InvoiceStatus, updatedAt: new Date().toISOString() };
+    const currentList = invoices.map(inv => inv.id === id ? updatedInvoice : inv);
+    invoicesCache = currentList;
+    saveInvoicesToLocalCache(currentList);
+    if (targetInvoice.items && targetInvoice.items.length > 0) {
+      const { updateProductsQuantitiesInCache } = await import('./products-cloud');
+      updateProductsQuantitiesInCache(targetInvoice.items.filter(it => it.productId || it.id).map(it => ({
+        productId: it.productId || it.id,
+        deltaQuantity: it.quantity
+      })));
+    }
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    return {
+      success: true,
+      restoredItemsCount: targetInvoice.items?.length || 0,
+      restoredUnitsCount: targetInvoice.items?.reduce((s, it) => s + it.quantity, 0) || 0,
+      deletedDebtAmount: targetInvoice.debtRemaining || 0,
+      customerBalanceBefore: 0,
+      customerBalanceAfter: 0,
+      customerName: targetInvoice.customerName,
+      invoiceTotal: targetInvoice.total,
+      invoiceCurrency: targetInvoice.currency,
+      debtPaidAmount: targetInvoice.debtPaid || 0,
+      cashToRefund: targetInvoice.paymentType === 'cash' ? targetInvoice.total : (targetInvoice.debtPaid || 0),
+    };
+  }
   // ✅ Reliable userId: always fallback to supabase.auth.getUser()
   let userId = getCurrentUserId();
   if (!userId) {

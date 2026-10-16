@@ -9,6 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { Share as CapacitorShare } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { formatNumber, formatCurrency } from './utils';
+import { isGuestDemoMode } from './demo-data';
 import {
   InvoiceCanvasData,
   DebtStatementCanvasData,
@@ -286,7 +287,7 @@ ${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPaym
 ────────────────
 ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
 
-شكراً لتعاملكم معنا! 🙏`;
+شكراً لتعاملكم معنا! 🙏${isGuestDemoMode() ? '\n\n⚠️ نسخة تجريبية - Flow POS Pro (غير معتمدة رسمياً)' : ''}`;
 }
 
 /**

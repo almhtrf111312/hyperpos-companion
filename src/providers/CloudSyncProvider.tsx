@@ -13,6 +13,7 @@ import { showToast } from '@/lib/toast-config';
 import { useNetworkStatus, checkRealInternetAccess } from '@/hooks/use-network-status';
 import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-processor';
 import { warmupAllCaches } from '@/lib/cloud/cache-warmup';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
@@ -130,6 +131,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   // مراقبة عودة الاتصال بالإنترنت لتشغيل المزامنة التلقائية
   // مع فحص فعلي للإنترنت (وليس فقط الشبكة)
   useEffect(() => {
+    if (isGuestDemoMode()) return;
     if (isOnline && wasOffline && user) {
       // الشبكة عادت - لكن نفحص الإنترنت الفعلي أولاً
       console.log('[CloudSync] Network restored, checking real internet access...');
@@ -150,7 +152,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
   // مستمع حدث عودة الإنترنت من المتصفح مباشرةً
   useEffect(() => {
-    if (!user) return;
+    if (!user || isGuestDemoMode()) return;
     const handleOnline = () => {
       console.log('[CloudSync] window online event fired, triggering sync & warmup...');
       setTimeout(() => {
@@ -164,7 +166,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
   // مؤقت دوري لإعادة محاولة المزامنة
   useEffect(() => {
-    if (!user) return;
+    if (!user || isGuestDemoMode()) return;
 
     periodicRetryRef.current = setInterval(async () => {
       if (isSyncingRef.current) return;
@@ -204,6 +206,11 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
   const initializeCloudData = useCallback(async () => {
     if (!user) return;
+    if (isGuestDemoMode()) {
+      setIsReady(true);
+      setIsSyncing(false);
+      return;
+    }
 
     setIsSyncing(true);
 
@@ -316,6 +323,11 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   useEffect(() => {
     if (authLoading) return;
 
+    if (isGuestDemoMode()) {
+      setIsReady(true);
+      return;
+    }
+
     if (!user) {
       setCurrentUserId(null);
       setIsReady(true);
@@ -340,6 +352,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
   }, [user, authLoading, clearUserLocalStorage, initializeCloudData]);
 
   const syncNow = useCallback(async (forceDirect: boolean = false, targetOperationId?: string): Promise<SyncResult> => {
+    if (isGuestDemoMode()) {
+      return { success: true, processed: 0, failed: 0 };
+    }
     if (!user) return { success: false, processed: 0, failed: 0 };
     if (isPaused) {
       console.log('[CloudSync] Sync skipped: paused by user');

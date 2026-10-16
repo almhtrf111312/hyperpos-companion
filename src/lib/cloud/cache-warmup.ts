@@ -14,14 +14,15 @@ import { loadPurchaseInvoicesCloud } from './purchase-invoices-cloud';
 import { loadCategoriesCloud } from './categories-cloud';
 import { loadExpensesCloud } from './expenses-cloud';
 import { loadWarehousesCloud } from './warehouses-cloud';
+import { isGuestDemoMode } from '../demo-data';
 
 let isWarmingUp = false;
 let lastWarmupTime = 0;
 const WARMUP_INTERVAL_MS = 45000; // 45s throttle to prevent redundant network bursts
 
 export const warmupAllCaches = async (force: boolean = false): Promise<void> => {
-  // If offline, don't attempt network preloading
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  // If in demo mode or offline, don't attempt network preloading
+  if (isGuestDemoMode() || (typeof navigator !== 'undefined' && !navigator.onLine)) {
     return;
   }
 

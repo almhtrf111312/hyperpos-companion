@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail } from 'lucide-react';
+import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { getDeviceKey } from '@/lib/secure-storage';
 import { CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
 import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
+import { injectGuestDemoData, clearGuestDemoData } from '@/lib/demo-data';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -33,6 +34,20 @@ export default function Login() {
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
   const navigate = useNavigate();
+
+  const handleStartDemo = async () => {
+    setIsLoading(true);
+    try {
+      await injectGuestDemoData();
+      toast.success('تم تفعيل وضع التجربة بنجاح (صالح لمدة 24 ساعة)');
+      navigate('/');
+    } catch (err) {
+      console.error('Failed to start demo mode:', err);
+      toast.error('فشل في بدء وضع التجربة');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const location = useLocation();
 
   useEffect(() => {
@@ -235,6 +250,7 @@ export default function Login() {
 
         // Now try to login again
         setIsLoading(true);
+        await clearGuestDemoData(true);
         const { error: loginError } = await signIn(email, password, stayLoggedIn);
 
         if (loginError) {
@@ -351,6 +367,26 @@ export default function Login() {
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4">
+          <div className="relative w-full my-1">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground font-medium">أو</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleStartDemo}
+            disabled={isLoading}
+            className="w-full h-11 border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary font-medium flex items-center justify-center gap-2 transition-all"
+          >
+            <Sparkles className="w-4 h-4 text-primary" />
+            تجربة التطبيق بدون حساب (Demo Mode)
+          </Button>
+
           <p className="text-sm text-muted-foreground text-center">
             {t('auth.noAccount')}{' '}
             <Link to="/signup" className="text-primary hover:underline font-medium">

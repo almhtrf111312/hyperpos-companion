@@ -8,6 +8,7 @@
 import { secureSet, secureGet, secureRemove } from './secure-storage';
 import { emitEvent, EVENTS } from './events';
 import { addToHistory, updateHistoryStatus } from './sync-history';
+import { isGuestDemoMode } from './demo-data';
 
 // Storage key
 const SYNC_QUEUE_KEY = 'sync_queue';
@@ -191,6 +192,19 @@ export const addToQueue = (
   data: Record<string, unknown>,
   maxRetries: number = 3
 ): QueuedOperation => {
+  if (isGuestDemoMode()) {
+    return {
+      id: `demo_op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      type,
+      timestamp: new Date().toISOString(),
+      data,
+      retryCount: 0,
+      maxRetries,
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   const queue = loadQueue();
   
   const operation: QueuedOperation = {
@@ -327,6 +341,10 @@ export const processQueue = async (
   processor: (operation: QueuedOperation) => Promise<boolean>,
   targetOperationId?: string,
 ): Promise<{ processed: number; failed: number; targetSuccess?: boolean }> => {
+  if (isGuestDemoMode()) {
+    return { processed: 0, failed: 0 };
+  }
+
   if (isProcessing) {
     console.log('[SyncQueue] Already processing, skipping...');
     return { processed: 0, failed: 0 };
