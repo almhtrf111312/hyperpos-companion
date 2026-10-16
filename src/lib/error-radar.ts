@@ -381,26 +381,36 @@ async function sendErrorLogToServer(log: QueuedErrorRadarLog): Promise<SendResul
   }
 
   try {
-    // محاولة الإرسال لجدول error_logs في حال تم نشره على Supabase
-    // نستخدم client_error_id كمعرف ثابت يمنع التكرار تماماً (Idempotency Key)
+    const { data: { user } } = await supabase.auth.getUser();
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error, status } = await (supabase as any)
       .from('error_logs')
       .insert({
-        client_error_id: log.id,
-        fingerprint: log.fingerprint,
+        occurred_at: log.lastSeenAt || new Date().toISOString(),
+        user_id: user?.id || null,
+        user_email: user?.email || null,
         error_type: log.type,
-        severity: log.severity,
-        message: log.message,
-        stack_trace: log.stack || null,
-        component_stack: log.componentStack || null,
-        route: log.route,
-        device_info: log.device,
-        user_role: log.userRole,
-        occurrences: log.occurrences,
-        first_seen_at: log.firstSeenAt,
-        last_seen_at: log.lastSeenAt,
-        breadcrumbs: log.breadcrumbs || [],
+        error_message: scrubSensitiveData(log.message),
+        error_stack: scrubSensitiveData(log.stack || ''),
+        component_stack: scrubSensitiveData(log.componentStack || ''),
+        platform: log.device?.platform || 'web',
+        page_url: log.route || (typeof window !== 'undefined' ? window.location.pathname : ''),
+        device_language: log.device?.language || 'ar',
+        timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '',
+        screen_resolution: log.device?.screen || '',
+        was_online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        was_queued_offline: log.syncStatus === 'pending',
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+        extra_context: {
+          client_error_id: log.id,
+          fingerprint: log.fingerprint,
+          severity: log.severity,
+          user_role: log.userRole,
+          occurrences: log.occurrences,
+          breadcrumbs: log.breadcrumbs || [],
+        },
+        is_resolved: false,
       });
 
     // تأكيد استلام الخادم برمز نجاح
@@ -408,26 +418,16 @@ async function sendErrorLogToServer(log: QueuedErrorRadarLog): Promise<SendResul
       return { success: true, serverConfirmed: true };
     }
 
-    // إذا كان الجدول غير موجود على الخادم بعد (PostgREST code 42P01 أو PGRST204)
-    if (error?.code === '42P01' || error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
-      return {
-        success: false,
-        serverConfirmed: false,
-        error: 'Table error_logs not deployed on server yet',
-        isTerminal: true,
-      };
-    }
-
     return {
       success: false,
       serverConfirmed: false,
-      error: error?.message || 'Server did not confirm receipt',
+      error: error?.message || 'Server error',
     };
   } catch (err: any) {
     return {
       success: false,
       serverConfirmed: false,
-      error: err?.message || 'Network dispatch exception',
+      error: err?.message || 'Network exception',
     };
   }
 }
@@ -696,10 +696,16 @@ export async function markErrorResolved(id: string): Promise<boolean> {
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        const query = (supabase as any)
           .from('error_logs')
-          .update({ is_resolved: true, resolved_at: target.resolvedAt })
-          .eq('client_error_id', id);
+          .update({ is_resolved: true, resolved_at: target.resolvedAt });
+
+        // Update either by database primary id or by client_error_id in extra_context
+        if (id.length === 36 && !id.startsWith('ERR-')) {
+          await query.eq('id', id);
+        } else {
+          await query.eq('extra_context->>client_error_id', id);
+        }
       } catch {
         // Non-blocking
       }
@@ -727,10 +733,15 @@ export async function markErrorUnresolved(id: string): Promise<boolean> {
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        const query = (supabase as any)
           .from('error_logs')
-          .update({ is_resolved: false, resolved_at: null })
-          .eq('client_error_id', id);
+          .update({ is_resolved: false, resolved_at: null });
+
+        if (id.length === 36 && !id.startsWith('ERR-')) {
+          await query.eq('id', id);
+        } else {
+          await query.eq('extra_context->>client_error_id', id);
+        }
       } catch {
         // Non-blocking
       }

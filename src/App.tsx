@@ -330,7 +330,7 @@ const AppContent = () => {
 
     // 2. If user is authenticated, handle role resolution and setup wizard guard
     if (user) {
-      const effectiveRole = role || (roleFallbackTimeout ? 'boss' : null);
+      const effectiveRole = role || (roleFallbackTimeout ? 'admin' : null);
 
       // 2a. Still determining user role -> display loading state only within 2s timeout
       if (roleLoading && !roleFallbackTimeout && !role) {

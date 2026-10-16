@@ -21,6 +21,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Activity,
   AlertTriangle,
@@ -80,14 +81,62 @@ export function ErrorRadarPanel() {
   // السجل المختار للعرض التفصيلي
   const [selectedLog, setSelectedLog] = useState<ErrorRadarLog | null>(null);
 
-  // تحديث البيانات المحلية
-  const refreshLogs = () => {
+  // تحديث البيانات (المحلية والمركزية للـ Boss)
+  const refreshLogs = async () => {
+    setIsLoading(true);
     try {
-      const data = getErrorRadarLogs();
-      setLogs(data);
+      // 1. جلب السجلات المحلية أولاً
+      const localLogs = getErrorRadarLogs();
+      
+      // 2. إذا كان المستخدم Boss ومتصلاً بالإنترنت، جلب السجلات المركزية من Supabase
+      if (isBoss && typeof navigator !== 'undefined' && navigator.onLine) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: remoteData, error } = await (supabase as any)
+          .from('error_logs')
+          .select('*')
+          .order('occurred_at', { ascending: false })
+          .limit(100);
+
+        if (!error && remoteData && remoteData.length > 0) {
+          // تحويل سجلات الخادم إلى تنسيق ErrorRadarLog
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mappedRemote: ErrorRadarLog[] = remoteData.map((row: any) => ({
+            id: row.id,
+            fingerprint: row.extra_context?.fingerprint || row.id,
+            type: row.error_type || 'uncaught_error',
+            severity: row.extra_context?.severity || 'error',
+            message: row.error_message,
+            stack: row.error_stack,
+            componentStack: row.component_stack,
+            route: row.page_url || '',
+            device: {
+              platform: row.platform || 'web',
+              screen: row.screen_resolution || '',
+              isOnline: row.was_online ?? true,
+              language: row.device_language || 'ar',
+            },
+            userRole: row.extra_context?.user_role || (row.user_email ? 'admin' : 'anonymous'),
+            occurrences: row.extra_context?.occurrences || 1,
+            firstSeenAt: row.occurred_at || row.created_at,
+            lastSeenAt: row.occurred_at || row.created_at,
+            isResolved: row.is_resolved || false,
+            breadcrumbs: row.extra_context?.breadcrumbs || [],
+            syncStatus: 'synced',
+          }));
+
+          setLogs(mappedRemote);
+          setQueueStats(getErrorRadarQueueStats());
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // الرجوع للمحلي في حال عدم وجود اتصال أو تعذر الجلب
+      setLogs(localLogs);
       setQueueStats(getErrorRadarQueueStats());
     } catch (err) {
-      console.warn('[ErrorRadarPanel] Failed to load logs:', err);
+      console.warn('[ErrorRadarPanel] Failed to load remote logs:', err);
+      setLogs(getErrorRadarLogs());
     } finally {
       setIsLoading(false);
     }
