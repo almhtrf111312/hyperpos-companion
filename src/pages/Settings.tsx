@@ -83,6 +83,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useUsersManagement, UserData } from '@/hooks/use-users-management';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserRole } from '@/hooks/use-user-role';
+import { isGuestDemoMode } from '@/lib/demo-data';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { saveStoreSettings, fetchStoreSettings } from '@/lib/supabase-store';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -1306,6 +1307,13 @@ export default function Settings() {
   };
 
   const handleAddUser = () => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: isRTL ? 'تنبيه' : 'Notice',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return;
+    }
     setSelectedUser(null);
     setUserForm({ name: '', email: '', password: '', phone: '', role: 'cashier', userType: 'cashier', allowedPages: [] });
     setEmailError('');
@@ -1314,6 +1322,13 @@ export default function Settings() {
   };
 
   const handleEditUser = (user: UserData) => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: isRTL ? 'تنبيه' : 'Notice',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return;
+    }
     setSelectedUser(user);
     // Convert boss/admin roles to 'cashier' for the form since we only allow cashier role for new users
     const formRole = user.role === 'boss' || user.role === 'admin' ? 'cashier' : user.role;
@@ -1333,6 +1348,13 @@ export default function Settings() {
   };
 
   const handleDeleteUser = (user: UserData) => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: isRTL ? 'تنبيه' : 'Notice',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return;
+    }
     setSelectedUser(user);
     setDeleteUserDialogOpen(true);
   };
@@ -1350,6 +1372,13 @@ export default function Settings() {
   };
 
   const handleSaveUser = async () => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: isRTL ? 'تنبيه' : 'Notice',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return;
+    }
     setEmailError('');
     setPasswordError('');
 
@@ -2800,6 +2829,12 @@ export default function Settings() {
       case 'users':
         return (
           <div className="space-y-4">
+            {isGuestDemoMode() && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>إدارة الحسابات وتعيين كلمات المرور تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية.</span>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-base sm:text-lg font-bold text-foreground">{t('settings.userManagement')}</h2>
               <Button onClick={handleAddUser} className="w-full sm:w-auto h-9">
@@ -2846,6 +2881,13 @@ export default function Settings() {
                             size="sm"
                             className="flex-1 h-8 gap-1 text-xs border-primary/30 text-primary hover:bg-primary/10 hover:text-primary transition-colors font-medium shadow-none"
                             onClick={() => {
+                              if (isGuestDemoMode()) {
+                                toast({
+                                  title: isRTL ? 'تنبيه' : 'Notice',
+                                  description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+                                });
+                                return;
+                              }
                               setPasswordChangeUserId(user.user_id || user.id);
                               setSelectedUser(user);
                               setPasswordDialogOpen(true);
@@ -3293,6 +3335,11 @@ export default function Settings() {
 
           {(() => {
             const visibleTabs = settingsTabs.filter(tab => {
+              if (isGuestDemoMode()) {
+                if (tab.id === 'licenses' || tab.id === 'activity' || tab.id === 'license') {
+                  return false;
+                }
+              }
               if (isBoss) return true;
               if (isOwnerAdmin && !tab.bossOnly) return true;
               return !tab.adminOnly && !tab.bossOnly;

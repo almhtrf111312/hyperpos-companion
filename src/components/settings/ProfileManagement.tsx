@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { isGuestDemoMode } from '@/lib/demo-data';
 import { 
   User, 
   Mail, 
@@ -63,6 +64,12 @@ export function ProfileManagement() {
       return;
     }
 
+    if (isGuestDemoMode()) {
+      toast.success(t('profile.nameUpdated') || 'تم حفظ الاسم محلياً');
+      setIsEditingName(false);
+      return;
+    }
+
     setIsSavingName(true);
     try {
       const { error } = await supabase
@@ -84,6 +91,12 @@ export function ProfileManagement() {
   };
 
   const handleSaveEmail = async () => {
+    if (isGuestDemoMode()) {
+      toast.info('تعديل الحساب والبريد يتطلب حساباً رسمياً وغير متاح في النسخة التجريبية');
+      setIsEditingEmail(false);
+      return;
+    }
+
     if (!newEmail.trim()) {
       toast.error(t('profile.emailRequired'));
       return;
@@ -140,6 +153,12 @@ export function ProfileManagement() {
   };
 
   const handleChangePassword = async () => {
+    if (isGuestDemoMode()) {
+      toast.info('هذا الحساب تجريبي محلي بدون كلمة مرور سحابية');
+      setShowPasswordDialog(false);
+      return;
+    }
+
     if (!passwordForm.currentPassword) {
       toast.error(t('password.currentRequired'));
       return;
@@ -285,7 +304,19 @@ export function ProfileManagement() {
               <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40 overflow-hidden">
                 <span dir="ltr" className="truncate flex-1 font-mono text-xs sm:text-sm text-foreground">{user?.email}</span>
                 {isBoss && (
-                  <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs ms-1" onClick={() => { setNewEmail(user?.email || ''); setIsEditingEmail(true); }}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 h-8 px-2.5 text-xs ms-1"
+                    onClick={() => {
+                      if (isGuestDemoMode()) {
+                        toast.info('تعديل الحساب والبريد يتطلب حساباً رسمياً وغير متاح في النسخة التجريبية');
+                        return;
+                      }
+                      setNewEmail(user?.email || '');
+                      setIsEditingEmail(true);
+                    }}
+                  >
                     <Edit className="w-3.5 h-3.5" />
                     {t('profile.edit')}
                   </Button>
@@ -304,7 +335,18 @@ export function ProfileManagement() {
             </Label>
             <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40">
               <span className="text-muted-foreground tracking-widest text-sm flex-1">••••••••</span>
-              <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs" onClick={() => setShowPasswordDialog(true)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0 h-8 px-2.5 text-xs"
+                onClick={() => {
+                  if (isGuestDemoMode()) {
+                    toast.info('هذا الحساب تجريبي محلي بدون كلمة مرور سحابية');
+                    return;
+                  }
+                  setShowPasswordDialog(true);
+                }}
+              >
                 <Lock className="w-3.5 h-3.5" />
                 {t('profile.changeBtn')}
               </Button>

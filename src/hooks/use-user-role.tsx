@@ -32,10 +32,11 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 const ROLE_CACHE_KEY = 'user_role_cache';
 const ROLE_NS = 'hp_rc'; // short namespace to avoid plain-text key exposure
 
-function buildStateFromRole(role: AppRole, ownerId: string): UserRoleState {
+function buildStateFromRole(role: AppRole, ownerId: string, isDemo = false): UserRoleState {
   const isBoss = role === 'boss';
   const isAdmin = role === 'admin';
   const isCashier = role === 'cashier';
+  const demoActive = isDemo || (typeof window !== 'undefined' && isGuestDemoMode());
   return {
     role,
     ownerId,
@@ -47,8 +48,8 @@ function buildStateFromRole(role: AppRole, ownerId: string): UserRoleState {
     canAccessSettings: isBoss || isAdmin,
     canAccessReports: isBoss || isAdmin,
     canAccessPartners: isBoss || isAdmin,
-    canManageLicenses: isBoss,
-    canManageUsers: isBoss || isAdmin,
+    canManageLicenses: !demoActive && isBoss,
+    canManageUsers: !demoActive && (isBoss || isAdmin),
     canEditPrice: isBoss || isAdmin,
   };
 }
@@ -78,9 +79,9 @@ function setCachedRole(userId: string, role: AppRole, ownerId: string) {
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const [state, setState] = useState<UserRoleState>(() => {
-    // In Guest Demo Mode, immediately return full admin rights
+    // In Guest Demo Mode, immediately return full admin rights (with canManageUsers = false)
     if (typeof window !== 'undefined' && isGuestDemoMode()) {
-      return buildStateFromRole('admin', 'guest-demo-user');
+      return buildStateFromRole('admin', 'guest-demo-user', true);
     }
 
     // Try to load encrypted cached role immediately for instant offline UI
@@ -115,7 +116,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
   const fetchRole = useCallback(async () => {
     // If in demo mode, lock to admin without network calls
     if (isGuestDemoMode() || user?.id === 'guest-demo-user') {
-      setState(buildStateFromRole('admin', 'guest-demo-user'));
+      setState(buildStateFromRole('admin', 'guest-demo-user', true));
       return;
     }
 

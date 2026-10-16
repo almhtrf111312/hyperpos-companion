@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { addActivityLog } from '@/lib/activity-log';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 export type UserType = 'cashier' | 'distributor' | 'pos';
 
@@ -26,6 +27,26 @@ export function useUsersManagement() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUsers = useCallback(async () => {
+    // In Guest Demo Mode, return mock demo user without contacting Supabase
+    if (isGuestDemoMode()) {
+      setIsLoading(false);
+      setUsers([
+        {
+          id: 'demo-user-1',
+          user_id: 'guest-demo-user',
+          name: profile?.full_name || 'مدير الحساب التجريبي',
+          email: 'demo@flowpos.local',
+          phone: '',
+          role: 'admin',
+          userType: 'cashier',
+          allowedPages: null,
+          isCurrentUser: true,
+          isOwner: true,
+        },
+      ]);
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -137,6 +158,14 @@ export function useUsersManagement() {
   }, [fetchUsers]);
 
   const addUser = async (email: string, password: string, fullName: string, role: 'admin' | 'cashier', userType: UserType = 'cashier', phone?: string, allowedPages?: string[]) => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: 'تنبيه',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return false;
+    }
+
     try {
       // Ensure user is logged in
       const { data: { session } } = await supabase.auth.getSession();
@@ -270,6 +299,14 @@ export function useUsersManagement() {
   };
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'cashier') => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: 'تنبيه',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return false;
+    }
+
     try {
       // Admins can only assign 'cashier' role to their sub-accounts.
       // Promoting to 'admin' is restricted to boss accounts via RLS WITH CHECK.
@@ -310,6 +347,14 @@ export function useUsersManagement() {
   };
 
   const updateUserProfile = async (userId: string, fullName: string, userType?: UserType, phone?: string, allowedPages?: string[] | null) => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: 'تنبيه',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return false;
+    }
+
     try {
       const updateData: { full_name: string; user_type?: string; phone?: string; allowed_pages?: string[] | null } = { full_name: fullName };
       
@@ -376,6 +421,14 @@ export function useUsersManagement() {
   };
 
   const deleteUser = async (userId: string, roleId: string, userName?: string) => {
+    if (isGuestDemoMode()) {
+      toast({
+        title: 'تنبيه',
+        description: 'إدارة الحسابات تتطلب حساباً رسمياً وغير متاحة في النسخة التجريبية',
+      });
+      return false;
+    }
+
     try {
       // Ensure user is logged in
       const { data: { session } } = await supabase.auth.getSession();

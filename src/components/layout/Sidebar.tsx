@@ -41,6 +41,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { SyncStatusMenu } from './SyncStatusMenu';
 import { NetworkStatusIndicator } from './NetworkStatusIndicator';
 import { getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 interface NavItem {
   icon: React.ElementType;
@@ -168,6 +169,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
     try { return localStorage.getItem('hyperpos_contact_sidebar') === 'true'; } catch { return false; }
   });
   useEffect(() => {
+    if (isGuestDemoMode()) return; // 100% offline in guest demo mode - no Supabase calls
     let cancelled = false;
     supabase.from('app_settings').select('value').eq('key', 'contact_links').maybeSingle().then(({ data }) => {
       if (cancelled || !data?.value) return;
@@ -181,6 +183,11 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
   }, []);
 
   const filteredNavItems = navItems.filter(item => {
+    // In guest demo mode, allow exploring the full system locally for trial
+    if (isGuestDemoMode()) {
+      if (item.requiresContactSidebar && !showContactInSidebar) return false;
+      return true;
+    }
     if (item.adminOnly && !(isBoss || isAdmin)) {
       if (allowedPages && allowedPages.length > 0) {
         const pageKey = item.path.replace('/', '') || 'pos';
