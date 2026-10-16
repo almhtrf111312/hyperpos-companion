@@ -30,13 +30,25 @@ import {
   Coins,
   Copy,
   User,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose,
+} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -238,7 +250,7 @@ export function isInvoiceCustomDate(createdAt?: string | null, targetDate?: stri
 }
 
 export default function Invoices() {
-  const { t, language } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
   const navigate = useNavigate();
   const [activeMainTab, setActiveMainTab] = useState<'sales' | 'purchases'>('sales');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -247,6 +259,8 @@ export default function Invoices() {
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | InvoiceType>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt'>('all');
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [showDetailedStats, setShowDetailedStats] = useState(false);
 
   const todayStr = useMemo(() => getLocalDateString(), []);
   const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilter>('today');
@@ -418,6 +432,106 @@ export default function Invoices() {
   const totalProfitDisplay = roundCurrency(stats.totalProfit * statExchangeRate);
 
   const refundFinancials = invoiceToRefund ? getInvoiceFinancials(invoiceToRefund, true) : null;
+
+  // مبيعات الفترات المختلفة للبطاقة الذكية الموحدة (مبيعات اليوم / الأسبوع / الشهر / العام / الكل)
+  const periodSales = useMemo(() => {
+    let today = 0, week = 0, month = 0, year = 0, all = 0;
+    let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0, allCount = 0;
+
+    for (const inv of invoices) {
+      if (inv.status === 'refunded') continue;
+      const total = inv.total || 0;
+      all += total;
+      allCount++;
+      if (isInvoiceToday(inv.createdAt)) {
+        today += total;
+        todayCount++;
+      }
+      if (isInvoiceThisWeek(inv.createdAt)) {
+        week += total;
+        weekCount++;
+      }
+      if (isInvoiceThisMonth(inv.createdAt)) {
+        month += total;
+        monthCount++;
+      }
+      if (isInvoiceThisYear(inv.createdAt)) {
+        year += total;
+        yearCount++;
+      }
+    }
+
+    const effToday = today > 0 ? today : (stats.todaySales || 0);
+    const effAll = all > 0 ? all : (stats.totalSales || 0);
+
+    return {
+      today: { total: roundCurrency(effToday * statExchangeRate), count: todayCount || stats.todayCount },
+      week: { total: roundCurrency(week * statExchangeRate), count: weekCount },
+      month: { total: roundCurrency(month * statExchangeRate), count: monthCount },
+      year: { total: roundCurrency(year * statExchangeRate), count: yearCount },
+      all: { total: roundCurrency(effAll * statExchangeRate), count: allCount || stats.total },
+    };
+  }, [invoices, statExchangeRate, stats]);
+
+  const currentPeriodSales = useMemo(() => {
+    if (dateQuickFilter === 'today') return periodSales.today;
+    if (dateQuickFilter === 'week') return periodSales.week;
+    if (dateQuickFilter === 'month') return periodSales.month;
+    if (dateQuickFilter === 'year') return periodSales.year;
+    if (dateQuickFilter === 'custom' && dateFilter) {
+      const customInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceCustomDate(inv.createdAt, dateFilter));
+      const sum = customInvs.reduce((acc, inv) => acc + (inv.total || 0), 0);
+      return { total: roundCurrency(sum * statExchangeRate), count: customInvs.length };
+    }
+    return periodSales.all;
+  }, [dateQuickFilter, dateFilter, periodSales, invoices, statExchangeRate]);
+
+  const currentPeriodTitle = useMemo(() => {
+    switch (dateQuickFilter) {
+      case 'today': return t('reports.today') || (language === 'en' ? 'Today' : 'اليوم');
+      case 'week': return t('reports.thisWeek') || (language === 'en' ? 'This Week' : 'هذا الأسبوع');
+      case 'month': return t('reports.thisMonth') || (language === 'en' ? 'This Month' : 'هذا الشهر');
+      case 'year': return t('reports.thisYear') || (language === 'en' ? 'This Year' : 'هذا العام');
+      case 'custom': return dateFilter || (language === 'en' ? 'Custom Date' : 'تاريخ مخصص');
+      default: return t('invoices.allInvoices') || (language === 'en' ? 'All Invoices' : 'كل الفترات');
+    }
+  }, [dateQuickFilter, dateFilter, t, language]);
+
+  const handleSetPeriod = (period: 'today' | 'week' | 'month' | 'year' | 'all') => {
+    setDateQuickFilter(period);
+    if (period === 'today') {
+      setDateFilter(todayStr);
+      setActiveKpi('today');
+    } else if (period === 'all') {
+      setDateFilter('');
+      setActiveKpi('total');
+    } else {
+      setDateFilter('');
+      setActiveKpi(null);
+    }
+  };
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (dateQuickFilter !== 'all') count++;
+    if (dateQuickFilter === 'custom' && dateFilter) count++;
+    if (filterPayment !== 'all') count++;
+    if (filterType !== 'all') count++;
+    if (displayCurrencyFilter !== 'stored') count++;
+    if (showRefunded) count++;
+    return count;
+  }, [dateQuickFilter, dateFilter, filterPayment, filterType, displayCurrencyFilter, showRefunded]);
+
+  const resetAllFilters = () => {
+    setDateQuickFilter('all');
+    setDateFilter('');
+    setFilterPayment('all');
+    setFilterType('all');
+    setDisplayCurrencyFilter('stored');
+    setShowRefunded(false);
+    setSearchQuery('');
+    setActiveKpi('total');
+  };
 
   // Debounce search (300ms)
   useEffect(() => {
@@ -1580,274 +1694,317 @@ export default function Invoices() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <PageHeader
-        title={t('invoices.title')}
-        subtitle={t('invoices.subtitle')}
-      />
-
-      {/* Fixed 2-button segmented control (strictly non-scrollable) */}
-      <div className="w-full sm:w-auto inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-sm overflow-hidden select-none">
-        <button
-          type="button"
-          onClick={() => setActiveMainTab('sales')}
-          className={cn(
-            "flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex-1 sm:flex-initial",
-            activeMainTab === 'sales'
-              ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-          )}
-        >
-          <ShoppingCart className="w-4 h-4" />
-          <span>{t('invoices.salesInvoices')}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveMainTab('purchases')}
-          className={cn(
-            "flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex-1 sm:flex-initial",
-            activeMainTab === 'purchases'
-              ? "bg-gradient-primary text-primary-foreground shadow-md shadow-primary/30"
-              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-          )}
-        >
-          <Truck className="w-4 h-4" />
-          <span>{t('invoices.purchaseInvoices')}</span>
-        </button>
+    <div className="p-3 md:p-6 space-y-3.5">
+      {/* Top Bar: Segmented Switch with safe offset for mobile menu trigger */}
+      <div className={cn(
+        "flex items-center justify-between gap-2 select-none",
+        isRTL ? "pr-14 md:pr-0" : "pl-14 md:pl-0"
+      )}>
+        <div className="w-full sm:w-auto inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('sales')}
+            className={cn(
+              "flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-1 sm:flex-initial cursor-pointer",
+              activeMainTab === 'sales'
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
+          >
+            <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">{t('invoices.salesInvoices')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('purchases')}
+            className={cn(
+              "flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-1 sm:flex-initial cursor-pointer",
+              activeMainTab === 'purchases'
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            )}
+          >
+            <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">{t('invoices.purchaseInvoices')}</span>
+          </button>
+        </div>
       </div>
 
-      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-6">
+      <Tabs value={activeMainTab} onValueChange={(val: any) => setActiveMainTab(val)} className="w-full space-y-4">
         <TabsContent value="sales" className="space-y-3 m-0">
-          {/* Interactive KPI Cards Strip */}
-          <div className="grid grid-cols-4 gap-1.5 text-center select-none">
-            {/* إجمالي الفواتير */}
-            <button
-              type="button"
-              onClick={handleKpiTotal}
-              className={cn(
-                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
-                activeKpi === 'total'
-                  ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
-                  : "bg-card border-border hover:border-primary/40 shadow-xs"
-              )}
-            >
-              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalInvoices')}</span>
-              <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
-            </button>
-            {/* مؤجلة معلقة */}
-            <button
-              type="button"
-              onClick={handleKpiDebt}
-              className={cn(
-                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
-                activeKpi === 'debt'
-                  ? "bg-orange-500/10 border-orange-500 ring-2 ring-orange-500/40 shadow-xs"
-                  : "bg-card border-border hover:border-orange-500/40 shadow-xs"
-              )}
-            >
-              <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('invoices.pendingDeferred')}</span>
-              <span className="text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums">{stats.pendingDebts}</span>
-            </button>
-            {/* مبيعات اليوم */}
-            <button
-              type="button"
-              onClick={handleKpiToday}
-              className={cn(
-                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
-                activeKpi === 'today'
-                  ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs"
-                  : "bg-card border-border hover:border-emerald-500/40 shadow-xs"
-              )}
-            >
-              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.todaySales')}</span>
-              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
-                {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
-              </span>
-            </button>
-            {/* إجمالي الأرباح */}
-            <button
-              type="button"
-              onClick={handleKpiProfit}
-              className={cn(
-                "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
-                activeKpi === 'profit'
-                  ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
-                  : "bg-card border-border hover:border-primary/40 shadow-xs"
-              )}
-            >
-              <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalProfits')}</span>
-              <span className="text-xs font-black text-primary font-mono whitespace-nowrap">
-                {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
-              </span>
-            </button>
-          </div>
 
-          {/* Filters & Quick Date Pills */}
-          <div className="space-y-2">
-            {/* Quick Date Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-              {[
-                { id: 'today' as const, key: 'reports.today', fallback: 'اليوم' },
-                { id: 'week' as const, key: 'reports.thisWeek', fallback: 'هذا الأسبوع' },
-                { id: 'month' as const, key: 'reports.thisMonth', fallback: 'هذا الشهر' },
-                { id: 'year' as const, key: 'reports.thisYear', fallback: 'هذا العام' },
-                { id: 'all' as const, key: 'invoices.allInvoices', fallback: 'كل الفواتير' },
-              ].map((pill) => {
-                const isActive = dateQuickFilter === pill.id;
-                return (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    onClick={() => {
-                      if (pill.id === 'today') {
-                        setDateQuickFilter('today');
-                        setDateFilter(todayStr);
-                        setActiveKpi('today');
-                      } else if (pill.id === 'week') {
-                        setDateQuickFilter('week');
-                        setDateFilter('');
-                        setActiveKpi(null);
-                      } else if (pill.id === 'month') {
-                        setDateQuickFilter('month');
-                        setDateFilter('');
-                        setActiveKpi(null);
-                      } else if (pill.id === 'year') {
-                        setDateQuickFilter('year');
-                        setDateFilter('');
-                        setActiveKpi(null);
-                      } else {
-                        setDateQuickFilter('all');
-                        setDateFilter('');
-                        setActiveKpi('total');
-                      }
-                    }}
-                    className={cn(
-                      "px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 cursor-pointer",
-                      isActive
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                    )}
-                  >
-                    {t(pill.key as any) || pill.fallback}
-                  </button>
-                );
-              })}
+          {/* 1. Sleek Sales Snapshot Card (بطاقة مبيعات موحدة + خيار المزيد) */}
+          <div className="bg-gradient-to-r from-card via-card to-primary/5 p-3 sm:p-3.5 rounded-2xl border border-border shadow-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 font-black text-sm">
+                  {statCurrencySymbol || '$'}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-black text-foreground">
+                      {t('invoices.salesPeriodTitle', { period: currentPeriodTitle }) || `مبيعات ${currentPeriodTitle}:`}
+                    </span>
+                    <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
+                      {formatCurrency(currentPeriodSales.total, statCurrencySymbol, statDecimals)}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground font-semibold truncate mt-0.5">
+                    {currentPeriodSales.count} {t('invoices.displayedInvoices') || 'فاتورة'} • {stats.pendingDebts} {t('invoices.pendingDeferred') || 'مؤجلة'}
+                  </div>
+                </div>
+              </div>
+
+              {/* المزيد / التفاصيل Dropdown & Toggle */}
+              <div className="flex items-center gap-1 shrink-0">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1.5 rounded-xl bg-background border border-border text-[11px] font-bold text-foreground hover:bg-muted flex items-center gap-1 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                    >
+                      <span>{t('common.more') || 'المزيد'}</span>
+                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-2xl p-1.5 text-xs font-bold w-48 shadow-xl">
+                    <div className="px-2 py-1 text-[10px] text-muted-foreground font-black border-b border-border/50 mb-1">
+                      {t('invoices.selectPeriod') || 'فترة العرض:'}
+                    </div>
+                    <DropdownMenuItem onClick={() => handleSetPeriod('today')} className="rounded-xl flex items-center justify-between cursor-pointer">
+                      <span>{t('reports.today') || 'اليوم'}</span>
+                      {dateQuickFilter === 'today' && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSetPeriod('week')} className="rounded-xl flex items-center justify-between cursor-pointer">
+                      <span>{t('reports.thisWeek') || 'هذا الأسبوع'}</span>
+                      {dateQuickFilter === 'week' && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSetPeriod('month')} className="rounded-xl flex items-center justify-between cursor-pointer">
+                      <span>{t('reports.thisMonth') || 'هذا الشهر'}</span>
+                      {dateQuickFilter === 'month' && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSetPeriod('year')} className="rounded-xl flex items-center justify-between cursor-pointer">
+                      <span>{t('reports.thisYear') || 'هذا العام'}</span>
+                      {dateQuickFilter === 'year' && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSetPeriod('all')} className="rounded-xl flex items-center justify-between cursor-pointer">
+                      <span>{t('invoices.allInvoices') || 'كل الفواتير'}</span>
+                      {dateQuickFilter === 'all' && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-1" />
+                    <DropdownMenuItem onClick={() => setShowDetailedStats(prev => !prev)} className="rounded-xl text-primary font-bold cursor-pointer">
+                      <Layers className="w-3.5 h-3.5 ml-1.5" />
+                      <span>{showDetailedStats ? (t('invoices.hideStats') || 'إخفاء الإحصائيات') : (t('invoices.showStats') || 'عرض تفاصيل الإحصائيات')}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDetailedStats(prev => !prev)}
+                  title={showDetailedStats ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
+                  className="p-1.5 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground active:scale-90 transition-all cursor-pointer"
+                >
+                  {showDetailedStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
 
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            {/* Collapsible Detailed Stats (تظهر عند النقر على خيار التفاصيل من زر المزيد) */}
+            {showDetailedStats && (
+              <div className="grid grid-cols-4 gap-1.5 text-center select-none pt-3 mt-3 border-t border-dashed border-border/80">
+                <button
+                  type="button"
+                  onClick={handleKpiTotal}
+                  className={cn(
+                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    activeKpi === 'total'
+                      ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
+                      : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
+                  )}
+                >
+                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalInvoices')}</span>
+                  <span className="text-xs sm:text-sm font-black text-foreground tabular-nums">{stats.total}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleKpiDebt}
+                  className={cn(
+                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    activeKpi === 'debt'
+                      ? "bg-orange-500/10 border-orange-500 ring-2 ring-orange-500/40 shadow-xs"
+                      : "bg-background/80 border-border hover:border-orange-500/40 shadow-xs"
+                  )}
+                >
+                  <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('invoices.pendingDeferred')}</span>
+                  <span className="text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums">{stats.pendingDebts}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleKpiToday}
+                  className={cn(
+                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    activeKpi === 'today'
+                      ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs"
+                      : "bg-background/80 border-border hover:border-emerald-500/40 shadow-xs"
+                  )}
+                >
+                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.todaySales')}</span>
+                  <span className="text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
+                    {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleKpiProfit}
+                  className={cn(
+                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    activeKpi === 'profit'
+                      ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
+                      : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
+                  )}
+                >
+                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalProfits')}</span>
+                  <span className="text-[11px] sm:text-xs font-black text-primary font-mono whitespace-nowrap">
+                    {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Unified Search + «التصفية» Button Bar */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder={t('invoices.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 pr-9 text-xs bg-card border-border rounded-xl font-medium shadow-xs focus-visible:ring-1 focus-visible:ring-primary"
+                className="h-10 pr-9 pl-8 text-xs bg-card border-border rounded-2xl font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-primary"
               />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              <div className="min-w-0">
-                <Select
-                  value={filterType}
-                  onValueChange={(v: 'all' | InvoiceType) => {
-                    setFilterType(v);
-                    setActiveKpi(null);
-                  }}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full cursor-pointer"
                 >
-                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.invoiceType')} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('invoices.allTypes')}</SelectItem>
-                    <SelectItem value="sale">{t('invoices.sales')}</SelectItem>
-                    <SelectItem value="maintenance">{t('invoices.maintenance')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-0">
-                <Select
-                  value={filterPayment}
-                  onValueChange={(v: 'all' | 'cash' | 'debt') => {
-                    setFilterPayment(v);
-                    setActiveKpi(null);
-                  }}
-                >
-                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.paymentMethod')} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('invoices.cashAndCredit')}</SelectItem>
-                    <SelectItem value="cash">{t('invoices.cash')}</SelectItem>
-                    <SelectItem value="debt">{t('invoices.credit')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-0">
-                <Select value={displayCurrencyFilter} onValueChange={(v: any) => setDisplayCurrencyFilter(v)}>
-                  <SelectTrigger className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"><SelectValue placeholder={t('invoices.displayCurrency')} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="stored">{t('invoices.asInInvoice')}</SelectItem>
-                    {enabledCurrencies.TRY && <SelectItem value="TRY">{currencySymbols?.TRY || '₺'} {currencyNames?.TRY || t('currencies.try')}</SelectItem>}
-                    {enabledCurrencies.SYP && <SelectItem value="SYP">{currencySymbols?.SYP || 'ل.س'} {currencyNames?.SYP || t('currencies.syp')}</SelectItem>}
-                    {enabledCurrencies.USD !== false && <SelectItem value="USD">$ {t('currencies.usd')}</SelectItem>}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-0 flex items-center gap-1">
-                <DatePicker
-                  value={dateFilter}
-                  onChange={(val) => {
-                    setDateFilter(val);
-                    if (val) {
-                      setDateQuickFilter('custom');
-                      setActiveKpi(null);
-                    } else {
-                      setDateQuickFilter('all');
-                      setActiveKpi('total');
-                    }
-                  }}
-                  placeholder={t('common.allDates')}
-                  className="w-full min-w-0 h-8 px-2 text-[11px] bg-card border-border rounded-xl gap-1 [&_svg]:size-3"
-                  highlightedDates={salesInvoiceDates}
-                />
-                {dateFilter && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    onClick={() => {
-                      setDateFilter('');
-                      setDateQuickFilter('all');
-                      setActiveKpi('total');
-                    }}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                )}
-              </div>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            {/* Slim فواتير مستردة Strip & Counter */}
-            <div className="flex items-center justify-between gap-2 pt-0.5">
-              <button
-                type="button"
-                onClick={() => setShowRefunded(v => !v)}
-                className={cn(
-                  "rounded-xl border py-1.5 px-3 flex items-center gap-2 text-[11px] font-bold transition-all shadow-xs select-none",
-                  showRefunded
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-                <span>{t('invoices.refundedInvoices')}</span>
-                <span className={cn(
-                  "text-[9px] px-1.5 py-0.2 rounded-full font-bold",
-                  showRefunded ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-                )}>
-                  {invoices.filter(i => i.status === 'refunded').length}
+            {/* زر «التصفية» الموحد مع شارة عدد الفلاتر النشطة */}
+            <Button
+              type="button"
+              onClick={() => setIsFilterSheetOpen(true)}
+              variant="outline"
+              className={cn(
+                "h-10 px-3.5 rounded-2xl flex items-center gap-1.5 text-xs font-black transition-all shrink-0 border shadow-2xs active:scale-95 cursor-pointer",
+                activeFiltersCount > 0
+                  ? "bg-primary/10 border-primary text-primary hover:bg-primary/15"
+                  : "bg-card border-border hover:bg-muted/60 text-foreground"
+              )}
+            >
+              <Filter className="w-4 h-4 text-primary shrink-0" />
+              <span>{t('common.filter') || 'التصفية'}</span>
+              {activeFiltersCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground font-mono text-[10px] flex items-center justify-center font-bold">
+                  {activeFiltersCount}
                 </span>
-              </button>
+              )}
+            </Button>
+          </div>
 
-              <span className="text-muted-foreground text-[10.5px] font-semibold">
-                {filteredInvoices.length} {t('invoices.displayedInvoices')}
-              </span>
-            </div>
+          {/* 3. شريط بطاقات الفلاتر النشطة (Active Filter Chips Strip) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px] font-bold select-none">
+            {dateQuickFilter !== 'all' && (
+              <div className="bg-primary/10 border border-primary/30 text-primary px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <span>📅 {currentPeriodTitle}</span>
+                <button
+                  type="button"
+                  onClick={() => handleSetPeriod('all')}
+                  className="text-primary hover:text-primary/70 font-mono text-xs cursor-pointer"
+                  title={t('common.clear') || 'إلغاء'}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {filterPayment !== 'all' && (
+              <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <span>💳 {filterPayment === 'cash' ? t('invoices.cash') : t('invoices.credit')}</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterPayment('all')}
+                  className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                  title={t('common.clear') || 'إلغاء'}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {filterType !== 'all' && (
+              <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <span>🧾 {filterType === 'sale' ? t('invoices.sales') : t('invoices.maintenance')}</span>
+                <button
+                  type="button"
+                  onClick={() => setFilterType('all')}
+                  className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                  title={t('common.clear') || 'إلغاء'}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {displayCurrencyFilter !== 'stored' && (
+              <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <span>💱 {displayCurrencyFilter}</span>
+                <button
+                  type="button"
+                  onClick={() => setDisplayCurrencyFilter('stored')}
+                  className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                  title={t('common.clear') || 'إلغاء'}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {showRefunded && (
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <span>↩️ {t('invoices.refundedInvoices')}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowRefunded(false)}
+                  className="text-rose-500 hover:text-rose-700 font-mono text-xs cursor-pointer"
+                  title={t('common.clear') || 'إلغاء'}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsFilterSheetOpen(true)}
+              className="text-primary hover:underline text-[10.5px] px-1 shrink-0 font-bold cursor-pointer"
+            >
+              + {t('invoices.editFilters') || 'تعديل الفلاتر'}
+            </button>
+          </div>
+
+          {/* 4. ملخص الفواتير المعروضة */}
+          <div className="flex items-center justify-between px-1 text-muted-foreground text-xs font-bold">
+            <span>
+              {t('invoices.displayedInvoices') || 'الفواتير المعروضة'}: <b className="text-foreground font-mono">{filteredInvoices.length}</b>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsFilterSheetOpen(true)}
+              className="text-primary hover:text-primary/80 text-[11px] flex items-center gap-1 cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+              <span>{t('invoices.editFilters') || 'تعديل الفلاتر'}</span>
+            </button>
           </div>
 
           {/* Invoices List */}
@@ -2927,6 +3084,299 @@ export default function Invoices() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 5. The Smart Filter Sheet (لوحة التصفية الشاملة السلسة) */}
+      <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-w-md sm:max-w-lg mx-auto rounded-t-3xl border-t border-border bg-card text-card-foreground p-0 max-h-[88vh] flex flex-col shadow-2xl overflow-hidden focus:outline-none"
+        >
+          {/* Laser Accent Line */}
+          <div className="h-[2.5px] w-full bg-gradient-to-r from-transparent via-primary to-transparent shadow-xs" />
+
+          {/* Grab Handle */}
+          <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2.5 shrink-0" />
+
+          {/* Sheet Header */}
+          <div className="px-5 pb-3 border-b border-border/70 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Filter className="w-4 h-4" />
+              </div>
+              <div>
+                <SheetTitle className="font-black text-sm text-foreground leading-tight text-right">
+                  {t('invoices.filterSheetTitle') || 'لوحة الفلاتر والتصفية الذكية'}
+                </SheetTitle>
+                <SheetDescription className="text-[10px] text-muted-foreground font-medium text-right">
+                  {t('invoices.filterSheetSubtitle') || 'حدد المعايير المطلوبة لعرض الفواتير بدقة'}
+                </SheetDescription>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={resetAllFilters}
+              className="text-primary hover:text-primary/80 text-xs font-bold px-2 py-1 h-auto rounded-lg cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 ml-1" />
+              <span>{t('common.reset') || 'إعادة ضبط'}</span>
+            </Button>
+          </div>
+
+          {/* Scrollable Filter Controls */}
+          <div className="p-4 space-y-4 overflow-y-auto text-xs font-bold flex-1">
+            {/* 1. Time Period */}
+            <div>
+              <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>{t('invoices.timePeriod') || 'الفترة الزمنية:'}</span>
+              </label>
+              <div className="grid grid-cols-5 gap-1 text-center">
+                {[
+                  { id: 'today' as const, label: t('reports.today') || 'اليوم' },
+                  { id: 'week' as const, label: t('reports.thisWeek') || 'الأسبوع' },
+                  { id: 'month' as const, label: t('reports.thisMonth') || 'الشهر' },
+                  { id: 'year' as const, label: t('reports.thisYear') || 'العام' },
+                  { id: 'all' as const, label: t('invoices.allInvoices') || 'الكل' },
+                ].map((p) => {
+                  const isSelected = dateQuickFilter === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSetPeriod(p.id)}
+                      className={cn(
+                        "py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Date Picker in Sheet */}
+              <div className="mt-2.5 bg-muted/30 p-2.5 rounded-xl border border-border/70 flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">{t('common.customDate') || 'تاريخ مخصص:'}</span>
+                <div className="flex items-center gap-1 w-44">
+                  <DatePicker
+                    value={dateFilter}
+                    onChange={(val) => {
+                      setDateFilter(val);
+                      if (val) {
+                        setDateQuickFilter('custom');
+                        setActiveKpi(null);
+                      } else {
+                        setDateQuickFilter('all');
+                        setActiveKpi('total');
+                      }
+                    }}
+                    placeholder={t('common.allDates')}
+                    className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"
+                    highlightedDates={salesInvoiceDates}
+                  />
+                  {dateFilter && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => {
+                        setDateFilter('');
+                        setDateQuickFilter('all');
+                        setActiveKpi('total');
+                      }}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Payment Method */}
+            <div>
+              <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-primary" />
+                <span>{t('invoices.paymentMethod') || 'طريقة الدفع والحساب:'}</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'all' as const, label: t('invoices.cashAndCredit') || 'نقدي ومؤجل' },
+                  { id: 'cash' as const, label: t('invoices.cash') || 'نقدي فقط' },
+                  { id: 'debt' as const, label: t('invoices.credit') || 'مؤجل (دين)' },
+                ].map((pm) => {
+                  const isSelected = filterPayment === pm.id;
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => setFilterPayment(pm.id)}
+                      className={cn(
+                        "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {pm.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Invoice Type */}
+            <div>
+              <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                <span>{t('invoices.invoiceType') || 'نوع الفاتورة:'}</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'all' as const, label: t('invoices.allTypes') || 'كل الأنواع' },
+                  { id: 'sale' as const, label: t('invoices.sales') || 'مبيعات' },
+                  { id: 'maintenance' as const, label: t('invoices.maintenance') || 'صيانة' },
+                ].map((it) => {
+                  const isSelected = filterType === it.id;
+                  return (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => setFilterType(it.id)}
+                      className={cn(
+                        "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {it.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Display Currency */}
+            <div>
+              <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-primary" />
+                <span>{t('invoices.displayCurrency') || 'عملة العرض في القائمة:'}</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setDisplayCurrencyFilter('stored')}
+                  className={cn(
+                    "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                    displayCurrencyFilter === 'stored'
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {t('invoices.asInInvoice') || 'العملة الأصلية'}
+                </button>
+                {enabledCurrencies.TRY && (
+                  <button
+                    type="button"
+                    onClick={() => setDisplayCurrencyFilter('TRY')}
+                    className={cn(
+                      "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                      displayCurrencyFilter === 'TRY'
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {currencySymbols?.TRY || '₺'} TRY
+                  </button>
+                )}
+                {enabledCurrencies.SYP && (
+                  <button
+                    type="button"
+                    onClick={() => setDisplayCurrencyFilter('SYP')}
+                    className={cn(
+                      "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                      displayCurrencyFilter === 'SYP'
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {currencySymbols?.SYP || 'ل.س'} SYP
+                  </button>
+                )}
+                {enabledCurrencies.USD !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setDisplayCurrencyFilter('USD')}
+                    className={cn(
+                      "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                      displayCurrencyFilter === 'USD'
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    $ USD
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 5. Show Refunded Invoices Switch */}
+            <div className="bg-muted/30 p-3 rounded-2xl border border-border/70 flex items-center justify-between">
+              <div>
+                <span className="text-foreground font-black block text-xs">
+                  {t('invoices.refundedInvoices') || 'إظهار الفواتير المستردة'}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold">
+                  تضمين {invoices.filter(i => i.status === 'refunded').length} فاتورة مستردة في القائمة
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRefunded(prev => !prev)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  showRefunded ? "bg-primary" : "bg-muted"
+                )}
+              >
+                <span
+                  className={cn(
+                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                    showRefunded ? (isRTL ? "-translate-x-5" : "translate-x-5") : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Sheet Footer */}
+          <div className="p-3 bg-muted/20 border-t border-border flex gap-2 shrink-0">
+            <Button
+              type="button"
+              onClick={() => {
+                setIsFilterSheetOpen(false);
+                toast.success(t('invoices.filterApplied') || 'تم تطبيق التصفية بنجاح', { duration: 1500 });
+              }}
+              className="flex-1 bg-primary text-primary-foreground font-black py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Check className="w-4 h-4" />
+              <span>{t('common.apply') || 'تطبيق التصفية'}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsFilterSheetOpen(false)}
+              className="px-5 border-border text-foreground font-bold rounded-xl text-xs cursor-pointer"
+            >
+              {t('common.close') || 'إغلاق'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

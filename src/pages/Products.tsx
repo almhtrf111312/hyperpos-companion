@@ -1413,7 +1413,10 @@ export default function Products() {
     <div className="flex flex-col h-screen overflow-hidden bg-background relative selection:bg-primary/20">
 
       {/* الشريط العلوي المباشر: النشطة (يمين) - التصنيفات (وسط) - الأرشيف (يسار) */}
-      <div className="flex-shrink-0 px-3 md:px-6 pt-3 md:pt-4 pb-1.5 md:pb-2 overflow-x-hidden max-w-full relative z-10">
+      <div className={cn(
+        "flex-shrink-0 px-3 md:px-6 pt-3 md:pt-4 pb-1.5 md:pb-2 overflow-x-hidden max-w-full relative z-10",
+        isRTL ? "pr-14 md:pr-6" : "pl-14 md:pl-6"
+      )}>
         <div className="flex items-center gap-1.5 sm:gap-2.5 w-full sm:w-auto sm:max-w-md">
           {/* 1. النشطة (يمين في RTL) */}
           <button
