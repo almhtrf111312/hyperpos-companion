@@ -17,6 +17,7 @@ import { emitEvent, EVENTS } from '../events';
 import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { logActivity, diffFields } from '../activity-log';
+import { resolveHistoricalCurrency } from '../currencies';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -123,32 +124,16 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     ? rawDiscount
     : (discountPercentage > 0 ? (subtotal * discountPercentage) / 100 : 0);
 
-  const rawCurrency = (cloud.currency || 'USD').toUpperCase();
-  const persistedSymbols = (() => {
-    try {
-      const s = localStorage.getItem('hyperpos_settings_v1');
-      if (s) {
-        const parsed = JSON.parse(s);
-        return parsed.currencySymbols as Record<string, string> | undefined;
-      }
-    } catch {}
-    return undefined;
-  })();
+  const rawExchangeRate = Number(cloud.exchange_rate) || 1;
+  const resolved = resolveHistoricalCurrency({
+    currency: cloud.currency,
+    currencySymbol: (cloud as any).currency_symbol,
+    exchangeRate: rawExchangeRate,
+  });
 
-  const currencySymbol = (cloud as any).currency_symbol ||
-    persistedSymbols?.[rawCurrency] ||
-    (rawCurrency === 'TRY' ? (persistedSymbols?.TRY || '₺') :
-      rawCurrency === 'SYP' ? (persistedSymbols?.SYP || 'ل.س') :
-      rawCurrency === 'USD' ? (persistedSymbols?.USD || '$') :
-      rawCurrency === 'JOD' ? 'د.أ' :
-      rawCurrency === 'SAR' ? 'ر.س' :
-      rawCurrency === 'KWD' ? 'د.ك' :
-      rawCurrency === 'AED' ? 'د.إ' :
-      rawCurrency === 'LBP' ? 'ل.ل' :
-      rawCurrency === 'EUR' ? '€' :
-      (rawCurrency !== 'USD' ? rawCurrency : (persistedSymbols?.USD || '$')));
-
-  const exchangeRate = Number(cloud.exchange_rate) || 1;
+  const rawCurrency = resolved.code;
+  const currencySymbol = resolved.symbol;
+  const exchangeRate = resolved.rate;
   const isForeign = rawCurrency !== 'USD' && exchangeRate > 0;
   
   const total = Number(cloud.total) || 0;
@@ -1144,10 +1129,15 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
         const data = op.data as Record<string, any>;
         const bundle = (data?.bundle || {}) as Record<string, any>;
         const isFailed = op.status === 'failed';
-        const rawCurr = (bundle.currency || 'USD').toUpperCase();
-        const sym = (bundle.currencySymbol && bundle.currencySymbol !== '$')
-          ? bundle.currencySymbol
-          : (rawCurr === 'USD' ? (persistedSymbols?.USD || '$') : (persistedSymbols?.[rawCurr] || (rawCurr === 'TRY' ? '₺' : rawCurr === 'SYP' ? 'ل.س' : rawCurr)));
+        const rawExRate = Number(bundle.exchangeRate) || 1;
+        const resolved = resolveHistoricalCurrency({
+          currency: bundle.currency,
+          currencySymbol: bundle.currencySymbol,
+          exchangeRate: rawExRate,
+        });
+        const rawCurr = resolved.code;
+        const sym = resolved.symbol;
+        const exRate = resolved.rate;
 
         const items = (bundle.items || []).map((it: any) => ({
           id: it.id,
@@ -1185,7 +1175,7 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
           totalInCurrency: Number(bundle.totalInCurrency) || Number(bundle.total) || 0,
           currency: rawCurr,
           currencySymbol: sym,
-          exchangeRate: Number(bundle.exchangeRate) || 1,
+          exchangeRate: exRate,
           profit: computedProfit,
           partsCost: computedPartsCost,
           paymentType: op.type === 'debt_sale_bundle' ? ((Number(bundle.downPayment) || 0) > 0 ? 'split' : 'debt') : (bundle.paymentType || 'cash'),

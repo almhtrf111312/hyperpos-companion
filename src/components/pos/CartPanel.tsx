@@ -59,6 +59,7 @@ import { addUniqueOperation } from '@/lib/sync-queue';
 import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
+import { getCurrencySymbolByCode } from '@/lib/currencies';
 
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
@@ -649,7 +650,7 @@ export function CartPanel({
           }
         }
       } catch { /* ignore */ }
-      return selectedCurrency.code === 'TRY' ? '₺' : selectedCurrency.code === 'SYP' ? 'ل.س' : selectedCurrency.code;
+      return getCurrencySymbolByCode(selectedCurrency.code);
     })();
 
     // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
@@ -951,7 +952,7 @@ export function CartPanel({
           }
         }
       } catch { /* ignore */ }
-      return selectedCurrency.code === 'TRY' ? '₺' : selectedCurrency.code === 'SYP' ? 'ل.س' : selectedCurrency.code;
+      return getCurrencySymbolByCode(selectedCurrency.code);
     })();
 
     // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات

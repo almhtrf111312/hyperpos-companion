@@ -53,3 +53,166 @@ export const CURRENCY_CATEGORIES = [
   { id: 'north_africa', label: 'شمال أفريقيا', labelEn: 'North Africa' },
   { id: 'global', label: 'عملات عالمية', labelEn: 'Global' },
 ] as const;
+
+/**
+ * البحث عن عملة محددة مسبقاً حسب الرمز الكودي (Code)
+ */
+export function getPredefinedCurrency(code?: string): PredefinedCurrency | undefined {
+  if (!code) return undefined;
+  const upper = code.trim().toUpperCase();
+  return PREDEFINED_CURRENCIES.find(c => c.code === upper);
+}
+
+/**
+ * الحصول على الرمز الفعلي للعملة (Symbol) بناءً على الكود
+ * مثل: LBP -> ل.ل, TRY -> ₺, SYP -> ل.س, SAR -> ر.س, EUR -> €, USD -> $
+ */
+export function getCurrencySymbolByCode(code?: string, fallback?: string): string {
+  if (!code) return fallback || '$';
+  const upper = code.trim().toUpperCase();
+  const found = PREDEFINED_CURRENCIES.find(c => c.code === upper);
+  if (found) return found.symbol;
+  return fallback || upper;
+}
+
+/**
+ * استنتاج العملة التاريخية الفعلية من سعر الصرف المخزن
+ * هذا يمنع تشوه الفواتير القديمة عند تغيير عملة المتجر النشطة
+ */
+export function inferCurrencyFromExchangeRate(rate: number, hintedCode?: string): PredefinedCurrency | undefined {
+  if (!rate || isNaN(rate) || rate <= 0) return undefined;
+
+  // إذا كان هناك تلميح بكود العملة
+  if (hintedCode && hintedCode.trim().toUpperCase() !== 'USD') {
+    const hintUpper = hintedCode.trim().toUpperCase();
+
+    // فحص أمان صارم: إذا كان سعر الصرف غير متوافق نهائياً مع العملة المزعومة،
+    // نمنع تطبيق الكود الخاطئ ونستنتج العملة الحقيقية من السعر
+    if (rate >= 50000 && hintUpper !== 'LBP') {
+      return PREDEFINED_CURRENCIES.find(c => c.code === 'LBP');
+    }
+    if (rate >= 5000 && rate < 50000 && hintUpper !== 'SYP') {
+      return PREDEFINED_CURRENCIES.find(c => c.code === 'SYP');
+    }
+    if (rate >= 800 && rate < 5000 && hintUpper !== 'IQD') {
+      return PREDEFINED_CURRENCIES.find(c => c.code === 'IQD');
+    }
+
+    const hintCur = PREDEFINED_CURRENCIES.find(c => c.code === hintUpper);
+    if (hintCur) {
+      return hintCur;
+    }
+  }
+
+  // استنتاج حسب نطاقات أسعار الصرف الحقيقية مقابل الدولار الأمريكي
+  if (rate >= 50000) {
+    // الليرة اللبنانية (LBP ~89500)
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'LBP');
+  }
+  if (rate >= 5000 && rate < 50000) {
+    // الليرة السورية (SYP ~14500)
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'SYP');
+  }
+  if (rate >= 800 && rate < 5000) {
+    // الدينار العراقي (IQD ~1310)
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'IQD');
+  }
+  if (rate >= 300 && rate < 800) {
+    // الجنيه السوداني (SDG ~600)
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'SDG');
+  }
+  if (rate >= 180 && rate < 300) {
+    // الريال اليمني (YER ~250)
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'YER');
+  }
+  if (rate >= 80 && rate < 180) {
+    // الدينار الجزائري (DZD ~134) أو الين الياباني (JPY ~153)
+    if (hintedCode && hintedCode.trim().toUpperCase() === 'JPY') {
+      return PREDEFINED_CURRENCIES.find(c => c.code === 'JPY');
+    }
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'DZD');
+  }
+  if (rate >= 15 && rate < 80) {
+    // الليرة التركية (TRY ~34) أو الجنيه المصري (EGP ~48)
+    if (hintedCode && hintedCode.trim().toUpperCase() === 'EGP') {
+      return PREDEFINED_CURRENCIES.find(c => c.code === 'EGP');
+    }
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'TRY');
+  }
+  if (rate > 1.05 && rate < 15) {
+    // عملات الخليج والمغرب العربي ذات الصرف المنخفض
+    if (hintedCode) {
+      const match = PREDEFINED_CURRENCIES.find(c => c.code === hintedCode.trim().toUpperCase());
+      if (match) return match;
+    }
+    return PREDEFINED_CURRENCIES.find(c => c.code === 'SAR');
+  }
+
+  return undefined;
+}
+
+/**
+ * تحديد العملة التاريخية وسعر الصرف والرمز الفعلي للفاتورة بشكل مجمد ومستقل
+ * يضمن عدم تأثر الفواتير القديمة بأي تغيير في إعدادات عملة المتجر الحالية
+ */
+export function resolveHistoricalCurrency(
+  inv: {
+    currency?: string | null;
+    currencySymbol?: string | null;
+    exchangeRate?: number | null;
+  },
+  fallbackSettings?: {
+    currencyCode?: string;
+    currencySymbol?: string;
+    currencySymbols?: Record<string, string>;
+  }
+): { code: string; symbol: string; rate: number } {
+  const rawCurrency = (inv.currency || '').trim().toUpperCase();
+  const rawSymbol = (inv.currencySymbol || '').trim();
+  const hasRate = typeof inv.exchangeRate === 'number' && !isNaN(inv.exchangeRate) && inv.exchangeRate > 0;
+  const rate = hasRate ? inv.exchangeRate! : 1;
+
+  // هل الفاتورة أجنبية/محلية (سعر صرف > 1 أو عملة ليست USD)؟
+  const isForeign = (rawCurrency !== 'USD' && rawCurrency !== '') || rate > 1;
+
+  if (!isForeign) {
+    // فاتورة بالدولار الأمريكي
+    const symbol = (rawSymbol && rawSymbol !== '')
+      ? rawSymbol
+      : (fallbackSettings?.currencySymbols?.USD || '$');
+    return { code: 'USD', symbol, rate: 1 };
+  }
+
+  // 1. استنتاج العملة التاريخية من سعر الصرف أو الكود
+  const inferred = inferCurrencyFromExchangeRate(rate, rawCurrency);
+  const code = inferred?.code || (rawCurrency && rawCurrency !== 'USD' ? rawCurrency : (fallbackSettings?.currencyCode !== 'USD' ? fallbackSettings?.currencyCode || 'TRY' : 'TRY'));
+
+  // 2. التحقق من صحة الرمز وتجميده
+  let symbol: string;
+  const canonical = getCurrencySymbolByCode(code);
+
+  // متى نعتبر الرمز المخزن غير صالح ويجب استبداله بالرمز المعياري الموثوق؟
+  // - إذا كان فارغاً أو "$" لفاتورة غير دولارية
+  // - إذا كان "€" ولكن العملة ليست EUR وسعر الصرف لا يمت لليورو بصلة (مثل LBP 89500 أو TRY 34)
+  // - إذا كان الرمز لا يطابق العملة المستنتجة بشكل قاطع
+  const isSuspiciousSymbol =
+    !rawSymbol ||
+    rawSymbol === '$' ||
+    (rawSymbol === '€' && code !== 'EUR') ||
+    (rawSymbol === '₺' && code !== 'TRY' && code !== 'USD') ||
+    (rawSymbol === 'ل.س' && code !== 'SYP') ||
+    (rawSymbol === 'ل.ل' && code !== 'LBP');
+
+  if (!isSuspiciousSymbol && rawSymbol !== '') {
+    symbol = rawSymbol;
+  } else if (canonical && canonical !== '$') {
+    symbol = canonical;
+  } else if (fallbackSettings?.currencySymbols?.[code]) {
+    symbol = fallbackSettings.currencySymbols[code];
+  } else {
+    symbol = code;
+  }
+
+  return { code, symbol, rate };
+}
+

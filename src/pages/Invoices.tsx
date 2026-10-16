@@ -65,6 +65,7 @@ import { toast } from 'sonner';
 import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
+import { getCurrencySymbolByCode, resolveHistoricalCurrency, PREDEFINED_CURRENCIES } from '@/lib/currencies';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
@@ -333,7 +334,7 @@ export default function Invoices() {
         symbol = currencySymbols?.USD || '$';
       } else {
         rate = (exchangeRates[code] && exchangeRates[code] > 0) ? exchangeRates[code] : (code === 'TRY' ? 34 : (code === 'SYP' ? 14500 : 1));
-        symbol = currencySymbols?.[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
+        symbol = currencySymbols?.[code] || getCurrencySymbolByCode(code);
         if ((!symbol || symbol === '$') && currencyCode === code && currencySymbol && currencySymbol !== '$') {
           symbol = currencySymbol;
         }
@@ -342,40 +343,15 @@ export default function Invoices() {
         }
       }
     } else {
-      // 'stored': use the invoice's stored currency if present and valid
-      const rawStoredSymbol = (inv.currencySymbol || '').trim();
-      const invCurr = (inv.currency || '').toUpperCase();
-      const hasStoredRate = typeof inv.exchangeRate === 'number' && inv.exchangeRate > 0;
-      const storedRate = hasStoredRate ? inv.exchangeRate! : 1;
-
-      // تعتبر الفاتورة بعملة أجنبية/محلية إذا كانت العملة ليست USD أو معدل صرفها > 1
-      const isForeign = (invCurr !== 'USD' && invCurr !== '') || storedRate > 1;
-
-      if (isForeign) {
-        code = (invCurr && invCurr !== 'USD') ? invCurr : (currencyCode !== 'USD' ? currencyCode : 'TRY');
-        rate = hasStoredRate
-          ? storedRate
-          : ((exchangeRates[code] && exchangeRates[code] > 0) ? exchangeRates[code] : (code === 'TRY' ? 34 : (code === 'SYP' ? 14500 : 1)));
-
-        // إذا كان الرمز المخزن تاريخياً بالخطأ "$" أو فارغاً، نتجاهل "$" ونجلب الرمز الفعلي المخصص للعملة
-        const hasValidNonDollarStored = rawStoredSymbol !== '' && rawStoredSymbol !== '$';
-        if (hasValidNonDollarStored) {
-          symbol = rawStoredSymbol;
-        } else {
-          symbol = currencySymbols?.[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
-          if ((!symbol || symbol === '$') && currencyCode === code && currencySymbol && currencySymbol !== '$') {
-            symbol = currencySymbol;
-          }
-          if (!symbol || symbol === '$') {
-            symbol = code;
-          }
-        }
-      } else {
-        // الفاتورة المباعة بالدولار تُعرض دائماً بالدولار ($) بسعر صرف 1
-        code = 'USD';
-        rate = 1;
-        symbol = (rawStoredSymbol && rawStoredSymbol !== '') ? rawStoredSymbol : (currencySymbols?.USD || '$');
-      }
+      // 'stored': استخدام العملة وسعر الصرف والرمز التاريخي المجمد للفاتورة لمنع تشوهها بأي تغيير لاحق
+      const resolved = resolveHistoricalCurrency(inv, {
+        currencyCode,
+        currencySymbol,
+        currencySymbols,
+      });
+      code = resolved.code;
+      rate = resolved.rate;
+      symbol = resolved.symbol;
     }
 
     const decimals = rate >= 100 ? 0 : 2;
@@ -425,10 +401,10 @@ export default function Invoices() {
     : currencyCode;
   const statExchangeRate = statCurrencyCode === 'USD'
     ? 1
-    : ((exchangeRates[statCurrencyCode] && exchangeRates[statCurrencyCode] > 1)
+    : ((exchangeRates[statCurrencyCode] && exchangeRates[statCurrencyCode] > 0)
         ? exchangeRates[statCurrencyCode]
-        : (statCurrencyCode === 'TRY' ? 34 : 14500));
-  const statCurrencySymbol = statCurrencyCode === 'USD' ? (currencySymbols?.USD || '$') : (currencySymbols?.[statCurrencyCode] || (statCurrencyCode === 'TRY' ? '₺' : (statCurrencyCode === 'SYP' ? 'ل.س' : statCurrencyCode)));
+        : (statCurrencyCode === 'TRY' ? 34 : (statCurrencyCode === 'SYP' ? 14500 : 1)));
+  const statCurrencySymbol = statCurrencyCode === 'USD' ? (currencySymbols?.USD || '$') : (currencySymbols?.[statCurrencyCode] || getCurrencySymbolByCode(statCurrencyCode));
   const statDecimals = statExchangeRate >= 100 ? 0 : 2;
 
   // مواءمة مبيعات اليوم مع فواتير اليوم الفعلية المعروضة لمنع أي تفاوت عند منتصف الليل
@@ -2180,7 +2156,7 @@ export default function Invoices() {
                 <div>
                   <span className="text-muted-foreground">{t('invoices.currency') || 'عملة الفاتورة'}:</span>
                   <p className="font-semibold flex items-center gap-1.5 flex-wrap">
-                    <span>{currencyNames?.[selectedFinancials.code] || (selectedFinancials.code === 'TRY' ? c1Name : selectedFinancials.code === 'SYP' ? c2Name : (selectedFinancials.code === 'USD' ? (currencyNames?.USD || 'دولار أمريكي') : selectedFinancials.code))}</span>
+                    <span>{currencyNames?.[selectedFinancials.code] || (selectedFinancials.code === 'TRY' ? c1Name : selectedFinancials.code === 'SYP' ? c2Name : (selectedFinancials.code === 'USD' ? (currencyNames?.USD || 'دولار أمريكي') : (PREDEFINED_CURRENCIES.find(c => c.code === selectedFinancials.code)?.name || selectedFinancials.code)))}</span>
                     {selectedFinancials.code !== 'USD' && (
                       <span className="text-xs text-muted-foreground font-normal">
                         (1{currencySymbols?.USD || '$'} = {formatNumber(selectedFinancials.rate)} {selectedFinancials.symbol}) | المعادل: {currencySymbols?.USD || '$'}{formatNumber(baseInvTotal, baseInvTotal % 1 === 0 ? 0 : 2)}
