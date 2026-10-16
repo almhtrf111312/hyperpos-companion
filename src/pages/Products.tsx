@@ -105,7 +105,6 @@ import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDial
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
 import { getSignedImageUrl } from '@/lib/image-upload';
-import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Products() {
   const { currencyCode, currencySymbol, exchangeRate, enabledCurrencies } = useCurrency();
@@ -1413,108 +1412,35 @@ export default function Products() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background relative selection:bg-primary/20">
 
-      {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-4 pt-6 md:p-8 pb-3 md:pb-4 overflow-x-hidden max-w-full relative z-10">
-        {/* Header */}
-        <PageHeader
-          icon={<Package className="w-5 h-5" />}
-          title={
-            mainTab === 'archive'
-              ? t('products.archiveTitle')
-              : tDynamic('pageTitle')
-          }
-          subtitle={
-            mainTab === 'archive'
-              ? t('products.archiveSubtitle')
-              : tDynamic('pageSubtitle')
-          }
-          actions={
-            /* Desktop: سطر تحكم موحد ومتناسق (النشط على اليمين - التصنيفات بالنصف - الأرشيف على اليسار) */
-            <div className="hidden sm:flex items-center gap-2">
-              {/* 1. النشط (يمين في RTL) */}
-              <button
-                type="button"
-                onClick={() => setMainTab('products')}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
-                  mainTab === 'products'
-                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                    : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
-                )}
-              >
-                <Package className="w-4 h-4 shrink-0" />
-                <span>{t('products.activeProducts')}</span>
-              </button>
-
-              {/* 2. التصنيفات (في المنتصف) */}
-              <button
-                type="button"
-                onClick={() => setShowCategoryManager(true)}
-                className="flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card text-foreground hover:bg-muted/50 hover:border-border shadow-2xs cursor-pointer"
-              >
-                <Tag className="w-4 h-4 shrink-0 text-primary" />
-                <span>{t('products.categories')}</span>
-              </button>
-
-              {/* 3. الأرشيف (يسار في RTL) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setMainTab('archive');
-                  loadArchivedData();
-                }}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
-                  mainTab === 'archive'
-                    ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                    : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
-                )}
-              >
-                <Archive className="w-4 h-4 shrink-0" />
-                <span>{t('products.archive')}</span>
-                {mergedArchivedProducts.length > 0 && (
-                  <span className={cn(
-                    "px-1.5 py-0.2 text-[10px] rounded-full font-bold",
-                    mainTab === 'archive'
-                      ? "bg-white/25 text-white"
-                      : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                  )}>
-                    {mergedArchivedProducts.length}
-                  </span>
-                )}
-              </button>
-            </div>
-          }
-        />
-
-        {/* Mobile Toolbar: سطر تحكم واحد فقط يجمع (النشط على اليمين - التصنيفات بالنصف - الأرشيف على اليسار) */}
-        <div className="sm:hidden flex items-center gap-1.5 w-full mt-2.5">
-          {/* 1. النشط (يمين في RTL) */}
+      {/* الشريط العلوي المباشر: النشطة (يمين) - التصنيفات (وسط) - الأرشيف (يسار) */}
+      <div className="flex-shrink-0 px-3 md:px-6 pt-3 md:pt-4 pb-1.5 md:pb-2 overflow-x-hidden max-w-full relative z-10">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 w-full sm:w-auto sm:max-w-md">
+          {/* 1. النشطة (يمين في RTL) */}
           <button
             type="button"
             onClick={() => setMainTab('products')}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-bold transition-all select-none border cursor-pointer",
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
               mainTab === 'products'
-                ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
+                ? "bg-primary text-primary-foreground border-primary shadow-xs shadow-primary/25"
+                : "bg-card/90 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
             )}
           >
-            <Package className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{t('products.active')}</span>
+            <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">{t('products.activeProducts')}</span>
           </button>
 
           {/* 2. التصنيفات (في المنتصف) */}
           <button
             type="button"
             onClick={() => setShowCategoryManager(true)}
-            className="flex-1 flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-semibold transition-all select-none border border-border/70 bg-card text-foreground hover:bg-muted/50 hover:border-border shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
           >
-            <Tag className="w-3.5 h-3.5 shrink-0 text-primary" />
+            <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
             <span className="truncate">{t('products.categories')}</span>
           </button>
 
-          {/* 3. الأرشيف (يسار في RTL) */}
+          {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
           <button
             type="button"
             onClick={() => {
@@ -1522,20 +1448,20 @@ export default function Products() {
               loadArchivedData();
             }}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-bold transition-all select-none border cursor-pointer",
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
               mainTab === 'archive'
-                ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
+                ? "!bg-red-600 !text-white !border-red-600 shadow-sm shadow-red-600/30"
+                : "bg-card/90 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
             )}
           >
-            <Archive className="w-3.5 h-3.5 shrink-0" />
+            <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span className="truncate">{t('products.archive')}</span>
             {mergedArchivedProducts.length > 0 && (
               <span className={cn(
-                "px-1.5 py-0.2 text-[9px] rounded-full font-bold",
+                "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none",
                 mainTab === 'archive'
                   ? "bg-white/25 text-white"
-                  : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                  : "bg-red-500/15 text-red-600 dark:text-red-400"
               )}>
                 {mergedArchivedProducts.length}
               </span>
@@ -1544,152 +1470,140 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Stats - Fixed Geometry for Both Modes */}
+      {/* Stats - كبسولات إحصائيات مصغرة بنسبة 50% مع تقليل الارتفاع */}
       {!noInventory && (
-        <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
+        <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-2.5">
           {mainTab === 'archive' ? (
-            <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
+            <div className="grid grid-cols-4 gap-1.5 md:gap-3">
               <button
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  archiveFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-red-500/40",
+                  archiveFilter === 'all' ? "border-red-500 bg-red-500/10 ring-1 ring-red-500/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-primary/10">
-                    <Archive className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.total}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.totalArchive')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-red-500/15 flex items-center justify-center shrink-0">
+                  <Archive className="w-3.5 h-3.5 text-red-500" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.total}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.totalArchive')}</span>
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => setArchiveFilter('out_of_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  archiveFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-destructive/40",
+                  archiveFilter === 'out_of_stock' ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
-                    <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.outOfStock}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.outOfStock}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.outOfStock')}</span>
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => setArchiveFilter('manual_archived')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  archiveFilter === 'manual_archived' ? "border-warning ring-2 ring-warning/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-warning/40",
+                  archiveFilter === 'manual_archived' ? "border-warning bg-warning/10 ring-1 ring-warning/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-warning/10">
-                    <Archive className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.manualArchived}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.manuallyArchived')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
+                  <Archive className="w-3.5 h-3.5 text-warning" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.manualArchived}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.manuallyArchived')}</span>
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  archiveFilter === 'all' ? "border-success ring-2 ring-success/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-success/40",
+                  archiveFilter === 'all' ? "border-success bg-success/10 ring-1 ring-success/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-success/10">
-                    <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{archiveStats.total}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.readyToRestore')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-success/15 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-3.5 h-3.5 text-success" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.total}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.readyToRestore')}</span>
                 </div>
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-1.5 md:grid-cols-4 md:gap-4">
+            <div className="grid grid-cols-4 gap-1.5 md:gap-3">
               <button
+                type="button"
                 onClick={() => setStatusFilter('all')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  statusFilter === 'all' ? "border-primary ring-2 ring-primary/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-primary/40",
+                  statusFilter === 'all' ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-primary/10">
-                    <Package className="w-3.5 h-3.5 md:w-5 md:h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.total}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.total')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Package className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{stats.total}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.total')}</span>
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter('in_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  statusFilter === 'in_stock' ? "border-success ring-2 ring-success/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-success/40",
+                  statusFilter === 'in_stock' ? "border-success bg-success/10 ring-1 ring-success/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-success/10">
-                    <CheckCircle className="w-3.5 h-3.5 md:w-5 md:h-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.inStock}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.available')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-3.5 h-3.5 text-success" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{stats.inStock}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.available')}</span>
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter('low_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  statusFilter === 'low_stock' ? "border-warning ring-2 ring-warning/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-warning/40",
+                  statusFilter === 'low_stock' ? "border-warning bg-warning/10 ring-1 ring-warning/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-warning/10">
-                    <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.lowStock}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.low')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 text-warning" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{stats.lowStock}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.low')}</span>
                 </div>
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter('out_of_stock')}
                 className={cn(
-                  "bg-card rounded-lg border p-2 md:p-4 text-center md:text-start transition-all hover:shadow-md",
-                  statusFilter === 'out_of_stock' ? "border-destructive ring-2 ring-destructive/20" : "border-border"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-destructive/40",
+                  statusFilter === 'out_of_stock' ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="flex flex-col items-center md:flex-row md:items-center gap-1 md:gap-3">
-                  <div className="p-1 md:p-2 rounded-lg bg-destructive/10">
-                    <AlertTriangle className="w-3.5 h-3.5 md:w-5 md:h-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-base md:text-2xl font-bold text-foreground">{stats.outOfStock}</p>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">{t('products.outOfStock')}</p>
-                  </div>
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{stats.outOfStock}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.outOfStock')}</span>
                 </div>
               </button>
             </div>
@@ -3852,6 +3766,7 @@ export default function Products() {
         />
 
         {/* Floating Action Button (FAB) لإضافة منتج - أسفل يسار الشاشة بالعربي، وأسفل يمين بالإنجليزية */}
+        {/* Floating Action Button (FAB) لإضافة منتج - زر زائد دائري مصغر وأنيق */}
         {canAddProducts && (
           <div
             className={cn(
@@ -3867,16 +3782,14 @@ export default function Products() {
               type="button"
               onClick={handleOpenAddProduct}
               className={cn(
-                "pointer-events-auto flex items-center gap-2.5 h-12 md:h-13 px-4.5 sm:px-5 rounded-full",
-                "bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-sm",
-                "shadow-xl shadow-primary/35 hover:shadow-2xl hover:shadow-primary/45 transition-all cursor-pointer border border-primary-foreground/20 backdrop-blur-xs"
+                "pointer-events-auto flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full",
+                "bg-primary hover:bg-primary/90 active:scale-90 text-primary-foreground font-bold",
+                "shadow-lg shadow-primary/35 hover:shadow-xl hover:shadow-primary/45 transition-all cursor-pointer border border-white/20 backdrop-blur-xs"
               )}
               title={tDynamic('addProduct')}
+              aria-label={tDynamic('addProduct')}
             >
-              <div className="w-6 h-6 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0">
-                <Plus className="w-4 h-4 stroke-[3]" />
-              </div>
-              <span className="font-bold tracking-wide">{tDynamic('addProduct')}</span>
+              <Plus className="w-5 h-5 md:w-6 md:h-6 stroke-[2.5]" />
             </button>
           </div>
         )}
