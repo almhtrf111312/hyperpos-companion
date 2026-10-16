@@ -47,6 +47,7 @@ import {
   KeyRound,
   Wrench,
   Terminal,
+  Sparkles,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -84,6 +85,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 import { ErrorRadarPanel } from '@/components/boss/ErrorRadarPanel';
+import { BossAIAssistant } from '@/components/boss/BossAIAssistant';
 import { getUnresolvedErrorCount, subscribeToErrorRadar } from '@/lib/error-radar';
 
 interface CashierInfo {
@@ -1260,7 +1262,7 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
             <TabsTrigger
               value="users"
               className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
@@ -1312,6 +1314,13 @@ export default function BossPanel() {
                   {unresolvedErrorsCount}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="ai-assistant"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+            >
+              <Sparkles className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
+              <span className="leading-tight">المساعد الذكي</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2097,6 +2106,11 @@ export default function BossPanel() {
           {/* Tab 6: Error Radar */}
           <TabsContent value="radar" className="space-y-4">
             <ErrorRadarPanel />
+          </TabsContent>
+
+          {/* Tab: Boss AI Assistant */}
+          <TabsContent value="ai-assistant" className="space-y-4">
+            <BossAIAssistant />
           </TabsContent>
         </Tabs>
 
