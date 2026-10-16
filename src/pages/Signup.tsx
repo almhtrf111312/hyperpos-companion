@@ -44,7 +44,10 @@ export default function Signup() {
     }
 
     if (!validatePhone(phone)) {
-      toast.error(t('auth.invalidPhone'));
+      toast.error('رقم الهاتف غير صالح', {
+        description: 'يجب إدخال أرقام فقط (من 9 إلى 15 رقماً) وبدون مسافات أو رموز خاصة.',
+        duration: 5000,
+      });
       return;
     }
 
@@ -54,7 +57,10 @@ export default function Signup() {
     }
 
     if (!password || password.length < 6) {
-      toast.error('كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)');
+      toast.error('كلمة المرور قصيرة جداً', {
+        description: 'يجب أن تتكون كلمة المرور من 6 خانات على الأقل.',
+        duration: 5000,
+      });
       return;
     }
 
@@ -125,6 +131,7 @@ export default function Signup() {
                 />
                 <Phone className="absolute top-1/2 -translate-y-1/2 end-3 w-4 h-4 text-muted-foreground" />
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">أرقام فقط (9 إلى 15 رقماً)</p>
             </div>
 
             <div className="space-y-2">
@@ -163,6 +170,7 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">6 خانات على الأقل (يُفضل استخدام أرقام ورموز مثل @ # $)</p>
             </div>
 
             <div className="space-y-2">
@@ -203,9 +211,7 @@ export default function Signup() {
         </form>
       </Card>
 
-      <div className="mt-4">
-        <LanguageQuickSelector />
-      </div>
+      <LanguageQuickSelector />
     </div>
   );
 }

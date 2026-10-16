@@ -12,18 +12,30 @@ export function getAuthErrorMessage(error: unknown, mode: 'login' | 'signup' = '
   
   const lower = raw.toLowerCase();
 
-  // 1. فحص ضعف كلمة المرور
-  if (
-    lower.includes('weak') ||
-    (lower.includes('password') && (
-      lower.includes('least') ||
-      lower.includes('short') ||
-      lower.includes('characters') ||
-      lower.includes('6') ||
-      lower.includes('min')
-    ))
-  ) {
-    return 'كلمة المرور ضعيفة (يجب أن تكون 6 أحرف على الأقل)';
+  // 1. فحص تفصيلي لمتطلبات وضعف كلمة المرور
+  if (lower.includes('password')) {
+    if (lower.includes('symbol') || lower.includes('special character') || lower.includes('special characters')) {
+      return 'كلمة المرور يجب أن تحتوي على رمز خاص واحد على الأقل (مثل: @, #, $, %, !)';
+    }
+    if (lower.includes('digit') || lower.includes('number')) {
+      return 'كلمة المرور يجب أن تحتوي على أرقام وأحرف';
+    }
+    if (lower.includes('uppercase') || lower.includes('lowercase')) {
+      return 'كلمة المرور يجب أن تحتوي على أحرف كبيرة وصغيرة';
+    }
+    if (lower.includes('pwned') || lower.includes('common') || lower.includes('easy')) {
+      return 'كلمة المرور سهلة جداً أو شائعة عالمياً، يرجى اختيار كلمة مرور أكثر تعقيداً';
+    }
+    if (lower.includes('least') || lower.includes('short') || lower.includes('6') || lower.includes('length')) {
+      return 'كلمة المرور قصيرة (يجب ألا تقل عن 6 خانات)';
+    }
+    if (lower.includes('weak')) {
+      return 'كلمة المرور ضعيفة: يجب ألا تقل عن 6 خانات ويُفضل أن تشتمل على أرقام ورموز خاصة (@, #, $)';
+    }
+  }
+
+  if (lower.includes('weak password') || lower.includes('password is too weak')) {
+    return 'كلمة المرور ضعيفة: يُرجى استخدام مزيج من 6 خانات على الأقل مع أرقام ورموز خاصة';
   }
 
   // 2. فحص تكرار البريد الإلكتروني

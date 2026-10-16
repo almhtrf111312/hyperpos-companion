@@ -360,9 +360,7 @@ export default function Login() {
         </CardFooter>
       </Card>
 
-      <div className="mt-4">
-        <LanguageQuickSelector />
-      </div>
+      <LanguageQuickSelector />
 
       {/* Device Blocked Dialog - Protected from accidental closure on mobile */}
       <Dialog open={showDeviceBlockedDialog} onOpenChange={(open) => { if (!open) return; }}>
