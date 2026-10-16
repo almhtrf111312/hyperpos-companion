@@ -1346,6 +1346,70 @@ export default function Products() {
     return localizeProductUnit(rawUnit, isBulk, language);
   };
 
+  // التحكم في ظهور واختفاء الزر العائم لإضافة منتج مع حركة التمرير
+  const [isFabVisible, setIsFabVisible] = useState(true);
+  const lastScrollTopRef = useRef(0);
+
+  const handleProductsScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const currentScrollTop = e.currentTarget.scrollTop;
+    if (currentScrollTop < 50) {
+      // بالقرب من أعلى الصفحة يظهر الزر دائماً
+      setIsFabVisible(true);
+    } else if (currentScrollTop > lastScrollTopRef.current + 12) {
+      // عند التمرير للأسفل لتصفح المنتجات الأقدم: يختفي الزر بسلاسة
+      setIsFabVisible(false);
+    } else if (currentScrollTop < lastScrollTopRef.current - 12) {
+      // عند التمرير للأعلى باتجاه بداية الصفحة: يظهر الزر
+      setIsFabVisible(true);
+    }
+    lastScrollTopRef.current = currentScrollTop;
+  }, []);
+
+  // إعادة إظهار الزر العائم تلقائياً عند تغيير التبويب
+  useEffect(() => {
+    setIsFabVisible(true);
+  }, [mainTab]);
+
+  // دالة فتح نافذة إضافة منتج جديد
+  const handleOpenAddProduct = useCallback(() => {
+    setFieldsConfig(getEffectiveFieldsConfig());
+    setFormData({
+      name: '',
+      barcode: '',
+      barcode2: '',
+      barcode3: '',
+      variantLabel: '',
+      category: categoryOptions[0] || t('products.defaultCategory'),
+      costPrice: 0,
+      salePrice: 0,
+      laborCost: 0,
+      quantity: 0,
+      expiryDate: '',
+      image: '',
+      serialNumber: '',
+      batchNumber: '',
+      warranty: '',
+      wholesalePrice: 0,
+      size: '',
+      color: '',
+      minStockLevel: 1,
+      weight: '',
+      fabricType: '',
+      tableNumber: '',
+      orderNotes: '',
+      author: '',
+      publisher: '',
+      bulkUnit: t('products.unitCarton'),
+      smallUnit: t('products.unitPiece'),
+      conversionFactor: 1,
+      bulkCostPrice: 0,
+      bulkSalePrice: 0,
+      trackByUnit: 'piece',
+    });
+    setImagePreviewBase64('');
+    setShowAddDialog(true);
+  }, [categoryOptions, t]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background relative selection:bg-primary/20">
 
@@ -1365,95 +1429,34 @@ export default function Products() {
               : tDynamic('pageSubtitle')
           }
           actions={
-            /* Desktop: Unified Geometry Actions */
+            /* Desktop: سطر تحكم موحد ومتناسق (النشط على اليمين - التصنيفات بالنصف - الأرشيف على اليسار) */
             <div className="hidden sm:flex items-center gap-2">
-              {!noInventory && (
-                <Button variant="outline" className="h-9 px-3.5" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                  <FileText className="w-4 h-4" />
-                  {t('purchaseInvoice.addPurchaseInvoice')}
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(true)} className="h-9 px-3.5">
-                <Tag className="w-4 h-4" />
-                {t('products.categories')}
-              </Button>
-              
-              {/* Segmented Pill Switcher (Fixed Geometry) */}
-              <div className="flex items-center p-0.5 rounded-lg bg-muted border border-border/50 h-9 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setMainTab('products')}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-semibold transition-all select-none min-w-[105px] justify-center",
-                    mainTab === 'products'
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Package className="w-3.5 h-3.5 shrink-0" />
-                  <span>{t('products.activeProducts')}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('archive');
-                    loadArchivedData();
-                  }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-semibold transition-all select-none min-w-[95px] justify-center",
-                    mainTab === 'archive'
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Archive className="w-3.5 h-3.5 shrink-0" />
-                  <span>{t('products.archive')}</span>
-                  {mergedArchivedProducts.length > 0 && (
-                    <span className={cn(
-                      "mr-1 px-1.5 py-0.2 text-[10px] rounded-full font-bold",
-                      mainTab === 'archive'
-                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                        : "bg-muted-foreground/20 text-muted-foreground"
-                    )}>
-                      {mergedArchivedProducts.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {canAddProducts && (
-                <Button className="h-9 px-3.5 bg-primary hover:bg-primary/90" onClick={() => {
-                  setFieldsConfig(getEffectiveFieldsConfig());
-                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-                  setImagePreviewBase64('');
-                  setShowAddDialog(true);
-                }}>
-                  <Plus className="w-4 h-4" />
-                  {tDynamic('addProduct')}
-                </Button>
-              )}
-            </div>
-          }
-        />
-
-        {/* Mobile Toolbar - Standardized Geometry */}
-        <div className="sm:hidden flex flex-col gap-2 w-full mt-2">
-          {/* Row 1: Segmented Switcher + Add Product */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center p-0.5 rounded-lg bg-muted border border-border/50 h-9 flex-1">
+              {/* 1. النشط (يمين في RTL) */}
               <button
                 type="button"
                 onClick={() => setMainTab('products')}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-semibold transition-all select-none",
+                  "flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
                   mainTab === 'products'
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
                 )}
               >
-                <Package className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{t('products.active')}</span>
+                <Package className="w-4 h-4 shrink-0" />
+                <span>{t('products.activeProducts')}</span>
               </button>
+
+              {/* 2. التصنيفات (في المنتصف) */}
+              <button
+                type="button"
+                onClick={() => setShowCategoryManager(true)}
+                className="flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card text-foreground hover:bg-muted/50 hover:border-border shadow-2xs cursor-pointer"
+              >
+                <Tag className="w-4 h-4 shrink-0 text-primary" />
+                <span>{t('products.categories')}</span>
+              </button>
+
+              {/* 3. الأرشيف (يسار في RTL) */}
               <button
                 type="button"
                 onClick={() => {
@@ -1461,79 +1464,83 @@ export default function Products() {
                   loadArchivedData();
                 }}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-semibold transition-all select-none",
+                  "flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
                   mainTab === 'archive'
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                    : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
                 )}
               >
-                <Archive className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{t('products.archive')}</span>
+                <Archive className="w-4 h-4 shrink-0" />
+                <span>{t('products.archive')}</span>
                 {mergedArchivedProducts.length > 0 && (
-                  <span className="mr-0.5 px-1 py-0.2 text-[9px] bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full font-bold">
+                  <span className={cn(
+                    "px-1.5 py-0.2 text-[10px] rounded-full font-bold",
+                    mainTab === 'archive'
+                      ? "bg-white/25 text-white"
+                      : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                  )}>
                     {mergedArchivedProducts.length}
                   </span>
                 )}
               </button>
             </div>
+          }
+        />
 
-            {canAddProducts && (
-              <Button
-                className="h-9 px-3 bg-primary hover:bg-primary/90 text-xs shrink-0"
-                onClick={() => {
-                  setFieldsConfig(getEffectiveFieldsConfig());
-                  setFormData({ name: '', barcode: '', barcode2: '', barcode3: '', variantLabel: '', category: categoryOptions[0] || t('products.defaultCategory'), costPrice: 0, salePrice: 0, laborCost: 0, quantity: 0, expiryDate: '', image: '', serialNumber: '', batchNumber: '', warranty: '', wholesalePrice: 0, size: '', color: '', minStockLevel: 1, weight: '', fabricType: '', tableNumber: '', orderNotes: '', author: '', publisher: '', bulkUnit: t('products.unitCarton'), smallUnit: t('products.unitPiece'), conversionFactor: 1, bulkCostPrice: 0, bulkSalePrice: 0, trackByUnit: 'piece' });
-                  setImagePreviewBase64('');
-                  setShowAddDialog(true);
-                }}
-              >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span>{tDynamic('addProduct')}</span>
-              </Button>
+        {/* Mobile Toolbar: سطر تحكم واحد فقط يجمع (النشط على اليمين - التصنيفات بالنصف - الأرشيف على اليسار) */}
+        <div className="sm:hidden flex items-center gap-1.5 w-full mt-2.5">
+          {/* 1. النشط (يمين في RTL) */}
+          <button
+            type="button"
+            onClick={() => setMainTab('products')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-bold transition-all select-none border cursor-pointer",
+              mainTab === 'products'
+                ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
             )}
-          </div>
+          >
+            <Package className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{t('products.active')}</span>
+          </button>
 
-          {/* Row 2: Secondary Actions & View Modes */}
-          <div className="flex items-center gap-1.5">
-            {!noInventory && (
-              <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">{t('products.purchaseInvoice')}</span>
-              </Button>
+          {/* 2. التصنيفات (في المنتصف) */}
+          <button
+            type="button"
+            onClick={() => setShowCategoryManager(true)}
+            className="flex-1 flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-semibold transition-all select-none border border-border/70 bg-card text-foreground hover:bg-muted/50 hover:border-border shadow-2xs cursor-pointer"
+          >
+            <Tag className="w-3.5 h-3.5 shrink-0 text-primary" />
+            <span className="truncate">{t('products.categories')}</span>
+          </button>
+
+          {/* 3. الأرشيف (يسار في RTL) */}
+          <button
+            type="button"
+            onClick={() => {
+              setMainTab('archive');
+              loadArchivedData();
+            }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 h-9 px-2 rounded-xl text-xs font-bold transition-all select-none border cursor-pointer",
+              mainTab === 'archive'
+                ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
             )}
-            <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowCategoryManager(true)}>
-              <Tag className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate">{t('products.categories')}</span>
-            </Button>
-            
-            {/* View Mode Buttons */}
-            <div className="flex bg-muted rounded-lg p-0.5 shrink-0">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setViewMode('grid')}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant={viewMode === 'compact' ? 'default' : 'ghost'}
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setViewMode('compact')}
-              >
-                <AlignJustify className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
+          >
+            <Archive className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{t('products.archive')}</span>
+            {mergedArchivedProducts.length > 0 && (
+              <span className={cn(
+                "px-1.5 py-0.2 text-[9px] rounded-full font-bold",
+                mainTab === 'archive'
+                  ? "bg-white/25 text-white"
+                  : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+              )}>
+                {mergedArchivedProducts.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -1730,31 +1737,31 @@ export default function Products() {
               </Button>
             )}
             
-            {/* View Mode Buttons - Desktop only */}
-            <div className="hidden sm:flex bg-muted rounded-lg p-0.5">
+            {/* View Mode Buttons */}
+            <div className="flex bg-muted rounded-lg p-0.5 shrink-0">
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="icon"
-                className="h-9 w-9"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => setViewMode('grid')}
               >
-                <LayoutGrid className="w-4 h-4" />
+                <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="icon"
-                className="h-9 w-9"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => setViewMode('list')}
               >
-                <List className="w-4 h-4" />
+                <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 variant={viewMode === 'compact' ? 'default' : 'ghost'}
                 size="icon"
-                className="h-9 w-9"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => setViewMode('compact')}
               >
-                <AlignJustify className="w-4 h-4" />
+                <AlignJustify className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </div>
           </div>
@@ -1841,7 +1848,7 @@ export default function Products() {
 
       {/* Content Area - Scrollable */}
       {mainTab === 'archive' ? (
-        <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24 space-y-3 pt-2">
+        <div onScroll={handleProductsScroll} className="flex-1 overflow-y-auto px-3 md:px-6 pb-24 space-y-3 pt-2">
           {/* Archived Products List / Cards */}
           {isArchiveLoading && mergedArchivedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -2004,7 +2011,7 @@ export default function Products() {
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-24">
+        <div onScroll={handleProductsScroll} className="flex-1 overflow-y-auto px-3 md:px-6 pb-24">
         {/* Products Display (3 Modes: Grid / Large, List / Medium, Compact / Small) */}
         {isLoading ? (
           <div className={cn(
@@ -3843,6 +3850,36 @@ export default function Products() {
           maxSize={400}
           quality={40}
         />
+
+        {/* Floating Action Button (FAB) لإضافة منتج - أسفل يسار الشاشة بالعربي، وأسفل يمين بالإنجليزية */}
+        {canAddProducts && (
+          <div
+            className={cn(
+              "fixed z-40 transition-all duration-300 ease-in-out pointer-events-none",
+              "bottom-20 md:bottom-8",
+              isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
+              isFabVisible
+                ? "translate-y-0 opacity-100 scale-100"
+                : "translate-y-20 opacity-0 scale-90"
+            )}
+          >
+            <button
+              type="button"
+              onClick={handleOpenAddProduct}
+              className={cn(
+                "pointer-events-auto flex items-center gap-2.5 h-12 md:h-13 px-4.5 sm:px-5 rounded-full",
+                "bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-sm",
+                "shadow-xl shadow-primary/35 hover:shadow-2xl hover:shadow-primary/45 transition-all cursor-pointer border border-primary-foreground/20 backdrop-blur-xs"
+              )}
+              title={tDynamic('addProduct')}
+            >
+              <div className="w-6 h-6 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0">
+                <Plus className="w-4 h-4 stroke-[3]" />
+              </div>
+              <span className="font-bold tracking-wide">{tDynamic('addProduct')}</span>
+            </button>
+          </div>
+        )}
     </div>
   );
 }
