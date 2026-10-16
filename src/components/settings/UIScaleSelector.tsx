@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { Slider } from '@/components/ui/slider';
 import { saveStoreSettings } from '@/lib/supabase-store';
 
+import { cn } from '@/lib/utils';
+
 const SCALE_STEPS: UIScaleId[] = ['80', '90', '100', '110', '120'];
 
 interface UIScaleSelectorProps {
@@ -50,8 +52,26 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
 
   const currentOption = UI_SCALE_OPTIONS.find((s) => s.id === currentScale);
 
+  // ترتيب التسميات: في RTL من اليمين يبدأ الكبير جداً (خطوة 4) ثم كبير ثم وسط ثم صغير ثم صغير جداً (خطوة 0)
+  // ليتطابق تماماً مع مؤشر شريط السحب الأفقي
+  const stepsConfig = isRTL
+    ? [
+        { index: 4, label: 'كبير جداً' },
+        { index: 3, label: 'كبير' },
+        { index: 2, label: 'وسط' },
+        { index: 1, label: 'صغير' },
+        { index: 0, label: 'صغير جداً' },
+      ]
+    : [
+        { index: 0, label: 'Extra Small' },
+        { index: 1, label: 'Small' },
+        { index: 2, label: 'Normal' },
+        { index: 3, label: 'Large' },
+        { index: 4, label: 'Extra Large' },
+      ];
+
   return (
-    <div className="space-y-4 p-4 rounded-xl border border-border/70 bg-card">
+    <div className={cn("space-y-4 p-4 rounded-xl border border-border/70 bg-card", className)}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Maximize2 className="w-4 h-4 text-primary" />
@@ -77,13 +97,29 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
           />
         </div>
 
-        {/* تسميات النقاط الخمس من اليسار لليمين */}
-        <div className="grid grid-cols-5 text-center text-[10px] md:text-xs font-medium text-muted-foreground">
-          <span className={stepIndex === 0 ? "font-bold text-primary" : ""}>{isRTL ? 'صغير جداً' : 'Extra Small'}</span>
-          <span className={stepIndex === 1 ? "font-bold text-primary" : ""}>{isRTL ? 'صغير' : 'Small'}</span>
-          <span className={stepIndex === 2 ? "font-black text-primary underline" : "font-semibold"}>{isRTL ? 'وسط' : 'Normal'}</span>
-          <span className={stepIndex === 3 ? "font-bold text-primary" : ""}>{isRTL ? 'كبير' : 'Large'}</span>
-          <span className={stepIndex === 4 ? "font-bold text-primary" : ""}>{isRTL ? 'كبير جداً' : 'Extra Large'}</span>
+        {/* تسميات النقاط الخمس: من اليمين (كبير جداً) إلى اليسار (صغير جداً) في RTL */}
+        <div className="grid grid-cols-5 text-center text-[10px] md:text-xs font-medium text-muted-foreground select-none">
+          {stepsConfig.map((item) => {
+            const isActive = stepIndex === item.index;
+            const isDefault = item.index === 2;
+            return (
+              <button
+                key={item.index}
+                type="button"
+                onClick={() => handleStepChange(item.index)}
+                className={cn(
+                  "py-1 rounded-md transition-colors cursor-pointer text-center",
+                  isActive
+                    ? "font-bold text-primary underline underline-offset-4"
+                    : isDefault
+                    ? "font-semibold text-foreground/80 hover:text-foreground"
+                    : "hover:text-foreground"
+                )}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
