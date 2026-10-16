@@ -86,7 +86,7 @@ import { processExpense, reverseExpenseTransaction, restoreExpenseCash } from '@
 import { toLocalDateString } from '@/lib/date-utils';
 
 export default function Expenses() {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
 
   const getLocalizedExpenseType = (type: string, fallback?: string): string => {
     return (t as any)(`expenses.types.${type}`) || fallback || type;
@@ -103,6 +103,27 @@ export default function Expenses() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const savingRef = useRef(false);
+
+  // Scroll detection for Smart FAB
+  const [isFabVisible, setIsFabVisible] = useState(true);
+  const lastScrollTopRef = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+      if (currentScrollTop < 40) {
+        setIsFabVisible(true);
+      } else if (currentScrollTop > lastScrollTopRef.current + 10) {
+        setIsFabVisible(false);
+      } else if (currentScrollTop < lastScrollTopRef.current - 10) {
+        setIsFabVisible(true);
+      }
+      lastScrollTopRef.current = currentScrollTop;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
@@ -487,37 +508,18 @@ export default function Expenses() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-3.5 md:space-y-5 overflow-x-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rtl:pr-12 ltr:pl-12 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">{t('expenses.title')}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{t('expenses.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 md:h-9 px-3 rounded-xl text-xs gap-1.5 border-border hover:bg-muted font-medium"
-            onClick={() => {
-              resetRecurringForm();
-              setShowRecurringDialog(true);
-            }}
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>{t('expenses.recurringExpense')}</span>
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 md:h-9 px-3.5 rounded-xl text-xs font-bold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-            onClick={() => {
-              resetForm();
-              setShowAddDialog(true);
-            }}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{t('expenses.addExpense')}</span>
-          </Button>
+    <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3 overflow-x-hidden relative min-h-screen">
+      {/* Top Search with Smart Mobile Clearance */}
+      <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder={t('expenses.searchExpenses')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pr-9 h-10 text-xs md:text-sm bg-card border-border rounded-xl shadow-2xs"
+          />
         </div>
       </div>
 
@@ -629,17 +631,7 @@ export default function Expenses() {
         </div>
       )}
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder={t('expenses.searchExpenses')}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pr-9 h-9 md:h-10 text-xs md:text-sm bg-card border-border rounded-xl"
-        />
-      </div>
+
 
       {/* Expenses List */}
       <div className="space-y-2 md:space-y-2.5">
@@ -1270,6 +1262,71 @@ export default function Expenses() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Scroll-aware Smart FAB with Speed Dial Options */}
+      <div
+        className={cn(
+          "fixed z-40 transition-all duration-300 ease-in-out pointer-events-none",
+          "bottom-20 md:bottom-8",
+          isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
+          isFabVisible
+            ? "translate-y-0 opacity-100 scale-100"
+            : "translate-y-20 opacity-0 scale-90"
+        )}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "pointer-events-auto flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full",
+                "bg-primary hover:bg-primary/90 active:scale-90 text-primary-foreground font-bold",
+                "shadow-lg shadow-primary/35 hover:shadow-xl hover:shadow-primary/45 transition-all cursor-pointer border border-white/20 backdrop-blur-xs"
+              )}
+              title={t('expenses.addExpense')}
+              aria-label={t('expenses.addExpense')}
+            >
+              <Plus className="w-5 h-5 md:w-6 md:h-6 stroke-[2.5]" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="top"
+            align={isRTL ? "start" : "end"}
+            className="w-56 p-1.5 rounded-2xl border-border bg-card/95 backdrop-blur-md shadow-2xl space-y-1 mb-2 z-50 pointer-events-auto"
+          >
+            <DropdownMenuItem
+              className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-bold cursor-pointer hover:bg-primary/10 hover:text-primary transition-all"
+              onClick={() => {
+                resetForm();
+                setShowAddDialog(true);
+              }}
+            >
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-foreground">{t('expenses.oneTimeExpense') || 'مصروف لمرة واحدة'}</span>
+                <span className="text-[10px] text-muted-foreground font-normal">فاتورة، نثرية، أو مشترى فوري</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-bold cursor-pointer hover:bg-info/10 hover:text-info transition-all"
+              onClick={() => {
+                resetRecurringForm();
+                setShowRecurringDialog(true);
+              }}
+            >
+              <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center text-info shrink-0">
+                <RefreshCw className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-foreground">{t('expenses.recurringExpense') || 'مصروف ثابت / متكرر'}</span>
+                <span className="text-[10px] text-muted-foreground font-normal">إيجار، رواتب، اشتراكات</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

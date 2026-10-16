@@ -365,98 +365,68 @@ export default function Services() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('services.title')}</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">{t('services.subtitle')}</p>
-        </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => {
-          resetForm();
-          setShowAddDialog(true);
-        }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5" />
-          {t('services.newRequest')}
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-primary/10">
-              <FileText className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('services.totalRequests')}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-warning/10">
-              <Clock className="w-4 h-4 md:w-5 md:h-5 text-warning" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.pending}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('services.pending')}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-info/10">
-              <Wrench className="w-4 h-4 md:w-5 md:h-5 text-info" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.inProgress}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('services.inProgress')}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-1.5 md:p-2 rounded-lg bg-success/10">
-              <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-success" />
-            </div>
-            <div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{stats.completed}</p>
-              <p className="text-xs md:text-sm text-muted-foreground">{t('services.completed')}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3">
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder={t('services.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-9 md:pr-10 bg-muted border-0"
-          />
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+    <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
+      {/* Top Filter Bar + New Request Button with Mobile Clearance */}
+      <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-1">
           {filterOptions.map((filter) => (
             <button
               key={filter.key}
               onClick={() => setSelectedFilter(filter.key)}
               className={cn(
-                "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer",
                 selectedFilter === filter.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "bg-muted/80 text-muted-foreground hover:bg-muted"
               )}
             >
               {filter.label}
             </button>
           ))}
         </div>
+        <Button
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5 shrink-0 transition-all cursor-pointer"
+          onClick={() => {
+            resetForm();
+            setShowAddDialog(true);
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">{t('services.newRequest')}</span>
+          <span className="sm:hidden">{t('common.add') || 'طلب جديد'}</span>
+        </Button>
+      </div>
+
+      {/* Compact Stats Strip */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('services.totalRequests')}</span>
+          <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
+        </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-warning font-medium block truncate">{t('services.pending')}</span>
+          <span className="text-sm font-black text-warning tabular-nums">{stats.pending}</span>
+        </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-info font-medium block truncate">{t('services.inProgress')}</span>
+          <span className="text-sm font-black text-info tabular-nums">{stats.inProgress}</span>
+        </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-success font-medium block truncate">{t('services.completed')}</span>
+          <span className="text-sm font-black text-success tabular-nums">{stats.completed}</span>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder={t('services.searchPlaceholder')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-10 pr-9 pl-4 text-xs rounded-xl bg-card border border-border shadow-2xs"
+        />
       </div>
 
       {/* Requests List */}

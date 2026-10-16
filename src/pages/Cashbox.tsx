@@ -148,100 +148,92 @@ export default function Cashbox() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-            <Wallet className="w-7 h-7 text-primary" />
-            الصندوق
-          </h1>
-          <p className="text-muted-foreground mt-1">إدارة الورديات والمصالحة اليومية</p>
+    <div className="min-h-screen bg-background p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
+      {/* Top Header & Actions with Mobile Clearance */}
+      <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Wallet className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-foreground block">صندوق الوردية</span>
+            <span className="text-[10px] text-muted-foreground hidden sm:block">إدارة الورديات والمصالحة</span>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowHistoryDialog(true)}>
-            <History className="w-4 h-4" />
-            السجل
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-3 rounded-xl text-xs gap-1.5 font-medium border-border/80 shadow-2xs cursor-pointer"
+            onClick={() => setShowHistoryDialog(true)}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>السجل</span>
           </Button>
-          {activeShift ? (
-            <Button variant="destructive" onClick={() => setShowCloseDialog(true)}>
-              <Square className="w-4 h-4" />
-              إغلاق الوردية
-            </Button>
-          ) : (
-            <Button onClick={() => setShowOpenDialog(true)}>
-              <Play className="w-4 h-4" />
-              فتح وردية
+          {activeShift && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-9 px-3.5 rounded-xl text-xs font-bold gap-1.5 shadow-sm cursor-pointer"
+              onClick={() => setShowCloseDialog(true)}
+            >
+              <Square className="w-3.5 h-3.5" />
+              <span>إغلاق الوردية</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Current Status */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className={cn(
-          "border-2",
-          activeShift ? "border-green-500/50 bg-green-500/5" : "border-orange-500/50 bg-orange-500/5"
-        )}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">حالة الوردية</p>
-                <p className="text-xl font-bold mt-1">
-                  {activeShift ? 'مفتوحة' : 'مغلقة'}
-                </p>
-              </div>
-              {activeShift ? (
-                <CheckCircle className="w-10 h-10 text-green-500" />
-              ) : (
-                <Clock className="w-10 h-10 text-orange-500" />
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* No Active Shift Notice & Open Action */}
+      {!activeShift && (
+        <div className="bg-card border border-border/80 rounded-2xl p-5 text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center mx-auto">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">لا توجد وردية مفتوحة حالياً</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">ابدأ وردية جديدة لتسجيل ومتابعة المبيعات والحركات النقدية للصندوق</p>
+          </div>
+          <Button
+            onClick={() => setShowOpenDialog(true)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-5 rounded-xl shadow-md shadow-primary/25 text-xs gap-1.5 cursor-pointer"
+          >
+            <Play className="w-4 h-4" />
+            <span>فتح وردية جديدة</span>
+          </Button>
+        </div>
+      )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">الرصيد الحالي</p>
-                <p className="text-xl font-bold mt-1 text-primary">
-                  {formatCurrency(cashboxState.currentBalance, '$')}
-                </p>
-              </div>
-              <DollarSign className="w-10 h-10 text-primary/20" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">إجمالي الفائض</p>
-                <p className="text-xl font-bold mt-1 text-green-600">
-                  {formatCurrency(stats.totalSurplus, '$')}
-                </p>
-              </div>
-              <TrendingUp className="w-10 h-10 text-green-500/20" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">إجمالي العجز</p>
-                <p className="text-xl font-bold mt-1 text-red-600">
-                  {formatCurrency(stats.totalShortage, '$')}
-                </p>
-              </div>
-              <TrendingDown className="w-10 h-10 text-red-500/20" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Compact 4-Metric Grid */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-muted-foreground font-medium block truncate">حالة الوردية</span>
+          <span className={cn(
+            "text-xs sm:text-sm font-black tabular-nums block mt-0.5",
+            activeShift ? "text-emerald-600 dark:text-emerald-400" : "text-orange-600 dark:text-orange-400"
+          )}>
+            {activeShift ? 'مفتوحة' : 'مغلقة'}
+          </span>
+        </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-primary font-medium block truncate">الرصيد الحالي</span>
+          <span className="text-xs sm:text-sm font-black text-primary font-mono tabular-nums block mt-0.5">
+            {formatCurrency(cashboxState.currentBalance, '$')}
+          </span>
+        </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">إجمالي الفائض</span>
+          <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums block mt-0.5">
+            {formatCurrency(stats.totalSurplus, '$')}
+          </span>
+        </div>
+        <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+          <span className="text-[9.5px] text-destructive font-medium block truncate">إجمالي العجز</span>
+          <span className="text-xs sm:text-sm font-black text-destructive font-mono tabular-nums block mt-0.5">
+            {formatCurrency(stats.totalShortage, '$')}
+          </span>
+        </div>
       </div>
 
       {/* Active Shift Details */}

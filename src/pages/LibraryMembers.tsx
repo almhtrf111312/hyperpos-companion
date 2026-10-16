@@ -176,83 +176,75 @@ export default function LibraryMembers() {
   const isOverdue = (loan: BookLoan) => loan.status === 'active' && new Date(loan.dueDate) < new Date();
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-primary" />
-            إدارة المكتبة
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">إدارة الأعضاء والإعارات</p>
+    <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
+      {/* Top Tabs with smart mobile clearance */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-3">
+        <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <div className="inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs select-none">
+            <TabsList className="bg-transparent p-0 h-auto gap-1">
+              <TabsTrigger
+                value="members"
+                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>الأعضاء</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="loans"
+                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>الإعارات</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-card rounded-xl border p-3">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Users className="w-4 h-4" />
-            <span className="text-xs">الأعضاء</span>
+        {/* Compact Stats Strip */}
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
+          <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <span className="text-[9.5px] text-muted-foreground font-medium block truncate">الأعضاء</span>
+            <span className="text-sm font-black text-foreground tabular-nums">{members.length}</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{members.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border p-3">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <BookOpen className="w-4 h-4" />
-            <span className="text-xs">إعارات نشطة</span>
+          <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <span className="text-[9.5px] text-primary font-medium block truncate">إعارات نشطة</span>
+            <span className="text-sm font-black text-primary tabular-nums">{loans.filter(l => l.status === 'active').length}</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{loans.filter(l => l.status === 'active').length}</p>
-        </div>
-        <div className="bg-card rounded-xl border p-3">
-          <div className="flex items-center gap-2 text-destructive mb-1">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="text-xs">متأخرة</span>
+          <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <span className="text-[9.5px] text-destructive font-medium block truncate">متأخرة</span>
+            <span className="text-sm font-black text-destructive tabular-nums">{overdueLoans.length}</span>
           </div>
-          <p className="text-lg font-bold text-destructive">{overdueLoans.length}</p>
-        </div>
-        <div className="bg-card rounded-xl border p-3">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Ban className="w-4 h-4" />
-            <span className="text-xs">مفقودة</span>
+          <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
+            <span className="text-[9.5px] text-muted-foreground font-medium block truncate">مفقودة</span>
+            <span className="text-sm font-black text-muted-foreground tabular-nums">{loans.filter(l => l.status === 'lost').length}</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{loans.filter(l => l.status === 'lost').length}</p>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full">
-          <TabsTrigger value="members" className="flex-1 gap-1">
-            <Users className="w-4 h-4" /> الأعضاء
-          </TabsTrigger>
-          <TabsTrigger value="loans" className="flex-1 gap-1">
-            <BookOpen className="w-4 h-4" /> الإعارات
-          </TabsTrigger>
-        </TabsList>
 
         {/* Search + Add */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="بحث..."
+              placeholder="بحث بالاسم أو الهاتف..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-9"
+              className="h-10 pr-9 pl-4 text-xs rounded-xl bg-card border-border shadow-2xs"
             />
           </div>
-          <Button onClick={() => {
-            if (activeTab === 'members') {
-              setMemberForm({ name: '', phone: '', email: '', notes: '' });
-              setShowAddMember(true);
-            } else {
-              setLoanForm({ productId: '', memberId: '', dueDate: '', notes: '' });
-              setShowAddLoan(true);
-            }
-          }}>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-4 rounded-xl shadow-xs text-xs gap-1.5 shrink-0 transition-all cursor-pointer"
+            onClick={() => {
+              if (activeTab === 'members') {
+                setMemberForm({ name: '', phone: '', email: '', notes: '' });
+                setShowAddMember(true);
+              } else {
+                setLoanForm({ productId: '', memberId: '', dueDate: '', notes: '' });
+                setShowAddLoan(true);
+              }
+            }}
+          >
             <Plus className="w-4 h-4" />
-            {activeTab === 'members' ? 'عضو جديد' : 'إعارة جديدة'}
+            <span>{activeTab === 'members' ? 'عضو جديد' : 'إعارة جديدة'}</span>
           </Button>
         </div>
 
