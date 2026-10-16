@@ -1454,13 +1454,26 @@ export default function Products() {
           <button
             type="button"
             onClick={() => setShowCategoryManager(true)}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
           >
             <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
             <span className="truncate">{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
-          {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
+          {/* 3. فاتورة شراء */}
+          {!noInventory && (
+            <button
+              type="button"
+              onClick={() => setShowPurchaseInvoiceDialog(true)}
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
+              title={t('products.purchaseInvoice') || 'فاتورة شراء'}
+            >
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span className="truncate">{t('products.purchaseInvoice') || 'فاتورة شراء'}</span>
+            </button>
+          )}
+
+          {/* 4. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
           <button
             type="button"
             onClick={() => {
@@ -1468,7 +1481,7 @@ export default function Products() {
               loadArchivedData();
             }}
             className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
               mainTab === 'archive'
                 ? "!bg-red-600 !text-white !border-red-600 shadow-sm shadow-red-600/30"
                 : "bg-card/90 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
@@ -3804,31 +3817,27 @@ export default function Products() {
           quality={40}
         />
 
-        {/* Floating Action Button (FAB) لإضافة منتج - أسفل يسار الشاشة بالعربي، وأسفل يمين بالإنجليزية */}
-        {/* Floating Action Button (FAB) لإضافة منتج - زر زائد دائري مصغر وأنيق */}
+        {/* Floating Action Button (FAB) لإضافة منتج - ظاهر دائماً وثابت لسهولة وسرعة الوصول */}
         {canAddProducts && (
           <div
             className={cn(
               "fixed z-40 transition-all duration-300 ease-in-out pointer-events-none",
               "bottom-20 md:bottom-8",
-              isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
-              isFabVisible
-                ? "translate-y-0 opacity-100 scale-100"
-                : "translate-y-20 opacity-0 scale-90"
+              isRTL ? "left-4 md:left-8" : "right-4 md:right-8"
             )}
           >
             <button
               type="button"
               onClick={handleOpenAddProduct}
               className={cn(
-                "pointer-events-auto flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full",
+                "pointer-events-auto flex items-center justify-center w-12 h-12 md:w-13 md:h-13 rounded-full",
                 "bg-primary hover:bg-primary/90 active:scale-90 text-primary-foreground font-bold",
-                "shadow-lg shadow-primary/35 hover:shadow-xl hover:shadow-primary/45 transition-all cursor-pointer border border-white/20 backdrop-blur-xs"
+                "shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50 transition-all cursor-pointer border-2 border-white/20 backdrop-blur-xs"
               )}
               title={tDynamic('addProduct')}
               aria-label={tDynamic('addProduct')}
             >
-              <Plus className="w-5 h-5 md:w-6 md:h-6 stroke-[2.5]" />
+              <Plus className="w-6 h-6 stroke-[2.5]" />
             </button>
           </div>
         )}
