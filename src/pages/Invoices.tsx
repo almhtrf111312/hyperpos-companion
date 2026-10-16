@@ -251,6 +251,17 @@ export function isInvoiceCustomDate(createdAt?: string | null, targetDate?: stri
 
 export default function Invoices() {
   const { t, language, isRTL } = useLanguage();
+
+  // Helper to ensure clean Arabic text and eliminate translation key leaks
+  const tx = useCallback((key: string, arabicFallback: string): string => {
+    if (!language || language === 'ar') return arabicFallback;
+    try {
+      const val = t(key as any);
+      if (val && val !== key && !val.includes('.')) return val;
+    } catch {}
+    return arabicFallback;
+  }, [t, language]);
+
   const navigate = useNavigate();
   const [activeMainTab, setActiveMainTab] = useState<'sales' | 'purchases'>('sales');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -488,14 +499,14 @@ export default function Invoices() {
 
   const currentPeriodTitle = useMemo(() => {
     switch (dateQuickFilter) {
-      case 'today': return t('reports.today') || (language === 'en' ? 'Today' : 'اليوم');
-      case 'week': return t('reports.thisWeek') || (language === 'en' ? 'This Week' : 'هذا الأسبوع');
-      case 'month': return t('reports.thisMonth') || (language === 'en' ? 'This Month' : 'هذا الشهر');
-      case 'year': return t('reports.thisYear') || (language === 'en' ? 'This Year' : 'هذا العام');
-      case 'custom': return dateFilter || (language === 'en' ? 'Custom Date' : 'تاريخ مخصص');
-      default: return t('invoices.allInvoices') || (language === 'en' ? 'All Invoices' : 'كل الفترات');
+      case 'today': return tx('reports.today', 'اليوم');
+      case 'week': return tx('reports.thisWeek', 'هذا الأسبوع');
+      case 'month': return tx('reports.thisMonth', 'هذا الشهر');
+      case 'year': return tx('reports.thisYear', 'هذا العام');
+      case 'custom': return dateFilter || tx('common.customDate', 'تاريخ مخصص');
+      default: return tx('invoices.allInvoices', 'كل الفترات');
     }
-  }, [dateQuickFilter, dateFilter, t, language]);
+  }, [dateQuickFilter, dateFilter, tx]);
 
   const handleSetPeriod = (period: 'today' | 'week' | 'month' | 'year' | 'all') => {
     setDateQuickFilter(period);
@@ -1720,7 +1731,7 @@ export default function Invoices() {
             )}
           >
             <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{t('invoices.salesInvoices')}</span>
+            <span className="truncate">{tx('invoices.salesInvoices', 'فواتير المبيعات')}</span>
           </button>
           <button
             type="button"
@@ -1733,7 +1744,7 @@ export default function Invoices() {
             )}
           >
             <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{t('invoices.purchaseInvoices')}</span>
+            <span className="truncate">{tx('invoices.purchaseInvoices', 'فواتير المشتريات')}</span>
           </button>
         </div>
       </div>
@@ -1751,14 +1762,14 @@ export default function Invoices() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-black text-foreground">
-                      {t('invoices.salesPeriodTitle', { period: currentPeriodTitle }) || `مبيعات ${currentPeriodTitle}:`}
+                      {tx('invoices.salesPeriodTitle', `مبيعات ${currentPeriodTitle}:`)}
                     </span>
                     <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                       {formatCurrency(currentPeriodSales.total, statCurrencySymbol, statDecimals)}
                     </span>
                   </div>
                   <div className="text-[10px] text-muted-foreground font-semibold truncate mt-0.5">
-                    {currentPeriodSales.count} {t('invoices.displayedInvoices') || 'فاتورة'} • {stats.pendingDebts} {t('invoices.pendingDeferred') || 'مؤجلة'}
+                    {currentPeriodSales.count} {tx('invoices.displayedInvoices', 'فاتورة')} • {stats.pendingDebts} {tx('invoices.pendingDeferred', 'مؤجلة')}
                   </div>
                 </div>
               </div>
@@ -1771,38 +1782,38 @@ export default function Invoices() {
                       type="button"
                       className="px-2.5 py-1.5 rounded-xl bg-background border border-border text-[11px] font-bold text-foreground hover:bg-muted flex items-center gap-1 active:scale-95 transition-all shadow-2xs cursor-pointer"
                     >
-                      <span>{t('common.more') || 'المزيد'}</span>
+                      <span>{tx('common.more', 'المزيد')}</span>
                       <ChevronDown className="w-3 h-3 text-muted-foreground" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rounded-2xl p-1.5 text-xs font-bold w-48 shadow-xl">
                     <div className="px-2 py-1 text-[10px] text-muted-foreground font-black border-b border-border/50 mb-1">
-                      {t('invoices.selectPeriod') || 'فترة العرض:'}
+                      {tx('invoices.selectPeriod', 'فترة العرض:')}
                     </div>
                     <DropdownMenuItem onClick={() => handleSetPeriod('today')} className="rounded-xl flex items-center justify-between cursor-pointer">
-                      <span>{t('reports.today') || 'اليوم'}</span>
+                      <span>{tx('reports.today', 'اليوم')}</span>
                       {dateQuickFilter === 'today' && <Check className="w-3.5 h-3.5 text-primary" />}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleSetPeriod('week')} className="rounded-xl flex items-center justify-between cursor-pointer">
-                      <span>{t('reports.thisWeek') || 'هذا الأسبوع'}</span>
+                      <span>{tx('reports.thisWeek', 'هذا الأسبوع')}</span>
                       {dateQuickFilter === 'week' && <Check className="w-3.5 h-3.5 text-primary" />}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleSetPeriod('month')} className="rounded-xl flex items-center justify-between cursor-pointer">
-                      <span>{t('reports.thisMonth') || 'هذا الشهر'}</span>
+                      <span>{tx('reports.thisMonth', 'هذا الشهر')}</span>
                       {dateQuickFilter === 'month' && <Check className="w-3.5 h-3.5 text-primary" />}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleSetPeriod('year')} className="rounded-xl flex items-center justify-between cursor-pointer">
-                      <span>{t('reports.thisYear') || 'هذا العام'}</span>
+                      <span>{tx('reports.thisYear', 'هذا العام')}</span>
                       {dateQuickFilter === 'year' && <Check className="w-3.5 h-3.5 text-primary" />}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleSetPeriod('all')} className="rounded-xl flex items-center justify-between cursor-pointer">
-                      <span>{t('invoices.allInvoices') || 'كل الفواتير'}</span>
+                      <span>{tx('invoices.allInvoices', 'كل الفواتير')}</span>
                       {dateQuickFilter === 'all' && <Check className="w-3.5 h-3.5 text-primary" />}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem onClick={() => setShowDetailedStats(prev => !prev)} className="rounded-xl text-primary font-bold cursor-pointer">
                       <Layers className="w-3.5 h-3.5 ml-1.5" />
-                      <span>{showDetailedStats ? (t('invoices.hideStats') || 'إخفاء الإحصائيات') : (t('invoices.showStats') || 'عرض تفاصيل الإحصائيات')}</span>
+                      <span>{showDetailedStats ? tx('invoices.hideStats', 'إخفاء الإحصائيات') : tx('invoices.showStats', 'عرض تفاصيل الإحصائيات')}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1831,7 +1842,7 @@ export default function Invoices() {
                       : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
                   )}
                 >
-                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalInvoices')}</span>
+                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.totalInvoices', 'إجمالي الفواتير')}</span>
                   <span className="text-xs sm:text-sm font-black text-foreground tabular-nums">{stats.total}</span>
                 </button>
                 <button
@@ -1844,7 +1855,7 @@ export default function Invoices() {
                       : "bg-background/80 border-border hover:border-orange-500/40 shadow-xs"
                   )}
                 >
-                  <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('invoices.pendingDeferred')}</span>
+                  <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{tx('invoices.pendingDeferred', 'مؤجلة معلقة')}</span>
                   <span className="text-xs sm:text-sm font-black text-orange-600 dark:text-orange-400 tabular-nums">{stats.pendingDebts}</span>
                 </button>
                 <button
@@ -1857,7 +1868,7 @@ export default function Invoices() {
                       : "bg-background/80 border-border hover:border-emerald-500/40 shadow-xs"
                   )}
                 >
-                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.todaySales')}</span>
+                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.todaySales', 'مبيعات اليوم')}</span>
                   <span className="text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                     {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
                   </span>
@@ -1872,7 +1883,7 @@ export default function Invoices() {
                       : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
                   )}
                 >
-                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('invoices.totalProfits')}</span>
+                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.totalProfits', 'إجمالي الأرباح')}</span>
                   <span className="text-[11px] sm:text-xs font-black text-primary font-mono whitespace-nowrap">
                     {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
                   </span>
@@ -1886,7 +1897,7 @@ export default function Invoices() {
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder={t('invoices.searchPlaceholder')}
+                placeholder={tx('invoices.searchPlaceholder', 'بحث برقم الفاتورة، العميل، الهاتف...')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-10 pr-9 pl-8 text-xs bg-card border-border rounded-2xl font-medium shadow-2xs focus-visible:ring-1 focus-visible:ring-primary"
@@ -1915,7 +1926,7 @@ export default function Invoices() {
               )}
             >
               <Filter className="w-4 h-4 text-primary shrink-0" />
-              <span>{t('common.filter') || 'التصفية'}</span>
+              <span>{tx('common.filter', 'التصفية')}</span>
               {activeFiltersCount > 0 && (
                 <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground font-mono text-[10px] flex items-center justify-center font-bold">
                   {activeFiltersCount}
@@ -1925,98 +1936,72 @@ export default function Invoices() {
           </div>
 
           {/* 3. شريط بطاقات الفلاتر النشطة (Active Filter Chips Strip) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px] font-bold select-none">
-            {dateQuickFilter !== 'all' && (
-              <div className="bg-primary/10 border border-primary/30 text-primary px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
-                <span>📅 {currentPeriodTitle}</span>
-                <button
-                  type="button"
-                  onClick={() => handleSetPeriod('all')}
-                  className="text-primary hover:text-primary/70 font-mono text-xs cursor-pointer"
-                  title={t('common.clear') || 'إلغاء'}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            {filterPayment !== 'all' && (
-              <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
-                <span>
-                  💳 {filterPayment === 'cash' ? (t('invoices.cash') || 'نقداً') : filterPayment === 'debt' ? (t('invoices.credit') || 'دين') : (t('invoices.network') || 'شبكة')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setFilterPayment('all')}
-                  className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
-                  title={t('common.clear') || 'إلغاء'}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            {filterType !== 'all' && (
-              <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
-                <span>
-                  🧾 {filterType === 'sale' ? (t('invoices.sales') || 'بيع') : filterType === 'maintenance' ? (t('invoices.maintenance') || 'صيانة') : (t('invoices.shipping') || 'شحن')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setFilterType('all')}
-                  className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
-                  title={t('common.clear') || 'إلغاء'}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            {displayCurrencyFilter !== 'stored' && (
-              <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
-                <span>💱 {displayCurrencyFilter}</span>
-                <button
-                  type="button"
-                  onClick={() => setDisplayCurrencyFilter('stored')}
-                  className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
-                  title={t('common.clear') || 'إلغاء'}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            {showRefunded && (
-              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
-                <span>↩️ {t('invoices.refundedInvoices')}</span>
-                <button
-                  type="button"
-                  onClick={() => setShowRefunded(false)}
-                  className="text-rose-500 hover:text-rose-700 font-mono text-xs cursor-pointer"
-                  title={t('common.clear') || 'إلغاء'}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setIsFilterSheetOpen(true)}
-              className="text-primary hover:underline text-[10.5px] px-1 shrink-0 font-bold cursor-pointer"
-            >
-              + {t('invoices.editFilters') || 'تعديل الفلاتر'}
-            </button>
-          </div>
+          {(filterPayment !== 'all' || filterType !== 'all' || displayCurrencyFilter !== 'stored' || showRefunded) && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px] font-bold select-none">
+              {filterPayment !== 'all' && (
+                <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                  <span>
+                    💳 {filterPayment === 'cash' ? tx('invoices.cash', 'نقداً') : filterPayment === 'debt' ? tx('invoices.credit', 'دين') : tx('invoices.network', 'شبكة')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterPayment('all')}
+                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    title={tx('common.clear', 'إلغاء')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {filterType !== 'all' && (
+                <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                  <span>
+                    🧾 {filterType === 'sale' ? tx('invoices.sales', 'بيع') : filterType === 'maintenance' ? tx('invoices.maintenance', 'صيانة') : tx('invoices.shipping', 'شحن')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterType('all')}
+                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    title={tx('common.clear', 'إلغاء')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {displayCurrencyFilter !== 'stored' && (
+                <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                  <span>💱 {displayCurrencyFilter}</span>
+                  <button
+                    type="button"
+                    onClick={() => setDisplayCurrencyFilter('stored')}
+                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    title={tx('common.clear', 'إلغاء')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {showRefunded && (
+                <div className="bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                  <span>↩️ {tx('invoices.refundedInvoices', 'المسترجعة')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowRefunded(false)}
+                    className="text-rose-500 hover:text-rose-700 font-mono text-xs cursor-pointer"
+                    title={tx('common.clear', 'إلغاء')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 4. ملخص الفواتير المعروضة */}
           <div className="flex items-center justify-between px-1 text-muted-foreground text-xs font-bold">
             <span>
-              {t('invoices.displayedInvoices') || 'الفواتير المعروضة'}: <b className="text-foreground font-mono">{filteredInvoices.length}</b>
+              {tx('invoices.displayedInvoices', 'الفواتير المعروضة')}: <b className="text-foreground font-mono">{filteredInvoices.length}</b>
             </span>
-            <button
-              type="button"
-              onClick={() => setIsFilterSheetOpen(true)}
-              className="text-primary hover:text-primary/80 text-[11px] flex items-center gap-1 cursor-pointer"
-            >
-              <SlidersHorizontal className="w-3 h-3" />
-              <span>{t('invoices.editFilters') || 'تعديل الفلاتر'}</span>
-            </button>
           </div>
 
           {/* Invoices List */}
@@ -2246,10 +2231,10 @@ export default function Invoices() {
                           type="button"
                           onClick={() => handleView(invoice)}
                           className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-border/60"
-                          title={t('common.view') || 'عرض التفاصيل'}
+                          title={tx('common.view', 'عرض التفاصيل')}
                         >
                           <Eye className="w-3.5 h-3.5 text-primary" />
-                          <span>{t('common.view') || 'عرض'}</span>
+                          <span>{tx('common.view', 'عرض')}</span>
                         </button>
 
                         {/* 2. زر المشاركة */}
@@ -2257,10 +2242,10 @@ export default function Invoices() {
                           type="button"
                           onClick={() => handleShare(invoice)}
                           className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-border/60"
-                          title={t('common.share') || 'مشاركة الفاتورة'}
+                          title={tx('common.share', 'مشاركة الفاتورة')}
                         >
                           <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="hidden sm:inline">{t('common.share') || 'مشاركة'}</span>
+                          <span className="hidden sm:inline">{tx('common.share', 'مشاركة')}</span>
                         </button>
 
                         {/* 3. زر تسديد الدفعة (يظهر فقط لفواتير الآجل غير المسددة بالكامل) */}
@@ -2269,10 +2254,10 @@ export default function Invoices() {
                             type="button"
                             onClick={() => handlePayDebt(invoice)}
                             className="h-7 px-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-black flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-emerald-500/30 shadow-2xs"
-                            title={t('invoices.payInstallment') || 'تسديد دفعة'}
+                            title={tx('invoices.payInstallment', 'تسديد دفعة')}
                           >
                             <Banknote className="w-3.5 h-3.5" />
-                            <span>{t('invoices.payInstallment') || 'تسديد دفعة'}</span>
+                            <span>{tx('invoices.payInstallment', 'تسديد دفعة')}</span>
                           </button>
                         )}
                       </div>
@@ -2283,10 +2268,10 @@ export default function Invoices() {
                           type="button"
                           onClick={() => handleRefund(invoice)}
                           className="h-7 px-2 rounded-lg text-destructive/80 hover:text-destructive hover:bg-destructive/10 text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
-                          title={t('invoices.refundInvoice') || 'استرداد'}
+                          title={tx('invoices.refundInvoice', 'استرداد')}
                         >
                           <Undo2 className="w-3 h-3" />
-                          <span>{t('invoices.refund') || 'استرداد'}</span>
+                          <span>{tx('invoices.refund', 'استرداد')}</span>
                         </button>
                       )}
                     </div>
@@ -3181,10 +3166,10 @@ export default function Invoices() {
               </div>
               <div>
                 <SheetTitle className="font-black text-sm text-foreground leading-tight text-right">
-                  {t('invoices.filterSheetTitle') || 'لوحة الفلاتر والتصفية الذكية'}
+                  {tx('invoices.filterSheetTitle', 'لوحة الفلاتر والتصفية الذكية')}
                 </SheetTitle>
                 <SheetDescription className="text-[10px] text-muted-foreground font-medium text-right">
-                  {t('invoices.filterSheetSubtitle') || 'حدد المعايير المطلوبة لعرض الفواتير بدقة'}
+                  {tx('invoices.filterSheetSubtitle', 'حدد المعايير المطلوبة لعرض الفواتير بدقة')}
                 </SheetDescription>
               </div>
             </div>
@@ -3196,7 +3181,7 @@ export default function Invoices() {
               className="text-primary hover:text-primary/80 text-xs font-bold px-2 py-1 h-auto rounded-lg cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 ml-1" />
-              <span>{t('common.reset') || 'إعادة ضبط'}</span>
+              <span>{tx('common.reset', 'إعادة ضبط')}</span>
             </Button>
           </div>
 
@@ -3206,15 +3191,15 @@ export default function Invoices() {
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-primary" />
-                <span>{t('invoices.timePeriod') || 'الفترة الزمنية:'}</span>
+                <span>{tx('invoices.timePeriod', 'الفترة الزمنية:')}</span>
               </label>
               <div className="grid grid-cols-5 gap-1 text-center">
                 {[
-                  { id: 'today' as const, label: t('reports.today') || 'اليوم' },
-                  { id: 'week' as const, label: t('reports.thisWeek') || 'الأسبوع' },
-                  { id: 'month' as const, label: t('reports.thisMonth') || 'الشهر' },
-                  { id: 'year' as const, label: t('reports.thisYear') || 'العام' },
-                  { id: 'all' as const, label: t('invoices.allInvoices') || 'الكل' },
+                  { id: 'today' as const, label: tx('reports.today', 'اليوم') },
+                  { id: 'week' as const, label: tx('reports.thisWeek', 'الأسبوع') },
+                  { id: 'month' as const, label: tx('reports.thisMonth', 'الشهر') },
+                  { id: 'year' as const, label: tx('reports.thisYear', 'العام') },
+                  { id: 'all' as const, label: tx('invoices.allInvoices', 'الكل') },
                 ].map((p) => {
                   const isSelected = dateQuickFilter === p.id;
                   return (
@@ -3237,7 +3222,7 @@ export default function Invoices() {
 
               {/* Custom Date Picker in Sheet */}
               <div className="mt-2.5 bg-muted/30 p-2.5 rounded-xl border border-border/70 flex items-center justify-between text-[11px]">
-                <span className="text-muted-foreground font-bold">{t('common.customDate') || 'تاريخ مخصص:'}</span>
+                <span className="text-muted-foreground font-bold">{tx('common.customDate', 'تاريخ مخصص:')}</span>
                 <div className="flex items-center gap-1 w-44">
                   <DatePicker
                     value={dateFilter}
@@ -3251,7 +3236,7 @@ export default function Invoices() {
                         setActiveKpi('total');
                       }
                     }}
-                    placeholder={t('common.allDates')}
+                    placeholder={tx('common.allDates', 'كل التواريخ')}
                     className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"
                     highlightedDates={salesInvoiceDates}
                   />
@@ -3277,14 +3262,14 @@ export default function Invoices() {
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5 text-primary" />
-                <span>{t('invoices.paymentMethod') || 'طريقة الدفع:'}</span>
+                <span>{tx('invoices.paymentMethod', 'طريقة الدفع:')}</span>
               </label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id: 'all' as const, label: t('common.all') || 'الكل' },
-                  { id: 'cash' as const, label: t('invoices.cash') || 'نقداً' },
-                  { id: 'debt' as const, label: t('invoices.credit') || 'دين' },
-                  { id: 'card' as const, label: t('invoices.network') || 'شبكة' },
+                  { id: 'all' as const, label: tx('common.all', 'الكل') },
+                  { id: 'cash' as const, label: tx('invoices.cash', 'نقداً') },
+                  { id: 'debt' as const, label: tx('invoices.credit', 'دين') },
+                  { id: 'card' as const, label: tx('invoices.network', 'شبكة') },
                 ].map((pm) => {
                   const isSelected = filterPayment === pm.id;
                   return (
@@ -3310,14 +3295,14 @@ export default function Invoices() {
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-primary" />
-                <span>{t('invoices.invoiceType') || 'نوع الفاتورة:'}</span>
+                <span>{tx('invoices.invoiceType', 'نوع الفاتورة:')}</span>
               </label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id: 'all' as const, label: t('common.all') || 'الكل' },
-                  { id: 'sale' as const, label: t('invoices.sales') || 'بيع' },
-                  { id: 'maintenance' as const, label: t('invoices.maintenance') || 'صيانة' },
-                  { id: 'shipping' as const, label: t('invoices.shipping') || 'شحن' },
+                  { id: 'all' as const, label: tx('common.all', 'الكل') },
+                  { id: 'sale' as const, label: tx('invoices.sales', 'بيع') },
+                  { id: 'maintenance' as const, label: tx('invoices.maintenance', 'صيانة') },
+                  { id: 'shipping' as const, label: tx('invoices.shipping', 'شحن') },
                 ].map((it) => {
                   const isSelected = filterType === it.id;
                   return (
@@ -3343,7 +3328,7 @@ export default function Invoices() {
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-primary" />
-                <span>{t('invoices.status') || 'حالة الفاتورة:'}</span>
+                <span>{tx('invoices.status', 'حالة الفاتورة:')}</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -3356,7 +3341,7 @@ export default function Invoices() {
                       : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  {t('invoices.activeInvoices') || 'مكتملة'}
+                  {tx('invoices.activeInvoices', 'مكتملة')}
                 </button>
                 <button
                   type="button"
@@ -3368,7 +3353,7 @@ export default function Invoices() {
                       : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  {t('invoices.refundedInvoices') || 'مستردة'}
+                  {tx('invoices.refundedInvoices', 'مستردة')}
                 </button>
               </div>
             </div>
@@ -3377,7 +3362,7 @@ export default function Invoices() {
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-primary" />
-                <span>{t('invoices.displayCurrency') || 'عملة العرض في القائمة:'}</span>
+                <span>{tx('invoices.displayCurrency', 'عملة العرض في القائمة:')}</span>
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 <button
@@ -3390,7 +3375,7 @@ export default function Invoices() {
                       : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  {t('invoices.asInInvoice') || 'العملة الأصلية'}
+                  {tx('invoices.asInInvoice', 'العملة الأصلية')}
                 </button>
                 {enabledCurrencies.TRY && (
                   <button
@@ -3441,7 +3426,7 @@ export default function Invoices() {
             <div className="bg-muted/30 p-3 rounded-2xl border border-border/70 flex items-center justify-between">
               <div>
                 <span className="text-foreground font-black block text-xs">
-                  {t('invoices.refundedInvoices') || 'إظهار الفواتير المستردة'}
+                  {tx('invoices.refundedInvoices', 'إظهار الفواتير المستردة')}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-semibold">
                   تضمين {invoices.filter(i => i.status === 'refunded').length} فاتورة مستردة في القائمة
@@ -3471,12 +3456,12 @@ export default function Invoices() {
               type="button"
               onClick={() => {
                 setIsFilterSheetOpen(false);
-                toast.success(t('invoices.filterApplied') || 'تم تطبيق التصفية بنجاح', { duration: 1500 });
+                toast.success(tx('invoices.filterApplied', 'تم تطبيق التصفية بنجاح'), { duration: 1500 });
               }}
               className="flex-1 bg-primary text-primary-foreground font-black py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Check className="w-4 h-4" />
-              <span>{t('common.apply') || 'تطبيق التصفية'}</span>
+              <span>{tx('common.apply', 'تطبيق التصفية')}</span>
             </Button>
             <Button
               type="button"
@@ -3484,7 +3469,7 @@ export default function Invoices() {
               onClick={() => setIsFilterSheetOpen(false)}
               className="px-5 border-border text-foreground font-bold rounded-xl text-xs cursor-pointer"
             >
-              {t('common.close') || 'إغلاق'}
+              {tx('common.close', 'إغلاق')}
             </Button>
           </div>
         </SheetContent>

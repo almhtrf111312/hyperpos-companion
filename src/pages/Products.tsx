@@ -1454,26 +1454,13 @@ export default function Products() {
           <button
             type="button"
             onClick={() => setShowCategoryManager(true)}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
           >
             <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
             <span className="truncate">{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
-          {/* 3. فاتورة شراء */}
-          {!noInventory && (
-            <button
-              type="button"
-              onClick={() => setShowPurchaseInvoiceDialog(true)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
-              title={t('products.purchaseInvoice') || 'فاتورة شراء'}
-            >
-              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              <span className="truncate">{t('products.purchaseInvoice') || 'فاتورة شراء'}</span>
-            </button>
-          )}
-
-          {/* 4. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
+          {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
           <button
             type="button"
             onClick={() => {
@@ -1683,18 +1670,6 @@ export default function Products() {
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             )}
-
-            {!noInventory && mainTab === 'active' && (
-              <Button
-                variant="outline"
-                className="h-10 px-2.5 sm:px-3 gap-1.5 flex-shrink-0 text-xs font-semibold cursor-pointer"
-                onClick={() => setShowPurchaseInvoiceDialog(true)}
-                title={t('products.purchaseInvoice') || 'فاتورة شراء'}
-              >
-                <FileText className="w-4 h-4 text-primary shrink-0" />
-                <span className="hidden sm:inline">{t('products.purchaseInvoice') || 'فاتورة شراء'}</span>
-              </Button>
-            )}
             
             {/* View Mode Buttons */}
             <div className="flex bg-muted rounded-lg p-0.5 shrink-0">
@@ -1737,31 +1712,7 @@ export default function Products() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
-                {t('common.all')} ({archiveStats.total})
-              </button>
-              <button
-                type="button"
-                onClick={() => setArchiveFilter('out_of_stock')}
-                className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
-                  archiveFilter === 'out_of_stock'
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {t('products.outOfStock')} ({archiveStats.outOfStock})
-              </button>
-              <button
-                type="button"
-                onClick={() => setArchiveFilter('manual_archived')}
-                className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
-                  archiveFilter === 'manual_archived'
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {t('products.manuallyArchived')} ({archiveStats.manualArchived})
+                {t('common.all') || 'الكل'} ({archiveStats.total})
               </button>
               <div className="h-6 w-px bg-border mx-1 self-center" />
               <div className="px-3 py-1 rounded-full text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap flex items-center gap-1.5">
