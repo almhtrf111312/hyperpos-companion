@@ -101,7 +101,7 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
             حدث خطأ أثناء تحميل واجهة التطبيق
           </h2>
           <p style={{ fontSize: '0.875rem', color: '#a1a1aa', maxWidth: '380px', marginBottom: '24px', lineHeight: '1.5' }}>
-            تم تسجيل تقرير المشكلة في رادار الأخطاء لمراجعته من قِبل الإدارة. يمكنك العودة للشاشة الرئيسية أو إعادة المحاولة بأمان.
+            تم رصد المشكلة وجاري توثيقها في رادار الأخطاء للتشخيص والمراجعة. يمكنك العودة للشاشة الرئيسية أو إعادة المحاولة بأمان.
           </p>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button

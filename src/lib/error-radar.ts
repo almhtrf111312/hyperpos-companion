@@ -381,11 +381,11 @@ async function sendErrorLogToServer(log: QueuedErrorRadarLog): Promise<SendResul
   }
 
   try {
-    // محاولة الإرسال لجدول app_error_logs في حال تم نشره على Supabase
+    // محاولة الإرسال لجدول error_logs في حال تم نشره على Supabase
     // نستخدم client_error_id كمعرف ثابت يمنع التكرار تماماً (Idempotency Key)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error, status } = await (supabase as any)
-      .from('app_error_logs')
+      .from('error_logs')
       .insert({
         client_error_id: log.id,
         fingerprint: log.fingerprint,
@@ -413,7 +413,7 @@ async function sendErrorLogToServer(log: QueuedErrorRadarLog): Promise<SendResul
       return {
         success: false,
         serverConfirmed: false,
-        error: 'Table app_error_logs not deployed on server yet',
+        error: 'Table error_logs not deployed on server yet',
         isTerminal: true,
       };
     }
@@ -697,7 +697,7 @@ export async function markErrorResolved(id: string): Promise<boolean> {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
-          .from('app_error_logs')
+          .from('error_logs')
           .update({ is_resolved: true, resolved_at: target.resolvedAt })
           .eq('client_error_id', id);
       } catch {
@@ -728,7 +728,7 @@ export async function markErrorUnresolved(id: string): Promise<boolean> {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
-          .from('app_error_logs')
+          .from('error_logs')
           .update({ is_resolved: false, resolved_at: null })
           .eq('client_error_id', id);
       } catch {

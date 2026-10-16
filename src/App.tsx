@@ -16,7 +16,6 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { SetupWizard } from "./components/setup/SetupWizard";
-import { OnboardingTour } from "./components/onboarding/OnboardingTour";
 import { useAuth } from "./hooks/use-auth";
 import { useUserRole } from "./hooks/use-user-role";
 import { Button } from "@/components/ui/button";
@@ -136,6 +135,7 @@ const AppContent = () => {
       return localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1');
     } catch { return true; }
   });
+
   // Re-read flag whenever the user changes (after login/logout) or settings are updated
   useEffect(() => {
     const checkState = () => {
@@ -263,6 +263,24 @@ const AppContent = () => {
     };
   }, []);
 
+  // Handle new signup setup flow with explicit state guarding
+  const isNewSignup = (() => {
+    try {
+      return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+    } catch { return false; }
+  })();
+
+  const [roleFallbackTimeout, setRoleFallbackTimeout] = useState(false);
+
+  useEffect(() => {
+    if (isNewSignup && roleLoading) {
+      const timer = setTimeout(() => {
+        setRoleFallbackTimeout(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewSignup, roleLoading]);
+
   // Safe Mode - minimal UI for testing
   if (isSafeMode) {
     return (
@@ -289,24 +307,6 @@ const AppContent = () => {
       />
     );
   }
-
-  // Handle new signup setup flow with explicit state guarding
-  const isNewSignup = (() => {
-    try {
-      return sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
-    } catch { return false; }
-  })();
-
-  const [roleFallbackTimeout, setRoleFallbackTimeout] = useState(false);
-
-  useEffect(() => {
-    if (isNewSignup && roleLoading) {
-      const timer = setTimeout(() => {
-        setRoleFallbackTimeout(true);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isNewSignup, roleLoading]);
 
   if (isNewSignup) {
     // 1. While auth state is resolving for new signup, show waiting screen
@@ -375,8 +375,6 @@ const AppContent = () => {
     <>
       {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
-      {/* Global onboarding tour — persists across route changes */}
-      {user && <OnboardingTour />}
       <Routes>
 
         {/* Public routes */}
