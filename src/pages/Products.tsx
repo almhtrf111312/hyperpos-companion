@@ -814,7 +814,7 @@ export default function Products() {
     return list;
   }, [archivedProducts, products, noInventory]);
 
-  const [archiveFilter, setArchiveFilter] = useState<'all' | 'out_of_stock' | 'manual_archived'>('all');
+  const [archiveFilter, setArchiveFilter] = useState<'all' | 'out_of_stock' | 'manual_archived' | 'ready_to_restore'>('all');
 
   const archiveStats = useMemo(() => {
     const total = mergedArchivedProducts.length;
@@ -829,6 +829,7 @@ export default function Products() {
     return mergedArchivedProducts.filter(p => {
       if (archiveFilter === 'out_of_stock' && p.quantity > 0) return false;
       if (archiveFilter === 'manual_archived' && !p.archived) return false;
+      if (archiveFilter === 'ready_to_restore' && !p.archived) return false;
       if (!q) return true;
       const matchesName = (p.name || '').toLowerCase().includes(q);
       const matchesBarcode1 = (p.barcode || '').toLowerCase().includes(q);
@@ -843,15 +844,33 @@ export default function Products() {
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       if (product.archived) return false;
-      if (!noInventory && product.quantity <= 0) return false;
-      const matchesSearch = product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+
+      // Status filtering (Total, In Stock, Low Stock, Out of Stock)
+      if (!noInventory) {
+        if (statusFilter === 'out_of_stock') {
+          if (product.quantity > 0) return false;
+        } else if (statusFilter === 'in_stock') {
+          if (product.quantity <= 0) return false;
+          if (product.status && product.status !== 'in_stock') return false;
+        } else if (statusFilter === 'low_stock') {
+          if (product.quantity <= 0) return false;
+          if (product.status !== 'low_stock') return false;
+        } else {
+          // 'all': Default view displays products that are active with inventory
+          if (product.quantity <= 0) return false;
+        }
+      } else {
+        if (statusFilter !== 'all' && product.status !== statusFilter) return false;
+      }
+
+      const matchesSearch = !debouncedSearch ||
+        product.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         product.barcode.includes(debouncedSearch);
       const matchesCategory = selectedCategory === t('products.all') || product.category === selectedCategory;
-      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
       const matchesUnit = unitFilter === 'all' ||
         (unitFilter === 'multi_unit' && product.conversionFactor && product.conversionFactor > 1) ||
         (unitFilter === 'single_unit' && (!product.conversionFactor || product.conversionFactor <= 1));
-      return matchesSearch && matchesCategory && matchesStatus && matchesUnit;
+      return matchesSearch && matchesCategory && matchesUnit;
     });
   }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, t]);
 
@@ -1430,7 +1449,7 @@ export default function Products() {
             )}
           >
             <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{t('products.activeProducts')}</span>
+            <span className="truncate">{t('products.active') || 'النشطة'}</span>
           </button>
 
           {/* 2. التصنيفات (في المنتصف) */}
@@ -1440,7 +1459,7 @@ export default function Products() {
             className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
           >
             <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
-            <span className="truncate">{t('products.categories')}</span>
+            <span className="truncate">{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
           {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
@@ -1458,7 +1477,7 @@ export default function Products() {
             )}
           >
             <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{t('products.archive')}</span>
+            <span className="truncate">{t('products.archive') || 'الأرشيف'}</span>
             {mergedArchivedProducts.length > 0 && (
               <span className={cn(
                 "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none",
@@ -1491,7 +1510,7 @@ export default function Products() {
                 </div>
                 <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
                   <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.total}</span>
-                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.totalArchive')}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.totalArchive') || 'إجمالي الأرشيف'}</span>
                 </div>
               </button>
               <button
@@ -1507,7 +1526,7 @@ export default function Products() {
                 </div>
                 <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
                   <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.outOfStock}</span>
-                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.outOfStock')}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.outOfStock') || 'نَفَذ'}</span>
                 </div>
               </button>
               <button
@@ -1523,23 +1542,23 @@ export default function Products() {
                 </div>
                 <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
                   <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.manualArchived}</span>
-                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.manuallyArchived')}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.manuallyArchived') || 'مؤرشف يدوياً'}</span>
                 </div>
               </button>
               <button
                 type="button"
-                onClick={() => setArchiveFilter('all')}
+                onClick={() => setArchiveFilter('ready_to_restore')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-success/40",
-                  archiveFilter === 'all' ? "border-success bg-success/10 ring-1 ring-success/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-emerald-500/40",
+                  archiveFilter === 'ready_to_restore' ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-success/15 flex items-center justify-center shrink-0">
-                  <CheckCircle className="w-3.5 h-3.5 text-success" />
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
-                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.total}</span>
-                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.readyToRestore')}</span>
+                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{archiveStats.manualArchived}</span>
+                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.readyToRestore') || 'جاهز للاسترداد'}</span>
                 </div>
               </button>
             </div>
@@ -2432,12 +2451,9 @@ export default function Products() {
           <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
             
             {/* Premium Header */}
-            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-8 pb-6 border-b border-border/50">
+            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-6 pb-4 border-b border-border/50">
               <DialogHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-primary/20">
-                  <Package className="w-6 h-6 text-primary" />
-                </div>
-                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
                   {t('products.addProductTitle') || 'إضافة منتج جديد'}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground mt-1">
@@ -2956,16 +2972,25 @@ export default function Products() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-3 pt-6 pb-safe mt-6 border-t border-border/50 sticky bottom-0 bg-background/95 backdrop-blur-sm">
-                <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
-                  setShowAddDialog(false);
-                  setImagePreviewBase64('');
-                  clearPersistedState();
-                }}>
+              <div className="flex items-center gap-3 pt-6 pb-2 mt-4 bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-all cursor-pointer shadow-xs"
+                  onClick={() => {
+                    setShowAddDialog(false);
+                    setImagePreviewBase64('');
+                    clearPersistedState();
+                  }}
+                >
                   {t('common.cancel') || 'إلغاء'}
                 </Button>
-                <Button className="flex-1 min-h-[48px]" onClick={handleAddProduct}>
-                  <Save className="w-4 h-4" />
+                <Button
+                  type="button"
+                  className="flex-1 h-12 rounded-2xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-all cursor-pointer"
+                  onClick={handleAddProduct}
+                >
+                  <Save className="w-4 h-4 ml-2" />
                   {t('products.saveProduct') || 'حفظ المنتج'}
                 </Button>
               </div>
@@ -2978,16 +3003,9 @@ export default function Products() {
           <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
             
             {/* Premium Header */}
-            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-8 pb-6 border-b border-border/50">
+            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-6 pb-4 border-b border-border/50">
               <DialogHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-primary/20">
-                  {selectedProduct?.archived ? (
-                    <RotateCcw className="w-6 h-6 text-emerald-600" />
-                  ) : (
-                    <Edit className="w-6 h-6 text-primary" />
-                  )}
-                </div>
-                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
                   {selectedProduct?.archived ? t('products.restoreAndEditProduct') : tDynamic('editProduct')}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground mt-1">
@@ -3482,29 +3500,37 @@ export default function Products() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-3 pt-6 pb-safe mt-6 border-t border-border/50 sticky bottom-0 bg-background/95 backdrop-blur-sm">
-                <Button variant="outline" className="flex-1 min-h-[48px]" onClick={() => {
-                  setShowEditDialog(false);
-                  setImagePreviewBase64('');
-                  clearPersistedState();
-                }}>
+              <div className="flex items-center gap-3 pt-6 pb-2 mt-4 bg-transparent">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-all cursor-pointer shadow-xs"
+                  onClick={() => {
+                    setShowEditDialog(false);
+                    setImagePreviewBase64('');
+                    clearPersistedState();
+                  }}
+                >
                   {t('common.cancel')}
                 </Button>
                 <Button
+                  type="button"
                   className={cn(
-                    "flex-1 min-h-[48px]",
-                    selectedProduct?.archived && "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    "flex-1 h-12 rounded-2xl text-sm font-black shadow-md transition-all cursor-pointer",
+                    selectedProduct?.archived
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
+                      : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
                   )}
                   onClick={handleEditProduct}
                 >
                   {selectedProduct?.archived ? (
                     <>
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-4 h-4 ml-2" />
                       {t('products.restoreAndEditProduct')}
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4" />
+                      <Save className="w-4 h-4 ml-2" />
                       {t('common.save')}
                     </>
                   )}
