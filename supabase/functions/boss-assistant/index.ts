@@ -8,6 +8,35 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Attachment constraints
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024; // 10 MB
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+const ALLOWED_AUDIO_TYPES = new Set([
+  "audio/webm",
+  "audio/wav",
+  "audio/mp3",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/m4a",
+  "audio/aac",
+  "audio/x-m4a",
+]);
+
+function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
+  if (typeof dataUrl !== "string") return null;
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1].toLowerCase().trim(), base64: match[2].trim() };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -18,13 +47,22 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
-        JSON.stringify({ error: "غير مصرح: يرجى تسجيل الدخول أولاً" }),
+        JSON.stringify({ error: "غير مصرح: يرجى تسجيل الدخول أولاً للوصول إلى المساعد" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error("[BossAssistant] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ error: "خطأ في تهيئة خادم Supabase الداخلي" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -33,7 +71,7 @@ serve(async (req) => {
     const { data: userData, error: userError } = await serviceClient.auth.getUser(token);
     if (userError || !userData?.user) {
       return new Response(
-        JSON.stringify({ error: "غير مصرح: جلسة غير صالحة" }),
+        JSON.stringify({ error: "غير مصرح: جلسة المستخدم غير صالحة أو منتهية" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -54,7 +92,25 @@ serve(async (req) => {
       );
     }
 
-    // 3. Fetch Live System Context & Metrics
+    // 3. Read GEMINI_API_KEY from server secrets
+    // We strictly check GEMINI_API_KEY or the named secret "AI Flow POS Pro" / "AI_FLOW_POS_PRO"
+    const GEMINI_API_KEY =
+      Deno.env.get("GEMINI_API_KEY") ||
+      Deno.env.get("AI Flow POS Pro") ||
+      Deno.env.get("AI_FLOW_POS_PRO");
+
+    if (!GEMINI_API_KEY) {
+      console.error("[BossAssistant] Secret GEMINI_API_KEY is missing in server environment");
+      return new Response(
+        JSON.stringify({
+          error:
+            "مفتاح GEMINI_API_KEY غير مهيأ في أسرار خادم Supabase (Secrets). يرجى إضافة السر باسم GEMINI_API_KEY في إعدادات Supabase.",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 4. Fetch Live System Context & Metrics
     let systemContext = "";
     try {
       const nowIso = new Date().toISOString();
@@ -137,13 +193,13 @@ serve(async (req) => {
 ${errorsSummary}
 `;
     } catch (metricErr) {
-      console.warn("Failed to fetch live system metrics:", metricErr);
+      console.warn("[BossAssistant] Failed to fetch live system metrics:", metricErr);
       systemContext = "\n[ملاحظة: تعذر استرداد القياسات الحية، ركز على إجابة طلب المالك مباشرة]\n";
     }
 
-    // 4. Parse incoming body
+    // 5. Parse and Validate Request Payload
     const reqBody = await req.json();
-    const { messages, image, images, audio, stream = true } = reqBody;
+    const { messages, image, images, audio } = reqBody;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(
@@ -152,14 +208,97 @@ ${errorsSummary}
       );
     }
 
-    // 5. Construct System Prompt
+    // Validate and process image attachments
+    const validatedImageParts: Array<{ mimeType: string; base64: string }> = [];
+    const rawImages: string[] = [];
+
+    if (typeof image === "string") {
+      rawImages.push(image);
+    }
+    if (Array.isArray(images)) {
+      for (const img of images) {
+        if (typeof img === "string") rawImages.push(img);
+      }
+    }
+
+    for (const rawImg of rawImages) {
+      const parsed = parseDataUrl(rawImg);
+      if (!parsed) {
+        return new Response(
+          JSON.stringify({ error: "صيغة بيانات الصورة المرفقة غير صالحة" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!ALLOWED_IMAGE_TYPES.has(parsed.mimeType)) {
+        return new Response(
+          JSON.stringify({ error: `نوع الصورة (${parsed.mimeType}) غير مدعوم. الصيغ المدعومة: JPEG, PNG, WebP, GIF` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Check byte length (~3/4 of base64 length)
+      const approxBytes = (parsed.base64.length * 3) / 4;
+      if (approxBytes > MAX_IMAGE_BYTES) {
+        return new Response(
+          JSON.stringify({ error: "حجم الصورة يتجاوز الحد الأقصى المسموح (5 ميجابايت)" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      validatedImageParts.push(parsed);
+    }
+
+    // Validate and process audio attachment
+    let validatedAudioPart: { mimeType: string; base64: string } | null = null;
+    if (audio) {
+      let rawAudioStr = typeof audio === "string" ? audio : audio.data;
+      let rawAudioMime = typeof audio === "object" ? audio.mimeType : undefined;
+
+      if (rawAudioStr) {
+        const parsed = parseDataUrl(rawAudioStr);
+        let mime = parsed ? parsed.mimeType : (rawAudioMime || "audio/webm").toLowerCase();
+        let b64 = parsed ? parsed.base64 : rawAudioStr;
+
+        // Clean any potential prefix
+        if (b64.includes(",")) {
+          b64 = b64.split(",")[1];
+        }
+
+        if (!ALLOWED_AUDIO_TYPES.has(mime)) {
+          // Normalize mime if e.g. audio/webm;codecs=opus
+          const cleanMime = mime.split(";")[0].trim();
+          if (ALLOWED_AUDIO_TYPES.has(cleanMime)) {
+            mime = cleanMime;
+          } else {
+            return new Response(
+              JSON.stringify({ error: `نوع الملف الصوتي (${mime}) غير مدعوم.` }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        const approxBytes = (b64.length * 3) / 4;
+        if (approxBytes > MAX_AUDIO_BYTES) {
+          return new Response(
+            JSON.stringify({ error: "حجم الملف الصوتي يتجاوز الحد الأقصى المسموح (10 ميجابايت)" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        validatedAudioPart = { mimeType: mime, base64: b64 };
+      }
+    }
+
+    console.log(
+      `[BossAssistant] Calling Gemini API (images: ${validatedImageParts.length}, audio: ${Boolean(validatedAudioPart)})`
+    );
+
+    // 6. Construct System Prompt
     const systemPrompt = `أنت «المستشار التنفيذي الذكي» والمساعد الإداري والتقني الخاص والحصري لمالك ومطور نظام Flow POS Pro (الـ Boss).
-أنت تعمل كغرفة قيادة ذكية ومساعد تنفيذي فائق الذكاء، ولديك صلاحية مطلقة وفهم شامل لكافة جوانب النظام: نقاط البيع (POS)، المخزون، قواعد البيانات، الشبكات، الفواتير، رادار الأخطاء، وحسابات المشتركين والتراخيص.
+أنت تعمل كغرفة قيادة ذكية ومساعد تنفيذي فائق الذكاء، ولديك صلاحية وفهم شامل لكافة جوانب النظام: نقاط البيع (POS)، المخزون، قواعد البيانات، الشبكات، الفواتير، رادار الأخطاء، وحسابات المشتركين والتراخيص.
 
 مهامك وصلاحياتك التنفيذية:
 1. تقديم إجابات وتحليلات إدارية وتقنية مباشرة لمالك النظام مع الاستشهاد بالأرقام والبيانات الحية المرفقة أدناه.
 2. تحليل الصور المرفقة بدقة (فواتير، شاشات أخطاء، تقارير، إيصالات، باركودات) وتفكيك أي عطل أو معلومة واردة بها.
-3. معالجة الرسائل والتسجيلات الصوتية بذكاء وفهم سواء كانت بالعربية الفصحى أو بمختلف اللهجات العربية العامية، وتقديم خلاصة وحلول فورية.
+3. معالجة الرسائل والتسجيلات الصوتية بذكاء وفهم سواء كانت بالعربية الفصحى أو بمختلف اللهجات العربية، وتقديم خلاصة وحلول فورية.
 4. تفسير أخطاء رادار الأخطاء وتقديم التشخيص الجذري (Root Cause) والحل البرمجي أو الإجرائي الفوري.
 5. تقديم مقترحات واستراتيجيات لتطوير المبيعات وضبط اشتراكات وتراخيص العملاء.
 
@@ -170,139 +309,125 @@ ${errorsSummary}
 
 ${systemContext}`;
 
-    // 6. Format Messages with Multimodal Support
-    const formattedMessages: Array<{ role: string; content: string | Array<Record<string, unknown>> }> = [];
+    // 7. Adapt to Google Gemini Contents Format
+    // In Gemini API, roles are "user" and "model"
+    const geminiContents: Array<{ role: "user" | "model"; parts: Array<Record<string, unknown>> }> = [];
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
+      const role = msg.role === "assistant" ? "model" : "user";
       const isLast = i === messages.length - 1;
-      const role = msg.role === "assistant" ? "assistant" : "user";
 
-      // If last user message and contains attachments (image/audio)
+      const parts: Array<Record<string, unknown>> = [];
+      const text = typeof msg.content === "string" ? msg.content : (msg.content?.[0]?.text || "");
+      if (text) {
+        parts.push({ text });
+      }
+
+      // If last user message, attach images and audio
       if (isLast && role === "user") {
-        const contentParts: Array<Record<string, unknown>> = [];
-        const textContent = typeof msg.content === "string" ? msg.content : (msg.content?.[0]?.text || "");
-        
-        contentParts.push({
-          type: "text",
-          text: textContent || "يرجى تحليل هذه المرفقات وتقديم ملخص وحلول مناسبة.",
-        });
-
-        // Add single image or multiple images
-        const allImages: string[] = [];
-        if (typeof image === "string" && image.startsWith("data:image")) {
-          allImages.push(image);
-        }
-        if (Array.isArray(images)) {
-          for (const img of images) {
-            if (typeof img === "string" && img.startsWith("data:image")) {
-              allImages.push(img);
-            }
-          }
-        }
-        if (Array.isArray(msg.images)) {
-          for (const img of msg.images) {
-            if (typeof img === "string" && img.startsWith("data:image")) {
-              allImages.push(img);
-            }
-          }
-        }
-
-        for (const imgUrl of allImages) {
-          contentParts.push({
-            type: "image_url",
-            image_url: { url: imgUrl },
-          });
-        }
-
-        // Add audio input if provided
-        if (audio?.data && typeof audio.data === "string") {
-          contentParts.push({
-            type: "input_audio",
-            input_audio: {
-              data: audio.data,
-              format: audio.format || "wav",
+        for (const imgPart of validatedImageParts) {
+          parts.push({
+            inline_data: {
+              mime_type: imgPart.mimeType,
+              data: imgPart.base64,
             },
           });
         }
 
-        formattedMessages.push({ role, content: contentParts.length === 1 ? textContent : contentParts });
-      } else {
-        formattedMessages.push({
-          role,
-          content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
-        });
+        if (validatedAudioPart) {
+          parts.push({
+            inline_data: {
+              mime_type: validatedAudioPart.mimeType,
+              data: validatedAudioPart.base64,
+            },
+          });
+        }
       }
+
+      if (parts.length === 0) {
+        parts.push({ text: "يرجى التحليل والمساعدة" });
+      }
+
+      geminiContents.push({ role, parts });
     }
 
-    // 7. Call Lovable AI Gateway
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured in Supabase environment");
-      return new Response(
-        JSON.stringify({ error: "مفتاح خدمة الذكاء الاصطناعي (LOVABLE_API_KEY) غير مهيأ في الخادم" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // 8. Connect to Google Gemini API
+    const geminiPayload = {
+      system_instruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents: geminiContents,
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 4096,
+      },
+    };
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Primary model: gemini-2.5-flash with SSE streaming
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(GEMINI_API_KEY)}`;
+
+    let geminiRes = await fetch(geminiEndpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...formattedMessages,
-        ],
-        stream: stream !== false,
-      }),
+      body: JSON.stringify(geminiPayload),
     });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "تم تجاوز حد الطلبات المسموح به مؤقتاً، يرجى الانتظار ثوانٍ والمحاولة ثانية" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "رصيد الذكاء الاصطناعي غير كافٍ، يرجى مراجعة اشتراك Lovable" }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      return new Response(
-        JSON.stringify({ error: `خطأ في بوابة الذكاء الاصطناعي (${aiResponse.status})` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // 8. Stream or JSON Response
-    if (stream !== false && aiResponse.body) {
-      return new Response(aiResponse.body, {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-        },
+    // Fallback model if gemini-2.5-flash is not available on this key tier
+    if (geminiRes.status === 404) {
+      console.warn("[BossAssistant] gemini-2.5-flash not found, falling back to gemini-2.0-flash");
+      const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(GEMINI_API_KEY)}`;
+      geminiRes = await fetch(fallbackEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiPayload),
       });
     }
 
-    const responseJson = await aiResponse.json();
-    return new Response(JSON.stringify(responseJson), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      let cleanErrorMessage = `خطأ في خادم Gemini (${geminiRes.status})`;
+
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.error?.message) {
+          cleanErrorMessage = parsed.error.message;
+        }
+      } catch {}
+
+      // Scrub any sensitive key reflections
+      cleanErrorMessage = cleanErrorMessage.replace(GEMINI_API_KEY, "[REDACTED]");
+
+      if (geminiRes.status === 400 && cleanErrorMessage.toLowerCase().includes("api key not valid")) {
+        cleanErrorMessage = "مفتاح Gemini API غير صالح أو لم يتم تفعيله في Google AI Studio. يرجى مراجعة السر GEMINI_API_KEY.";
+      } else if (geminiRes.status === 429) {
+        cleanErrorMessage = "تم تجاوز حد استهلاك Gemini مؤقتاً، يرجى المحاولة بعد لحظات.";
+      }
+
+      console.error("[BossAssistant] Gemini API Error:", geminiRes.status, cleanErrorMessage);
+
+      return new Response(
+        JSON.stringify({ error: cleanErrorMessage }),
+        { status: geminiRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 9. Forward SSE Stream Directly to Client
+    return new Response(geminiRes.body, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error("boss-assistant unhandled error:", errorMsg);
+    console.error("[BossAssistant] Unhandled error:", errorMsg);
     return new Response(
-      JSON.stringify({ error: `حدث خطأ غير متوقع: ${errorMsg}` }),
+      JSON.stringify({ error: `حدث خطأ أثناء معالجة الطلب: ${errorMsg}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

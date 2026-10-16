@@ -36,6 +36,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   image?: string;
+  hasAudio?: boolean;
   timestamp: string;
 }
 
@@ -215,6 +216,7 @@ export function BossAIAssistant() {
 
   const [input, setInput] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -314,12 +316,31 @@ export function BossAIAssistant() {
       // 1. Check for MediaDevices
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+
+      const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        if (audioChunksRef.current.length > 0) {
+          const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
+          const blob = new Blob(audioChunksRef.current, { type: actualMime });
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Audio = reader.result as string;
+            setSelectedAudio(base64Audio);
+          };
+          reader.readAsDataURL(blob);
         }
       };
 
@@ -383,6 +404,10 @@ export function BossAIAssistant() {
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      if (!commit) {
+        audioChunksRef.current = [];
+        setSelectedAudio(null);
+      }
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
     }
@@ -399,8 +424,9 @@ export function BossAIAssistant() {
   const handleSendMessage = async (textToSend?: string) => {
     const messageContent = (textToSend !== undefined ? textToSend : input).trim();
     const imageToSend = selectedImage;
+    const audioToSend = selectedAudio;
 
-    if (!messageContent && !imageToSend) return;
+    if (!messageContent && !imageToSend && !audioToSend) return;
     if (isStreaming) return;
 
     if (isRecording) {
@@ -413,8 +439,13 @@ export function BossAIAssistant() {
       {
         id: userMessageId,
         role: 'user',
-        content: messageContent || 'يرجى فحص الصورة المرفقة وتحليلها.',
+        content:
+          messageContent ||
+          (imageToSend
+            ? 'يرجى فحص الصورة المرفقة وتحليلها.'
+            : 'يرجى الاستماع للتسجيل الصوتي المرفق وتحليله.'),
         image: imageToSend || undefined,
+        hasAudio: !!audioToSend,
         timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
       },
     ];
@@ -422,6 +453,7 @@ export function BossAIAssistant() {
     setMessages(newMessages);
     setInput('');
     setSelectedImage(null);
+    setSelectedAudio(null);
     setIsStreaming(true);
     setStreamingText('');
 
@@ -436,13 +468,20 @@ export function BossAIAssistant() {
         throw new Error('يرجى إعادة تسجيل الدخول لمتابعة المحادثة');
       }
 
-      const supabaseUrl = (supabase as any).supabaseUrl || 'https://almhtrf.supabase.co';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      if (!supabaseUrl) {
+        throw new Error('رابط Supabase غير مضبوط في إعدادات البيئة');
+      }
+
       const endpoint = `${supabaseUrl}/functions/v1/boss-assistant`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
+          apikey: supabaseAnonKey || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -451,6 +490,7 @@ export function BossAIAssistant() {
             content: m.content,
           })),
           image: imageToSend,
+          audio: audioToSend,
           stream: true,
         }),
         signal: abortController.signal,
@@ -474,13 +514,15 @@ export function BossAIAssistant() {
 
       const decoder = new TextDecoder();
       let fullAssistantReply = '';
+      let sseBuffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -491,7 +533,20 @@ export function BossAIAssistant() {
 
           try {
             const parsed = JSON.parse(dataStr);
-            const deltaContent = parsed.choices?.[0]?.delta?.content || '';
+            let deltaContent = '';
+
+            // Handle Gemini SSE format: candidates[0].content.parts[...].text
+            if (Array.isArray(parsed.candidates) && parsed.candidates[0]?.content?.parts) {
+              for (const part of parsed.candidates[0].content.parts) {
+                if (typeof part.text === 'string') {
+                  deltaContent += part.text;
+                }
+              }
+            } else if (parsed.choices?.[0]?.delta?.content) {
+              // OpenAI / Lovable gateway fallback
+              deltaContent = parsed.choices[0].delta.content;
+            }
+
             if (deltaContent) {
               fullAssistantReply += deltaContent;
               setStreamingText(fullAssistantReply);
@@ -499,6 +554,28 @@ export function BossAIAssistant() {
           } catch {
             // Partial chunk or non-json keep reading
           }
+        }
+      }
+
+      // Check remaining sseBuffer after stream completion
+      if (sseBuffer.trim().startsWith('data:')) {
+        const dataStr = sseBuffer.trim().replace(/^data:\s*/, '').trim();
+        if (dataStr !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(dataStr);
+            let deltaContent = '';
+            if (Array.isArray(parsed.candidates) && parsed.candidates[0]?.content?.parts) {
+              for (const part of parsed.candidates[0].content.parts) {
+                if (typeof part.text === 'string') deltaContent += part.text;
+              }
+            } else if (parsed.choices?.[0]?.delta?.content) {
+              deltaContent = parsed.choices[0].delta.content;
+            }
+            if (deltaContent) {
+              fullAssistantReply += deltaContent;
+              setStreamingText(fullAssistantReply);
+            }
+          } catch {}
         }
       }
 
@@ -650,6 +727,14 @@ export function BossAIAssistant() {
                   </div>
                 )}
 
+                {/* Audio attachment in message */}
+                {msg.hasAudio && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/15 dark:bg-white/15 text-xs font-medium">
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>مرفق تسجيل صوتي</span>
+                  </div>
+                )}
+
                 {/* Message text with Markdown rendering */}
                 {isUser ? (
                   <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -739,6 +824,24 @@ export function BossAIAssistant() {
               onClick={() => setSelectedImage(null)}
               className="w-5 h-5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center ms-2"
               title="إلغاء الصورة"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Selected Audio Preview Bar */}
+        {selectedAudio && (
+          <div className="flex items-center gap-2 bg-muted/60 p-1.5 px-2.5 rounded-xl border border-border/70 max-w-fit animate-in fade-in">
+            <Mic className="w-4 h-4 text-primary" />
+            <div className="text-xs">
+              <span className="font-semibold text-foreground block">تسجيل صوتي مرفق</span>
+              <span className="text-[10px] text-muted-foreground">جاهز للإرسال والتحليل الذكي</span>
+            </div>
+            <button
+              onClick={() => setSelectedAudio(null)}
+              className="w-5 h-5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center ms-2"
+              title="إلغاء التسجيل"
             >
               <X className="w-3 h-3" />
             </button>
@@ -851,7 +954,7 @@ export function BossAIAssistant() {
             <Button
               type="button"
               onClick={() => handleSendMessage()}
-              disabled={(!input.trim() && !selectedImage) || isStreaming}
+              disabled={(!input.trim() && !selectedImage && !selectedAudio) || isStreaming}
               className="h-11 w-11 rounded-xl shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all disabled:opacity-40"
               title="إرسال"
             >

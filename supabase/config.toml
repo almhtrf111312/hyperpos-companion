@@ -38,3 +38,7 @@ verify_jwt = false
 
 [functions.get-users-emails]
 verify_jwt = false
+
+[functions.boss-assistant]
+verify_jwt = false
+
