@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Store,
   DollarSign,
@@ -136,6 +136,20 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
   const [step, setStep] = useState(1);
   const totalSteps = 5;
   const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([1]));
+
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const tabsContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll the active stepper button into view on mobile
+  useEffect(() => {
+    if (activeTabRef.current && tabsContainerRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+    }
+  }, [step]);
 
   // Step 1: Store info & Identity & Catalog Templates
   const [storeName, setStoreName] = useState(() => {
@@ -530,11 +544,41 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
   ];
 
   const stepsMeta = [
-    { num: 1, label: 'المتجر', icon: Store },
-    { num: 2, label: 'العملات', icon: Coins },
-    { num: 3, label: 'المبيعات والطباعة', icon: Receipt },
-    { num: 4, label: 'الشركاء', icon: Users },
-    { num: 5, label: 'المظهر والصندوق', icon: Palette },
+    { 
+      num: 1, 
+      label: 'المتجر', 
+      fullTitle: 'هوية المتجر وبيانات الفاتورة',
+      desc: 'اسم المحل والشعار ونوع النشاط',
+      icon: Store 
+    },
+    { 
+      num: 2, 
+      label: 'العملات', 
+      fullTitle: 'العملات الرئيسية وأسعار الصرف', 
+      desc: 'العملة الأساسية وأسعار التحويل',
+      icon: Coins 
+    },
+    { 
+      num: 3, 
+      label: 'المبيعات والطباعة', 
+      fullTitle: 'المبيعات والطباعة الحرارية والباركود', 
+      desc: 'الضريبة والخصومات ومقاس الورق',
+      icon: Receipt 
+    },
+    { 
+      num: 4, 
+      label: 'الشركاء', 
+      fullTitle: 'إدارة الشركاء ورأس المال', 
+      desc: 'حصص الشركاء ونسب الأرباح',
+      icon: Users 
+    },
+    { 
+      num: 5, 
+      label: 'المظهر والصندوق', 
+      fullTitle: 'المظهر العام ورصيد الصندوق الافتتاحي', 
+      desc: 'الخط والسمة ورصيد البداية',
+      icon: Palette 
+    },
   ];
 
   return (
@@ -578,42 +622,81 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
             </div>
           </div>
 
-          {/* Stepper Tabs */}
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+          {/* Active Step Indicator & Smooth Progress Bar */}
+          <div className="space-y-2 mb-3.5">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-black text-foreground shrink-0">
+                  الخطوة {step} من {totalSteps}:
+                </span>
+                <span className="text-primary font-bold truncate">
+                  {stepsMeta[step - 1]?.fullTitle || stepsMeta[step - 1]?.label}
+                </span>
+              </div>
+              <span className="text-[11px] font-bold text-muted-foreground tabular-nums px-2.5 py-0.5 rounded-full bg-muted/60 border border-border/50 shrink-0">
+                {Math.round((step / totalSteps) * 100)}%
+              </span>
+            </div>
+
+            {/* Linear Progress Bar */}
+            <div className="h-1.5 w-full bg-muted/60 rounded-full overflow-hidden p-0.5">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300 ease-out shadow-sm shadow-primary/25"
+                style={{ width: `${(step / totalSteps) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Stepper Tabs Bar - Clean, Non-overlapping, Responsive */}
+          <div 
+            ref={tabsContainerRef}
+            className="flex sm:grid sm:grid-cols-5 items-stretch gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-1 px-0.5 -mx-0.5"
+          >
             {stepsMeta.map((s) => {
               const Icon = s.icon;
               const isActive = step === s.num;
               const isPast = step > s.num;
               const isAccessible = visitedSteps.has(s.num);
+
               return (
                 <button
                   key={s.num}
+                  ref={isActive ? activeTabRef : null}
                   type="button"
                   disabled={!isAccessible}
                   onClick={() => {
                     if (isAccessible) setStep(s.num);
                   }}
                   className={cn(
-                    "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all border text-center",
-                    !isAccessible && "opacity-40 cursor-not-allowed pointer-events-none",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground font-bold shadow-sm shadow-primary/25 scale-[1.02] cursor-pointer"
-                      : isPast
-                      ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 cursor-pointer"
-                      : isAccessible
-                      ? "border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted/60 cursor-pointer"
-                      : "border-border/40 bg-muted/20 text-muted-foreground/40"
+                    "shrink-0 min-w-fit sm:min-w-0 sm:w-full flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-3 sm:px-2 rounded-xl border text-center transition-all duration-200 select-none",
+                    !isAccessible && "opacity-40 cursor-not-allowed pointer-events-none border-border/40 bg-muted/20 text-muted-foreground/50",
+                    isActive && "border-primary bg-primary text-primary-foreground font-bold shadow-md shadow-primary/25 scale-[1.01] cursor-pointer ring-2 ring-primary/20",
+                    isPast && "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 font-semibold cursor-pointer",
+                    isAccessible && !isActive && !isPast && "border-border/60 bg-muted/40 text-foreground hover:bg-muted/70 font-medium cursor-pointer"
                   )}
-                  title={isAccessible ? s.label : 'يرجى إكمال الخطوات السابقة أولاً'}
+                  title={isAccessible ? `${s.num}. ${s.label}` : 'يرجى إكمال الخطوات السابقة أولاً'}
                 >
-                  <div className="flex items-center gap-1">
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-[11px] sm:text-xs truncate">{s.label}</span>
-                  </div>
+                  {/* Step status badge */}
                   <div className={cn(
-                    "h-1 w-full rounded-full mt-1.5 transition-all",
-                    isActive ? "bg-primary-foreground" : isPast ? "bg-primary" : "bg-transparent"
+                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black transition-all",
+                    isActive && "bg-primary-foreground/20 text-primary-foreground",
+                    isPast && "bg-primary text-primary-foreground",
+                    isAccessible && !isActive && !isPast && "bg-muted-foreground/20 text-foreground",
+                    !isAccessible && "bg-muted text-muted-foreground/40"
+                  )}>
+                    {isPast ? <Check className="w-3 h-3 stroke-[3]" /> : s.num}
+                  </div>
+
+                  {/* Icon */}
+                  <Icon className={cn(
+                    "w-3.5 h-3.5 shrink-0 hidden xs:inline-block sm:inline-block",
+                    isActive ? "text-primary-foreground" : isPast ? "text-primary" : "text-muted-foreground"
                   )} />
+
+                  {/* Label */}
+                  <span className="text-[11px] sm:text-xs font-bold whitespace-nowrap truncate">
+                    {s.label}
+                  </span>
                 </button>
               );
             })}
