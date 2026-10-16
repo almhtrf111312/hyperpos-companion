@@ -1959,7 +1959,7 @@ export default function Settings() {
                     <label htmlFor="logo-upload">
                       <Button variant="outline" size="sm" asChild>
                         <span className="cursor-pointer">
-                          <Upload className="w-4 h-4 ml-2" />
+                          <Upload className="w-4 h-4" />
                           {t('settings.uploadLogo')}
                         </span>
                       </Button>
@@ -2790,7 +2790,7 @@ export default function Settings() {
 
             <div className="pt-2">
               <Button variant="outline" size="sm" onClick={handleTestPrint} className="w-full sm:w-auto">
-                <Printer className="w-4 h-4 ml-2" />
+                <Printer className="w-4 h-4" />
                 {t('settings.testPrint')}
               </Button>
             </div>
@@ -2803,7 +2803,7 @@ export default function Settings() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-base sm:text-lg font-bold text-foreground">{t('settings.userManagement')}</h2>
               <Button onClick={handleAddUser} className="w-full sm:w-auto h-9">
-                <Plus className="w-4 h-4 ml-2" />
+                <Plus className="w-4 h-4" />
                 {t('settings.addUser')}
               </Button>
             </div>
@@ -2888,7 +2888,7 @@ export default function Settings() {
             {/* Backup & Import */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button size="sm" onClick={handleBackupNow} disabled={isBackingUp} className="w-full h-9">
-                {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 ml-1.5" /> : <Download className="w-3.5 h-3.5 shrink-0 ml-1.5" />}
+                {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Download className="w-3.5 h-3.5 shrink-0" />}
                 <span className="text-xs">{t('settings.downloadBackup')}</span>
               </Button>
               <div className="w-full">
@@ -2896,7 +2896,7 @@ export default function Settings() {
                 <label htmlFor="import-backup" className="w-full block">
                   <Button variant="outline" size="sm" className="w-full h-9" asChild disabled={isImporting}>
                     <span className="cursor-pointer">
-                      {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 ml-1.5" /> : <FileUp className="w-3.5 h-3.5 shrink-0 ml-1.5" />}
+                      {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FileUp className="w-3.5 h-3.5 shrink-0" />}
                       <span className="text-xs">{t('settings.importBackup')}</span>
                     </span>
                   </Button>
@@ -2904,7 +2904,7 @@ export default function Settings() {
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleExportData} className="w-full h-9">
-              <Download className="w-3.5 h-3.5 shrink-0 ml-1.5" />
+              <Download className="w-3.5 h-3.5 shrink-0" />
               <span className="text-xs">تصدير بيانات JSON</span>
             </Button>
 
@@ -3902,7 +3902,7 @@ export default function Settings() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setUserDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSaveUser} disabled={isSavingUser}>
-              {isSavingUser ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+              {isSavingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {t('common.save')}
             </Button>
           </DialogFooter>
@@ -3919,7 +3919,7 @@ export default function Settings() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteUserDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={confirmDeleteUser} disabled={isSavingUser}>
-              {isSavingUser ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Trash2 className="w-4 h-4 ml-2" />}
+              {isSavingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               {t('common.delete')}
             </Button>
           </DialogFooter>
@@ -3978,7 +3978,7 @@ export default function Settings() {
               disabled={!transferPassword || isTransferring}
               className="bg-orange-600 hover:bg-orange-700 text-white"
             >
-              {isTransferring ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : <Smartphone className="w-4 h-4 me-2" />}
+              {isTransferring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
               {t('settings.confirmUnbind')}
             </Button>
           </AlertDialogFooter>

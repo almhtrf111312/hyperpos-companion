@@ -836,7 +836,7 @@ export default function Expenses() {
               {t('expenses.cancel')}
             </Button>
             <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddExpense} disabled={isSaving}>
-              <Save className="w-3.5 h-3.5 ml-1.5" />
+              <Save className="w-3.5 h-3.5" />
               {isSaving ? t('common.saving') : t('expenses.save')}
             </Button>
           </div>
@@ -974,7 +974,7 @@ export default function Expenses() {
               {t('expenses.cancel')}
             </Button>
             <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddRecurringExpense}>
-              <Save className="w-3.5 h-3.5 ml-1.5" />
+              <Save className="w-3.5 h-3.5" />
               {t('expenses.save')}
             </Button>
           </div>
@@ -1203,7 +1203,7 @@ export default function Expenses() {
               {t('expenses.cancel')}
             </Button>
             <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleUpdateRecurringExpense}>
-              <Save className="w-3.5 h-3.5 ml-1.5" />
+              <Save className="w-3.5 h-3.5" />
               {t('expenses.saveChanges')}
             </Button>
           </div>
@@ -1235,9 +1235,9 @@ export default function Expenses() {
               className="flex-1 h-9 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
             >
               {isPaying ? (
-                <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Check className="w-3.5 h-3.5 ml-1.5" />
+                <Check className="w-3.5 h-3.5" />
               )}
               {isPaying ? t('common.loading') : t('expenses.payNow')}
             </AlertDialogAction>

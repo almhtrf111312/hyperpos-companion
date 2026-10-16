@@ -161,17 +161,17 @@ export default function Cashbox() {
 
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowHistoryDialog(true)}>
-            <History className="w-4 h-4 ml-2" />
+            <History className="w-4 h-4" />
             السجل
           </Button>
           {activeShift ? (
             <Button variant="destructive" onClick={() => setShowCloseDialog(true)}>
-              <Square className="w-4 h-4 ml-2" />
+              <Square className="w-4 h-4" />
               إغلاق الوردية
             </Button>
           ) : (
             <Button onClick={() => setShowOpenDialog(true)}>
-              <Play className="w-4 h-4 ml-2" />
+              <Play className="w-4 h-4" />
               فتح وردية
             </Button>
           )}
@@ -495,7 +495,7 @@ export default function Cashbox() {
                           }
                         }}
                       >
-                        <ArrowDownRight className="w-4 h-4 ml-1" />
+                        <ArrowDownRight className="w-4 h-4" />
                         تسجيل {formatCurrency(expectedClosing - parseFloat(closingAmount), '$')} كمصروف
                       </Button>
                     ) : (
@@ -512,7 +512,7 @@ export default function Cashbox() {
                           }
                         }}
                       >
-                        <ArrowUpRight className="w-4 h-4 ml-1" />
+                        <ArrowUpRight className="w-4 h-4" />
                         تسجيل {formatCurrency(parseFloat(closingAmount) - expectedClosing, '$')} كإيراد
                       </Button>
                     )}

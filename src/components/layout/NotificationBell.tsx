@@ -198,7 +198,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
               </div>
               {unreadCount > 0 && (
                 <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={markAllAsRead}>
-                  <CheckCheck className="w-4 h-4 me-1" />
+                  <CheckCheck className="w-4 h-4" />
                   {t('notification.markAllRead')}
                 </Button>
               )}
@@ -297,7 +297,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                   className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={clearAllNotifications}
                 >
-                  <Trash2 className="w-4 h-4 me-2" />
+                  <Trash2 className="w-4 h-4" />
                   {t('notification.clearAll')}
                 </Button>
               </div>

@@ -79,7 +79,7 @@ export function ProductFieldsSection({ storeType, onConfigChange, pendingConfig 
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 pb-4 border-b border-border">
         <Button variant="outline" size="sm" onClick={handleReset}>
-          <RotateCcw className="w-4 h-4 ml-2" />
+          <RotateCcw className="w-4 h-4" />
           {t('productFields.resetDefault')}
         </Button>
       </div>

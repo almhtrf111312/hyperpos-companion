@@ -490,14 +490,14 @@ export default function Partners() {
         </div>
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <Button variant="outline" size="sm" className="h-9 px-3 text-xs sm:text-sm" onClick={() => setShowCategoryManager(true)}>
-            <Tag className="w-4 h-4 ml-1.5" />
+            <Tag className="w-4 h-4" />
             <span>{t('partners.categories')}</span>
           </Button>
           <Button size="sm" className="bg-primary hover:bg-primary/90 h-9 px-3 text-xs sm:text-sm" onClick={() => {
             resetForm();
             setShowAddDialog(true);
           }}>
-            <Plus className="w-4 h-4 ml-1.5" />
+            <Plus className="w-4 h-4" />
             <span className="whitespace-nowrap">{t('partners.addPartner')}</span>
           </Button>
         </div>
@@ -641,16 +641,16 @@ export default function Partners() {
             {/* Actions */}
             <div className="flex flex-wrap gap-2 pt-3 md:pt-4 border-t border-border">
               <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(partner)}>
-                <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 {t('common.view')}
               </Button>
               <Button size="sm" className="flex-1 h-8 md:h-9 bg-success hover:bg-success/90 text-success-foreground text-xs md:text-sm" onClick={() => openAddCapitalDialog(partner)}>
-                <ArrowUpRight className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                <ArrowUpRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 {t('partners.deposit')}
               </Button>
               {((partner.currentBalance || 0) > 0 || (partner.currentCapital || 0) > 0) && (
                 <Button size="sm" className="flex-1 h-8 md:h-9 bg-warning hover:bg-warning/90 text-warning-foreground text-xs md:text-sm" onClick={() => openWithdrawDialog(partner)}>
-                  <ArrowDownLeft className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                  <ArrowDownLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   {t('partners.withdraw')}
                 </Button>
               )}
@@ -789,7 +789,7 @@ export default function Partners() {
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddPartner}>
-                <Save className="w-4 h-4 ml-2" />
+                <Save className="w-4 h-4" />
                 {t('common.save')}
               </Button>
             </div>
@@ -917,7 +917,7 @@ export default function Partners() {
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditPartner}>
-                <Save className="w-4 h-4 ml-2" />
+                <Save className="w-4 h-4" />
                 {t('common.saveChanges')}
               </Button>
             </div>
@@ -990,7 +990,7 @@ export default function Partners() {
                     openAddCapitalDialog(selectedPartner);
                   }}
                 >
-                  <ArrowUpRight className="w-4 h-4 ml-2" />
+                  <ArrowUpRight className="w-4 h-4" />
                   {t('partners.addBalance')}
                 </Button>
                 {((selectedPartner.currentBalance || 0) > 0 || (selectedPartner.currentCapital || 0) > 0) && (
@@ -1001,7 +1001,7 @@ export default function Partners() {
                       openWithdrawDialog(selectedPartner);
                     }}
                   >
-                    <ArrowDownLeft className="w-4 h-4 ml-2" />
+                    <ArrowDownLeft className="w-4 h-4" />
                     {t('partners.withdrawBalance')}
                   </Button>
                 )}
@@ -1129,7 +1129,7 @@ export default function Partners() {
                   {t('common.cancel')}
                 </Button>
                 <Button className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground" onClick={handleWithdraw}>
-                  <Save className="w-4 h-4 ml-2" />
+                  <Save className="w-4 h-4" />
                   {t('partners.confirmWithdraw')}
                 </Button>
               </div>
@@ -1188,7 +1188,7 @@ export default function Partners() {
                   {t('common.cancel')}
                 </Button>
                 <Button className="flex-1 bg-success hover:bg-success/90 text-success-foreground" onClick={handleAddCapital}>
-                  <Save className="w-4 h-4 ml-2" />
+                  <Save className="w-4 h-4" />
                   {t('partners.confirmDeposit')}
                 </Button>
               </div>

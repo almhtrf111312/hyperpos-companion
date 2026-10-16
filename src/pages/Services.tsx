@@ -376,7 +376,7 @@ export default function Services() {
           resetForm();
           setShowAddDialog(true);
         }}>
-          <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+          <Plus className="w-4 h-4 md:w-5 md:h-5" />
           {t('services.newRequest')}
         </Button>
       </div>
@@ -447,7 +447,7 @@ export default function Services() {
               key={filter.key}
               onClick={() => setSelectedFilter(filter.key)}
               className={cn(
-                "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
                 selectedFilter === filter.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -613,7 +613,7 @@ export default function Services() {
               {/* Actions */}
               <div className="flex gap-2 pt-3 border-t border-border">
                 <Button variant="outline" size="sm" className="flex-1 h-8 md:h-9 text-xs md:text-sm" onClick={() => openViewDialog(request)}>
-                  <Eye className="w-3.5 h-3.5 md:w-4 md:h-4 ml-1" />
+                  <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   {t('services.view')}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9" onClick={() => openEditDialog(request)}>
@@ -737,7 +737,7 @@ export default function Services() {
                 {t('services.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddRequest}>
-                <Save className="w-4 h-4 ml-2" />
+                <Save className="w-4 h-4" />
                 {t('services.addRequest')}
               </Button>
             </div>
@@ -843,7 +843,7 @@ export default function Services() {
                 {t('services.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleEditRequest}>
-                <Save className="w-4 h-4 ml-2" />
+                <Save className="w-4 h-4" />
                 {t('services.saveChanges')}
               </Button>
             </div>
@@ -959,7 +959,7 @@ export default function Services() {
                   setShowViewDialog(false);
                   openEditDialog(selectedRequest);
                 }}>
-                  <Edit className="w-4 h-4 ml-2" />
+                  <Edit className="w-4 h-4" />
                   تعديل
                 </Button>
                 {selectedRequest.status !== 'cancelled' && selectedRequest.status !== 'delivered' && (
@@ -971,7 +971,7 @@ export default function Services() {
                       setShowViewDialog(false);
                     }}
                   >
-                    <XCircle className="w-4 h-4 ml-2" />
+                    <XCircle className="w-4 h-4" />
                     إلغاء الطلب
                   </Button>
                 )}
@@ -1114,7 +1114,7 @@ export default function Services() {
                   onClick={handleDeliveryConfirm}
                   disabled={deliveryData.amountReceived <= 0}
                 >
-                  <CheckCircle className="w-4 h-4 ml-2" />
+                  <CheckCircle className="w-4 h-4" />
                   تأكيد التسليم
                 </Button>
               </div>

@@ -61,7 +61,7 @@ export default function Purchases() {
                 className="w-full sm:w-auto justify-center h-10 px-4 text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-xl transition-all"
                 onClick={() => setShowDialog(true)}
               >
-                <Plus className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0" />
+                <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
                 <span>{t('purchases.addNew')}</span>
               </Button>
               <Button
@@ -69,7 +69,7 @@ export default function Purchases() {
                 onClick={() => setShowQuickDialog(true)}
                 className="w-full sm:w-auto justify-center h-9 sm:h-10 px-4 text-xs sm:text-sm font-semibold border-border/80 bg-background/80 hover:bg-muted shadow-2xs rounded-xl transition-all text-foreground"
               >
-                <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 rtl:ml-1.5 ltr:mr-1.5 shrink-0 text-primary" />
+                <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 shrink-0 text-primary" />
                 <span>{t('purchases.quickAdd')}</span>
               </Button>
             </div>

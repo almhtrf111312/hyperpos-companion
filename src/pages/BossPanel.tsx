@@ -1405,7 +1405,7 @@ export default function BossPanel() {
                     variant="outline"
                     className="flex-1 sm:flex-initial h-9 rounded-xl text-xs md:text-sm font-semibold border-border hover:bg-muted"
                   >
-                    <UserPlus className="w-3.5 h-3.5 me-1.5" />
+                    <UserPlus className="w-3.5 h-3.5" />
                     إضافة مالك
                   </Button>
                   <Button
@@ -1413,7 +1413,7 @@ export default function BossPanel() {
                     size="sm"
                     className="flex-1 sm:flex-initial h-9 rounded-xl text-xs md:text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-sm"
                   >
-                    <Crown className="w-3.5 h-3.5 me-1.5" />
+                    <Crown className="w-3.5 h-3.5" />
                     إضافة Boss
                   </Button>
                 </div>
@@ -1518,14 +1518,14 @@ export default function BossPanel() {
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuLabel>إدارة الحساب</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => { setEditNameDialog({ owner }); setNewName(owner.full_name || ''); }}>
-                                    <Pencil className="w-4 h-4 me-2" />
+                                    <Pencil className="w-4 h-4" />
                                     تعديل الاسم
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => {
                                     setPasswordChangeDialog({ userId: owner.user_id, name: owner.full_name || owner.email || '' });
                                     setNewPassword('');
                                   }}>
-                                    <KeyRound className="w-4 h-4 me-2" />
+                                    <KeyRound className="w-4 h-4" />
                                     تغيير كلمة المرور
                                   </DropdownMenuItem>
 
@@ -1540,29 +1540,29 @@ export default function BossPanel() {
                                       generated_code: '',
                                     });
                                   }}>
-                                    <Pencil className="w-4 h-4 me-2" />
+                                    <Pencil className="w-4 h-4" />
                                     تعديل التفعيل
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => {
                                     setDirectActivateDialog({ owner });
                                     setDirectActivateDays('90');
                                   }}>
-                                    <CheckCircle className="w-4 h-4 me-2" />
+                                    <CheckCircle className="w-4 h-4" />
                                     تفعيل مباشر بدون كود
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setActivationDialog({ owner })}>
-                                    <Ticket className="w-4 h-4 me-2" />
+                                    <Ticket className="w-4 h-4" />
                                     تفعيل عن بعد
                                   </DropdownMenuItem>
                                   {isLicenseValid && (
                                     <DropdownMenuItem onClick={() => handleRevokeLicense(owner.user_id)} className="text-orange-600">
-                                      <Ban className="w-4 h-4 me-2" />
+                                      <Ban className="w-4 h-4" />
                                       إلغاء الترخيص
                                     </DropdownMenuItem>
                                   )}
                                   {(owner.license_revoked || !owner.is_active) && (
                                     <DropdownMenuItem onClick={() => handleReactivateLicense(owner.user_id)} className="text-emerald-600 font-medium">
-                                      <RotateCcw className="w-4 h-4 me-2" />
+                                      <RotateCcw className="w-4 h-4" />
                                       إعادة تفعيل الترخيص
                                     </DropdownMenuItem>
                                   )}
@@ -1570,12 +1570,12 @@ export default function BossPanel() {
                                   <DropdownMenuSeparator />
                                   <DropdownMenuLabel>إدارة الجهاز</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => handleToggleMultiDevice(owner.user_id, owner.allow_multi_device || false)}>
-                                    <Smartphone className="w-4 h-4 me-2" />
+                                    <Smartphone className="w-4 h-4" />
                                     {owner.allow_multi_device ? 'إلغاء تعدد الأجهزة ✓' : 'تفعيل تعدد الأجهزة'}
                                   </DropdownMenuItem>
                                   {!owner.allow_multi_device && (
                                     <DropdownMenuItem onClick={() => handleResetDevice(owner.user_id, owner.full_name || 'هذا المستخدم')}>
-                                      <RotateCcw className="w-4 h-4 me-2" />
+                                      <RotateCcw className="w-4 h-4" />
                                       إعادة تعيين الجهاز
                                     </DropdownMenuItem>
                                   )}
@@ -1585,7 +1585,7 @@ export default function BossPanel() {
                                     onClick={() => setDeleteConfirm({ type: 'owner', id: owner.user_id, name: owner.full_name || 'هذا المستخدم' })}
                                     className="text-destructive focus:text-destructive"
                                   >
-                                    <Trash2 className="w-4 h-4 me-2" />
+                                    <Trash2 className="w-4 h-4" />
                                     حذف الحساب
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -1688,7 +1688,7 @@ export default function BossPanel() {
                                             <DropdownMenuLabel>إدارة الحساب التابع</DropdownMenuLabel>
                                             {cashier.email && (
                                               <DropdownMenuItem onClick={() => copyToClipboard(cashier.email!)}>
-                                                <Mail className="w-4 h-4 me-2" />
+                                                <Mail className="w-4 h-4" />
                                                 نسخ الإيميل
                                               </DropdownMenuItem>
                                             )}
@@ -1696,18 +1696,18 @@ export default function BossPanel() {
                                               setEditCashierNameDialog({ userId: cashier.user_id, name: cashier.full_name || '' });
                                               setCashierNewName(cashier.full_name || '');
                                             }}>
-                                              <Pencil className="w-4 h-4 me-2" />
+                                              <Pencil className="w-4 h-4" />
                                               تعديل الاسم
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => {
                                               setPasswordChangeDialog({ userId: cashier.user_id, name: cashier.full_name || cashier.email || '' });
                                               setNewPassword('');
                                             }}>
-                                              <KeyRound className="w-4 h-4 me-2" />
+                                              <KeyRound className="w-4 h-4" />
                                               تغيير كلمة المرور
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleResetCashierDevice(cashier.user_id, cashier.full_name || 'هذا الحساب')}>
-                                              <RotateCcw className="w-4 h-4 me-2" />
+                                              <RotateCcw className="w-4 h-4" />
                                               إعادة تعيين الجهاز
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
@@ -1715,7 +1715,7 @@ export default function BossPanel() {
                                               onClick={() => setDeleteConfirm({ type: 'cashier', id: cashier.user_id, name: cashier.full_name || 'هذا الحساب' })}
                                               className="text-destructive focus:text-destructive"
                                             >
-                                              <Trash2 className="w-4 h-4 me-2" />
+                                              <Trash2 className="w-4 h-4" />
                                               حذف الحساب
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
@@ -1811,7 +1811,7 @@ export default function BossPanel() {
                   size="sm"
                   className="w-full sm:w-auto h-9 rounded-xl text-xs md:text-sm font-semibold"
                 >
-                  <Plus className="w-3.5 h-3.5 me-1.5" />
+                  <Plus className="w-3.5 h-3.5" />
                   إنشاء كود جديد
                 </Button>
               </CardHeader>
@@ -1993,7 +1993,7 @@ export default function BossPanel() {
                                   className="text-xs text-emerald-600 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                                   onClick={() => handleReactivateLicense(owner.user_id)}
                                 >
-                                  <RotateCcw className="w-3 h-3 me-1" />
+                                  <RotateCcw className="w-3 h-3" />
                                   إعادة تفعيل
                                 </Button>
                               )}
@@ -2005,7 +2005,7 @@ export default function BossPanel() {
                                   setDirectActivateDays('90');
                                 }}
                               >
-                                <CheckCircle className="w-3 h-3 me-1" />
+                                <CheckCircle className="w-3 h-3" />
                                 تفعيل مباشر
                               </Button>
                               <Button
@@ -2014,7 +2014,7 @@ export default function BossPanel() {
                                 className="text-xs"
                                 onClick={() => setActivationDialog({ owner })}
                               >
-                                <Ticket className="w-3 h-3 me-1" />
+                                <Ticket className="w-3 h-3" />
                                 بكود
                               </Button>
                               <Button
@@ -2031,7 +2031,7 @@ export default function BossPanel() {
                                   });
                                 }}
                               >
-                                <Pencil className="w-3 h-3 me-1" />
+                                <Pencil className="w-3 h-3" />
                                 تعديل
                               </Button>
                             </div>
@@ -2505,11 +2505,11 @@ export default function BossPanel() {
                   )}
               >
                 {isActivating ? (
-                  <RefreshCw className="w-4 h-4 me-2 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                 ) : activationType === 'whatsapp' ? (
-                  <Send className="w-4 h-4 me-2" />
+                  <Send className="w-4 h-4" />
                 ) : (
-                  <CheckCircle className="w-4 h-4 me-2" />
+                  <CheckCircle className="w-4 h-4" />
                 )}
                 {activationType === 'whatsapp' ? 'إرسال عبر واتساب' : activationType === 'manual' ? 'تفعيل بالكود' : 'تفعيل'}
               </Button>
@@ -2581,7 +2581,7 @@ export default function BossPanel() {
                 إلغاء
               </Button>
               <Button onClick={handleSaveName} disabled={isSavingName || !newName.trim()}>
-                {isSavingName && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                {isSavingName && <RefreshCw className="w-4 h-4 animate-spin" />}
                 حفظ
               </Button>
             </DialogFooter>
@@ -2714,9 +2714,9 @@ export default function BossPanel() {
                 disabled={isSavingLicense || !editLicenseSettings.generated_code}
               >
                 {isSavingLicense ? (
-                  <RefreshCw className="w-4 h-4 me-2 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                 ) : (
-                  <CheckCircle className="w-4 h-4 me-2" />
+                  <CheckCircle className="w-4 h-4" />
                 )}
                 حفظ وتفعيل
               </Button>
@@ -2778,7 +2778,7 @@ export default function BossPanel() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCreateOwnerDialog(false)}>إلغاء</Button>
               <Button onClick={handleCreateOwner} disabled={isCreatingOwner}>
-                {isCreatingOwner ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Plus className="w-4 h-4 me-2" />}
+                {isCreatingOwner ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 إنشاء الحساب
               </Button>
             </DialogFooter>
@@ -2861,7 +2861,7 @@ export default function BossPanel() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCreateBossDialog(false)}>إلغاء</Button>
               <Button onClick={handleCreateBoss} disabled={isCreatingBoss} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white">
-                {isCreatingBoss ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Crown className="w-4 h-4 me-2" />}
+                {isCreatingBoss ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
                 إنشاء حساب Boss
               </Button>
             </DialogFooter>
@@ -2915,7 +2915,7 @@ export default function BossPanel() {
             <DialogFooter>
               <Button variant="outline" onClick={() => { setDeleteBossConfirm(null); setDeleteBossPassword(''); }}>إلغاء</Button>
               <Button variant="destructive" onClick={handleDeleteBoss} disabled={isDeletingBoss || !deleteBossPassword}>
-                {isDeletingBoss ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Trash2 className="w-4 h-4 me-2" />}
+                {isDeletingBoss ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 حذف الحساب
               </Button>
             </DialogFooter>
@@ -2992,7 +2992,7 @@ export default function BossPanel() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowContactLinksDialog(false)}>إلغاء</Button>
               <Button onClick={handleSaveContactLinks} disabled={isSavingContactLinks}>
-                {isSavingContactLinks && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                {isSavingContactLinks && <RefreshCw className="w-4 h-4 animate-spin" />}
                 حفظ
               </Button>
             </DialogFooter>
@@ -3035,7 +3035,7 @@ export default function BossPanel() {
             <DialogFooter>
               <Button variant="outline" onClick={() => { setPasswordChangeDialog(null); setNewPassword(''); }}>إلغاء</Button>
               <Button onClick={handleChangePassword} disabled={isChangingPassword || newPassword.length < 6}>
-                {isChangingPassword ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <KeyRound className="w-4 h-4 me-2" />}
+                {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
                 تغيير كلمة المرور
               </Button>
             </DialogFooter>
@@ -3064,7 +3064,7 @@ export default function BossPanel() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditCashierNameDialog(null)}>إلغاء</Button>
               <Button onClick={handleSaveCashierName} disabled={isSavingCashierName || !cashierNewName.trim()}>
-                {isSavingCashierName && <RefreshCw className="w-4 h-4 me-2 animate-spin" />}
+                {isSavingCashierName && <RefreshCw className="w-4 h-4 animate-spin" />}
                 حفظ
               </Button>
             </DialogFooter>

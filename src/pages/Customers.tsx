@@ -625,7 +625,7 @@ export default function Customers() {
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1 h-9 text-xs rounded-xl bg-primary hover:bg-primary/90 font-bold" onClick={handleAddCustomer} disabled={isSaving}>
-                <Save className="w-3.5 h-3.5 ml-1.5" />
+                <Save className="w-3.5 h-3.5" />
                 <span>{isSaving ? 'جاري الحفظ...' : t('common.save')}</span>
               </Button>
             </div>
@@ -684,7 +684,7 @@ export default function Customers() {
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1 h-9 text-xs rounded-xl bg-primary hover:bg-primary/90 font-bold" onClick={handleEditCustomer}>
-                <Save className="w-3.5 h-3.5 ml-1.5" />
+                <Save className="w-3.5 h-3.5" />
                 <span>{t('common.save')}</span>
               </Button>
             </div>

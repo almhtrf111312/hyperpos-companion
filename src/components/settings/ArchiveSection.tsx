@@ -95,7 +95,7 @@ export function ArchiveSection() {
           <h3 className="text-base sm:text-lg font-bold text-foreground">{t('archive.title') || 'الأرشيف والسجلات'}</h3>
         </div>
         <Button variant="outline" size="sm" onClick={loadGeneralArchive} disabled={isLoading} className="h-8 px-2.5 text-xs">
-          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1" /> : <Undo2 className="w-3.5 h-3.5 ml-1" />}
+          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
           تحديث
         </Button>
       </div>
@@ -295,7 +295,7 @@ export function ArchiveSection() {
             <>
               <div className="flex justify-end">
                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-8 px-2 text-xs" onClick={clearAllArchived}>
-                  <Trash2 className="w-3.5 h-3.5 me-1" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   {t('archive.deleteAll') || 'حذف الكل'}
                 </Button>
               </div>

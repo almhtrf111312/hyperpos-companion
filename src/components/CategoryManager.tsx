@@ -323,7 +323,7 @@ export function CategoryManager({
               className="bg-red-600 hover:bg-red-700"
               disabled={isSaving}
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               حذف
             </AlertDialogAction>
           </AlertDialogFooter>

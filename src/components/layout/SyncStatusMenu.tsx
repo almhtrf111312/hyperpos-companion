@@ -360,7 +360,7 @@ export function SyncStatusMenu() {
             className="w-full justify-center text-xs h-8"
             onClick={() => navigate('/invoice-tracking')}
           >
-            <Receipt className="h-3.5 w-3.5 ml-1" />
+            <Receipt className="h-3.5 w-3.5" />
             شاشة تتبع الفواتير
           </Button>
         </div>

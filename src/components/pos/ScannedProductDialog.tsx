@@ -106,7 +106,7 @@ export function ScannedProductDialog({
 
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1 h-12 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all" onClick={onClose}>
-              <X className="w-4 h-4 ml-2" />
+              <X className="w-4 h-4" />
               {t('scannedProduct.close')}
             </Button>
             {isBookstore && onLoan && (
@@ -116,7 +116,7 @@ export function ScannedProductDialog({
                 onClick={handleLoan}
                 disabled={product.quantity === 0}
               >
-                <BookOpen className="w-4 h-4 ml-2" />
+                <BookOpen className="w-4 h-4" />
                 إعارة
               </Button>
             )}
@@ -125,7 +125,7 @@ export function ScannedProductDialog({
               onClick={handleAdd}
               disabled={product.quantity === 0}
             >
-              <Plus className="w-4 h-4 ml-2" />
+              <Plus className="w-4 h-4" />
               {t('scannedProduct.addToCart')}
             </Button>
           </div>

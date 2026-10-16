@@ -129,7 +129,7 @@ export default function DataResetSection() {
                 onClick={handleResetClick}
                 className="w-full sm:w-auto"
               >
-                <Trash2 className="h-4 w-4 me-2" />
+                <Trash2 className="h-4 w-4" />
                 {t('settings.resetAllData', language)}
               </Button>
             </div>
@@ -183,12 +183,12 @@ export default function DataResetSection() {
             >
               {isVerifying ? (
                 <>
-                  <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   {t('settings.verifying', language)}
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4 me-2" />
+                  <Trash2 className="h-4 w-4" />
                   {t('settings.confirmReset', language)}
                 </>
               )}

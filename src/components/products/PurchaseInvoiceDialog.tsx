@@ -614,7 +614,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
               </Button>
               <Button onClick={handleCreateInvoice} disabled={loading}>
                 {loading ? t('common.loading') : t('common.next')}
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -638,7 +638,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
               </div>
               <Button size="sm" onClick={goToFinalize} disabled={invoiceItems.length === 0} className="h-8 text-xs sm:text-sm">
                 {t('purchases.finalize')}
-                <ArrowLeft className="w-3.5 h-3.5 mr-1.5 rtl:rotate-180" />
+                <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180" />
               </Button>
             </div>
 
@@ -694,7 +694,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                 variant="outline"
                 onClick={() => setShowItemForm(true)}
               >
-                <Plus className="w-4 h-4 ml-2" />
+                <Plus className="w-4 h-4" />
                 {t('purchaseInvoice.addAnotherItem')}
               </Button>
             )}
@@ -774,7 +774,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                     className="flex-1"
                     onClick={handleCameraCapture}
                   >
-                    <Camera className="w-4 h-4 ml-1" />
+                    <Camera className="w-4 h-4" />
                     {t('purchases.camera')}
                   </Button>
                   <label className="flex-1">
@@ -785,7 +785,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                       asChild
                     >
                       <span>
-                        <ImageIcon className="w-4 h-4 ml-1" />
+                        <ImageIcon className="w-4 h-4" />
                         {t('purchases.gallery')}
                       </span>
                     </Button>
@@ -803,12 +803,12 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             {/* Actions */}
             <div className="flex gap-2 pt-2">
               <Button variant="outline" className="flex-1" onClick={backToItems} disabled={loading}>
-                <ArrowRight className="w-4 h-4 ml-1" />
+                <ArrowRight className="w-4 h-4" />
                 {t('common.back')}
               </Button>
               <Button className="flex-1" onClick={handleFinalize} disabled={loading}>
                 {loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}
-                <Check className="w-4 h-4 mr-1" />
+                <Check className="w-4 h-4" />
               </Button>
             </div>
           </div>

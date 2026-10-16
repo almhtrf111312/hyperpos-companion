@@ -186,7 +186,7 @@ export function CustomFieldsManager({ onFieldsChange }: CustomFieldsManagerProps
           </p>
         </div>
         <Button size="sm" onClick={() => setShowAddDialog(true)}>
-          <Plus className="w-4 h-4 ml-2" />
+          <Plus className="w-4 h-4" />
           إضافة حقل
         </Button>
       </div>

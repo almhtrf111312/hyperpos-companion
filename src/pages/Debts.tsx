@@ -516,7 +516,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
             <p className="text-sm md:text-base text-muted-foreground mt-1">{t('debts.subtitle')}</p>
           </div>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => handleAddDebtDialogChange(true)}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5 ml-2" />
+            <Plus className="w-4 h-4 md:w-5 md:h-5" />
             {t('debts.addCashDebt')}
           </Button>
         </div>
@@ -798,7 +798,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               {t('common.cancel')}
             </Button>
             <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddCashDebt}>
-              <Save className="w-3.5 h-3.5 ml-1.5" />
+              <Save className="w-3.5 h-3.5" />
               {t('common.save')}
             </Button>
           </div>
@@ -993,12 +993,12 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 ml-1.5 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>جاري الدفع...</span>
                 </>
               ) : (
                 <>
-                  <Save className="w-3.5 h-3.5 ml-1.5" />
+                  <Save className="w-3.5 h-3.5" />
                   <span>{t('debts.confirmPayment')}</span>
                 </>
               )}
@@ -1113,7 +1113,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   openPaymentDialog(selectedDebt);
                 }}
               >
-                <DollarSign className="w-3.5 h-3.5 ml-1.5" />
+                <DollarSign className="w-3.5 h-3.5" />
                 {t('debts.recordPayment')}
               </Button>
             )}

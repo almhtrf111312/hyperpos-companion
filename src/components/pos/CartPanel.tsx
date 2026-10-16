@@ -2068,7 +2068,7 @@ export function CartPanel({
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
-              <Banknote className="w-4 h-4 ml-1.5" />
+              <Banknote className="w-4 h-4" />
               {t('pos.cash')}
             </Button>
 
@@ -2079,7 +2079,7 @@ export function CartPanel({
                 disabled={cart.length === 0}
                 onClick={handleDebtSale}
               >
-                <CreditCard className="w-4 h-4 ml-1.5" />
+                <CreditCard className="w-4 h-4" />
                 {t('pos.debt')}
               </Button>
               {/* Share Invoice as Image Action */}
@@ -2197,7 +2197,7 @@ export function CartPanel({
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1 bg-success hover:bg-success/90" onClick={confirmCashSale} disabled={isSaving} aria-busy={isSaving}>
-                <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
+                <Check className={cn('w-4 h-4', isSaving && 'animate-spin')} />
                 {isSaving ? (t('common.saving') || 'جاري الحفظ...') : (t('common.confirm') || 'تأكيد')}
               </Button>
             </div>
@@ -2349,7 +2349,7 @@ export function CartPanel({
                   confirmDebtSale(false);
                 }}
               >
-                <Check className={cn('w-4 h-4 ml-2', isSaving && 'animate-spin')} />
+                <Check className={cn('w-4 h-4', isSaving && 'animate-spin')} />
                 {isSaving ? (t('common.saving') || 'جاري الحفظ...') : (t('pos.confirmDebt') || 'تأكيد البيع المؤجل')}
               </Button>
             </div>
@@ -2413,7 +2413,7 @@ export function CartPanel({
                 {t('common.cancel')}
               </Button>
               <Button className="flex-1" onClick={handleAddCustomer} disabled={isAddingCustomer}>
-                <UserPlus className="w-4 h-4 ml-2" />
+                <UserPlus className="w-4 h-4" />
                 {isAddingCustomer ? (t('common.saving') || 'جاري الحفظ...') : (t('pos.addCustomerBtn') || 'إضافة العميل')}
               </Button>
             </div>

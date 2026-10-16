@@ -330,7 +330,7 @@ export default function InvoiceTracking() {
                         disabled={busyId === entry.queueId}
                         onClick={() => handleRetry(entry.queueId!)}
                       >
-                        <RefreshCw className={cn("h-3.5 w-3.5 ml-1", busyId === entry.queueId && "animate-spin text-primary")} />
+                        <RefreshCw className={cn("h-3.5 w-3.5", busyId === entry.queueId && "animate-spin text-primary")} />
                         {busyId === entry.queueId ? 'جاري الرفع...' : 'إعادة المحاولة'}
                       </Button>
                       <Button
@@ -340,7 +340,7 @@ export default function InvoiceTracking() {
                         disabled={busyId === entry.queueId}
                         onClick={() => handleDiscard(entry.queueId!)}
                       >
-                        <Trash2 className="h-3.5 w-3.5 ml-1" />
+                        <Trash2 className="h-3.5 w-3.5" />
                         إلغاء
                       </Button>
                     </div>

@@ -255,7 +255,7 @@ export function ProfileManagement() {
               <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40">
                 <span className="truncate flex-1 font-medium text-foreground text-sm">{profile?.full_name || t('profile.notSet')}</span>
                 <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs" onClick={() => setIsEditingName(true)}>
-                  <Edit className="w-3.5 h-3.5 me-1" />
+                  <Edit className="w-3.5 h-3.5" />
                   {t('profile.edit')}
                 </Button>
               </div>
@@ -286,7 +286,7 @@ export function ProfileManagement() {
                 <span dir="ltr" className="truncate flex-1 font-mono text-xs sm:text-sm text-foreground">{user?.email}</span>
                 {isBoss && (
                   <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs ms-1" onClick={() => { setNewEmail(user?.email || ''); setIsEditingEmail(true); }}>
-                    <Edit className="w-3.5 h-3.5 me-1" />
+                    <Edit className="w-3.5 h-3.5" />
                     {t('profile.edit')}
                   </Button>
                 )}
@@ -305,7 +305,7 @@ export function ProfileManagement() {
             <div className="flex items-center justify-between gap-3 p-3 bg-muted/60 rounded-xl min-w-0 border border-border/40">
               <span className="text-muted-foreground tracking-widest text-sm flex-1">••••••••</span>
               <Button size="sm" variant="ghost" className="shrink-0 h-8 px-2.5 text-xs" onClick={() => setShowPasswordDialog(true)}>
-                <Lock className="w-3.5 h-3.5 me-1" />
+                <Lock className="w-3.5 h-3.5" />
                 {t('profile.changeBtn')}
               </Button>
             </div>
@@ -356,12 +356,12 @@ export function ProfileManagement() {
             <Button onClick={handleChangePassword} disabled={isChangingPassword}>
               {isChangingPassword ? (
                 <>
-                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   {t('profile.changingPassword')}
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4 me-2" />
+                  <Lock className="w-4 h-4" />
                   {t('password.changeBtn')}
                 </>
               )}

@@ -710,7 +710,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           {t('purchaseInvoice.finishAdding')}
         </Button>
         <Button size="sm" onClick={handleSubmit} disabled={loading || !productName || !quantity || !costPrice} className="flex-1">
-          <Plus className="w-4 h-4 ml-1" />
+          <Plus className="w-4 h-4" />
           {loading ? t('common.loading') : t('purchaseInvoice.addAndContinue')}
         </Button>
       </div>

@@ -164,7 +164,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
                     disabled={isActive}
                     className="flex-1"
                   >
-                    <RefreshCw className={cn("h-3.5 w-3.5", isRTL ? "ml-1" : "mr-1", isRetrying && "animate-spin")} />
+                    <RefreshCw className={cn("h-3.5 w-3.5", isRetrying && "animate-spin")} />
                     {t('sync.retry')}
                   </Button>
                 )}
@@ -175,7 +175,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
                   disabled={isActive}
                   className="flex-1"
                 >
-                  <RefreshCw className={cn("h-3.5 w-3.5", isRTL ? "ml-1" : "mr-1", isSyncing && "animate-spin")} />
+                  <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
                   {t('sync.syncNow')}
                 </Button>
               </div>

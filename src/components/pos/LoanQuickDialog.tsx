@@ -173,7 +173,7 @@ export function LoanQuickDialog({
             disabled={!selectedMember || isSubmitting}
             className="w-full"
           >
-            <BookOpen className="w-4 h-4 ml-2" />
+            <BookOpen className="w-4 h-4" />
             {isSubmitting ? (language === 'en' ? 'Recording...' : 'جارٍ التسجيل...') : (language === 'en' ? 'Confirm Loan' : 'تأكيد الإعارة')}
           </Button>
         </div>

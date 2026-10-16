@@ -273,7 +273,7 @@ export function SystemDiagnostics() {
           </p>
         </div>
         <Button onClick={fetchDiagnostics} variant="outline" disabled={isLoading}>
-          <RefreshCw className={`w-4 h-4 ml-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           تحديث
         </Button>
       </div>
@@ -509,7 +509,7 @@ export function SystemDiagnostics() {
                 if (deleteTarget) handleDeleteUser(deleteTarget);
               }}
             >
-              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Trash2 className="w-4 h-4 ml-2" />}
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               حذف نهائي
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -161,8 +161,8 @@ export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateR
         </div>
         {!hideInternalExport && (
           <>
-            <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5 ml-1" />{t('reports.exportPDF') || 'PDF'}</Button>
-            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5 ml-1" />{t('reports.exportExcel') || 'Excel'}</Button>
+            <Button variant="outline" size="sm" onClick={handleExportPDF}><FileText className="w-3.5 h-3.5" />{t('reports.exportPDF') || 'PDF'}</Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-3.5 h-3.5" />{t('reports.exportExcel') || 'Excel'}</Button>
           </>
         )}
       </div>

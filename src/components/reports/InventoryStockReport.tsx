@@ -234,7 +234,7 @@ export function InventoryStockReport({ dateRange }: Props) {
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold">جلسة جرد فعلي</p>
               <Button variant="ghost" size="sm" onClick={handleCancelCount} className="h-7 text-[11px]">
-                <X className="w-3.5 h-3.5 ml-1" /> إلغاء
+                <X className="w-3.5 h-3.5" /> إلغاء
               </Button>
             </div>
             <div className={cn('flex items-center gap-2 text-xs rounded-lg p-2', totalVarianceValue < 0 ? 'bg-red-500/10 text-red-700' : totalVarianceValue > 0 ? 'bg-emerald-500/10 text-emerald-700' : 'bg-muted/50 text-muted-foreground')}>

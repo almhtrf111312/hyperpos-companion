@@ -154,7 +154,7 @@ export default function CloudBackupSection({ onRestoreBackup }: CloudBackupSecti
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={loadBackups} disabled={isLoading}>
-          <RefreshCw className={cn("w-4 h-4 ml-1", isLoading && "animate-spin")} />
+          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
           {t('gdrive.refresh') || 'تحديث'}
         </Button>
       </div>
@@ -171,9 +171,9 @@ export default function CloudBackupSection({ onRestoreBackup }: CloudBackupSecti
       {/* Upload button */}
       <Button onClick={handleUpload} disabled={isUploading} className="w-full bg-primary hover:bg-primary/90 h-12 text-base">
         {isUploading ? (
-          <><Loader2 className="w-5 h-5 ml-2 animate-spin" />{t('gdrive.backingUp') || 'جاري النسخ...'}</>
+          <><Loader2 className="w-5 h-5 animate-spin" />{t('gdrive.backingUp') || 'جاري النسخ...'}</>
         ) : (
-          <><CloudUpload className="w-5 h-5 ml-2" />{t('gdrive.cloudBackup') || 'نسخ احتياطي الآن'}</>
+          <><CloudUpload className="w-5 h-5" />{t('gdrive.cloudBackup') || 'نسخ احتياطي الآن'}</>
         )}
       </Button>
 
@@ -203,7 +203,7 @@ export default function CloudBackupSection({ onRestoreBackup }: CloudBackupSecti
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" size="sm" onClick={() => handleRestore(file)} disabled={isLoading}>
-                  <Download className="w-4 h-4 ml-1" />{t('gdrive.restore') || 'استعادة'}
+                  <Download className="w-4 h-4" />{t('gdrive.restore') || 'استعادة'}
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => { setSelectedFile(file); setDeleteDialogOpen(true); }}>
                   <Trash2 className="w-4 h-4 text-destructive" />

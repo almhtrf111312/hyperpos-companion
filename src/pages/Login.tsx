@@ -340,7 +340,7 @@ export default function Login() {
             <Button type="submit" className="w-full h-11" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin me-2" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   {t('auth.loading')}
                 </>
               ) : (
@@ -411,12 +411,12 @@ export default function Login() {
             >
               {isResettingDevice ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin me-2" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   جاري النقل...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4 me-2" />
+                  <RefreshCw className="w-4 h-4" />
                   نقل الحساب لهذا الجهاز
                 </>
               )}
@@ -505,7 +505,7 @@ export default function Login() {
               >
                 {isSendingReset ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin me-2" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     {t('auth.loading')}
                   </>
                 ) : (
@@ -569,7 +569,7 @@ export default function Login() {
                 >
                   {isSendingReset ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin me-2" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       {t('auth.loading')}
                     </>
                   ) : (

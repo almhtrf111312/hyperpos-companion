@@ -762,7 +762,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     className="h-8 text-xs rounded-lg"
                     onClick={() => document.getElementById('setup-logo-upload')?.click()}
                   >
-                    <Upload className="w-3.5 h-3.5 me-1.5" />
+                    <Upload className="w-3.5 h-3.5" />
                     {storeLogo ? 'تغيير' : 'رفع شعار'}
                   </Button>
                 </div>
@@ -1607,7 +1607,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                 onClick={() => setStep(step - 1)}
                 className="w-full sm:w-auto h-10 px-5 rounded-xl text-xs font-bold cursor-pointer"
               >
-                {isRTL ? <ArrowRight className="w-4 h-4 me-1.5" /> : <ArrowLeft className="w-4 h-4 me-1.5" />}
+                {isRTL ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
                 السابق
               </Button>
             )}
@@ -1626,7 +1626,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                 className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm shadow-primary/20 cursor-pointer"
               >
                 التالي
-                {isRTL ? <ArrowLeft className="w-4 h-4 ms-1.5" /> : <ArrowRight className="w-4 h-4 ms-1.5" />}
+                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </Button>
             ) : (
               <Button
@@ -1641,7 +1641,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                 )}
                 title={visitedSteps.size < totalSteps ? 'يرجى مراجعة كافة الخطوات أولاً' : ''}
               >
-                <Sparkles className="w-4 h-4 me-1.5" />
+                <Sparkles className="w-4 h-4" />
                 ابدأ العمل الآن (حفظ وبدء البيع)
               </Button>
             )}

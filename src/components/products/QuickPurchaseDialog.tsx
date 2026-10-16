@@ -520,7 +520,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                   className="h-6 px-2 text-destructive hover:bg-destructive/10 text-xs"
                   onClick={handleClearSelectedProduct}
                 >
-                  <X className="w-3.5 h-3.5 ml-1" />
+                  <X className="w-3.5 h-3.5" />
                   إلغاء التحديد
                 </Button>
               </div>
@@ -890,7 +890,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     className="absolute top-2 right-2 h-7 px-2.5 text-xs shadow-md"
                     onClick={clearImage}
                   >
-                    <X className="w-3.5 h-3.5 ml-1" />
+                    <X className="w-3.5 h-3.5" />
                     {t('common.delete') || 'حذف الصورة'}
                   </Button>
                 </div>
@@ -903,7 +903,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     className="h-10 text-xs font-medium"
                     onClick={() => setShowCameraPreview(true)}
                   >
-                    <Camera className="w-4 h-4 ml-1.5 text-primary" />
+                    <Camera className="w-4 h-4 text-primary" />
                     التقاط بالكاميرا
                   </Button>
                   <label className="flex-1">
@@ -915,7 +915,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                       asChild
                     >
                       <span>
-                        <ImageIcon className="w-4 h-4 ml-1.5 text-primary" />
+                        <ImageIcon className="w-4 h-4 text-primary" />
                         اختيار من المعرض
                       </span>
                     </Button>
@@ -949,12 +949,12 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     {t('common.loading') || 'جارٍ الحفظ...'}
                   </>
                 ) : (
                   <>
-                    <Package className="w-4 h-4 ml-2" />
+                    <Package className="w-4 h-4" />
                     {selectedProduct ? 'تحديث المخزون والفاتورة' : 'حفظ المنتج وتحديث المخزون'}
                   </>
                 )}

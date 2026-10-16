@@ -1369,12 +1369,12 @@ export default function Products() {
             <div className="hidden sm:flex items-center gap-2">
               {!noInventory && (
                 <Button variant="outline" className="h-9 px-3.5" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                  <FileText className="w-4 h-4 ml-1.5" />
+                  <FileText className="w-4 h-4" />
                   {t('purchaseInvoice.addPurchaseInvoice')}
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={() => setShowCategoryManager(true)} className="h-9 px-3.5">
-                <Tag className="w-4 h-4 ml-1.5" />
+                <Tag className="w-4 h-4" />
                 {t('products.categories')}
               </Button>
               
@@ -1390,7 +1390,7 @@ export default function Products() {
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Package className="w-3.5 h-3.5 ml-1 shrink-0" />
+                  <Package className="w-3.5 h-3.5 shrink-0" />
                   <span>{t('products.activeProducts')}</span>
                 </button>
                 <button
@@ -1406,7 +1406,7 @@ export default function Products() {
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Archive className="w-3.5 h-3.5 ml-1 shrink-0" />
+                  <Archive className="w-3.5 h-3.5 shrink-0" />
                   <span>{t('products.archive')}</span>
                   {mergedArchivedProducts.length > 0 && (
                     <span className={cn(
@@ -1428,7 +1428,7 @@ export default function Products() {
                   setImagePreviewBase64('');
                   setShowAddDialog(true);
                 }}>
-                  <Plus className="w-4 h-4 ml-1.5" />
+                  <Plus className="w-4 h-4" />
                   {tDynamic('addProduct')}
                 </Button>
               )}
@@ -1487,7 +1487,7 @@ export default function Products() {
                   setShowAddDialog(true);
                 }}
               >
-                <Plus className="w-3.5 h-3.5 ml-1 shrink-0" />
+                <Plus className="w-3.5 h-3.5 shrink-0" />
                 <span>{tDynamic('addProduct')}</span>
               </Button>
             )}
@@ -1497,12 +1497,12 @@ export default function Products() {
           <div className="flex items-center gap-1.5">
             {!noInventory && (
               <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowPurchaseInvoiceDialog(true)}>
-                <FileText className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
+                <FileText className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="truncate">{t('products.purchaseInvoice')}</span>
               </Button>
             )}
             <Button variant="outline" className="h-8 text-xs px-2.5 flex-1" onClick={() => setShowCategoryManager(true)}>
-              <Tag className="w-3.5 h-3.5 ml-1 flex-shrink-0" />
+              <Tag className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate">{t('products.categories')}</span>
             </Button>
             
@@ -1765,7 +1765,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
                   archiveFilter === 'all'
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1777,7 +1777,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('out_of_stock')}
                 className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
                   archiveFilter === 'out_of_stock'
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1789,7 +1789,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('manual_archived')}
                 className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
                   archiveFilter === 'manual_archived'
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1810,7 +1810,7 @@ export default function Products() {
                   key={category}
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
-                    "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                    "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
                     selectedCategory === category
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1825,7 +1825,7 @@ export default function Products() {
               <button
                 onClick={() => setUnitFilter(unitFilter === 'multi_unit' ? 'all' : 'multi_unit')}
                 className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
                   unitFilter === 'multi_unit'
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1958,7 +1958,7 @@ export default function Products() {
                       onClick={() => openQuickRestock(product)}
                       title={t('products.restockSubtitle') || 'إعادة تزويد الكمية'}
                     >
-                      <Plus className="w-3.5 h-3.5 ml-1" />
+                      <Plus className="w-3.5 h-3.5" />
                       {t('products.restock') || 'إعادة تزويد'}
                     </Button>
                     <Button
@@ -1968,7 +1968,7 @@ export default function Products() {
                       onClick={() => openEditDialog(product)}
                       title={t('common.edit') || 'تعديل بيانات المنتج'}
                     >
-                      <RotateCcw className="w-3.5 h-3.5 ml-1" />
+                      <RotateCcw className="w-3.5 h-3.5" />
                       {t('common.edit') || 'تعديل'}
                     </Button>
                     {product.archived ? (
@@ -1982,7 +1982,7 @@ export default function Products() {
                         }}
                         title={t('products.permanentDeleteTitle') || 'حذف نهائي للمنتج'}
                       >
-                        <Trash2 className="w-3.5 h-3.5 ml-1" />
+                        <Trash2 className="w-3.5 h-3.5" />
                         {t('products.permanentDelete')}
                       </Button>
                     ) : (
@@ -1993,7 +1993,7 @@ export default function Products() {
                         onClick={() => openDeleteDialog(product)}
                         title={t('products.archiveAction') || 'أرشفة المنتج'}
                       >
-                        <Archive className="w-3.5 h-3.5 ml-1" />
+                        <Archive className="w-3.5 h-3.5" />
                         {t('products.archiveAction')}
                       </Button>
                     )}
@@ -3012,9 +3012,9 @@ export default function Products() {
                         disabled={isCameraLoading}
                       >
                         {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Camera className="w-4 h-4 ml-2" />
+                          <Camera className="w-4 h-4" />
                         )}
                         {t('products.captureImage')}
                       </Button>
@@ -3025,7 +3025,7 @@ export default function Products() {
                         onClick={handleGallerySelect}
                         disabled={isCameraLoading}
                       >
-                        <ImageIcon className="w-4 h-4 ml-2" />
+                        <ImageIcon className="w-4 h-4" />
                         {t('products.chooseImage')}
                       </Button>
                     </div>
@@ -3041,7 +3041,7 @@ export default function Products() {
                   {t('common.cancel') || 'إلغاء'}
                 </Button>
                 <Button className="flex-1 min-h-[48px]" onClick={handleAddProduct}>
-                  <Save className="w-4 h-4 ml-2" />
+                  <Save className="w-4 h-4" />
                   {t('products.saveProduct') || 'حفظ المنتج'}
                 </Button>
               </div>
@@ -3538,9 +3538,9 @@ export default function Products() {
                         disabled={isCameraLoading}
                       >
                         {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Camera className="w-4 h-4 ml-2" />
+                          <Camera className="w-4 h-4" />
                         )}
                         {t('products.captureImage')}
                       </Button>
@@ -3551,7 +3551,7 @@ export default function Products() {
                         onClick={handleGallerySelect}
                         disabled={isCameraLoading}
                       >
-                        <ImageIcon className="w-4 h-4 ml-2" />
+                        <ImageIcon className="w-4 h-4" />
                         {t('products.chooseImage')}
                       </Button>
                     </div>
@@ -3575,12 +3575,12 @@ export default function Products() {
                 >
                   {selectedProduct?.archived ? (
                     <>
-                      <RotateCcw className="w-4 h-4 ml-2" />
+                      <RotateCcw className="w-4 h-4" />
                       {t('products.restoreAndEditProduct')}
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4 ml-2" />
+                      <Save className="w-4 h-4" />
                       {t('common.save')}
                     </>
                   )}
@@ -3781,9 +3781,9 @@ export default function Products() {
                     disabled={isRestocking}
                   >
                     {isRestocking ? (
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Save className="w-4 h-4 ml-2" />
+                      <Save className="w-4 h-4" />
                     )}
                     {t('products.confirmRestock')}
                   </Button>
@@ -3799,7 +3799,7 @@ export default function Products() {
                       openEditDialog(p);
                     }}
                   >
-                    <Edit className="w-3.5 h-3.5 ml-1" />
+                    <Edit className="w-3.5 h-3.5" />
                     {t('products.editAllDetailsInstead')}
                   </Button>
                 </div>

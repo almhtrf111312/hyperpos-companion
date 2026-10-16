@@ -365,7 +365,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
             <p>{errorMessage}</p>
             <div className="mt-3 flex gap-2">
               <Button type="button" size="sm" onClick={() => startCamera()}>
-                <RotateCcw className="w-3 h-3 ml-1" />
+                <RotateCcw className="w-3 h-3" />
                 إعادة المحاولة
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={() => onCloseRef.current()}>

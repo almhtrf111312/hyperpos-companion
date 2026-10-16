@@ -477,7 +477,7 @@ export function LicenseManagement() {
               disabled={isProcessing}
               onClick={(e) => { e.preventDefault(); if (revokeTarget) handleRevokeLicense(revokeTarget); }}
             >
-              {isProcessing && <Loader2 className="w-4 h-4 animate-spin me-2" />}
+              {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
               {t('licenseManagement.revokeLicense')}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -500,7 +500,7 @@ export function LicenseManagement() {
               disabled={isProcessing}
               onClick={(e) => { e.preventDefault(); if (deleteUserTarget) handleDeleteUser(deleteUserTarget); }}
             >
-              {isProcessing && <Loader2 className="w-4 h-4 animate-spin me-2" />}
+              {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
               {t('licenseManagement.deletePermanently')}
             </AlertDialogAction>
           </AlertDialogFooter>

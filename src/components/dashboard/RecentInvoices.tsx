@@ -247,15 +247,15 @@ export function RecentInvoices() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
-                                <Eye className="w-4 h-4 ml-2" />
+                                <Eye className="w-4 h-4" />
                                 عرض التفاصيل
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleCopyInvoice(invoice)}>
-                                <Copy className="w-4 h-4 ml-2" />
+                                <Copy className="w-4 h-4" />
                                 نسخ الرقم
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
-                                <Edit className="w-4 h-4 ml-2" />
+                                <Edit className="w-4 h-4" />
                                 تعديل
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -264,7 +264,7 @@ export function RecentInvoices() {
                                 disabled={deleteGuard.isRunning}
                                 className="text-destructive focus:text-destructive"
                               >
-                                <Trash2 className="w-4 h-4 ml-2" />
+                                <Trash2 className="w-4 h-4" />
                                 {deleteGuard.isRunning ? 'جاري الحذف...' : 'حذف'}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -406,7 +406,7 @@ export function RecentInvoices() {
                   className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
                   onClick={() => handleShareInvoice(selectedInvoice)}
                 >
-                  <Share2 className="w-4 h-4 ml-2" />
+                  <Share2 className="w-4 h-4" />
                   مشاركة الفاتورة كصورة
                 </Button>
                 <Button
@@ -416,7 +416,7 @@ export function RecentInvoices() {
                     handleEditInvoice(selectedInvoice);
                   }}
                 >
-                  <Edit className="w-4 h-4 ml-2" />
+                  <Edit className="w-4 h-4" />
                   تعديل
                 </Button>
               </div>
@@ -425,7 +425,7 @@ export function RecentInvoices() {
                 className="w-full mt-2"
                 onClick={() => setShowViewDialog(false)}
               >
-                <X className="w-4 h-4 ml-2" />
+                <X className="w-4 h-4" />
                 إغلاق
               </Button>
             </div>

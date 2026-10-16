@@ -302,7 +302,7 @@ export function DistributorInventoryReport() {
             onClick={loadStockData}
             disabled={isRefreshing}
           >
-            <RefreshCw className={cn("w-4 h-4 ml-2", isRefreshing && "animate-spin")} />
+            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
             تحديث
           </Button>
           <Button
@@ -311,7 +311,7 @@ export function DistributorInventoryReport() {
             onClick={handleExportToExcel}
             disabled={stockData.length === 0}
           >
-            <FileSpreadsheet className="w-4 h-4 ml-2" />
+            <FileSpreadsheet className="w-4 h-4" />
             تصدير Excel
           </Button>
         </div>

@@ -284,17 +284,17 @@ export default function CashShifts() {
         actions={
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <Button variant="outline" size="sm" onClick={loadData}>
-              <RefreshCw className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              <RefreshCw className="h-4 w-4" />
               {t('cashShifts.refresh')}
             </Button>
             {openShift ? (
               <Button variant="destructive" size="sm" onClick={() => setShowCloseDialog(true)}>
-                <StopCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                <StopCircle className="h-4 w-4" />
                 {t('cashShifts.closeShift')}
               </Button>
             ) : (
               <Button size="sm" onClick={() => setShowStartDialog(true)}>
-                <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                <PlayCircle className="h-4 w-4" />
                 {t('cashShifts.startShift')}
               </Button>
             )}
@@ -458,7 +458,7 @@ export default function CashShifts() {
             <h3 className="text-lg font-semibold mb-2">{t('cashShifts.noOpenShift')}</h3>
             <p className="text-muted-foreground mb-4">{t('cashShifts.startNewShift')}</p>
             <Button onClick={() => setShowStartDialog(true)}>
-              <PlayCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              <PlayCircle className="h-4 w-4" />
               {t('cashShifts.startShift')}
             </Button>
           </CardContent>
@@ -678,7 +678,7 @@ export default function CashShifts() {
                   }
                 }}
               >
-                <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-green-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                 مطابقة مع المتوقع
               </Button>
             </div>
@@ -817,7 +817,7 @@ export default function CashShifts() {
                       }
                     }}
                   >
-                    <ArrowDownRight className="w-4 h-4 ml-1" />
+                    <ArrowDownRight className="w-4 h-4" />
                     تسجيل {formatCurrency(Math.abs(previewDiscrepancy), '$')} كمصروف
                   </Button>
                 ) : (
@@ -834,7 +834,7 @@ export default function CashShifts() {
                       }
                     }}
                   >
-                    <ArrowUpRight className="w-4 h-4 ml-1" />
+                    <ArrowUpRight className="w-4 h-4" />
                     تسجيل {formatCurrency(previewDiscrepancy, '$')} كإيراد
                   </Button>
                 )}
@@ -864,7 +864,7 @@ export default function CashShifts() {
               {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleCloseShift} disabled={closeShiftGuard.isRunning}>
-              {closeShiftGuard.isRunning && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {closeShiftGuard.isRunning && <Loader2 className="h-4 w-4 animate-spin" />}
               {t('cashShifts.closeShift')}
             </Button>
           </DialogFooter>

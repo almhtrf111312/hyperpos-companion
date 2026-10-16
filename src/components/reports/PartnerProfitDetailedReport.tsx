@@ -294,7 +294,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
 
           <div className="flex items-end gap-2">
             <Button variant="outline" onClick={handleExportExcel} className="flex-1">
-              <FileSpreadsheet className="w-4 h-4 ml-2" />
+              <FileSpreadsheet className="w-4 h-4" />
               تصدير Excel
             </Button>
             <Button variant="outline" onClick={handleShareWhatsApp}>

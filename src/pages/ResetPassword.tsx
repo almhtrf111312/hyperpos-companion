@@ -189,7 +189,7 @@ export default function ResetPassword() {
             <Button type="submit" className="w-full h-11" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin me-2" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   {t('auth.loading')}
                 </>
               ) : (

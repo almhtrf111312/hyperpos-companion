@@ -146,7 +146,7 @@ export function PurchaseReconciliation({
       {/* Actions - Fixed at Bottom */}
       <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-2">
         <Button variant="outline" size="sm" onClick={onBack} disabled={loading} className="flex-1 h-10">
-          <ArrowRight className="w-4 h-4 ml-1" />
+          <ArrowRight className="w-4 h-4" />
           رجوع
         </Button>
         <Button
@@ -156,7 +156,7 @@ export function PurchaseReconciliation({
           className={cn("flex-1 h-10", allMatch ? "bg-success hover:bg-success/90" : "")}
         >
           {loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}
-          <Check className="w-4 h-4 mr-1" />
+          <Check className="w-4 h-4" />
         </Button>
       </div>
     </div>

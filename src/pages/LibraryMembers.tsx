@@ -251,7 +251,7 @@ export default function LibraryMembers() {
               setShowAddLoan(true);
             }
           }}>
-            <Plus className="w-4 h-4 ml-1" />
+            <Plus className="w-4 h-4" />
             {activeTab === 'members' ? 'عضو جديد' : 'إعارة جديدة'}
           </Button>
         </div>
@@ -338,7 +338,7 @@ export default function LibraryMembers() {
                         setReturnLateFee(0);
                         setShowReturnDialog(true);
                       }}>
-                        <RotateCcw className="w-3 h-3 ml-1" /> إرجاع
+                        <RotateCcw className="w-3 h-3" /> إرجاع
                       </Button>
                       <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => handleMarkLost(loan)}>
                         مفقود
@@ -378,7 +378,7 @@ export default function LibraryMembers() {
               <Input value={memberForm.notes} onChange={(e) => setMemberForm(p => ({ ...p, notes: e.target.value }))} />
             </div>
             <Button className="w-full" onClick={showEditMember ? handleEditMember : handleAddMember}>
-              <Save className="w-4 h-4 ml-1" />
+              <Save className="w-4 h-4" />
               {showEditMember ? 'تحديث' : 'إضافة'}
             </Button>
           </div>
@@ -427,7 +427,7 @@ export default function LibraryMembers() {
               <Input value={loanForm.notes} onChange={(e) => setLoanForm(p => ({ ...p, notes: e.target.value }))} />
             </div>
             <Button className="w-full" onClick={handleAddLoan}>
-              <BookOpen className="w-4 h-4 ml-1" /> تسجيل الإعارة
+              <BookOpen className="w-4 h-4" /> تسجيل الإعارة
             </Button>
           </div>
         </DialogContent>
@@ -461,7 +461,7 @@ export default function LibraryMembers() {
               />
             </div>
             <Button className="w-full" onClick={handleReturnLoan}>
-              <RotateCcw className="w-4 h-4 ml-1" /> تأكيد الإرجاع
+              <RotateCcw className="w-4 h-4" /> تأكيد الإرجاع
             </Button>
           </div>
         </DialogContent>

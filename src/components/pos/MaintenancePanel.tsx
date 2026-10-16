@@ -579,7 +579,7 @@ ${footer}`;
               className="bg-green-600 hover:bg-green-700 text-white"
               disabled={isSaving}
             >
-              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Banknote className="w-4 h-4 ml-2" />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
               نقداً
             </Button>
             <Button
@@ -588,17 +588,17 @@ ${footer}`;
               className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
               disabled={isSaving}
             >
-              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <CreditCard className="w-4 h-4 ml-2" />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
               بالدين
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={handleShareInvoiceImage} className="text-sm text-primary border-primary/30 hover:bg-primary/10">
-              <Share2 className="w-4 h-4 ml-1" />
+              <Share2 className="w-4 h-4" />
               مشاركة الفاتورة
             </Button>
             <Button variant="outline" onClick={handleWhatsApp} className="text-sm">
-              <Send className="w-4 h-4 ml-1" />
+              <Send className="w-4 h-4" />
               واتساب
             </Button>
           </div>
@@ -642,7 +642,7 @@ ${footer}`;
               className="flex-1 bg-green-600 hover:bg-green-700"
               disabled={isSaving}
             >
-              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Check className="w-4 h-4 ml-2" />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {t('common.confirm')}
             </Button>
           </div>
@@ -689,7 +689,7 @@ ${footer}`;
               className="flex-1 bg-orange-500 hover:bg-orange-600"
               disabled={isSaving}
             >
-              {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Check className="w-4 h-4 ml-2" />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               تسجيل الدين
             </Button>
           </div>

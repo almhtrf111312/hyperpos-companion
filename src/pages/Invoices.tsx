@@ -2338,7 +2338,7 @@ export default function Invoices() {
                     handleShare(selectedInvoice);
                   }}
                 >
-                  <Share2 className="w-4 h-4 ml-2" />
+                  <Share2 className="w-4 h-4" />
                   <span>{t('common.share') || 'مشاركة الفاتورة'}</span>
                 </Button>
               </div>
@@ -2411,12 +2411,12 @@ export default function Invoices() {
                   >
                     {isGeneratingShare ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         <span>{t('common.loading') || 'جاري استخراج ومشاركة الصورة...'}</span>
                       </>
                     ) : (
                       <>
-                        <Share2 className="w-4 h-4 ml-2" />
+                        <Share2 className="w-4 h-4" />
                         <span>{t('invoices.shareAsImage') || 'مشاركة كصورة (واتساب / تطبيقات)'}</span>
                       </>
                     )}
@@ -2733,7 +2733,7 @@ export default function Invoices() {
                 disabled={refundGuard.isRunning}
                 aria-busy={refundGuard.isRunning}
               >
-                <Undo2 className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
+                <Undo2 className={cn('w-4 h-4', refundGuard.isRunning && 'animate-spin')} />
                 {refundGuard.isRunning ? (t('common.loading') || 'جاري الاسترداد...') : (t('invoices.confirmFullRefund') || 'تأكيد الاسترداد الكامل')}
               </Button>
             ) : (
@@ -2743,7 +2743,7 @@ export default function Invoices() {
                 disabled={refundGuard.isRunning || !partialRefundStats.isValid}
                 aria-busy={refundGuard.isRunning}
               >
-                <Layers className={cn('w-4 h-4 ml-2', refundGuard.isRunning && 'animate-spin')} />
+                <Layers className={cn('w-4 h-4', refundGuard.isRunning && 'animate-spin')} />
                 {refundGuard.isRunning
                   ? (t('common.loading') || 'جاري الاسترداد...')
                   : `${t('invoices.confirmPartialRefund') || 'تأكيد الاسترداد الجزئي'} (${formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)})`}
@@ -2936,12 +2936,12 @@ export default function Invoices() {
                 >
                   {isSubmittingPayment ? (
                     <>
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       <span>{t('invoices.payingDebt') || 'جاري الدفع...'}</span>
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4 ml-2" />
+                      <Save className="w-4 h-4" />
                       <span>{t('debts.confirmPayment') || 'تأكيد الدفع'}</span>
                     </>
                   )}
