@@ -149,60 +149,144 @@ export default function Cashbox() {
 
   return (
     <div className="min-h-screen bg-background p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
-      {/* Top Header & Actions with Mobile Clearance */}
-      <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <Wallet className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-sm font-bold text-foreground block">صندوق الوردية</span>
-            <span className="text-[10px] text-muted-foreground hidden sm:block">إدارة الورديات والمصالحة</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 px-3 rounded-xl text-xs gap-1.5 font-medium border-border/80 shadow-2xs cursor-pointer"
-            onClick={() => setShowHistoryDialog(true)}
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>السجل</span>
-          </Button>
-          {activeShift && (
+      {/* Top Section: Shift Card (Closed or Active) directly at the top */}
+      {!activeShift ? (
+        /* بطاقة لا توجد ورديات مفتوحة حالياً مرفوعة لأعلى الصفحة مباشرة */
+        <div className="bg-card border border-border/80 rounded-2xl p-5 md:p-6 text-center space-y-3.5 shadow-xs relative overflow-hidden rtl:pr-14 ltr:pl-14 md:rtl:pr-6 md:ltr:pl-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold text-foreground">صندوق الوردية</span>
+            </div>
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
-              className="h-9 px-3.5 rounded-xl text-xs font-bold gap-1.5 shadow-sm cursor-pointer"
-              onClick={() => setShowCloseDialog(true)}
+              className="h-8 px-2.5 rounded-xl text-xs gap-1.5 font-medium border-border/80 shadow-2xs cursor-pointer"
+              onClick={() => setShowHistoryDialog(true)}
             >
-              <Square className="w-3.5 h-3.5" />
-              <span>إغلاق الوردية</span>
+              <History className="w-3.5 h-3.5" />
+              <span>سجل الورديات</span>
             </Button>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* No Active Shift Notice & Open Action */}
-      {!activeShift && (
-        <div className="bg-card border border-border/80 rounded-2xl p-5 text-center space-y-3 shadow-xs">
-          <div className="w-12 h-12 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center mx-auto">
-            <Clock className="w-6 h-6" />
+          <div className="py-2">
+            <h2 className="text-base sm:text-lg font-bold text-foreground">لا توجد ورديات مفتوحة حالياً</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              ابدأ وردية جديدة لتسجيل ومتابعة المبيعات، المقبوضات، والمصروفات النقدية للصندوق بدقة
+            </p>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground">لا توجد وردية مفتوحة حالياً</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">ابدأ وردية جديدة لتسجيل ومتابعة المبيعات والحركات النقدية للصندوق</p>
+          <div className="pt-0.5">
+            <Button
+              onClick={() => setShowOpenDialog(true)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-6 rounded-2xl shadow-md shadow-primary/25 text-xs sm:text-sm gap-2 transition-all cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>فتح وردية جديدة الآن</span>
+            </Button>
           </div>
-          <Button
-            onClick={() => setShowOpenDialog(true)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-10 px-5 rounded-xl shadow-md shadow-primary/25 text-xs gap-1.5 cursor-pointer"
-          >
-            <Play className="w-4 h-4" />
-            <span>فتح وردية جديدة</span>
-          </Button>
         </div>
+      ) : (
+        /* بطاقة الوردية النشطة مدمجة بالكامل مع زر إغلاق الوردية بداخلها */
+        <Card className="border border-border/80 rounded-2xl overflow-hidden shadow-xs rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <CardHeader className="p-4 pb-3 border-b border-border/50 bg-muted/20">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm sm:text-base font-bold text-foreground">الوردية الحالية المفتوحة</CardTitle>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    المسؤول: <span className="font-semibold text-foreground">{activeShift.userName}</span> • بدأت: <span className="font-mono">{formatDateTime(activeShift.openedAt)}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 rounded-xl text-xs gap-1.5 font-medium border-border/80 shadow-2xs cursor-pointer"
+                  onClick={() => setShowHistoryDialog(true)}
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">السجل</span>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-8 px-3 rounded-xl text-xs font-bold gap-1.5 shadow-sm cursor-pointer"
+                  onClick={() => setShowCloseDialog(true)}
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>إغلاق الوردية</span>
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              <div className="bg-muted/50 rounded-xl p-3 border border-border/40">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">رصيد الافتتاح</p>
+                <p className="text-sm sm:text-base font-black text-foreground font-mono mt-0.5">
+                  {formatCurrency(activeShift.openingCash, '$')}
+                </p>
+              </div>
+
+              <div className="bg-muted/50 rounded-xl p-3 border border-border/40">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                  المبيعات
+                </p>
+                <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                  +{formatCurrency(activeShift.salesTotal, '$')}
+                </p>
+              </div>
+
+              <div className="bg-muted/50 rounded-xl p-3 border border-border/40">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                  الإيداعات
+                </p>
+                <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                  +{formatCurrency(activeShift.depositsTotal, '$')}
+                </p>
+              </div>
+
+              <div className="bg-muted/50 rounded-xl p-3 border border-border/40">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <ArrowDownRight className="w-3 h-3 text-destructive" />
+                  المصاريف
+                </p>
+                <p className="text-sm sm:text-base font-black text-destructive font-mono mt-0.5">
+                  -{formatCurrency(activeShift.expensesTotal, '$')}
+                </p>
+              </div>
+
+              <div className="bg-muted/50 rounded-xl p-3 border border-border/40">
+                <p className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                  <ArrowDownRight className="w-3 h-3 text-destructive" />
+                  السحوبات
+                </p>
+                <p className="text-sm sm:text-base font-black text-destructive font-mono mt-0.5">
+                  -{formatCurrency(activeShift.withdrawalsTotal, '$')}
+                </p>
+              </div>
+
+              <div className="bg-primary/10 rounded-xl p-3 border border-primary/30">
+                <p className="text-[10px] sm:text-xs text-primary font-bold flex items-center gap-1">
+                  <Calculator className="w-3 h-3" />
+                  الرصيد المتوقع
+                </p>
+                <p className="text-sm sm:text-base font-black text-primary font-mono mt-0.5">
+                  {formatCurrency(expectedClosing, '$')}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Compact 4-Metric Grid */}
@@ -235,88 +319,6 @@ export default function Cashbox() {
           </span>
         </div>
       </div>
-
-      {/* Active Shift Details */}
-      {activeShift && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
-              الوردية الحالية
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <div className="bg-muted rounded-xl p-4">
-                <p className="text-xs text-muted-foreground">رصيد الافتتاح</p>
-                <p className="text-lg font-bold text-foreground mt-1">
-                  {formatCurrency(activeShift.openingCash, '$')}
-                </p>
-              </div>
-
-              <div className="bg-muted rounded-xl p-4">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <ArrowUpRight className="w-3 h-3 text-green-500" />
-                  المبيعات
-                </p>
-                <p className="text-lg font-bold text-green-600 mt-1">
-                  +{formatCurrency(activeShift.salesTotal, '$')}
-                </p>
-              </div>
-
-              <div className="bg-muted rounded-xl p-4">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <ArrowUpRight className="w-3 h-3 text-green-500" />
-                  الإيداعات
-                </p>
-                <p className="text-lg font-bold text-green-600 mt-1">
-                  +{formatCurrency(activeShift.depositsTotal, '$')}
-                </p>
-              </div>
-
-              <div className="bg-muted rounded-xl p-4">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <ArrowDownRight className="w-3 h-3 text-red-500" />
-                  المصاريف
-                </p>
-                <p className="text-lg font-bold text-red-600 mt-1">
-                  -{formatCurrency(activeShift.expensesTotal, '$')}
-                </p>
-              </div>
-
-              <div className="bg-muted rounded-xl p-4">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <ArrowDownRight className="w-3 h-3 text-red-500" />
-                  السحوبات
-                </p>
-                <p className="text-lg font-bold text-red-600 mt-1">
-                  -{formatCurrency(activeShift.withdrawalsTotal, '$')}
-                </p>
-              </div>
-
-              <div className="bg-primary/10 rounded-xl p-4 border-2 border-primary/30">
-                <p className="text-xs text-primary flex items-center gap-1">
-                  <Calculator className="w-3 h-3" />
-                  الرصيد المتوقع
-                </p>
-                <p className="text-lg font-bold text-primary mt-1">
-                  {formatCurrency(expectedClosing, '$')}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 text-sm text-muted-foreground">
-              <span>بدأت في: </span>
-              <span className="font-medium">
-                {formatDateTime(activeShift.openedAt)}
-              </span>
-              <span className="mx-2">•</span>
-              <span>المسؤول: </span>
-              <span className="font-medium">{activeShift.userName}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Recent Shifts */}
       <Card>
