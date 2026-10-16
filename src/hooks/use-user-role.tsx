@@ -206,6 +206,25 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     }
   }, [user, authLoading, fetchRole]);
 
+  // Synchronize state immediately whenever guest demo mode is activated or ended
+  useEffect(() => {
+    const handleDemoSync = () => {
+      if (isGuestDemoMode()) {
+        setState(buildStateFromRole('admin', 'guest-demo-user', true));
+      } else {
+        fetchRole();
+      }
+    };
+    window.addEventListener('guest-demo-started', handleDemoSync);
+    window.addEventListener('guest-demo-ended', handleDemoSync);
+    window.addEventListener('storage', handleDemoSync);
+    return () => {
+      window.removeEventListener('guest-demo-started', handleDemoSync);
+      window.removeEventListener('guest-demo-ended', handleDemoSync);
+      window.removeEventListener('storage', handleDemoSync);
+    };
+  }, [fetchRole]);
+
   return (
     <UserRoleContext.Provider value={{ ...state, refreshRole }}>
       {children}
@@ -218,5 +237,28 @@ export function useUserRole() {
   if (context === undefined) {
     throw new Error('useUserRole must be used within a UserRoleProvider');
   }
+
+  // In Guest Demo Mode, guarantee admin privileges locally for smooth navigation
+  if (typeof window !== 'undefined' && isGuestDemoMode()) {
+    if (!context.role || context.role !== 'admin') {
+      return {
+        ...context,
+        role: 'admin' as AppRole,
+        ownerId: 'guest-demo-user',
+        isLoading: false,
+        isBoss: false,
+        isAdmin: true,
+        isCashier: false,
+        isOwner: true,
+        canAccessSettings: true,
+        canAccessReports: true,
+        canAccessPartners: true,
+        canManageLicenses: false,
+        canManageUsers: false,
+        canEditPrice: true,
+      };
+    }
+  }
+
   return context;
 }

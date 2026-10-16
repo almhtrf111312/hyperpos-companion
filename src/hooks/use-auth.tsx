@@ -260,6 +260,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Sync auth state immediately when guest demo mode is started or ended
+  useEffect(() => {
+    const handleDemoAuth = () => {
+      if (isGuestDemoMode()) {
+        const demoData = getCachedSession();
+        if (demoData.user) {
+          setUser(demoData.user);
+          setSession(demoData.session);
+          setIsLoading(false);
+        }
+      } else {
+        const realData = getCachedSession();
+        setUser(realData.user);
+        setSession(realData.session);
+      }
+    };
+    window.addEventListener('guest-demo-started', handleDemoAuth);
+    window.addEventListener('guest-demo-ended', handleDemoAuth);
+    window.addEventListener('storage', handleDemoAuth);
+    return () => {
+      window.removeEventListener('guest-demo-started', handleDemoAuth);
+      window.removeEventListener('guest-demo-ended', handleDemoAuth);
+      window.removeEventListener('storage', handleDemoAuth);
+    };
+  }, []);
+
   useEffect(() => {
     // Immediately restore from cache if not already set
     const cachedData = getCachedSession();

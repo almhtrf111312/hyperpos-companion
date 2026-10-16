@@ -39,6 +39,9 @@ export default function Login() {
     setIsLoading(true);
     try {
       await injectGuestDemoData();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('guest-demo-started'));
+      }
       toast.success('تم تفعيل وضع التجربة بنجاح (صالح لمدة 24 ساعة)');
       navigate('/');
     } catch (err) {

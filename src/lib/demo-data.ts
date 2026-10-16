@@ -674,6 +674,9 @@ export const injectGuestDemoData = async (): Promise<void> => {
     emitEvent(EVENTS.DEBTS_UPDATED, demoDebts);
     emitEvent(EVENTS.SETTINGS_UPDATED);
     emitEvent(EVENTS.STORE_TYPE_CHANGED);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('guest-demo-started'));
+    }
   } catch {}
 };
 
@@ -756,6 +759,9 @@ export const clearGuestDemoData = async (force: boolean = false): Promise<boolea
     emitEvent(EVENTS.INVOICES_UPDATED, []);
     emitEvent(EVENTS.DEBTS_UPDATED, []);
     emitEvent(EVENTS.SETTINGS_UPDATED);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('guest-demo-ended'));
+    }
   } catch {}
 
   return true;

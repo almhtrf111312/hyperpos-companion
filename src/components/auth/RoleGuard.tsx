@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useUserRole, AppRole } from '@/hooks/use-user-role';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
+import { isGuestDemoMode } from '@/lib/demo-data';
 
 interface RoleGuardProps {
   children: ReactNode;
@@ -28,6 +29,14 @@ export function RoleGuard({
   redirectTo = '/', 
   fallback 
 }: RoleGuardProps) {
+  // In Guest Demo Mode: grant full browsing access to all standard management pages
+  // Only the Boss Panel (/boss) remains strictly restricted to real boss accounts
+  if (isGuestDemoMode()) {
+    if (allowedRoles.includes('admin') || allowedRoles.includes('cashier')) {
+      return <>{children}</>;
+    }
+  }
+
   const { role, isLoading } = useUserRole();
   const { profile } = useAuth();
   const location = useLocation();

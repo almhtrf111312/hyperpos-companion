@@ -3,6 +3,7 @@ import { isNoInventoryMode } from '@/lib/store-type-config';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { getOwnerIdForInsert, getCurrentUserId } from '@/lib/supabase-store';
 import { getPendingOperations } from '@/lib/sync-queue';
+import { isGuestDemoMode } from '@/lib/demo-data';
  
  export interface PurchaseInvoice {
    id: string;
@@ -91,6 +92,10 @@ const loadPurchaseInvoicesLocally = (): PurchaseInvoice[] | null => {
 
 // Load all purchase invoices
 export async function loadPurchaseInvoicesCloud(): Promise<PurchaseInvoice[]> {
+  if (isGuestDemoMode()) {
+    const local = loadPurchaseInvoicesLocally();
+    return local || [];
+  }
   // 1. Offline fast-path: zero network delay, instant local cache + queue
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     const local = loadPurchaseInvoicesLocally();
@@ -187,6 +192,32 @@ export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
 
 // Create new purchase invoice
  export async function addPurchaseInvoiceCloud(input: CreatePurchaseInvoiceInput): Promise<PurchaseInvoice | null> {
+   if (isGuestDemoMode()) {
+     const tempId = `demo_pi_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+     const demoInvoice: PurchaseInvoice = {
+       id: tempId,
+       user_id: 'guest-demo-user',
+       invoice_number: input.invoice_number,
+       supplier_name: input.supplier_name,
+       supplier_company: input.supplier_company,
+       invoice_date: input.invoice_date,
+       expected_items_count: input.expected_items_count,
+       expected_total_quantity: input.expected_total_quantity,
+       expected_grand_total: input.expected_grand_total,
+       actual_items_count: 0,
+       actual_total_quantity: 0,
+       actual_grand_total: 0,
+       status: 'draft',
+       notes: input.notes,
+       created_at: new Date().toISOString(),
+       updated_at: new Date().toISOString(),
+     };
+     const local = loadPurchaseInvoicesLocally() || [];
+     local.unshift(demoInvoice);
+     savePurchaseInvoicesLocally(local);
+     emitEvent(EVENTS.PURCHASES_UPDATED, null);
+     return demoInvoice;
+   }
    const { data: { user } } = await supabase.auth.getUser();
    if (!user) return null;
  
@@ -216,6 +247,22 @@ export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
  
  // Add item to purchase invoice
  export async function addPurchaseInvoiceItemCloud(input: CreatePurchaseInvoiceItemInput): Promise<PurchaseInvoiceItem | null> {
+   if (isGuestDemoMode()) {
+     const tempId = `demo_pii_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+     return {
+       id: tempId,
+       invoice_id: input.invoice_id,
+       product_id: input.product_id,
+       product_name: input.product_name,
+       barcode: input.barcode,
+       category: input.category,
+       quantity: input.quantity,
+       cost_price: input.cost_price,
+       sale_price: input.sale_price,
+       total_cost: input.quantity * input.cost_price,
+       created_at: new Date().toISOString(),
+     };
+   }
    const total_cost = input.quantity * input.cost_price;
  
    const { data, error } = await supabase
