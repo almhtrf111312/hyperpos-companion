@@ -10,7 +10,6 @@ import { PurchaseInvoiceViewDialog } from '@/components/purchases/PurchaseInvoic
 import { EVENTS } from '@/lib/events';
 import { format } from 'date-fns';
 import { ar, enUS, tr } from 'date-fns/locale';
-import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Purchases() {
   const { t, language } = useLanguage();
@@ -50,49 +49,47 @@ export default function Purchases() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 p-3 pt-6 md:p-6 pb-2 md:pb-3">
-        <PageHeader
-          title={t('purchases.title')}
-          subtitle={t('purchases.subtitle')}
-          actions={
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto py-1">
-              <Button
-                className="w-full sm:w-auto justify-center h-10 px-4 text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-xl transition-all"
-                onClick={() => setShowDialog(true)}
-              >
-                <Plus className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
-                <span>{t('purchases.addNew')}</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowQuickDialog(true)}
-                className="w-full sm:w-auto justify-center h-9 sm:h-10 px-4 text-xs sm:text-sm font-semibold border-border/80 bg-background/80 hover:bg-muted shadow-2xs rounded-xl transition-all text-foreground"
-              >
-                <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 shrink-0 text-primary" />
-                <span>{t('purchases.quickAdd')}</span>
-              </Button>
-            </div>
-          }
-        />
+      {/* Lifted Actions Bar with Smart Mobile Clearance */}
+      <div className="flex-shrink-0 p-2.5 sm:p-3 md:p-6 md:pt-4 pb-2 md:pb-3">
+        <div className="flex items-center gap-2 w-full rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <Button
+            className="flex-1 justify-center h-10 px-3 sm:px-4 text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-xl transition-all cursor-pointer"
+            onClick={() => setShowDialog(true)}
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('purchases.addNew')}</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowQuickDialog(true)}
+            className="flex-1 justify-center h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-border/80 bg-card hover:bg-muted shadow-2xs rounded-xl transition-all text-foreground cursor-pointer"
+          >
+            <ShoppingBag className="w-4 h-4 shrink-0 text-primary" />
+            <span className="truncate">{t('purchases.quickAdd')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card rounded-lg border border-border p-3 md:p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">{t('purchases.totalInvoices')}</span>
+      <div className="flex-shrink-0 px-2.5 sm:px-3 md:px-6 pb-2 md:pb-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="bg-card rounded-xl border border-border p-2.5 sm:p-3 flex items-center justify-between shadow-2xs">
+            <div>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+                <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">{t('purchases.totalInvoices')}</span>
+              </div>
+              <p className="text-base sm:text-xl font-black text-foreground">{invoices.length}</p>
             </div>
-            <p className="text-xl md:text-2xl font-bold text-foreground">{invoices.length}</p>
           </div>
-          <div className="bg-card rounded-lg border border-border p-3 md:p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">{t('purchases.totalAmount')}</span>
+          <div className="bg-card rounded-xl border border-border p-2.5 sm:p-3 flex items-center justify-between shadow-2xs">
+            <div>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">{t('purchases.totalAmount')}</span>
+              </div>
+              <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">${formatNumber(totalPurchases, 2)}</p>
             </div>
-            <p className="text-xl md:text-2xl font-bold text-foreground">${formatNumber(totalPurchases, 2)}</p>
           </div>
         </div>
       </div>

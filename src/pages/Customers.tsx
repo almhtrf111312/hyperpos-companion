@@ -73,7 +73,6 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import Debts from '@/pages/Debts';
-import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Customers() {
   const { t } = useLanguage();
@@ -371,15 +370,35 @@ export default function Customers() {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-4">
-      {/* Header */}
-      <PageHeader
-        title={t('nav.customersAndDebts' as any)}
-        subtitle={t('customers.pageSubtitle')}
-        actions={
-          activeTab === 'customers' ? (
+    <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
+      {/* Top Navigation Tabs - lifted with smart mobile clearance */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-3">
+        <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <div className="inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs select-none">
+            <TabsList className="bg-transparent p-0 h-auto gap-1">
+              <TabsTrigger
+                value="customers"
+                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>{t('customers.tabCustomers' as any) || 'العملاء'}</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="debts"
+                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>{t('customers.tabDebts' as any) || 'الديون'}</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+
+        <TabsContent value="customers" className="space-y-3 m-0">
+          {/* Add Customer Action directly under Customers tab */}
+          <div className="flex items-center justify-between gap-2">
             <Button
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-all cursor-pointer"
               onClick={() => {
                 setFormData({ name: '', phone: '', email: '', address: '' });
                 setShowAddDialog(true);
@@ -388,40 +407,7 @@ export default function Customers() {
               <Plus className="w-4 h-4" />
               <span>{t('customers.addCustomer')}</span>
             </Button>
-          ) : (
-            <Button
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5"
-              onClick={() => setShowEmbeddedAddDebt(true)}
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('debts.addCashDebt')}</span>
-            </Button>
-          )
-        }
-      />
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-        <div className="w-full sm:w-auto inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs overflow-hidden select-none">
-          <TabsList className="bg-transparent p-0 h-auto gap-1 w-full sm:w-auto">
-            <TabsTrigger
-              value="customers"
-              className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground flex-1 sm:flex-initial"
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>{t('customers.tabCustomers' as any)}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="debts"
-              className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground flex-1 sm:flex-initial"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>{t('customers.tabDebts' as any)}</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="customers" className="space-y-3 m-0">
+          </div>
           {/* Compact Stats Strip (Compressed 4-Metric Grid saving significant vertical space) */}
           <div className="grid grid-cols-4 gap-1.5 text-center select-none">
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
@@ -566,6 +552,17 @@ export default function Customers() {
         </TabsContent>
 
         <TabsContent value="debts" className="m-0 space-y-3">
+          {/* Add Cash Debt Action directly under Debts tab */}
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-all cursor-pointer"
+              onClick={() => setShowEmbeddedAddDebt(true)}
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('debts.addCashDebt')}</span>
+            </Button>
+          </div>
+
           <Debts embedded onAddDebt={showEmbeddedAddDebt} onAddDebtChange={setShowEmbeddedAddDebt} />
         </TabsContent>
       </Tabs>
