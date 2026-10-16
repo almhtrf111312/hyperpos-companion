@@ -513,17 +513,41 @@ export const distributeDetailedProfitCloud = async (
   profits: CategoryProfit[],
   invoiceId: string,
   customerName: string,
-  isDebt: boolean
+  isDebt: boolean,
+  authoritativeProfit?: number
 ): Promise<ProfitDistribution[]> => {
   const partners = await loadPartnersCloud();
   const allDistributions: ProfitDistribution[] = [];
   
   if (partners.length === 0 || profits.length === 0) return allDistributions;
   
+  // ✅ Security: Reconcile client-supplied category breakdown against server-authoritative total
+  let reconciledProfits = profits;
+  if (authoritativeProfit !== undefined && authoritativeProfit >= 0) {
+    const clientSum = profits.reduce((sum, p) => sum + (p.profit > 0 ? p.profit : 0), 0);
+    
+    if (clientSum > 0 && Math.abs(clientSum - authoritativeProfit) > 0.01) {
+      // Client-supplied breakdown doesn't match server total - proportionally adjust
+      const adjustmentRatio = authoritativeProfit / clientSum;
+      reconciledProfits = profits.map(p => ({
+        category: p.category,
+        profit: p.profit > 0 ? p.profit * adjustmentRatio : 0
+      }));
+      console.warn(
+        `[Partners] Category profit mismatch: client sum ${clientSum} vs server ${authoritativeProfit}. ` +
+        `Applied ratio ${adjustmentRatio.toFixed(4)} to reconcile.`
+      );
+    } else if (clientSum === 0 && authoritativeProfit > 0) {
+      // Client sent no category breakdown but server has profit - use default category
+      reconciledProfits = [{ category: 'عام', profit: authoritativeProfit }];
+      console.warn(`[Partners] No category breakdown provided; using default category for profit ${authoritativeProfit}`);
+    }
+  }
+  
   const updatedPartners: Map<string, Partner> = new Map();
   
   // Process each category profit
-  profits.forEach(({ category, profit }) => {
+  reconciledProfits.forEach(({ category, profit }) => {
     if (profit <= 0) return;
     
     let remainingProfit = profit;
