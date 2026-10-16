@@ -855,10 +855,8 @@ export default function Products() {
         } else if (statusFilter === 'low_stock') {
           if (product.quantity <= 0) return false;
           if (product.status !== 'low_stock') return false;
-        } else {
-          // 'all': Default view displays products that are active with inventory
-          if (product.quantity <= 0) return false;
         }
+        // statusFilter === 'all': Displays all active products regardless of inventory
       } else {
         if (statusFilter !== 'all' && product.status !== statusFilter) return false;
       }
@@ -875,8 +873,8 @@ export default function Products() {
   }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, t]);
 
   const activeProductsCount = useMemo(() => {
-    return noInventory ? products.filter(p => !p.archived).length : products.filter(p => !p.archived && p.quantity > 0).length;
-  }, [products, noInventory]);
+    return products.filter(p => !p.archived).length;
+  }, [products]);
 
   const stats = {
     total: activeProductsCount,
@@ -1670,6 +1668,18 @@ export default function Products() {
                 title={mainTab === 'archive' ? t('products.scanBarcodeArchive') : undefined}
               >
                 <ScanLine className="w-4 h-4 md:w-5 md:h-5" />
+              </Button>
+            )}
+
+            {!noInventory && mainTab === 'active' && (
+              <Button
+                variant="outline"
+                className="h-10 px-2.5 sm:px-3 gap-1.5 flex-shrink-0 text-xs font-semibold cursor-pointer"
+                onClick={() => setShowPurchaseInvoiceDialog(true)}
+                title={t('products.purchaseInvoice') || 'فاتورة شراء'}
+              >
+                <FileText className="w-4 h-4 text-primary shrink-0" />
+                <span className="hidden sm:inline">{t('products.purchaseInvoice') || 'فاتورة شراء'}</span>
               </Button>
             )}
             
