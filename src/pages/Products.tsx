@@ -2422,21 +2422,18 @@ export default function Products() {
 
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
-          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
+          <DialogContent className="w-[calc(100vw-1rem)] md:w-[calc(100vw-2.5rem)] sm:max-w-4xl lg:max-w-5xl max-h-[96vh] top-2 sm:top-4 translate-y-0 p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
             
             {/* Premium Header */}
-            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-6 pb-4 border-b border-border/50">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-5 sm:px-6 pt-3.5 pb-2.5 border-b border-border/60">
+              <DialogHeader className="space-y-0">
+                <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
                   {t('products.addProductTitle') || 'إضافة منتج جديد'}
                 </DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground mt-1">
-                  {t('products.addProductDesc')}
-                </DialogDescription>
               </DialogHeader>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(92vh-180px)] scrollbar-thin">
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(96vh-115px)] scrollbar-thin">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
@@ -2974,23 +2971,18 @@ export default function Products() {
 
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) clearPersistedState(); }}>
-          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
+          <DialogContent className="w-[calc(100vw-1rem)] md:w-[calc(100vw-2.5rem)] sm:max-w-4xl lg:max-w-5xl max-h-[96vh] top-2 sm:top-4 translate-y-0 p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
             
             {/* Premium Header */}
-            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-6 pb-4 border-b border-border/50">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-5 sm:px-6 pt-3.5 pb-2.5 border-b border-border/60">
+              <DialogHeader className="space-y-0">
+                <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
                   {selectedProduct?.archived ? t('products.restoreAndEditProduct') : tDynamic('editProduct')}
                 </DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground mt-1">
-                  {selectedProduct?.archived
-                    ? t('products.restoreAndEditDesc')
-                    : tDynamic('pageSubtitle')}
-                </DialogDescription>
               </DialogHeader>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(92vh-180px)] scrollbar-thin">
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(96vh-115px)] scrollbar-thin">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
@@ -3781,14 +3773,14 @@ export default function Products() {
               type="button"
               onClick={handleOpenAddProduct}
               className={cn(
-                "pointer-events-auto flex items-center justify-center w-12 h-12 md:w-13 md:h-13 rounded-full",
-                "bg-primary hover:bg-primary/90 active:scale-90 text-primary-foreground font-bold",
-                "shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50 transition-all cursor-pointer border-2 border-white/20 backdrop-blur-xs"
+                "pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full",
+                "bg-primary/90 hover:bg-primary active:scale-95 text-primary-foreground font-bold",
+                "shadow-xl shadow-primary/35 hover:shadow-2xl hover:shadow-primary/50 transition-all cursor-pointer border border-primary-foreground/25 backdrop-blur-md ring-4 ring-primary/15"
               )}
               title={tDynamic('addProduct')}
               aria-label={tDynamic('addProduct')}
             >
-              <Plus className="w-6 h-6 stroke-[2.5]" />
+              <Plus className="w-7 h-7 md:w-8 md:h-8 stroke-[2.5]" />
             </button>
           </div>
         )}
