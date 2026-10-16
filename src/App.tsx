@@ -142,7 +142,8 @@ const AppContent = () => {
       try {
         const isNew = sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
         if (isNew) {
-          setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true');
+          // إذا كان المستخدم في جلسة إنشاء حساب جديد، لا تقم بضبط setupComplete إلى true من خلال أحداث المزامنة
+          return;
         } else {
           setSetupComplete(localStorage.getItem('hyperpos_setup_complete') === 'true' || !!localStorage.getItem('hyperpos_settings_v1'));
         }

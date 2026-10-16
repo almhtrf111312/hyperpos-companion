@@ -254,7 +254,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         };
         
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-        localStorage.setItem('hyperpos_setup_complete', 'true');
+        const isJustSignedUp = typeof window !== 'undefined' && sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+        if (!isJustSignedUp) {
+          localStorage.setItem('hyperpos_setup_complete', 'true');
+        }
 
         // ✅ Restore product fields from cloud if available
         if (syncObj.productFieldsConfig) {
@@ -485,7 +488,10 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         };
 
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
-        localStorage.setItem('hyperpos_setup_complete', 'true');
+        const isJustSignedUp = typeof window !== 'undefined' && sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+        if (!isJustSignedUp) {
+          localStorage.setItem('hyperpos_setup_complete', 'true');
+        }
 
         // ✅ Restore product fields from cloud if available
         if (syncSettingsObj.productFieldsConfig) {
