@@ -388,6 +388,23 @@ ${systemContext}`;
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (gatewayRes.status === 403) {
+        const errText = await gatewayRes.text();
+        console.error("[BossAssistant] Lovable AI Gateway 403 Forbidden:", errText);
+        let forbiddenMsg = "بوابة الذكاء الاصطناعي معطلة في مساحة العمل. يرجى تفعيل موصل الذكاء الاصطناعي (AI Connector) من قائمة Connectors في المنصة ثم إعادة المحاولة.";
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.title?.includes("disabled") || parsed.message?.includes("disabled") || parsed.detail?.includes("disabled")) {
+            forbiddenMsg = "بوابة الذكاء الاصطناعي معطلة في مساحة العمل. يرجى تفعيل موصل الذكاء الاصطناعي (AI Connector) من قائمة Connectors في المنصة ثم إعادة المحاولة.";
+          } else if (parsed.title || parsed.message || parsed.detail) {
+            forbiddenMsg = parsed.title || parsed.message || parsed.detail;
+          }
+        } catch {}
+        return new Response(
+          JSON.stringify({ error: forbiddenMsg }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       const errText = await gatewayRes.text();
       let cleanErrorMessage = `خطأ في بوابة Lovable AI (${gatewayRes.status})`;
@@ -398,6 +415,12 @@ ${systemContext}`;
           cleanErrorMessage = parsed.error.message;
         } else if (typeof parsed.error === "string") {
           cleanErrorMessage = parsed.error;
+        } else if (parsed.title) {
+          cleanErrorMessage = parsed.title;
+        } else if (parsed.detail) {
+          cleanErrorMessage = parsed.detail;
+        } else if (parsed.message) {
+          cleanErrorMessage = parsed.message;
         }
       } catch {}
 
