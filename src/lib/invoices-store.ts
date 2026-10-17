@@ -18,6 +18,8 @@ export interface InvoiceItem {
   price: number;
   quantity: number;
   total: number;
+  costPrice?: number;
+  profit?: number;
 }
 
 export interface Invoice {
