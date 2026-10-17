@@ -16,7 +16,7 @@ const CARD_HEIGHT_ESTIMATE = 180;
 const MOBILE_CARD_HEIGHT = 200; // approximate height of mobile bottom-sheet
 
 type Lang = 'ar' | 'en';
-type StepCopy = { ar: string; en: string };
+type StepCopy = { ar: string; en: string; tr?: string; fa?: string; ku?: string };
 
 interface TourStep {
   id: string;
