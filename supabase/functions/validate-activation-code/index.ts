@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     // Use service role to access activation_codes table
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log(`User ${user.email} attempting to activate code: ${maskedLogCode} on device ${device_id}`)
+    console.log(`User ${user.id} attempting to activate code: ${maskedLogCode}`)
 
     // Call strict activation RPC
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('activate_code_strict', {
