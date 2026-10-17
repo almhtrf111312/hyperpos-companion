@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type ActivityType = 
   | 'login'
+  | 'expense_refund'
   | 'logout'
   | 'sale'
   | 'maintenance'

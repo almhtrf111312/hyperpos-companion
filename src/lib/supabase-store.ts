@@ -749,7 +749,7 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
 // Delete all user data (for data reset via unified RPC)
 export async function deleteAllUserData(): Promise<boolean> {
   try {
-    const { error } = await supabase.rpc('reset_user_store_data');
+    const { error } = await (supabase.rpc as any)('reset_user_store_data');
     if (error) {
       console.error('[deleteAllUserData] RPC reset_user_store_data error:', error);
       return false;
