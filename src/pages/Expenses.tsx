@@ -245,6 +245,7 @@ export default function Expenses() {
       startDate: toLocalDateString(new Date()),
       notes: '',
       payImmediately: false,
+      autoPay: false,
     });
   };
 
