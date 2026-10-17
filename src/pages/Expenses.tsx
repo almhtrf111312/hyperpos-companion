@@ -743,8 +743,8 @@ export default function Expenses() {
 
       {/* Add Expense Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm">
-          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -757,7 +757,7 @@ export default function Expenses() {
               </DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 overscroll-contain">
             <div>
               <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.expenseType')}</label>
               <Select
@@ -824,7 +824,7 @@ export default function Expenses() {
               />
             </div>
           </div>
-          <div className="p-3 bg-muted/20 border-t border-border flex gap-2">
+          <div className="shrink-0 p-3 bg-muted/30 border-t border-border flex gap-2">
             <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowAddDialog(false)}>
               {t('expenses.cancel')}
             </Button>
@@ -838,8 +838,8 @@ export default function Expenses() {
 
       {/* Add Recurring Expense Dialog */}
       <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm">
-          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -852,7 +852,7 @@ export default function Expenses() {
               </DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 overscroll-contain">
             <div>
               <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.expenseName')}</label>
               <Input
@@ -962,7 +962,7 @@ export default function Expenses() {
               </label>
             </div>
           </div>
-          <div className="p-3 bg-muted/20 border-t border-border flex gap-2">
+          <div className="shrink-0 p-3 bg-muted/30 border-t border-border flex gap-2">
             <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowRecurringDialog(false)}>
               {t('expenses.cancel')}
             </Button>
@@ -976,8 +976,8 @@ export default function Expenses() {
 
       {/* Recurring Expenses List Dialog */}
       <Dialog open={showRecurringListDialog} onOpenChange={setShowRecurringListDialog}>
-        <DialogContent className="max-w-lg w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm">
-          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+        <DialogContent className="max-w-lg w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -990,7 +990,7 @@ export default function Expenses() {
               </DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-4 space-y-2 max-h-[70vh] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 overscroll-contain">
             {recurringExpenses.length === 0 ? (
               <p className="text-center text-muted-foreground py-8 text-xs">{t('expenses.noFixedExpenses')}</p>
             ) : (
@@ -1081,7 +1081,7 @@ export default function Expenses() {
               })
             )}
           </div>
-          <div className="p-3 bg-muted/20 border-t border-border flex justify-end">
+          <div className="shrink-0 p-3 bg-muted/30 border-t border-border flex justify-end">
             <Button variant="outline" className="h-9 px-4 rounded-xl text-xs" onClick={() => setShowRecurringListDialog(false)}>
               {t('common.close')}
             </Button>
@@ -1091,8 +1091,8 @@ export default function Expenses() {
 
       {/* Edit Recurring Expense Dialog */}
       <Dialog open={showEditRecurringDialog} onOpenChange={setShowEditRecurringDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm">
-          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
+        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1105,7 +1105,7 @@ export default function Expenses() {
               </DialogDescription>
             </DialogHeader>
           </div>
-          <div className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 overscroll-contain">
             <div>
               <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.expenseName')}</label>
               <Input
@@ -1191,7 +1191,7 @@ export default function Expenses() {
               </label>
             </div>
           </div>
-          <div className="p-3 bg-muted/20 border-t border-border flex gap-2">
+          <div className="shrink-0 p-3 bg-muted/30 border-t border-border flex gap-2">
             <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowEditRecurringDialog(false)}>
               {t('expenses.cancel')}
             </Button>
