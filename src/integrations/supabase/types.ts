@@ -208,6 +208,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_recovery_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       book_loans: {
         Row: {
           created_at: string | null
@@ -1164,6 +1191,9 @@ export type Database = {
           id: string
           phone: string | null
           preferred_language: string | null
+          telegram_chat_id: number | null
+          telegram_linked_at: string | null
+          telegram_username: string | null
           updated_at: string
           user_id: string
           user_type: string | null
@@ -1176,6 +1206,9 @@ export type Database = {
           id?: string
           phone?: string | null
           preferred_language?: string | null
+          telegram_chat_id?: number | null
+          telegram_linked_at?: string | null
+          telegram_username?: string | null
           updated_at?: string
           user_id: string
           user_type?: string | null
@@ -1188,6 +1221,9 @@ export type Database = {
           id?: string
           phone?: string | null
           preferred_language?: string | null
+          telegram_chat_id?: number | null
+          telegram_linked_at?: string | null
+          telegram_username?: string | null
           updated_at?: string
           user_id?: string
           user_type?: string | null
