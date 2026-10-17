@@ -157,7 +157,7 @@ export const clearAllUserData = () => {
 
 /**
  * ✅ مسح شامل للبيانات:
- * 1. استدعاء supabase.rpc('reset_user_store_data') لمسح السحابة دفعة واحدة بأمان
+ * 1. استدعاء (supabase.rpc as any)('reset_user_store_data') لمسح السحابة دفعة واحدة بأمان
  * 2. مسح جميع مفاتيح localStorage ومخازن IndexedDB التابعة للبيانات فوراً بعد نجاح الاستدعاء
  */
 export const clearAllDataCompletely = async (): Promise<boolean> => {
@@ -167,7 +167,7 @@ export const clearAllDataCompletely = async (): Promise<boolean> => {
   try {
     if (isOnline) {
       // 1. استدعاء دالة السحابة الموحدة reset_user_store_data
-      const { error: rpcError } = await supabase.rpc('reset_user_store_data');
+      const { error: rpcError } = await (supabase.rpc as any)('reset_user_store_data');
       if (rpcError) {
         console.warn('[ClearData] reset_user_store_data RPC error, falling back to deleteAllUserData:', rpcError);
         const fallbackSuccess = await deleteAllUserData();
@@ -210,7 +210,7 @@ export const executePendingCloudClear = async (): Promise<void> => {
   if (!isPending) return;
   
   try {
-    const { error } = await supabase.rpc('reset_user_store_data');
+    const { error } = await (supabase.rpc as any)('reset_user_store_data');
     if (error) {
       await deleteAllUserData();
     }

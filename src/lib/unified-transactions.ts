@@ -374,7 +374,7 @@ export const reverseExpenseTransaction = (
     );
 
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
-    emitEvent(EVENTS.CASH_SHIFTS_CHANGED, null);
+    emitEvent(EVENTS.CASH_SHIFTS_UPDATED, null);
 
     return { success: true };
   } catch (error) {

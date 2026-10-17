@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type ActivityType = 
   | 'login'
+  | 'expense_refund'
   | 'logout'
   | 'sale'
   | 'maintenance'
@@ -174,6 +175,7 @@ export function clearActivityLogs() {
 
 // Activity type labels
 export const activityTypeLabels: Record<ActivityType, { ar: string; en: string; fr: string }> = {
+  expense_refund: { ar: 'استرداد مصروف', en: 'Expense Refund', fr: 'Remboursement de dépense' },
   login: { ar: 'تسجيل دخول', en: 'Login', fr: 'Connexion' },
   logout: { ar: 'تسجيل خروج', en: 'Logout', fr: 'Déconnexion' },
   sale: { ar: 'عملية بيع', en: 'Sale', fr: 'Vente' },

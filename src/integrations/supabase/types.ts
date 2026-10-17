@@ -517,6 +517,72 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          component_stack: string | null
+          created_at: string
+          device_language: string | null
+          error_message: string
+          error_stack: string | null
+          error_type: string | null
+          extra_context: Json | null
+          id: string
+          is_resolved: boolean | null
+          occurred_at: string
+          page_url: string | null
+          platform: string | null
+          screen_resolution: string | null
+          timezone: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          was_online: boolean | null
+          was_queued_offline: boolean | null
+        }
+        Insert: {
+          component_stack?: string | null
+          created_at?: string
+          device_language?: string | null
+          error_message: string
+          error_stack?: string | null
+          error_type?: string | null
+          extra_context?: Json | null
+          id?: string
+          is_resolved?: boolean | null
+          occurred_at?: string
+          page_url?: string | null
+          platform?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          was_online?: boolean | null
+          was_queued_offline?: boolean | null
+        }
+        Update: {
+          component_stack?: string | null
+          created_at?: string
+          device_language?: string | null
+          error_message?: string
+          error_stack?: string | null
+          error_type?: string | null
+          extra_context?: Json | null
+          id?: string
+          is_resolved?: boolean | null
+          occurred_at?: string
+          page_url?: string | null
+          platform?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          was_online?: boolean | null
+          was_queued_offline?: boolean | null
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number | null
@@ -2065,29 +2131,17 @@ export type Database = {
         }
         Returns: Json
       }
-      add_expense_atomic:
-        | {
-            Args: {
-              _amount: number
-              _date: string
-              _description: string
-              _expense_type: string
-              _notes: string
-              _operation_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _amount: number
-              _date: string
-              _description: string
-              _expense_type: string
-              _notes: string
-              _operation_id: string
-            }
-            Returns: Json
-          }
+      add_expense_atomic: {
+        Args: {
+          _amount: number
+          _date: string
+          _description: string
+          _expense_type: string
+          _notes: string
+          _operation_id: string
+        }
+        Returns: Json
+      }
       add_product_quantity: {
         Args: { _amount: number; _product_id: string }
         Returns: number
@@ -2181,105 +2235,41 @@ export type Database = {
       is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
-      process_pos_sale_atomic:
-        | {
-            Args: {
-              _currency: string
-              _customer_name: string
-              _customer_phone: string
-              _discount: number
-              _discount_percentage: number
-              _down_payment?: number
-              _items: Json
-              _operation_id: string
-              _payment_type: string
-              _profit: number
-              _subtotal: number
-              _tax_amount: number
-              _tax_rate: number
-              _total: number
-              _warehouse_id: string
-            }
-            Returns: {
-              already_processed: boolean
-              cogs: number
-              debt_paid: number
-              debt_remaining: number
-              discount: number
-              invoice_id: string
-              invoice_number: string
-              profit: number
-              stock_shortage: boolean
-              subtotal: number
-              success: boolean
-              tax_amount: number
-              total: number
-            }[]
-          }
-        | {
-            Args: {
-              _currency: string
-              _customer_name: string
-              _customer_phone: string
-              _discount: number
-              _discount_percentage: number
-              _down_payment?: number
-              _exchange_rate?: number
-              _items: Json
-              _operation_id: string
-              _payment_type: string
-              _profit: number
-              _subtotal: number
-              _tax_amount: number
-              _tax_rate: number
-              _total: number
-              _warehouse_id: string
-            }
-            Returns: {
-              already_processed: boolean
-              cogs: number
-              debt_paid: number
-              debt_remaining: number
-              discount: number
-              invoice_id: string
-              invoice_number: string
-              profit: number
-              stock_shortage: boolean
-              subtotal: number
-              success: boolean
-              tax_amount: number
-              total: number
-            }[]
-          }
-        | {
-            Args: {
-              _cashier_id?: string
-              _cost: number
-              _created_at?: string
-              _currency: string
-              _customer_id: string
-              _debt_due_date?: string
-              _exchange_rate?: number
-              _invoice_number: string
-              _items: Json
-              _paid?: number
-              _payment_type: string
-              _profit: number
-              _remaining?: number
-              _total: number
-              _user_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_deduct_inventory?: boolean
-              p_invoice: Json
-              p_items: Json
-              p_payment: Json
-            }
-            Returns: Json
-          }
+      process_pos_sale_atomic: {
+        Args: {
+          _currency: string
+          _customer_name: string
+          _customer_phone: string
+          _discount: number
+          _discount_percentage: number
+          _down_payment?: number
+          _exchange_rate?: number
+          _items: Json
+          _operation_id: string
+          _payment_type: string
+          _profit: number
+          _subtotal: number
+          _tax_amount: number
+          _tax_rate: number
+          _total: number
+          _warehouse_id: string
+        }
+        Returns: {
+          already_processed: boolean
+          cogs: number
+          debt_paid: number
+          debt_remaining: number
+          discount: number
+          invoice_id: string
+          invoice_number: string
+          profit: number
+          stock_shortage: boolean
+          subtotal: number
+          success: boolean
+          tax_amount: number
+          total: number
+        }[]
+      }
       recalc_pos_invoice_profit: {
         Args: { _invoice_id: string }
         Returns: undefined
@@ -2320,6 +2310,7 @@ export type Database = {
         Returns: Json
       }
       reset_user_device: { Args: { _target_user_id: string }; Returns: boolean }
+      reset_user_store_data: { Args: never; Returns: Json }
       reverse_expense_atomic: {
         Args: { p_expense_id: string; p_reason?: string }
         Returns: Json

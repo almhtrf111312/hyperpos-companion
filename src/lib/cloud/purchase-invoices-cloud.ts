@@ -707,3 +707,32 @@ export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
  
    return true;
  }
+/** Merge pending (not yet synced) purchase invoices from the sync queue into the list. */
+function mergeSyncQueuePurchases(list: PurchaseInvoice[]): PurchaseInvoice[] {
+  try {
+    const existing = new Set(list.map(i => i.invoice_number));
+    const pending = getPendingOperations()
+      .filter(op => op.type === 'purchase_invoice')
+      .map(op => {
+        const d = op.data as Record<string, any>;
+        return {
+          id: `queued-${op.id}`,
+          user_id: '',
+          invoice_number: String(d.invoiceNumber ?? ''),
+          supplier_name: String(d.supplierName ?? ''),
+          supplier_company: d.supplierCompany,
+          invoice_date: String(d.invoiceDate ?? op.createdAt?.slice(0, 10) ?? ''),
+          expected_items_count: Number(d.expectedItemsCount ?? 0),
+          expected_total_quantity: Number(d.expectedTotalQuantity ?? 0),
+          expected_grand_total: Number(d.expectedGrandTotal ?? 0),
+          status: 'draft',
+          notes: d.notes,
+          created_at: op.createdAt,
+        } as unknown as PurchaseInvoice;
+      })
+      .filter(p => p.invoice_number && !existing.has(p.invoice_number));
+    return pending.length ? [...pending, ...list] : list;
+  } catch {
+    return list;
+  }
+}
