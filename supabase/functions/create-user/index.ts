@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Creating user with email:', email);
+    console.log('Creating user');
 
     // Create user using admin API - this won't affect the current session
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
