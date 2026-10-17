@@ -13,7 +13,7 @@ import {
   PieChart as PieIcon,
   BarChart3,
   CheckCircle2,
-} from 'recharts';
+} from 'lucide-react';
 import {
   ResponsiveContainer,
   AreaChart,
