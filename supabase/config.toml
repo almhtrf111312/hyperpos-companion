@@ -42,3 +42,7 @@ verify_jwt = false
 [functions.boss-assistant]
 verify_jwt = false
 
+[functions.telegram-auth]
+verify_jwt = false
+
+

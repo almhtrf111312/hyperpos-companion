@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail, Sparkles } from 'lucide-react';
+import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail, Sparkles, Send, KeyRound, ShieldCheck, CheckCircle2, ArrowRight, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
@@ -16,6 +16,7 @@ import { getDeviceKey } from '@/lib/secure-storage';
 import { CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
 import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
 import { injectGuestDemoData, clearGuestDemoData } from '@/lib/demo-data';
+import { cn } from '@/lib/utils';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,19 @@ export default function Login() {
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [contactLinks, setContactLinks] = useState<ContactLinks | null>(null);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+
+  // Telegram Password Recovery State
+  const [recoveryMethod, setRecoveryMethod] = useState<'telegram' | 'email'>('telegram');
+  const [telegramStep, setTelegramStep] = useState<1 | 2>(1);
+  const [tgIdentifier, setTgIdentifier] = useState('');
+  const [tgCode, setTgCode] = useState('');
+  const [tgNewPassword, setTgNewPassword] = useState('');
+  const [tgConfirmPassword, setTgConfirmPassword] = useState('');
+  const [tgShowNewPassword, setTgShowNewPassword] = useState(false);
+  const [tgShowConfirmPassword, setTgShowConfirmPassword] = useState(false);
+  const [isTgLoading, setIsTgLoading] = useState(false);
+  const [tgBotLink, setTgBotLink] = useState<string | null>(null);
+  const [tgNotLinkedError, setTgNotLinkedError] = useState(false);
 
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
@@ -91,7 +105,146 @@ export default function Login() {
       }
     };
     fetchContactLinks();
-  }, [showForgotDialog]);
+
+    // Auto-fill identifier from login email if available
+    if (email && !tgIdentifier) {
+      setTgIdentifier(email);
+    }
+    if (email && !resetEmail) {
+      setResetEmail(email);
+    }
+
+    // Fetch Telegram bot info
+    const fetchBotInfo = async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const res = await fetch(`${supabaseUrl}/functions/v1/telegram-auth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: anonKey || '' },
+          body: JSON.stringify({ action: 'get_bot_info' }),
+        });
+        const d = await res.json();
+        if (d?.bot_link) {
+          setTgBotLink(d.bot_link);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch bot info:', err);
+      }
+    };
+    fetchBotInfo();
+  }, [showForgotDialog, email]);
+
+  // Handle Telegram OTP Request (Step 1)
+  const handleRequestTelegramOtp = async () => {
+    const trimmed = tgIdentifier.trim();
+    if (!trimmed) {
+      toast.error('يرجى إدخال البريد الإلكتروني أو رقم الهاتف المسجل');
+      return;
+    }
+
+    setIsTgLoading(true);
+    setTgNotLinkedError(false);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`${supabaseUrl}/functions/v1/telegram-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey || '',
+        },
+        body: JSON.stringify({
+          action: 'request_otp',
+          identifier: trimmed,
+        }),
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok || !resData?.success) {
+        if (resData?.not_linked) {
+          setTgNotLinkedError(true);
+          if (resData?.bot_link) {
+            setTgBotLink(resData.bot_link);
+          }
+        }
+        toast.error(resData?.error || 'فشل إرسال رمز التحقق إلى تيليغرام');
+        return;
+      }
+
+      toast.success(resData?.message || 'تم إرسال رمز التحقق إلى تيليغرام بنجاح');
+      setTelegramStep(2);
+    } catch (err: any) {
+      console.error('Request Telegram OTP error:', err);
+      toast.error('تعذر الاتصال بخدمة تيليغرام، يرجى المحاولة لاحقاً');
+    } finally {
+      setIsTgLoading(false);
+    }
+  };
+
+  // Handle Telegram Verify and Reset Password (Step 2)
+  const handleVerifyAndResetPassword = async () => {
+    const code = tgCode.trim();
+    if (!code || code.length !== 6) {
+      toast.error('يرجى إدخال رمز التحقق المكون من 6 أرقام');
+      return;
+    }
+
+    if (!tgNewPassword || tgNewPassword.length < 6) {
+      toast.error('كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل');
+      return;
+    }
+
+    if (tgNewPassword !== tgConfirmPassword) {
+      toast.error('كلمة المرور وتأكيدها غير متطابقين');
+      return;
+    }
+
+    setIsTgLoading(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`${supabaseUrl}/functions/v1/telegram-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey || '',
+        },
+        body: JSON.stringify({
+          action: 'verify_and_reset',
+          identifier: tgIdentifier.trim(),
+          code: code,
+          new_password: tgNewPassword,
+        }),
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok || !resData?.success) {
+        toast.error(resData?.error || 'فشل التحقق وتغيير كلمة المرور');
+        return;
+      }
+
+      toast.success(resData?.message || 'تم تغيير كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.');
+      setPassword(tgNewPassword);
+      if (tgIdentifier.includes('@')) {
+        setEmail(tgIdentifier.trim());
+      }
+      setShowForgotDialog(false);
+
+      // Reset state for next time
+      setTelegramStep(1);
+      setTgCode('');
+      setTgNewPassword('');
+      setTgConfirmPassword('');
+    } catch (err: any) {
+      console.error('Verify and reset password error:', err);
+      toast.error('حدث خطأ أثناء تغيير كلمة المرور');
+    } finally {
+      setIsTgLoading(false);
+    }
+  };
 
   // Check if device is blocked for a user
   const checkDeviceBinding = async (userId: string): Promise<{ blocked: boolean; allowMultiDevice: boolean }> => {
@@ -464,160 +617,444 @@ export default function Login() {
         </DialogContent>
       </Dialog>
 
-      {/* Forgot Password Dialog */}
-      <Dialog open={showForgotDialog} onOpenChange={setShowForgotDialog}>
-        <DialogContent className="sm:max-w-md" dir={direction}>
-          <DialogHeader className="text-center sm:text-center">
-            <div className="mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-              <Mail className="w-7 h-7 text-primary" />
+      {/* Forgot Password Dialog with Telegram & Email Recovery */}
+      <Dialog open={showForgotDialog} onOpenChange={(open) => {
+        setShowForgotDialog(open);
+        if (!open) {
+          setTelegramStep(1);
+          setTgCode('');
+          setTgNewPassword('');
+          setTgConfirmPassword('');
+          setTgNotLinkedError(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" dir={direction}>
+          <DialogHeader className="text-center sm:text-center pb-1">
+            <div className={cn(
+              "mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-2.5 transition-colors shadow-xs",
+              recoveryMethod === 'telegram' ? "bg-sky-500/10 text-sky-500 border border-sky-500/20" : "bg-primary/10 text-primary border border-primary/20"
+            )}>
+              {recoveryMethod === 'telegram' ? (
+                <Send className="w-7 h-7" />
+              ) : (
+                <Mail className="w-7 h-7" />
+              )}
             </div>
-            <DialogTitle>{t('auth.forgotPasswordTitle')}</DialogTitle>
+            <DialogTitle className="text-lg font-bold">
+              {recoveryMethod === 'telegram' ? 'استعادة كلمة المرور عبر تيليغرام' : t('auth.forgotPasswordTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              اختر الطريقة الأنسب لاستعادة الوصول إلى حسابك بسرعة وأمان
+            </DialogDescription>
           </DialogHeader>
 
-          {isLoadingContacts ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : contactLinks && Object.values(contactLinks).some((v) => typeof v === 'string' && v.trim()) ? (
-            // عرض بيانات التواصل عندما تكون محفوظة
-            <div className="space-y-4 my-2">
-              <DialogDescription className="text-center text-base">
-                تواصل مع مديرك لإعادة تعيين كلمة المرور
-              </DialogDescription>
-              <div className="grid grid-cols-2 gap-3">
-                {CHANNELS.filter(ch => contactLinks[ch.key]?.trim()).map((ch) => (
-                  <button
-                    key={ch.key}
-                    onClick={() => window.open(ch.openUrl(contactLinks[ch.key]!), '_blank')}
-                    className={`${ch.color} ${ch.hoverColor} text-white rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-200 hover:shadow-lg active:scale-95`}
-                  >
-                    <span className="text-xl">{ch.icon}</span>
-                    <span className="font-medium text-sm">{t(ch.labelKey as any)}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">أو</span>
-                </div>
-              </div>
-              <p className="text-center text-sm text-muted-foreground">إذا كنت المالك يمكنك إعادة تعيين كلمة المرور بالبريد الإلكتروني</p>
-              <div className="space-y-2">
-                <Label htmlFor="resetEmail">{t('auth.email')}</Label>
-                <Input
-                  id="resetEmail"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  disabled={isSendingReset}
-                  className="h-11"
-                />
-              </div>
-              <Button
-                onClick={async () => {
-                  if (!resetEmail) return;
-                  setIsSendingReset(true);
-                  try {
-                    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-                      redirectTo: `${window.location.origin}/#/reset-password`,
-                    });
-                    if (error) {
-                      toast.error(error.message);
-                    } else {
-                      toast.success(t('auth.resetSent'));
-                      setShowForgotDialog(false);
-                    }
-                  } catch (err) {
-                    console.error('Reset password error:', err);
-                    toast.error(t('common.error'));
-                  } finally {
-                    setIsSendingReset(false);
-                  }
-                }}
-                disabled={isSendingReset || !resetEmail}
-                variant="outline"
-                className="w-full"
-              >
-                {isSendingReset ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {t('auth.loading')}
-                  </>
-                ) : (
-                  t('auth.sendResetLink')
-                )}
-              </Button>
-            </div>
-          ) : (
-            // عرض حقل البريد الإلكتروني فقط عندما لا توجد بيانات تواصل
-            <>
-              <DialogDescription className="text-center text-base mt-2">
-                {t('auth.forgotPasswordDesc')}
-              </DialogDescription>
-              <div className="space-y-4 my-2">
-                <div className="space-y-2">
-                  <Label htmlFor="resetEmail">{t('auth.email')}</Label>
-                  <Input
-                    id="resetEmail"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    disabled={isSendingReset}
-                    className="h-11"
-                  />
-                </div>
-              </div>
+          {/* Recovery Method Switcher (Capsule Tabs) */}
+          <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 w-full border border-border/40 shadow-xs my-1 select-none">
+            <button
+              type="button"
+              onClick={() => {
+                setRecoveryMethod('telegram');
+                setTgNotLinkedError(false);
+              }}
+              className={cn(
+                "flex-1 rounded-xl py-2 px-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
+                recoveryMethod === 'telegram'
+                  ? "bg-sky-500 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+              )}
+            >
+              <Send className="w-3.5 h-3.5 shrink-0" />
+              <span>بوت تيليغرام</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecoveryMethod('email')}
+              className={cn(
+                "flex-1 rounded-xl py-2 px-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
+                recoveryMethod === 'email'
+                  ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+              )}
+            >
+              <Mail className="w-3.5 h-3.5 shrink-0" />
+              <span>البريد والدعم</span>
+            </button>
+          </div>
 
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowForgotDialog(false)}
-                  className="w-full sm:w-auto"
-                  disabled={isSendingReset}
-                >
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (!resetEmail) return;
-                    setIsSendingReset(true);
-                    try {
-                      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-                        redirectTo: `${window.location.origin}/#/reset-password`,
-                      });
-                      if (error) {
-                        toast.error(error.message);
-                      } else {
-                        toast.success(t('auth.resetSent'));
-                        setShowForgotDialog(false);
-                      }
-                    } catch (err) {
-                      console.error('Reset password error:', err);
-                      toast.error(t('common.error'));
-                    } finally {
-                      setIsSendingReset(false);
-                    }
-                  }}
-                  disabled={isSendingReset || !resetEmail}
-                  className="w-full sm:w-auto"
-                >
-                  {isSendingReset ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t('auth.loading')}
-                    </>
-                  ) : (
-                    t('auth.sendResetLink')
+          {/* ========================================================================= */}
+          {/* TAB 1: TELEGRAM BOT RECOVERY */}
+          {/* ========================================================================= */}
+          {recoveryMethod === 'telegram' && (
+            <div className="space-y-4 pt-1">
+              {telegramStep === 1 ? (
+                /* Step 1: Enter Email/Phone & Request OTP */
+                <div className="space-y-3.5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tgIdentifier" className="text-xs font-semibold text-foreground">
+                      البريد الإلكتروني أو رقم الهاتف المسجل
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="tgIdentifier"
+                        type="text"
+                        placeholder="name@example.com أو 0770..."
+                        value={tgIdentifier}
+                        onChange={(e) => {
+                          setTgIdentifier(e.target.value);
+                          setTgNotLinkedError(false);
+                        }}
+                        disabled={isTgLoading}
+                        className="h-11 rounded-xl text-sm"
+                        dir="ltr"
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-normal">
+                      أدخل البريد أو رقم الهاتف المسجل في ملفك الشخصي لإرسال رمز التحقق فوراً إلى محادثة البوت.
+                    </p>
+                  </div>
+
+                  {/* Warning when account is not linked to bot */}
+                  {tgNotLinkedError && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs space-y-2 text-amber-700 dark:text-amber-400">
+                      <div className="flex items-center gap-2 font-bold">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>حسابك غير مربوط بالبوت بعد</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed">
+                        لم يتم ربط رقم هاتفك ببوت التحقق حتى الآن. لربطه بثوانٍ: اضغط على الزر أدناه لفتح البوت في تيليغرام واضغط <strong>/start</strong> ثم <strong>«مشاركة رقم الهاتف للتحقق»</strong>.
+                      </p>
+                      {tgBotLink && (
+                        <a
+                          href={tgBotLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-xs transition-all shadow-sm"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>فتح بوت تيليغرام الآن للربط</span>
+                        </a>
+                      )}
+                    </div>
                   )}
-                </Button>
-              </DialogFooter>
-            </>
+
+                  <Button
+                    type="button"
+                    onClick={handleRequestTelegramOtp}
+                    disabled={isTgLoading || !tgIdentifier.trim()}
+                    className="w-full h-11 rounded-xl font-bold bg-sky-500 hover:bg-sky-600 active:scale-98 text-white shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    {isTgLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>جاري التحقق وإرسال الرمز...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>إرسال رمز التحقق إلى تيليغرام</span>
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Direct Link to Bot for first time linking */}
+                  {tgBotLink && !tgNotLinkedError && (
+                    <div className="pt-1 text-center">
+                      <a
+                        href={tgBotLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline font-medium inline-flex items-center gap-1"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>لم تربط البوت بعد؟ اضغط هنا للبدء ومشاركة رقم هاتفك</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Step 2: Enter 6-digit OTP & Set New Password */
+                <div className="space-y-3.5">
+                  <div className="p-2.5 bg-sky-500/10 border border-sky-500/25 rounded-2xl flex items-center justify-between text-xs text-sky-700 dark:text-sky-300">
+                    <span className="font-semibold">تم إرسال رمز التحقق إلى محادثتك في تيليغرام</span>
+                    <button
+                      type="button"
+                      onClick={() => setTelegramStep(1)}
+                      className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+                    >
+                      تغيير
+                    </button>
+                  </div>
+
+                  {/* OTP Code input */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tgCode" className="text-xs font-semibold text-foreground">
+                      رمز التحقق (6 أرقام)
+                    </Label>
+                    <div className="relative">
+                      <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="tgCode"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        placeholder="------"
+                        value={tgCode}
+                        onChange={(e) => setTgCode(e.target.value.replace(/\D/g, ''))}
+                        disabled={isTgLoading}
+                        className="pr-9 h-12 rounded-xl text-center font-mono text-xl tracking-[0.35em] font-black border-2 border-primary/30 focus-visible:border-primary"
+                        dir="ltr"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tgNewPassword" className="text-xs font-semibold text-foreground">
+                      كلمة المرور الجديدة
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="tgNewPassword"
+                        type={tgShowNewPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={tgNewPassword}
+                        onChange={(e) => setTgNewPassword(e.target.value)}
+                        disabled={isTgLoading}
+                        className="pr-9 pl-9 h-11 rounded-xl text-sm"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTgShowNewPassword(!tgShowNewPassword)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {tgShowNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tgConfirmPassword" className="text-xs font-semibold text-foreground">
+                      تأكيد كلمة المرور الجديدة
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="tgConfirmPassword"
+                        type={tgShowConfirmPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={tgConfirmPassword}
+                        onChange={(e) => setTgConfirmPassword(e.target.value)}
+                        disabled={isTgLoading}
+                        className="pr-9 pl-9 h-11 rounded-xl text-sm"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTgShowConfirmPassword(!tgShowConfirmPassword)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {tgShowConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    type="button"
+                    onClick={handleVerifyAndResetPassword}
+                    disabled={isTgLoading || tgCode.length !== 6 || !tgNewPassword || tgNewPassword.length < 6}
+                    className="w-full h-11 rounded-xl font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    {isTgLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>جاري التحقق وتغيير كلمة المرور...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>تأكيد وتغيير كلمة المرور</span>
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Resend Code / Back */}
+                  <div className="flex items-center justify-between text-xs pt-1 px-1">
+                    <button
+                      type="button"
+                      onClick={handleRequestTelegramOtp}
+                      disabled={isTgLoading}
+                      className="text-sky-600 dark:text-sky-400 hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                    >
+                      إعادة إرسال رمز جديد
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTelegramStep(1)}
+                      className="text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      الرجوع للخطوة السابقة
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* TAB 2: EMAIL & SUPPORT RECOVERY */}
+          {/* ========================================================================= */}
+          {recoveryMethod === 'email' && (
+            <div className="space-y-4 pt-1">
+              {isLoadingContacts ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : contactLinks && Object.values(contactLinks).some((v) => typeof v === 'string' && v.trim()) ? (
+                <div className="space-y-4 my-2">
+                  <DialogDescription className="text-center text-sm font-medium">
+                    تواصل مع مدير النظام أو الدعم الفني لإعادة تعيين كلمة المرور
+                  </DialogDescription>
+                  <div className="grid grid-cols-2 gap-3">
+                    {CHANNELS.filter(ch => contactLinks[ch.key]?.trim()).map((ch) => (
+                      <button
+                        key={ch.key}
+                        onClick={() => window.open(ch.openUrl(contactLinks[ch.key]!), '_blank')}
+                        className={`${ch.color} ${ch.hoverColor} text-white rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-200 hover:shadow-lg active:scale-95`}
+                      >
+                        <span className="text-xl">{ch.icon}</span>
+                        <span className="font-medium text-sm">{t(ch.labelKey as any)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">أو</span>
+                    </div>
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground">إعادة تعيين كلمة المرور برابط إلى بريدك الإلكتروني</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="resetEmail">{t('auth.email')}</Label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      disabled={isSendingReset}
+                      className="h-11 rounded-xl"
+                      dir="ltr"
+                    />
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      if (!resetEmail) return;
+                      setIsSendingReset(true);
+                      try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                          redirectTo: `${window.location.origin}/#/reset-password`,
+                        });
+                        if (error) {
+                          toast.error(error.message);
+                        } else {
+                          toast.success(t('auth.resetSent'));
+                          setShowForgotDialog(false);
+                        }
+                      } catch (err) {
+                        console.error('Reset password error:', err);
+                        toast.error(t('common.error'));
+                      } finally {
+                        setIsSendingReset(false);
+                      }
+                    }}
+                    disabled={isSendingReset || !resetEmail}
+                    variant="outline"
+                    className="w-full h-11 rounded-xl font-bold cursor-pointer"
+                  >
+                    {isSendingReset ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t('auth.loading')}
+                      </>
+                    ) : (
+                      t('auth.sendResetLink')
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4 my-2">
+                  <DialogDescription className="text-center text-xs text-muted-foreground">
+                    {t('auth.forgotPasswordDesc')}
+                  </DialogDescription>
+                  <div className="space-y-2">
+                    <Label htmlFor="resetEmail">{t('auth.email')}</Label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      disabled={isSendingReset}
+                      className="h-11 rounded-xl"
+                      dir="ltr"
+                    />
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      if (!resetEmail) return;
+                      setIsSendingReset(true);
+                      try {
+                        const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                          redirectTo: `${window.location.origin}/#/reset-password`,
+                        });
+                        if (error) {
+                          toast.error(error.message);
+                        } else {
+                          toast.success(t('auth.resetSent'));
+                          setShowForgotDialog(false);
+                        }
+                      } catch (err) {
+                        console.error('Reset password error:', err);
+                        toast.error(t('common.error'));
+                      } finally {
+                        setIsSendingReset(false);
+                      }
+                    }}
+                    disabled={isSendingReset || !resetEmail}
+                    className="w-full h-11 rounded-xl font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-sm cursor-pointer"
+                  >
+                    {isSendingReset ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t('auth.loading')}
+                      </>
+                    ) : (
+                      t('auth.sendResetLink')
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="border-t border-border/40 pt-3 mt-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowForgotDialog(false)}
+              className="w-full h-10 rounded-xl text-xs font-semibold cursor-pointer"
+            >
+              {t('common.cancel')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
