@@ -102,7 +102,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Reports() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const [searchParams] = useSearchParams();
   const storeType = getCurrentStoreType();
   const noInventory = isNoInventoryMode();

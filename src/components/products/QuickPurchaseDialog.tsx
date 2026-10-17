@@ -40,6 +40,7 @@ import { isNoInventoryMode } from '@/lib/store-type-config';
 import { cn, formatNumber } from '@/lib/utils';
 import { addWithdrawalFromShift } from '@/lib/cashbox-store';
 import { addActivityLog } from '@/lib/activity-log';
+import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 
 interface QuickPurchaseDialogProps {
   open: boolean;

@@ -257,7 +257,7 @@ export function CartPanel({
   lastAddedItemId,
 }: CartPanelProps) {
   const { user, profile } = useAuth();
-  const { t, language } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
   const { activeWarehouse } = useWarehouse();
   // المستودع الرئيسي يخزن كمياته في المنتج نفسه وليس في جدول مخزون المستودعات
   const stockWarehouseId = activeWarehouse && activeWarehouse.type !== 'main' ? activeWarehouse.id : undefined;
