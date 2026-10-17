@@ -92,19 +92,14 @@ serve(async (req) => {
       );
     }
 
-    // 3. Read GEMINI_API_KEY from server secrets
-    // We strictly check GEMINI_API_KEY or the named secret "AI Flow POS Pro" / "AI_FLOW_POS_PRO"
-    const GEMINI_API_KEY =
-      Deno.env.get("GEMINI_API_KEY") ||
-      Deno.env.get("AI Flow POS Pro") ||
-      Deno.env.get("AI_FLOW_POS_PRO");
+    // 3. Read LOVABLE_API_KEY from environment
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!GEMINI_API_KEY) {
-      console.error("[BossAssistant] Secret GEMINI_API_KEY is missing in server environment");
+    if (!LOVABLE_API_KEY) {
+      console.error("[BossAssistant] LOVABLE_API_KEY is missing in server environment");
       return new Response(
         JSON.stringify({
-          error:
-            "مفتاح GEMINI_API_KEY غير مهيأ في أسرار خادم Supabase (Secrets). يرجى إضافة السر باسم GEMINI_API_KEY في إعدادات Supabase.",
+          error: "مفتاح LOVABLE_API_KEY غير مهيأ في بيئة الخادم. يرجى التأكد من ضبطه في إعدادات المنصة.",
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -235,7 +230,6 @@ ${errorsSummary}
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // Check byte length (~3/4 of base64 length)
       const approxBytes = (parsed.base64.length * 3) / 4;
       if (approxBytes > MAX_IMAGE_BYTES) {
         return new Response(
@@ -249,21 +243,19 @@ ${errorsSummary}
     // Validate and process audio attachment
     let validatedAudioPart: { mimeType: string; base64: string } | null = null;
     if (audio) {
-      let rawAudioStr = typeof audio === "string" ? audio : audio.data;
-      let rawAudioMime = typeof audio === "object" ? audio.mimeType : undefined;
+      const rawAudioStr = typeof audio === "string" ? audio : audio.data;
+      const rawAudioMime = typeof audio === "object" ? audio.mimeType : undefined;
 
       if (rawAudioStr) {
         const parsed = parseDataUrl(rawAudioStr);
         let mime = parsed ? parsed.mimeType : (rawAudioMime || "audio/webm").toLowerCase();
         let b64 = parsed ? parsed.base64 : rawAudioStr;
 
-        // Clean any potential prefix
         if (b64.includes(",")) {
           b64 = b64.split(",")[1];
         }
 
         if (!ALLOWED_AUDIO_TYPES.has(mime)) {
-          // Normalize mime if e.g. audio/webm;codecs=opus
           const cleanMime = mime.split(";")[0].trim();
           if (ALLOWED_AUDIO_TYPES.has(cleanMime)) {
             mime = cleanMime;
@@ -287,10 +279,6 @@ ${errorsSummary}
       }
     }
 
-    console.log(
-      `[BossAssistant] Calling Gemini API (images: ${validatedImageParts.length}, audio: ${Boolean(validatedAudioPart)})`
-    );
-
     // 6. Construct System Prompt
     const systemPrompt = `أنت «المستشار التنفيذي الذكي» والمساعد الإداري والتقني الخاص والحصري لمالك ومطور نظام Flow POS Pro (الـ Boss).
 أنت تعمل كغرفة قيادة ذكية ومساعد تنفيذي فائق الذكاء، ولديك صلاحية وفهم شامل لكافة جوانب النظام: نقاط البيع (POS)، المخزون، قواعد البيانات، الشبكات، الفواتير، رادار الأخطاء، وحسابات المشتركين والتراخيص.
@@ -309,113 +297,123 @@ ${errorsSummary}
 
 ${systemContext}`;
 
-    // 7. Adapt to Google Gemini Contents Format
-    // In Gemini API, roles are "user" and "model"
-    const geminiContents: Array<{ role: "user" | "model"; parts: Array<Record<string, unknown>> }> = [];
+    // 7. Adapt to Lovable AI Gateway (OpenAI Chat Completions format)
+    const formattedMessages: Array<{
+      role: "system" | "user" | "assistant";
+      content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    }> = [
+      { role: "system", content: systemPrompt },
+    ];
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
-      const role = msg.role === "assistant" ? "model" : "user";
-      const isLast = i === messages.length - 1;
+      if (!msg) continue;
+      const role: "user" | "assistant" = msg.role === "assistant" ? "assistant" : "user";
+      const isLastUser = (role === "user" && i === messages.map((m: any) => m.role).lastIndexOf("user"));
+      const text = typeof msg.content === "string" ? msg.content.trim() : (msg.content?.[0]?.text || "").trim();
 
-      const parts: Array<Record<string, unknown>> = [];
-      const text = typeof msg.content === "string" ? msg.content : (msg.content?.[0]?.text || "");
-      if (text) {
-        parts.push({ text });
-      }
+      if (isLastUser && validatedImageParts.length > 0) {
+        const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
 
-      // If last user message, attach images and audio
-      if (isLast && role === "user") {
+        let userPromptText = text;
+        if (validatedAudioPart) {
+          userPromptText = userPromptText
+            ? `[تسجيل صوتي مرفق]\n${userPromptText}`
+            : "يرجى الاستماع للتسجيل الصوتي المرفق وتحليله.";
+        }
+
+        parts.push({
+          type: "text",
+          text: userPromptText || "يرجى فحص الصورة المرفقة وتحليلها وتقديم الحلول المناسبة.",
+        });
+
         for (const imgPart of validatedImageParts) {
           parts.push({
-            inline_data: {
-              mime_type: imgPart.mimeType,
-              data: imgPart.base64,
+            type: "image_url",
+            image_url: {
+              url: `data:${imgPart.mimeType};base64,${imgPart.base64}`,
             },
           });
         }
 
-        if (validatedAudioPart) {
-          parts.push({
-            inline_data: {
-              mime_type: validatedAudioPart.mimeType,
-              data: validatedAudioPart.base64,
-            },
-          });
+        formattedMessages.push({
+          role: "user",
+          content: parts,
+        });
+      } else {
+        let contentText = text;
+        if (isLastUser && validatedAudioPart) {
+          contentText = contentText
+            ? `[تسجيل صوتي مرفق]\n${contentText}`
+            : "يرجى الاستماع للتسجيل الصوتي المرفق وتحليله.";
         }
-      }
 
-      if (parts.length === 0) {
-        parts.push({ text: "يرجى التحليل والمساعدة" });
+        formattedMessages.push({
+          role,
+          content: contentText || (role === "assistant" ? "" : "يرجى التحليل والمساعدة"),
+        });
       }
-
-      geminiContents.push({ role, parts });
     }
 
-    // 8. Connect to Google Gemini API
-    const geminiPayload = {
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: geminiContents,
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 4096,
-      },
-    };
+    // 8. Call Lovable AI Gateway
+    const gatewayEndpoint = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-    // Primary model: gemini-2.5-flash with SSE streaming
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(GEMINI_API_KEY)}`;
+    console.log(
+      `[BossAssistant] Calling Lovable AI Gateway (model: google/gemini-2.5-flash, images: ${validatedImageParts.length}, audio: ${Boolean(validatedAudioPart)})`
+    );
 
-    let geminiRes = await fetch(geminiEndpoint, {
+    const gatewayRes = await fetch(gatewayEndpoint, {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(geminiPayload),
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: formattedMessages,
+        stream: true,
+      }),
     });
 
-    // Fallback model if gemini-2.5-flash is not available on this key tier
-    if (geminiRes.status === 404) {
-      console.warn("[BossAssistant] gemini-2.5-flash not found, falling back to gemini-2.0-flash");
-      const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(GEMINI_API_KEY)}`;
-      geminiRes = await fetch(fallbackEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiPayload),
-      });
-    }
+    if (!gatewayRes.ok) {
+      if (gatewayRes.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "تم تجاوز حد الطلبات المسموح به مؤقتاً، يرجى المحاولة بعد قليل." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (gatewayRes.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "يرجى إضافة رصيد للمتابعة في بوابة الذكاء الاصطناعي (Lovable AI Gateway)." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      let cleanErrorMessage = `خطأ في خادم Gemini (${geminiRes.status})`;
+      const errText = await gatewayRes.text();
+      let cleanErrorMessage = `خطأ في بوابة Lovable AI (${gatewayRes.status})`;
 
       try {
         const parsed = JSON.parse(errText);
         if (parsed.error?.message) {
           cleanErrorMessage = parsed.error.message;
+        } else if (typeof parsed.error === "string") {
+          cleanErrorMessage = parsed.error;
         }
       } catch {}
 
-      // Scrub any sensitive key reflections
-      cleanErrorMessage = cleanErrorMessage.replace(GEMINI_API_KEY, "[REDACTED]");
-
-      if (geminiRes.status === 400 && cleanErrorMessage.toLowerCase().includes("api key not valid")) {
-        cleanErrorMessage = "مفتاح Gemini API غير صالح أو لم يتم تفعيله في Google AI Studio. يرجى مراجعة السر GEMINI_API_KEY.";
-      } else if (geminiRes.status === 429) {
-        cleanErrorMessage = "تم تجاوز حد استهلاك Gemini مؤقتاً، يرجى المحاولة بعد لحظات.";
-      }
-
-      console.error("[BossAssistant] Gemini API Error:", geminiRes.status, cleanErrorMessage);
+      console.error("[BossAssistant] Lovable AI Gateway Error:", gatewayRes.status, errText);
 
       return new Response(
         JSON.stringify({ error: cleanErrorMessage }),
-        { status: geminiRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: gatewayRes.status >= 400 && gatewayRes.status < 500 ? gatewayRes.status : 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
     // 9. Forward SSE Stream Directly to Client
-    return new Response(geminiRes.body, {
+    return new Response(gatewayRes.body, {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",

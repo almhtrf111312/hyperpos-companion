@@ -542,9 +542,12 @@ export function BossAIAssistant() {
                   deltaContent += part.text;
                 }
               }
-            } else if (parsed.choices?.[0]?.delta?.content) {
-              // OpenAI / Lovable gateway fallback
+            } else if (typeof parsed.choices?.[0]?.delta?.content === 'string') {
+              // OpenAI / Lovable gateway streaming format
               deltaContent = parsed.choices[0].delta.content;
+            } else if (typeof parsed.choices?.[0]?.message?.content === 'string') {
+              // OpenAI / Lovable gateway non-streaming fallback
+              deltaContent = parsed.choices[0].message.content;
             }
 
             if (deltaContent) {
@@ -568,8 +571,10 @@ export function BossAIAssistant() {
               for (const part of parsed.candidates[0].content.parts) {
                 if (typeof part.text === 'string') deltaContent += part.text;
               }
-            } else if (parsed.choices?.[0]?.delta?.content) {
+            } else if (typeof parsed.choices?.[0]?.delta?.content === 'string') {
               deltaContent = parsed.choices[0].delta.content;
+            } else if (typeof parsed.choices?.[0]?.message?.content === 'string') {
+              deltaContent = parsed.choices[0].message.content;
             }
             if (deltaContent) {
               fullAssistantReply += deltaContent;
