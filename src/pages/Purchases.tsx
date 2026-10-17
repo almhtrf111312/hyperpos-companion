@@ -51,21 +51,21 @@ export default function Purchases() {
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Lifted Actions Bar with Smart Mobile Clearance */}
       <div className="flex-shrink-0 p-2.5 sm:p-3 md:p-6 md:pt-4 pb-2 md:pb-3">
-        <div className="flex items-center gap-2 w-full rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+        <div className="flex items-center gap-2 w-full rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0 overflow-x-auto scrollbar-none">
           <Button
-            className="flex-1 justify-center h-10 px-3 sm:px-4 text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm rounded-xl transition-all cursor-pointer"
+            className="flex-1 sm:flex-initial justify-center h-10 px-3.5 sm:px-5 text-xs sm:text-sm font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-sm rounded-xl transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap"
             onClick={() => setShowDialog(true)}
           >
             <Plus className="w-4 h-4 shrink-0" />
-            <span className="truncate">{t('purchases.addNew')}</span>
+            <span>{t('purchases.addNew')}</span>
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowQuickDialog(true)}
-            className="flex-1 justify-center h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-border/80 bg-card hover:bg-muted shadow-2xs rounded-xl transition-all text-foreground cursor-pointer"
+            className="flex-1 sm:flex-initial justify-center h-10 px-3.5 sm:px-5 text-xs sm:text-sm font-semibold border-border/80 bg-card hover:bg-muted shadow-2xs rounded-xl transition-all duration-200 text-foreground cursor-pointer shrink-0 whitespace-nowrap"
           >
             <ShoppingBag className="w-4 h-4 shrink-0 text-primary" />
-            <span className="truncate">{t('purchases.quickAdd')}</span>
+            <span>{t('purchases.quickAdd')}</span>
           </Button>
         </div>
       </div>

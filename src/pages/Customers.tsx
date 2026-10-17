@@ -374,20 +374,20 @@ export default function Customers() {
       {/* Top Navigation Tabs - lifted with smart mobile clearance */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-3">
         <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-          <div className="inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs select-none">
+          <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
             <TabsList className="bg-transparent p-0 h-auto gap-1">
               <TabsTrigger
                 value="customers"
-                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
+                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
               >
-                <User className="w-3.5 h-3.5" />
+                <User className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabCustomers' as any) || 'العملاء'}</span>
               </TabsTrigger>
               <TabsTrigger
                 value="debts"
-                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
+                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
               >
-                <CreditCard className="w-3.5 h-3.5" />
+                <CreditCard className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabDebts' as any) || 'الديون'}</span>
               </TabsTrigger>
             </TabsList>
@@ -398,7 +398,7 @@ export default function Customers() {
           {/* Add Customer Action directly under Customers tab */}
           <div className="flex items-center justify-between gap-2">
             <Button
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-all cursor-pointer"
+              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-all cursor-pointer"
               onClick={() => {
                 setFormData({ name: '', phone: '', email: '', address: '' });
                 setShowAddDialog(true);
@@ -555,7 +555,7 @@ export default function Customers() {
           {/* Add Cash Debt Action directly under Debts tab */}
           <div className="flex items-center justify-between gap-2">
             <Button
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-all cursor-pointer"
+              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-all cursor-pointer"
               onClick={() => setShowEmbeddedAddDebt(true)}
             >
               <Plus className="w-4 h-4" />
@@ -621,7 +621,7 @@ export default function Customers() {
               <Button variant="outline" className="flex-1 h-9 text-xs rounded-xl" onClick={() => setShowAddDialog(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button className="flex-1 h-9 text-xs rounded-xl bg-primary hover:bg-primary/90 font-bold" onClick={handleAddCustomer} disabled={isSaving}>
+              <Button className="flex-1 h-9 text-xs rounded-xl bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold shadow-sm" onClick={handleAddCustomer} disabled={isSaving}>
                 <Save className="w-3.5 h-3.5" />
                 <span>{isSaving ? 'جاري الحفظ...' : t('common.save')}</span>
               </Button>
@@ -680,7 +680,7 @@ export default function Customers() {
               <Button variant="outline" className="flex-1 h-9 text-xs rounded-xl" onClick={() => setShowEditDialog(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button className="flex-1 h-9 text-xs rounded-xl bg-primary hover:bg-primary/90 font-bold" onClick={handleEditCustomer}>
+              <Button className="flex-1 h-9 text-xs rounded-xl bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold shadow-sm" onClick={handleEditCustomer}>
                 <Save className="w-3.5 h-3.5" />
                 <span>{t('common.save')}</span>
               </Button>

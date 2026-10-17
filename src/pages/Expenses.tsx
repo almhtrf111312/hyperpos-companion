@@ -828,7 +828,7 @@ export default function Expenses() {
             <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowAddDialog(false)}>
               {t('expenses.cancel')}
             </Button>
-            <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddExpense} disabled={isSaving}>
+            <Button className="flex-1 h-9 rounded-xl text-xs font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-sm" onClick={handleAddExpense} disabled={isSaving}>
               <Save className="w-3.5 h-3.5" />
               {isSaving ? t('common.saving') : t('expenses.save')}
             </Button>
@@ -838,8 +838,8 @@ export default function Expenses() {
 
       {/* Add Recurring Expense Dialog */}
       <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
-          <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
+        <DialogContent className="flex flex-col max-h-[90vh] sm:max-h-[85vh] w-[95vw] max-w-md p-0 overflow-hidden rounded-3xl border border-border shadow-2xl modal-dot-expand bg-card text-sm">
+          <div className="shrink-0 p-4 bg-muted/40 border-b border-border flex items-center justify-between">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -966,7 +966,7 @@ export default function Expenses() {
             <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowRecurringDialog(false)}>
               {t('expenses.cancel')}
             </Button>
-            <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleAddRecurringExpense}>
+            <Button className="flex-1 h-9 rounded-xl text-xs font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-sm" onClick={handleAddRecurringExpense}>
               <Save className="w-3.5 h-3.5" />
               {t('expenses.save')}
             </Button>
@@ -1195,7 +1195,7 @@ export default function Expenses() {
             <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowEditRecurringDialog(false)}>
               {t('expenses.cancel')}
             </Button>
-            <Button className="flex-1 h-9 rounded-xl text-xs font-bold" onClick={handleUpdateRecurringExpense}>
+            <Button className="flex-1 h-9 rounded-xl text-xs font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-sm" onClick={handleUpdateRecurringExpense}>
               <Save className="w-3.5 h-3.5" />
               {t('expenses.saveChanges')}
             </Button>
@@ -1267,12 +1267,12 @@ export default function Expenses() {
       {/* Scroll-aware Smart FAB with Speed Dial Options */}
       <div
         className={cn(
-          "fixed z-40 transition-all duration-300 ease-in-out pointer-events-none",
+          "fixed z-40 transition-all duration-300 ease-out pointer-events-none",
           "bottom-20 md:bottom-8",
           isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
           isFabVisible
             ? "translate-y-0 opacity-100 scale-100"
-            : "translate-y-20 opacity-0 scale-90"
+            : "translate-y-24 opacity-0 scale-90 pointer-events-none"
         )}
       >
         <DropdownMenu>
@@ -1280,14 +1280,14 @@ export default function Expenses() {
             <button
               type="button"
               className={cn(
-                "pointer-events-auto flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-full",
-                "bg-primary hover:bg-primary/90 active:scale-90 text-primary-foreground font-bold",
-                "shadow-lg shadow-primary/35 hover:shadow-xl hover:shadow-primary/45 transition-all cursor-pointer border border-white/20 backdrop-blur-xs"
+                "pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full",
+                "bg-gradient-primary hover:opacity-95 active:scale-95 text-primary-foreground font-bold",
+                "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 backdrop-blur-md ring-4 ring-primary/15 transition-all cursor-pointer"
               )}
               title={t('expenses.addExpense')}
               aria-label={t('expenses.addExpense')}
             >
-              <Plus className="w-5 h-5 md:w-6 md:h-6 stroke-[2.5]" />
+              <Plus className="w-7 h-7 md:w-8 md:h-8 stroke-[2.5]" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

@@ -1719,32 +1719,32 @@ export default function Invoices() {
         "flex items-center justify-between gap-2 select-none",
         isRTL ? "pr-14 md:pr-0" : "pl-14 md:pl-0"
       )}>
-        <div className="w-full sm:w-auto inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs overflow-hidden">
+        <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
           <button
             type="button"
             onClick={() => setActiveMainTab('sales')}
             className={cn(
-              "flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-1 sm:flex-initial cursor-pointer",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               activeMainTab === 'sales'
-                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{tx('invoices.salesInvoices', 'فواتير المبيعات')}</span>
+            <span>{tx('invoices.salesInvoices', 'فواتير المبيعات')}</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveMainTab('purchases')}
             className={cn(
-              "flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-1 sm:flex-initial cursor-pointer",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               activeMainTab === 'purchases'
-                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{tx('invoices.purchaseInvoices', 'فواتير المشتريات')}</span>
+            <span>{tx('invoices.purchaseInvoices', 'فواتير المشتريات')}</span>
           </button>
         </div>
       </div>
@@ -1928,7 +1928,7 @@ export default function Invoices() {
               <Filter className="w-4 h-4 text-primary shrink-0" />
               <span>{tx('common.filter', 'التصفية')}</span>
               {activeFiltersCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground font-mono text-[10px] flex items-center justify-center font-bold">
+                <span className="w-5 h-5 rounded-full bg-gradient-primary text-primary-foreground font-mono text-[10px] flex items-center justify-center font-bold">
                   {activeFiltersCount}
                 </span>
               )}
@@ -1937,16 +1937,16 @@ export default function Invoices() {
 
           {/* 3. شريط بطاقات الفلاتر النشطة (Active Filter Chips Strip) */}
           {(filterPayment !== 'all' || filterType !== 'all' || displayCurrencyFilter !== 'stored' || showRefunded) && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-[11px] font-bold select-none">
+            <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full border border-border/40 shadow-xs text-xs font-bold select-none">
               {filterPayment !== 'all' && (
-                <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <div className="bg-card border border-border/70 text-foreground px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-xs">
                   <span>
                     💳 {filterPayment === 'cash' ? tx('invoices.cash', 'نقداً') : filterPayment === 'debt' ? tx('invoices.credit', 'دين') : tx('invoices.network', 'شبكة')}
                   </span>
                   <button
                     type="button"
                     onClick={() => setFilterPayment('all')}
-                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer ml-0.5"
                     title={tx('common.clear', 'إلغاء')}
                   >
                     ✕
@@ -1954,14 +1954,14 @@ export default function Invoices() {
                 </div>
               )}
               {filterType !== 'all' && (
-                <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <div className="bg-card border border-border/70 text-foreground px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-xs">
                   <span>
                     🧾 {filterType === 'sale' ? tx('invoices.sales', 'بيع') : filterType === 'maintenance' ? tx('invoices.maintenance', 'صيانة') : tx('invoices.shipping', 'شحن')}
                   </span>
                   <button
                     type="button"
                     onClick={() => setFilterType('all')}
-                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer ml-0.5"
                     title={tx('common.clear', 'إلغاء')}
                   >
                     ✕
@@ -1969,12 +1969,12 @@ export default function Invoices() {
                 </div>
               )}
               {displayCurrencyFilter !== 'stored' && (
-                <div className="bg-card border border-border text-foreground px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <div className="bg-card border border-border/70 text-foreground px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-xs">
                   <span>💱 {displayCurrencyFilter}</span>
                   <button
                     type="button"
                     onClick={() => setDisplayCurrencyFilter('stored')}
-                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer ml-0.5"
                     title={tx('common.clear', 'إلغاء')}
                   >
                     ✕
@@ -1982,12 +1982,12 @@ export default function Invoices() {
                 </div>
               )}
               {showRefunded && (
-                <div className="bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0">
+                <div className="bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-xs">
                   <span>↩️ {tx('invoices.refundedInvoices', 'المسترجعة')}</span>
                   <button
                     type="button"
                     onClick={() => setShowRefunded(false)}
-                    className="text-rose-500 hover:text-rose-700 font-mono text-xs cursor-pointer"
+                    className="text-rose-500 hover:text-rose-700 font-mono text-xs cursor-pointer ml-0.5"
                     title={tx('common.clear', 'إلغاء')}
                   >
                     ✕
@@ -3458,7 +3458,7 @@ export default function Invoices() {
                 setIsFilterSheetOpen(false);
                 toast.success(tx('invoices.filterApplied', 'تم تطبيق التصفية بنجاح'), { duration: 1500 });
               }}
-              className="flex-1 bg-primary text-primary-foreground font-black py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+              className="flex-1 bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-black py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>{tx('common.apply', 'تطبيق التصفية')}</span>

@@ -1381,9 +1381,22 @@ export default function Products() {
     lastScrollTopRef.current = currentScrollTop;
   }, []);
 
-  // إعادة إظهار الزر العائم تلقائياً عند تغيير التبويب
+  // إعادة إظهار الزر العائم تلقائياً عند تغيير التبويب واستماع التمرير على النافذة
   useEffect(() => {
     setIsFabVisible(true);
+    const handleWindowScroll = () => {
+      const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
+      if (currentScrollTop < 50) {
+        setIsFabVisible(true);
+      } else if (currentScrollTop > lastScrollTopRef.current + 12) {
+        setIsFabVisible(false);
+      } else if (currentScrollTop < lastScrollTopRef.current - 12) {
+        setIsFabVisible(true);
+      }
+      lastScrollTopRef.current = currentScrollTop;
+    };
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleWindowScroll);
   }, [mainTab]);
 
   // دالة فتح نافذة إضافة منتج جديد
@@ -1431,36 +1444,49 @@ export default function Products() {
 
       {/* الشريط العلوي المباشر: النشطة (يمين) - التصنيفات (وسط) - الأرشيف (يسار) */}
       <div className={cn(
-        "flex-shrink-0 px-3 md:px-6 pt-3 md:pt-4 pb-1.5 md:pb-2 overflow-x-hidden max-w-full relative z-10",
+        "flex-shrink-0 px-3 md:px-6 pt-3 md:pt-4 pb-1.5 md:pb-2 max-w-full relative z-10",
         isRTL ? "pr-14 md:pr-6" : "pl-14 md:pl-6"
       )}>
-        <div className="flex items-center gap-1.5 sm:gap-2.5 w-full sm:w-auto sm:max-w-md">
+        <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
           {/* 1. النشطة (يمين في RTL) */}
           <button
             type="button"
             onClick={() => setMainTab('products')}
             className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               mainTab === 'products'
-                ? "bg-primary text-primary-foreground border-primary shadow-xs shadow-primary/25"
-                : "bg-card/90 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{t('products.active') || 'النشطة'}</span>
+            <span>{t('products.active') || 'النشطة'}</span>
           </button>
 
           {/* 2. التصنيفات (في المنتصف) */}
           <button
             type="button"
             onClick={() => setShowCategoryManager(true)}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-3 sm:px-5 rounded-2xl text-xs sm:text-sm font-semibold transition-all select-none border border-border/70 bg-card/90 text-foreground hover:bg-muted/50 hover:border-border/90 shadow-2xs cursor-pointer"
+            className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer w-auto flex-shrink-0"
           >
             <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
-            <span className="truncate">{t('products.categories') || 'التصنيفات'}</span>
+            <span>{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
-          {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
+          {/* 3. فاتورة شراء */}
+          {!noInventory && (
+            <button
+              type="button"
+              onClick={() => setShowPurchaseInvoiceDialog(true)}
+              className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer w-auto flex-shrink-0"
+              title={t('products.purchaseInvoice') || 'فاتورة شراء'}
+            >
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span>{t('products.purchaseInvoice') || 'فاتورة شراء'}</span>
+            </button>
+          )}
+
+          {/* 4. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
           <button
             type="button"
             onClick={() => {
@@ -1468,17 +1494,17 @@ export default function Products() {
               loadArchivedData();
             }}
             className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-9 sm:h-10 px-2.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-bold transition-all select-none border cursor-pointer",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               mainTab === 'archive'
-                ? "!bg-red-600 !text-white !border-red-600 shadow-sm shadow-red-600/30"
-                : "bg-card/90 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-2xs"
+                ? "!bg-red-600 !text-white shadow-xs shadow-red-600/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span className="truncate">{t('products.archive') || 'الأرشيف'}</span>
+            <span>{t('products.archive') || 'الأرشيف'}</span>
             {mergedArchivedProducts.length > 0 && (
               <span className={cn(
-                "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none",
+                "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none shrink-0",
                 mainTab === 'archive'
                   ? "bg-white/25 text-white"
                   : "bg-red-500/15 text-red-600 dark:text-red-400"
@@ -3764,9 +3790,12 @@ export default function Products() {
         {canAddProducts && (
           <div
             className={cn(
-              "fixed z-40 transition-all duration-300 ease-in-out pointer-events-none",
+              "fixed z-40 transition-all duration-300 ease-out pointer-events-none",
               "bottom-20 md:bottom-8",
-              isRTL ? "left-4 md:left-8" : "right-4 md:right-8"
+              isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
+              isFabVisible
+                ? "translate-y-0 opacity-100 scale-100"
+                : "translate-y-24 opacity-0 scale-90 pointer-events-none"
             )}
           >
             <button
@@ -3774,8 +3803,8 @@ export default function Products() {
               onClick={handleOpenAddProduct}
               className={cn(
                 "pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full",
-                "bg-primary/90 hover:bg-primary active:scale-95 text-primary-foreground font-bold",
-                "shadow-xl shadow-primary/35 hover:shadow-2xl hover:shadow-primary/50 transition-all cursor-pointer border border-primary-foreground/25 backdrop-blur-md ring-4 ring-primary/15"
+                "bg-gradient-primary hover:opacity-95 active:scale-95 text-primary-foreground font-bold",
+                "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 backdrop-blur-md ring-4 ring-primary/15 transition-all cursor-pointer"
               )}
               title={tDynamic('addProduct')}
               aria-label={tDynamic('addProduct')}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, X, Save, Tag, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Save, Tag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -24,7 +24,6 @@ import {
   addCategoryCloud,
   updateCategoryCloud,
   deleteCategoryCloud,
-  deduplicateCategoriesCloud,
   Category 
 } from '@/lib/cloud/categories-cloud';
 
@@ -44,7 +43,6 @@ export function CategoryManager({
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editName, setEditName] = useState('');
@@ -77,24 +75,6 @@ export function CategoryManager({
       loadData();
     }
   }, [isOpen, loadData]);
-
-  const handleCleanDuplicates = async () => {
-    setIsCleaning(true);
-    try {
-      const result = await deduplicateCategoriesCloud();
-      await loadData();
-      onCategoriesChange?.();
-      if (result.removed > 0) {
-        toast.success(`تم تنظيف ${result.removed} تصنيف مكرر بنجاح`);
-      } else {
-        toast.info('التصنيفات نظيفة ولا توجد أي تكرارات');
-      }
-    } catch {
-      toast.error('حدث خطأ أثناء تنظيف التكرارات');
-    } finally {
-      setIsCleaning(false);
-    }
-  };
 
   const handleAddCategory = async () => {
     const name = newCategoryName.trim();
@@ -187,23 +167,10 @@ export function CategoryManager({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
-                <Tag className="w-5 h-5 text-primary" />
-                إدارة التصنيفات
-              </DialogTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCleanDuplicates}
-                disabled={isCleaning || isLoading}
-                className="h-8 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
-                title="فحص وحذف التصنيفات المكررة"
-              >
-                {isCleaning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                تنظيف التكرارات
-              </Button>
-            </div>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-primary" />
+              إدارة التصنيفات
+            </DialogTitle>
           </DialogHeader>
 
           {/* Add new category */}
@@ -216,7 +183,7 @@ export function CategoryManager({
               onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
               disabled={isSaving}
             />
-            <Button onClick={handleAddCategory} size="icon" disabled={isSaving}>
+            <Button onClick={handleAddCategory} size="icon" disabled={isSaving} className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-sm">
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             </Button>
           </div>
