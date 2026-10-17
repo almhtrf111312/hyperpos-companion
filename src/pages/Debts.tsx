@@ -508,16 +508,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
   return (
     <div className={cn(!embedded && "p-3 md:p-6", "space-y-4 md:space-y-6")}>
-      {/* Header - hidden when embedded */}
+      {/* Action bar when standalone (no redundant title to save vertical space) */}
       {!embedded && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-          <div>
-            <h1 className="text-xl md:text-3xl font-bold text-foreground">{t('debts.title')}</h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-1">{t('debts.subtitle')}</p>
-          </div>
-          <Button className="bg-primary hover:bg-primary/90" onClick={() => handleAddDebtDialogChange(true)}>
-            <Plus className="w-4 h-4 md:w-5 md:h-5" />
-            {t('debts.addCashDebt')}
+        <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
+          <Button
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-all cursor-pointer"
+            onClick={() => handleAddDebtDialogChange(true)}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('debts.addCashDebt')}</span>
           </Button>
         </div>
       )}

@@ -1102,7 +1102,7 @@ export default function Invoices() {
       });
 
       const usdSym = currencySymbols?.USD || '$';
-      const partialRefundDesc = `{t('invoices.partialRefund') || 'استرداد جزئي'} للفاتورة ${invoiceLabel}: بقيمة ${usdSym}${roundCurrency(result.refundedAmount)} ${result.debtReduced > 0 ? `(تخفيض دين: ${usdSym}${formatNumber(result.debtReduced)})` : ''} ${result.cashToRefund > 0 ? `(إرجاع نقدي: ${usdSym}${formatNumber(result.cashToRefund)})` : ''}`;
+      const partialRefundDesc = `${tx('invoices.partialRefund', 'استرداد جزئي')} للفاتورة ${invoiceLabel}: بقيمة ${usdSym}${roundCurrency(result.refundedAmount)} ${result.debtReduced > 0 ? `(تخفيض دين: ${usdSym}${formatNumber(result.debtReduced)})` : ''} ${result.cashToRefund > 0 ? `(إرجاع نقدي: ${usdSym}${formatNumber(result.cashToRefund)})` : ''}`;
 
       void logActivity('invoice_refunded', partialRefundDesc, {
         entityType: 'invoice',
