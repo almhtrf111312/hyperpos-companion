@@ -372,7 +372,7 @@ export default function Invoices() {
       const resolved = resolveHistoricalCurrency(inv, {
         currencyCode,
         currencySymbol,
-        currencySymbols,
+        currencySymbols: currencySymbols as unknown as Record<string, string>,
       });
       code = resolved.code;
       rate = resolved.rate;

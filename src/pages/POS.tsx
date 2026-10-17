@@ -1137,9 +1137,9 @@ export default function POS() {
               />
             ) : (
               <MaintenancePanel
-                currencies={currencies}
-                selectedCurrency={selectedCurrency}
-                onCurrencyChange={setSelectedCurrency}
+                currencies={currencies as any}
+                selectedCurrency={selectedCurrency as any}
+                onCurrencyChange={setSelectedCurrency as any}
               />
             )}
           </div>

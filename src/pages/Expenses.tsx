@@ -415,7 +415,7 @@ export default function Expenses() {
       await reverseExpenseCloud(reversedId, 'تراجع بواسطة المستخدم');
 
       // 2. إعادة المبلغ المخصوم إلى رصيد الصندوق فوراً وحذف المصروف التشغيلي من الأرباح
-      restoreExpenseCash(reversedAmount, reversedType, reversedId, (expense.currency as any) || 'USD');
+      restoreExpenseCash(reversedAmount, reversedType, reversedId, ((expense as any).currency as any) || 'USD');
 
       // 3. تحديث البيانات محلياً
       const [expensesData, statsData] = await Promise.all([
