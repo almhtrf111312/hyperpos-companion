@@ -656,7 +656,7 @@ export function BossAIAssistant() {
                 المستشار التنفيذي الذكي (Boss AI)
               </CardTitle>
               <Badge variant="outline" className="text-[10px] bg-primary/10 border-primary/30 text-primary">
-                Gemini Vision & Live Context
+                AI Vision & Live Context
               </Badge>
             </div>
             <CardDescription className="text-xs">
