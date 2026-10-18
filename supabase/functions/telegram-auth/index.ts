@@ -77,7 +77,7 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const botToken = Deno.env.get("TELEGRAM_API_KEY");
-  const botUsername = Deno.env.get("TELEGRAM_BOT_USERNAME") || "FlowPosAuthBot";
+  const botUsername = Deno.env.get("TELEGRAM_BOT_USERNAME") || "flowpos_helper_bot";
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     console.error("[TelegramAuth] Missing Supabase configuration");
