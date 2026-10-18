@@ -80,14 +80,20 @@ jobs:
         run: |
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
           KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
-          if [ -z "$KEYSTORE_PASS" ]; then
-            KEYSTORE_PASS="flowpos123"
-          fi
-          if [ -z "$KEY_PASS" ]; then
-            KEY_PASS="flowpos123"
-          fi
 
-          if [ ! -f "android/app/flowpos-release.keystore" ]; then
+          # Verify if KEYSTORE_PASS can unlock the existing keystore, otherwise use original password
+          if [ -f "android/app/flowpos-release.keystore" ]; then
+            if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
+              KEYSTORE_PASS="flowpos123"
+              KEY_PASS="flowpos123"
+            fi
+          else
+            if [ -z "$KEYSTORE_PASS" ]; then
+              KEYSTORE_PASS="flowpos123"
+            fi
+            if [ -z "$KEY_PASS" ]; then
+              KEY_PASS="flowpos123"
+            fi
             echo "Keystore not found, generating fallback release keystore..."
             keytool -genkeypair -v \
               -keystore android/app/flowpos-release.keystore \
@@ -99,6 +105,7 @@ jobs:
               -keypass "$KEY_PASS" \
               -dname "CN=FlowPOS Pro, OU=POS Department, O=FlowPOS, L=Dubai, ST=Dubai, C=AE"
           fi
+
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
           echo "KEYSTORE_PASSWORD=$KEYSTORE_PASS" >> "$GITHUB_ENV"
           echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
@@ -109,6 +116,10 @@ jobs:
         env:
           APP_VERSION_CODE: ${{ env.VERSION_CODE }}
           APP_VERSION_NAME: ${{ env.VERSION_NAME }}
+          KEYSTORE_PATH: flowpos-release.keystore
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: flowpos
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --warning-mode=all
