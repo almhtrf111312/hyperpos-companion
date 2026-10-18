@@ -496,7 +496,7 @@ ${footer}`;
                     placeholder="تفاصيل إضافية عن الخدمة..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm min-h-[80px] resize-none p-3"
+                    className="bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm min-h-20 resize-none p-3"
                   />
                 </div>
               </div>

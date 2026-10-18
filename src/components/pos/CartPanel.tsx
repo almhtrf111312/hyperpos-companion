@@ -1707,7 +1707,7 @@ export function CartPanel({
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-card rounded-xl px-2.5 py-1.5 border border-border/40 cart-item-enter transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-card/95 flex items-center gap-2 group min-h-[44px]"
+                className="bg-card rounded-xl px-2.5 py-1.5 border border-border/40 cart-item-enter transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-card/95 flex items-center gap-2 group min-h-11"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
                 {/* زر حذف واضح ومريح */}
@@ -1715,7 +1715,7 @@ export function CartPanel({
                 <button
                   type="button"
                   onClick={() => onRemoveItem(item.id, item.unit)}
-                  className="w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center shrink-0 transition-[transform,colors] active:scale-90"
+                  className="size-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center shrink-0 transition-[transform,colors] active:scale-90"
                   title={t('pos.removeFromCart') || 'حذف من السلة'}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1794,7 +1794,7 @@ export function CartPanel({
                     />
                   )}
                   {/* استبدال الـ $ الثابت برمز العملة المختارة ومعدل الصرف */}
-                  <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[48px] text-left", wholesaleMode ? "text-warning" : "text-primary")}>
+                  <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[3.4rem] text-left", wholesaleMode ? "text-warning" : "text-primary")}>
                     {selectedCurrency.symbol}{formatNumber(getItemPrice(item) * item.quantity * (selectedCurrency.rate || 1))}
                   </span>
                 </div>
@@ -1814,7 +1814,7 @@ export function CartPanel({
                   key={currency.code}
                   onClick={() => onCurrencyChange(currency)}
                   className={cn(
-                    "flex-1 py-1.5 min-h-[36px] rounded-md text-[11px] font-bold transition-all flex items-center justify-center leading-none",
+                    "flex-1 py-1.5 min-h-9 rounded-md text-[11px] font-bold transition-all flex items-center justify-center leading-none",
                     selectedCurrency.code === currency.code
                       ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
                       : "text-muted-foreground hover:text-foreground"

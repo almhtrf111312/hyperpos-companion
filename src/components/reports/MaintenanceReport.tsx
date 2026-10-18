@@ -166,7 +166,7 @@ export function MaintenanceReport({ dateRange, invoices, isLoading, hideInternal
                   <tr key={inv.id} className="border-t hover:bg-muted/30">
                     <td className="p-3 text-muted-foreground">{i + 1}</td>
                     <td className="p-3 font-medium">{inv.customerName}</td>
-                    <td className="p-3 text-muted-foreground max-w-[200px] truncate">{inv.serviceDescription || '-'}</td>
+                    <td className="p-3 text-muted-foreground max-w-[14.3rem] truncate">{inv.serviceDescription || '-'}</td>
                     <td className="p-3 text-center">{formatCurrency(inv.total)}</td>
                     <td className="p-3 text-center text-red-500">{formatCurrency(inv.partsCost || 0)}</td>
                     <td className="p-3 text-center text-green-600 font-medium">{formatCurrency(inv.profit || 0)}</td>

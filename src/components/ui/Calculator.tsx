@@ -131,7 +131,7 @@ export function Calculator({ isOpen, onClose, onResult, className }: CalculatorP
             )}>
                 {/* Display */}
                 <div className="bg-muted p-4">
-                    <div className="text-right text-3xl font-mono text-foreground min-h-[48px] overflow-hidden">
+                    <div className="text-right text-3xl font-mono text-foreground min-h-12 overflow-hidden">
                         {display}
                     </div>
                 </div>

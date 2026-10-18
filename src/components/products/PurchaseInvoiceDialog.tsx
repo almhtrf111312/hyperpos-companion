@@ -645,7 +645,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             {/* Items list */}
             {invoiceItems.length > 0 && (
               <div className="border rounded-lg overflow-x-auto max-w-full">
-                <table className="w-full text-xs sm:text-sm min-w-[300px]">
+                <table className="w-full text-xs sm:text-sm min-w-[21.4rem]">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-2 text-right">{t('products.name')}</th>

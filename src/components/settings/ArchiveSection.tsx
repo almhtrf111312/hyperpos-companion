@@ -167,7 +167,7 @@ export function ArchiveSection() {
               <p className="text-xs">{t('archive.loading') || 'جاري تحميل الأرشيف...'}</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[420px]">
+            <ScrollArea className="max-h-[30rem]">
               {/* Invoices */}
               {generalSubTab === 'invoices' && (
                 archivedInvoices.length === 0 ? (

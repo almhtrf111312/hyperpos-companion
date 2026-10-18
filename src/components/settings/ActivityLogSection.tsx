@@ -144,7 +144,7 @@ export function ActivityLogSection() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto space-y-3 text-foreground" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="w-full max-w-[31rem] mx-auto space-y-3 text-foreground" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* 1. Header Row (Sticky Header matching mockup) */}
       <header className="bg-card border border-zinc-200/90 dark:border-border/80 rounded-2xl px-3.5 py-3 space-y-2.5 shadow-xs">
         <div className="flex items-center justify-between">
@@ -286,7 +286,7 @@ export function ActivityLogSection() {
       </div>
 
       {/* 4. Logs Container */}
-      <div className="space-y-2.5 max-h-[640px] overflow-y-auto no-scrollbar pb-6">
+      <div className="space-y-2.5 max-h-[46rem] overflow-y-auto no-scrollbar pb-6">
         {filteredLogs.length === 0 ? (
           <div className="py-16 text-center space-y-2 border border-dashed border-zinc-200 dark:border-border/80 rounded-2xl bg-white dark:bg-card">
             <div className="text-3xl">🔍</div>

@@ -56,7 +56,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
         className="rounded-xl border-2 border-border overflow-hidden shadow-lg transition-all duration-500"
         style={{ backgroundColor: bg, direction: isRTL ? 'rtl' : 'ltr' }}
       >
-        <div className="flex h-[220px]">
+        <div className="flex h-[15.7rem]">
           {/* Mini Sidebar */}
           <div
             className="w-12 flex flex-col items-center py-3 gap-2 shrink-0 transition-colors duration-500"
@@ -64,7 +64,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
           >
             {/* Logo */}
             <div
-              className="w-7 h-7 rounded-lg mb-2"
+              className="size-7 rounded-lg mb-2"
               style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
             />
             {/* Nav items */}

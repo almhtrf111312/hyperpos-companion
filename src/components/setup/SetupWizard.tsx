@@ -702,7 +702,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:p-7 space-y-6 flex-1 min-h-[380px] overflow-y-auto">
+        <div className="p-5 sm:p-7 space-y-6 flex-1 min-h-[27rem] overflow-y-auto">
           
           {/* STEP 1: هوية المتجر وبيانات الفاتورة وقوالب التصنيفات */}
           {step === 1 && (

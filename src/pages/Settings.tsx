@@ -3425,12 +3425,12 @@ export default function Settings() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                              "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex flex-col justify-between min-h-[96px]",
+                              "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex flex-col justify-between min-h-[6.85rem]",
                               tab.danger && "hover:border-destructive/60"
                             )}
                           >
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                              <div className={cn("size-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
                                 <tab.icon className="w-4 h-4" />
                               </div>
                               {tab.badge && (
@@ -3469,10 +3469,10 @@ export default function Settings() {
                                 <div
                                   key={tab.id}
                                   onClick={() => setActiveTab(tab.id)}
-                                  className="bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex flex-col justify-between min-h-[96px]"
+                                  className="bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex flex-col justify-between min-h-[6.85rem]"
                                 >
                                   <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                    <div className={cn("size-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
                                       <tab.icon className="w-4 h-4" />
                                     </div>
                                     {tab.badge && (
@@ -3513,12 +3513,12 @@ export default function Settings() {
                                   key={tab.id}
                                   onClick={() => setActiveTab(tab.id)}
                                   className={cn(
-                                    "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex flex-col justify-between min-h-[96px]",
+                                    "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex flex-col justify-between min-h-[6.85rem]",
                                     tab.danger && "hover:border-destructive/60"
                                   )}
                                 >
                                   <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                    <div className={cn("size-8 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
                                       <tab.icon className="w-4 h-4" />
                                     </div>
                                     {tab.badge && (
@@ -3554,9 +3554,9 @@ export default function Settings() {
                                 <div
                                   key={tab.id}
                                   onClick={() => setActiveTab(tab.id)}
-                                  className="bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex items-center gap-3 min-h-[72px]"
+                                  className="bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer relative group flex items-center gap-3 min-h-[5.14rem]"
                                 >
-                                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
+                                  <div className={cn("size-9 rounded-xl flex items-center justify-center shrink-0 border", colors.bg)}>
                                     <tab.icon className="w-4.5 h-4.5" />
                                   </div>
                                   <div className="min-w-0 flex-1">
@@ -3598,11 +3598,11 @@ export default function Settings() {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={cn(
-                        "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 text-center flex flex-col items-center justify-between hover:border-primary/50 hover:shadow-md active:scale-95 transition-[transform,box-shadow,border-color] duration-150 cursor-pointer min-h-[110px] md:min-h-[120px] group",
+                        "bg-card border border-border/80 rounded-2xl md:rounded-3xl p-3 md:p-3.5 text-center flex flex-col items-center justify-between hover:border-primary/50 hover:shadow-md active:scale-95 transition-[transform,box-shadow,border-color] duration-150 cursor-pointer min-h-[7.85rem] md:min-h-[8.57rem] group",
                         tab.danger && "hover:border-destructive/60"
                       )}
                     >
-                      <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 border group-hover:scale-105 transition-transform mb-1.5", colors.bg)}>
+                      <div className={cn("size-9 md:size-10 rounded-xl flex items-center justify-center shrink-0 border group-hover:scale-105 transition-transform mb-1.5", colors.bg)}>
                         <tab.icon className="w-4.5 h-4.5 md:w-5 md:h-5" />
                       </div>
                       <div className="w-full">

@@ -43,7 +43,7 @@ export function LanguageSection() {
           <span className="text-sm font-medium">{t('settings.language')}</span>
         </div>
         <Select value={pendingLanguage || 'ar'} onValueChange={handleLanguageSelect}>
-          <SelectTrigger className="w-40 h-9">
+          <SelectTrigger className="w-40 min-h-9">
             <SelectValue placeholder={selectedLanguage?.nativeName || 'العربية'}>
               <span className="text-sm font-medium">{selectedLanguage?.nativeName || 'العربية'}</span>
             </SelectValue>
@@ -51,7 +51,7 @@ export function LanguageSection() {
           <SelectContent 
             side="bottom" 
             align="start"
-            className="max-h-[300px] overflow-y-auto z-50"
+            className="max-h-80 overflow-y-auto z-50"
             position="popper"
             sideOffset={4}
           >

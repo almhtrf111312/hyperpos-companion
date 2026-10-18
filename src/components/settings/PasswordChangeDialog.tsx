@@ -229,10 +229,10 @@ export function PasswordChangeDialog({
 
   const dialogFooter = (
     <div className="flex flex-col sm:flex-row gap-2 w-full justify-end">
-      <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto min-h-[44px]" disabled={isLoading}>
+      <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto min-h-11" disabled={isLoading}>
         {t('password.cancel') || 'إلغاء'}
       </Button>
-      <Button onClick={handleSubmit} className="w-full sm:w-auto min-h-[44px]" disabled={isLoading}>
+      <Button onClick={handleSubmit} className="w-full sm:w-auto min-h-11" disabled={isLoading}>
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin ms-2" />

@@ -862,7 +862,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'USD'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -882,7 +882,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'TRY'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -902,7 +902,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[52px] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'SYP'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"

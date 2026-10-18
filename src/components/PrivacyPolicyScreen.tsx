@@ -481,7 +481,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
             {/* Continue Button */}
             <button
               className={cn(
-                "flex-1 gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-4 rounded-xl font-bold text-white shadow-md disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99] min-h-[48px] text-[0.95rem]",
+                "flex-1 gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-4 rounded-xl font-bold text-white shadow-md disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99] min-h-12 text-[0.95rem]",
                 agreed ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300"
               )}
               disabled={!agreed}

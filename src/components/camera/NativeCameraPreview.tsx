@@ -235,7 +235,7 @@ export function NativeCameraPreview({
                     <button
                         onClick={handleCapture}
                         disabled={isCapturing || !isReady}
-                        className="w-[56px] h-[56px] rounded-full border-4 border-white bg-white/20 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
+                        className="size-14 rounded-full border-4 border-white bg-white/20 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
                     >
                         {isCapturing
                             ? <Loader2 className="h-6 w-6 text-white animate-spin" />

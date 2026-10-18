@@ -63,14 +63,14 @@ export function InlineSupportChatPanel({ onClose }: { onClose: () => void }) {
       className={cn(
         'w-full max-w-2xl mx-auto rounded-2xl shadow-sm border border-border bg-card flex flex-col',
         'animate-in zoom-in-95 fade-in duration-200',
-        'h-[500px] overflow-hidden'
+        'h-[35.7rem] overflow-hidden'
       )}
       dir="rtl"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-primary/5 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center">
+          <div className="size-8 rounded-xl bg-primary/20 flex items-center justify-center">
             {isBoss ? (
               <Users className="w-4 h-4 text-primary" />
             ) : (

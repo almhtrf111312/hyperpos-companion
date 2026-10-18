@@ -572,14 +572,14 @@ export function SupportChat() {
           className={cn(
             'mb-3 w-80 sm:w-88 max-w-[calc(100vw-2.5rem)] rounded-2xl shadow-2xl border border-border bg-card flex flex-col',
             'animate-in slide-in-from-bottom-4 fade-in duration-200',
-            'h-[500px] max-h-[calc(100vh-8rem)]',
+            'h-[35.7rem] max-h-[calc(100vh-8rem)]',
           )}
           dir="rtl"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-primary/5 border-b border-border rounded-t-2xl shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center">
+              <div className="size-8 rounded-xl bg-primary/20 flex items-center justify-center">
                 {isBoss ? (
                   <Users className="w-4 h-4 text-primary" />
                 ) : (

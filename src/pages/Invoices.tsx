@@ -2999,7 +2999,7 @@ export default function Invoices() {
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        "min-h-[4.3rem] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
                         isSubmittingPayment && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'USD'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -3019,7 +3019,7 @@ export default function Invoices() {
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        "min-h-[4.3rem] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
                         isSubmittingPayment && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'TRY'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -3039,7 +3039,7 @@ export default function Invoices() {
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "min-h-[60px] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        "min-h-[4.3rem] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
                         isSubmittingPayment && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'SYP'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"

@@ -2297,15 +2297,15 @@ export default function Reports() {
               <div
                 key={idx}
                 className={cn(
-                  "relative overflow-hidden rounded-2xl bg-card p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[115px] transition-[border-color,box-shadow] duration-200 border",
+                  "relative overflow-hidden rounded-2xl bg-card p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[8.2rem] transition-[border-color,box-shadow] duration-200 border",
                   idx === 0 ? "border-2 border-primary/40 shadow-sm" : "border border-border/70 hover:border-border"
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-xs font-semibold truncate max-w-[130px]" title={card.label}>
+                  <span className="text-muted-foreground text-xs font-semibold truncate max-w-[9.3rem]" title={card.label}>
                     {card.label}
                   </span>
-                  <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0", card.bg, card.color)}>
+                  <div className={cn("size-7 rounded-full flex items-center justify-center shrink-0", card.bg, card.color)}>
                     <Icon className="w-4 h-4" />
                   </div>
                 </div>
@@ -2471,7 +2471,7 @@ export default function Reports() {
 
                       {/* Vertical Bar Chart columns with explicit h-48 height & theme responsiveness */}
                       <div className="pt-4 pb-2">
-                        <div className="grid grid-cols-7 gap-1.5 sm:gap-3 items-end h-48 min-h-[190px] px-1 pb-1 border-b border-border/50">
+                        <div className="grid grid-cols-7 gap-1.5 sm:gap-3 items-end h-48 min-h-[13.5rem] px-1 pb-1 border-b border-border/50">
                           {chartDays.map((day, idx) => {
                             const isSelected = day.date === activeChartDay.date;
                             const heightPct = day.sales > 0 

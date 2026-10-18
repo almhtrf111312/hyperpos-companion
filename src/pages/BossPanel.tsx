@@ -1679,7 +1679,7 @@ export default function BossPanel() {
                                           <div className="flex flex-col min-w-0">
                                             <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
                                             {cashier.email && (
-                                              <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[180px]">{cashier.email}</span>
+                                              <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[12.8rem]">{cashier.email}</span>
                                             )}
                                           </div>
                                           <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${typeColor}`}>{typeLabel}</Badge>

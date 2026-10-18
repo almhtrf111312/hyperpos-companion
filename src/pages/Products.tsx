@@ -2100,7 +2100,7 @@ export default function Products() {
                   >
                     <div className="flex items-center justify-between gap-2.5">
                       {/* Right: Product Thumbnail Image (Enlarged ~28% to 72x72px) */}
-                      <div className="w-[72px] h-[72px] rounded-xl bg-muted/40 overflow-hidden border border-border shrink-0 aspect-square flex items-center justify-center shadow-2xs">
+                      <div className="size-[5.14rem] rounded-xl bg-muted/40 overflow-hidden border border-border shrink-0 aspect-square flex items-center justify-center shadow-2xs">
                         <ProductImage
                           imageUrl={product.image}
                           alt={product.name}
@@ -2110,7 +2110,7 @@ export default function Products() {
                       </div>
 
                       {/* Middle: Full Name + Status + Stock + Buy/Sell Prices (Height-matched with Image) */}
-                      <div className="flex-1 min-w-0 flex flex-col justify-between h-[72px] py-0.5">
+                      <div className="flex-1 min-w-0 flex flex-col justify-between h-[5.14rem] py-0.5">
                         <div className="flex items-start gap-1.5 min-w-0">
                           <h3
                             className="font-black text-foreground text-xs sm:text-sm leading-tight truncate flex-1 min-w-0 cursor-pointer hover:text-primary transition-colors"
@@ -2197,11 +2197,11 @@ export default function Products() {
 
                       {/* Left: Vertically Stacked Actions (Proportional, wider, slightly smaller icons, not elongated) */}
                       {canAddProducts && (
-                        <div className="flex flex-col gap-1.5 shrink-0 justify-center h-[72px]">
+                        <div className="flex flex-col gap-1.5 shrink-0 justify-center h-[5.14rem]">
                           <button
                             type="button"
                             onClick={() => openEditDialog(product)}
-                            className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
+                            className="size-7 sm:size-8 rounded-lg bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
                             title={t('common.edit') || 'تعديل'}
                           >
                             <Edit className="w-3.5 h-3.5 text-foreground/80" />
@@ -2937,7 +2937,7 @@ export default function Products() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full min-h-[48px]"
+                        className="w-full min-h-12"
                         onClick={handleCameraCapture}
                         disabled={isCameraLoading}
                       >
@@ -2951,7 +2951,7 @@ export default function Products() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full min-h-[48px]"
+                        className="w-full min-h-12"
                         onClick={handleGallerySelect}
                         disabled={isCameraLoading}
                       >
@@ -3460,7 +3460,7 @@ export default function Products() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full min-h-[48px]"
+                        className="w-full min-h-12"
                         onClick={handleCameraCapture}
                         disabled={isCameraLoading}
                       >
@@ -3474,7 +3474,7 @@ export default function Products() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full min-h-[48px]"
+                        className="w-full min-h-12"
                         onClick={handleGallerySelect}
                         disabled={isCameraLoading}
                       >
@@ -3644,7 +3644,7 @@ export default function Products() {
 
         {/* Quick Restock Dialog */}
         <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[30rem]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Boxes className="w-5 h-5 text-emerald-600" />

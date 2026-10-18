@@ -248,7 +248,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
             : cn(
                 "top-2 rounded-2xl shadow-xl border border-sidebar-border/50 h-[calc(100vh-16px)]",
                 isRTL ? "right-2 left-auto" : "left-2 right-auto",
-                effectiveCollapsed ? "w-[72px]" : "w-56"
+                effectiveCollapsed ? "w-[5.14rem]" : "w-56"
               )
         )}
       >

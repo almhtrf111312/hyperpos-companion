@@ -558,7 +558,7 @@ export function SmartToast() {
   // حساب التحول الفيزيائي حسب مرحلة حركة الجزيرة
   let transform = 'translate(0px, 0px) rotate(0deg) scale(1)';
   let opacity = 1;
-  let cardClass = 'w-full max-w-[404px] rounded-[26px]';
+  let cardClass = 'w-full max-w-[29rem] rounded-[26px]';
   let contentOpacity = 1;
 
   if (animPhase === 'dropping') {
@@ -567,7 +567,7 @@ export function SmartToast() {
     contentOpacity = 0;
   } else if (animPhase === 'bursting') {
     transform = 'translate(0px, 0px) scale(1)';
-    cardClass = 'w-full max-w-[404px] rounded-[26px]';
+    cardClass = 'w-full max-w-[29rem] rounded-[26px]';
     contentOpacity = 0.8;
   } else if (animPhase === 'retracting') {
     transform = 'translate(0px, -45px) scale(0.32, 1.25)';

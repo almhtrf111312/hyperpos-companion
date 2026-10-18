@@ -154,7 +154,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
         </div>
 
         {/* Chart */}
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="h-[21.4rem] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}

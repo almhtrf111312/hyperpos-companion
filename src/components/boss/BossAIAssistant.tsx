@@ -643,11 +643,11 @@ export function BossAIAssistant() {
   };
 
   return (
-    <Card className="border-border/60 shadow-xl bg-card overflow-hidden flex flex-col h-[750px] max-h-[85vh]">
+    <Card className="border-border/60 shadow-xl bg-card overflow-hidden flex flex-col h-[53.5rem] max-h-[85vh]">
       {/* Header */}
       <CardHeader className="p-4 border-b border-border/50 bg-gradient-to-r from-primary/10 via-background to-amber-500/10 flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shadow-inner">
+          <div className="size-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shadow-inner">
             <Sparkles className="w-5 h-5 text-primary animate-pulse" />
           </div>
           <div>
@@ -708,7 +708,7 @@ export function BossAIAssistant() {
               className={`flex gap-2.5 sm:gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="size-8 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
                   <Bot className="w-4 h-4 text-primary" />
                 </div>
               )}
@@ -722,7 +722,7 @@ export function BossAIAssistant() {
               >
                 {/* Image attachment in message */}
                 {msg.image && (
-                  <div className="rounded-lg overflow-hidden border border-black/10 dark:border-white/10 max-w-[280px]">
+                  <div className="rounded-lg overflow-hidden border border-black/10 dark:border-white/10 max-w-[20rem]">
                     <img
                       src={msg.image}
                       alt="مرفق صورة"
@@ -938,7 +938,7 @@ export function BossAIAssistant() {
               placeholder={isRecording ? 'تحدث الآن... سيتم تحويل صوتك لنص تلقائياً...' : 'اكتب سؤالك، استفسارك، أو الصق طلبك هنا...'}
               disabled={isStreaming}
               rows={1}
-              className="min-h-[44px] max-h-32 py-2.5 px-3.5 resize-none rounded-xl text-sm leading-relaxed border-border/80 focus-visible:ring-primary shadow-sm"
+              className="min-h-11 max-h-32 py-2.5 px-3.5 resize-none rounded-xl text-sm leading-relaxed border-border/80 focus-visible:ring-primary shadow-sm"
               dir="rtl"
             />
           </div>

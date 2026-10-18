@@ -86,11 +86,11 @@ export function QuickActions() {
         <Link
           key={action.path}
           to={action.path}
-          className="flex flex-col items-center gap-1.5 min-w-[60px] group fade-in"
+          className="flex flex-col items-center gap-1.5 min-w-[4.3rem] group fade-in"
           style={{ animationDelay: `${index * 40}ms` }}
         >
           <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-md",
+            "size-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-md",
             iconBgStyles[action.color]
           )}>
             <action.icon className="w-4.5 h-4.5" />

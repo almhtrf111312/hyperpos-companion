@@ -264,7 +264,7 @@ export function PurchaseInvoiceViewDialog({
                 </div>
               ) : (
                 <div className="border border-border rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto max-h-[300px]">
+                  <div className="overflow-x-auto max-h-80">
                     <table className="w-full text-xs sm:text-sm text-right">
                       <thead className="bg-muted/70 text-muted-foreground sticky top-0 z-10">
                         <tr>

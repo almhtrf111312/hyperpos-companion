@@ -522,7 +522,7 @@ export default function Customers() {
                       <span>{customer.invoiceCount} {t('customers.invoices')}</span>
                     </span>
                     {customer.address && (
-                      <span className="text-muted-foreground text-[10px] truncate max-w-[130px]">
+                      <span className="text-muted-foreground text-[10px] truncate max-w-[9.3rem]">
                         📍 {customer.address}
                       </span>
                     )}

@@ -54,7 +54,7 @@ export function EmptyState({
         <Button
           variant={action.variant || "default"}
           onClick={action.onClick}
-          className="rounded-xl gap-2 font-semibold text-xs sm:text-sm min-h-[44px] px-5"
+          className="rounded-xl gap-2 font-semibold text-xs sm:text-sm min-h-11 px-5"
         >
           {ActionIcon && <ActionIcon className="w-4 h-4" />}
           {action.label}

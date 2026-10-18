@@ -120,7 +120,7 @@ export default function Appearance() {
               type="button"
               onClick={() => handleTabClick(tab.id)}
               className={cn(
-                "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 select-none min-h-[48px] overflow-visible",
+                "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 select-none min-h-12 overflow-visible",
                 isActive
                   ? "bg-card text-foreground shadow-sm border border-border/50 ring-1 ring-border/20"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/40"
