@@ -34,6 +34,11 @@ async function sha256(text: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function sha256b64url(text: string): Promise<string> {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
 // Telegram message sender
 async function sendTelegramMessage(
   botToken: string,
@@ -41,11 +46,15 @@ async function sendTelegramMessage(
   text: string,
   replyMarkup?: any
 ) {
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+  const url = `https://connector-gateway.lovable.dev/telegram/sendMessage`;
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("LOVABLE_API_KEY") ?? ""}`,
+        "X-Connection-Api-Key": botToken,
+      },
       body: JSON.stringify({
         chat_id: chatId,
         text,
@@ -67,7 +76,7 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  const botToken = Deno.env.get("TELEGRAM_API_KEY");
   const botUsername = Deno.env.get("TELEGRAM_BOT_USERNAME") || "FlowPosAuthBot";
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -93,6 +102,10 @@ serve(async (req) => {
       if (!botToken) {
         console.error("[TelegramAuth] TELEGRAM_BOT_TOKEN is missing for webhook");
         return new Response("Bot token not configured", { status: 500 });
+      }
+      const expected = (await sha256b64url(`telegram-webhook:${botToken}`));
+      if (req.headers.get("X-Telegram-Bot-Api-Secret-Token") !== expected) {
+        return new Response("Unauthorized", { status: 401 });
       }
 
       const message = body.message;
@@ -243,7 +256,7 @@ serve(async (req) => {
 
       if (!botToken) {
         return new Response(
-          JSON.stringify({ error: "خدمة بوت تيليغرام غير مهيأة في الخادم (TELEGRAM_BOT_TOKEN مفقود)" }),
+          JSON.stringify({ error: "خدمة بوت تيليغرام غير مهيأة في الخادم (الاتصال بالبوت مفقود)" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
