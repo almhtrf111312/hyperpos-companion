@@ -30,7 +30,7 @@ export function POSHeader({
   return (
     <header className="h-14 md:h-20 flex items-center justify-between px-3 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-background/95 shadow-xs border-b border-border/40 transition-[transform,opacity] duration-300">
       {/* جهة اليمين (RTL): زر القائمة المدمج + عنوان نقطة البيع */}
-      <div className="flex items-center gap-2 overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0 overflow-hidden">
         {/* زر فتح القائمة الجانبية المدمج للموبايل بدلاً من الزر العائم */}
         {isMobile && onMenuClick && (
           <button
@@ -48,7 +48,7 @@ export function POSHeader({
           <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Store className="w-3.5 h-3.5 md:w-4 md:h-4" />
           </div>
-          <h1 className="text-xs md:text-base font-bold text-foreground whitespace-nowrap truncate tracking-tight">
+          <h1 className="text-xs md:text-base font-bold text-foreground whitespace-nowrap truncate tracking-tight" title={t('pos.title')}>
             {t('pos.title')}
           </h1>
         </div>
@@ -87,7 +87,7 @@ export function POSHeader({
       </div>
 
       {/* جهة اليسار (RTL): التحكم المدمج للموبايل + اختصارات الديسكتوب */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {/* تبديل الوضع مدمجاً في الرأس على الموبايل لتوفير مساحة الشاشة */}
         {isMobile && !hideMaintenance && onModeChange && (
           <div className="flex items-center p-0.5 rounded-lg bg-muted/60 dark:bg-zinc-900/80 border border-border/40">

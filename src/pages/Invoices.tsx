@@ -2090,8 +2090,8 @@ export default function Invoices() {
                     </div>
 
                     {/* السطر الأول: اسم العميل والشارات الأساسية */}
-                    <div className="flex items-center flex-wrap gap-1.5 pr-0 pl-8 leading-tight">
-                      <span className="font-bold text-foreground text-xs">{invoice.customerName}</span>
+                    <div className="flex items-center flex-wrap gap-1.5 pr-0 pl-8 leading-tight min-w-0">
+                      <span className="font-bold text-foreground text-xs truncate max-w-full" title={invoice.customerName}>{invoice.customerName}</span>
                       
                       {/* طريقة الدفع */}
                       {invoice.paymentType === 'cash' ? (
@@ -2287,7 +2287,7 @@ export default function Invoices() {
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-lg rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] flex flex-col p-0 border border-border bg-card text-card-foreground shadow-2xl">
+        <DialogContent className="sm:max-w-lg rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] max-h-[92dvh] flex flex-col p-0 border border-border bg-card text-card-foreground shadow-2xl">
           <DialogHeader className="p-4 pb-3 border-b border-border/50 text-right bg-muted/30">
             <DialogTitle className="flex items-center justify-between text-base font-bold">
               <div className="flex items-center gap-2 text-foreground">
@@ -2542,7 +2542,7 @@ export default function Invoices() {
 
       {/* Share Bottom Sheet */}
       <Dialog open={showShareSheet} onOpenChange={setShowShareSheet}>
-        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-md mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[85vh] flex flex-col overflow-hidden shadow-2xl laser-sheet-content">
+        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-md mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden shadow-2xl laser-sheet-content">
           {/* Laser Lead Line */}
           <div className="laser-lead-line h-[2.5px] w-full" />
 
@@ -2643,7 +2643,7 @@ export default function Invoices() {
 
       {/* Refund Confirmation Dialog (Bottom Sheet) */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
-        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-xl mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[92vh] flex flex-col overflow-hidden shadow-2xl bottom-sheet-content">
+        <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-xl mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[92vh] max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl bottom-sheet-content">
           {/* Drawer Drag Handle */}
           <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto my-2.5" />
 

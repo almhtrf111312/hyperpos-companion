@@ -59,7 +59,7 @@ export function ResponsiveDialog({
         <SheetContent
           side="bottom"
           className={cn(
-            "w-[calc(100%-2rem)] max-h-[85vh] mx-auto mb-2 rounded-2xl flex flex-col p-4 z-50 bg-card border border-border shadow-2xl",
+            "w-[calc(100%-2rem)] max-h-[85vh] max-h-[85dvh] mx-auto mb-2 rounded-2xl flex flex-col p-4 z-50 bg-card border border-border shadow-2xl",
             className
           )}
         >
@@ -100,7 +100,7 @@ export function ResponsiveDialog({
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          "sm:max-w-lg max-h-[85vh] flex flex-col p-6 z-50 bg-card border border-border shadow-xl",
+          "sm:max-w-lg max-h-[85vh] max-h-[85dvh] flex flex-col p-6 z-50 bg-card border border-border shadow-xl",
           className
         )}
       >

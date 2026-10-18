@@ -340,8 +340,8 @@ export function ProductGrid({
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                   />
                 </div>
-                <div className="flex-1 px-4">
-                  <h3 className="font-bold text-sm md:text-base text-foreground line-clamp-1 mb-1">{product.name}</h3>
+                <div className="flex-1 min-w-0 px-4">
+                  <h3 className="font-bold text-sm md:text-base text-foreground line-clamp-1 mb-1 truncate" title={product.name}>{product.name}</h3>
                   <div className="text-muted-foreground text-xs font-medium mb-1">
                     <DualUnitDisplayCompact
                       totalPieces={product.quantity}
@@ -350,7 +350,7 @@ export function ProductGrid({
                       smallUnit={product.smallUnit}
                     />
                   </div>
-                  <p className="text-primary font-black text-sm md:text-base">{formatDisplayPrice(product.price)}</p>
+                  <p className="text-primary font-black text-sm md:text-base tabular-nums">{formatDisplayPrice(product.price)}</p>
                 </div>
               </button>
             ))}
@@ -367,9 +367,9 @@ export function ProductGrid({
                 className="pos-item text-start fade-in group flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm hover:shadow-md transition-[box-shadow,border-color] duration-200 border border-black/5 dark:border-white/5"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
-                <div className="flex-1 pe-2 overflow-hidden text-start">
-                  <h3 className="font-bold text-xs text-foreground truncate">{product.name}</h3>
-                  <p className="text-primary font-bold text-xs mt-0.5">{formatDisplayPrice(product.price)}</p>
+                <div className="flex-1 min-w-0 pe-2 overflow-hidden text-start">
+                  <h3 className="font-bold text-xs text-foreground truncate" title={product.name}>{product.name}</h3>
+                  <p className="text-primary font-bold text-xs mt-0.5 tabular-nums">{formatDisplayPrice(product.price)}</p>
                 </div>
                 <div className="text-[10px] bg-muted/50 rounded-lg px-2 py-1 shrink-0 font-medium">
                   <DualUnitDisplayCompact

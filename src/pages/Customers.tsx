@@ -494,8 +494,8 @@ export default function Customers() {
                   </div>
 
                   {/* Header Row: Customer Name & Status Badges */}
-                  <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap">
-                    <span className="font-black text-foreground text-sm truncate">{customer.name}</span>
+                  <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap min-w-0">
+                    <span className="font-black text-foreground text-sm truncate max-w-full" title={customer.name}>{customer.name}</span>
                     {customer.totalDebt > 0 ? (
                       <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-bold px-1.5 py-0.5 rounded">
                         {t('customers.debtor')}

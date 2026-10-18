@@ -151,7 +151,7 @@ export function ProductDetailsDialog({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         dir="rtl"
-        className="!fixed !inset-x-0 !bottom-0 !top-auto !z-50 !mx-auto !w-full !max-w-md !max-h-[90vh] !rounded-t-[32px] !border-t !border-border !bg-background !p-0 !text-foreground !shadow-2xl duration-300 animate-in slide-in-from-bottom [&>button:last-child]:hidden flex flex-col overflow-hidden"
+        className="!fixed !inset-x-0 !bottom-0 !top-auto !z-50 !mx-auto !w-full !max-w-md !max-h-[90vh] !max-h-[90dvh] !rounded-t-[32px] !border-t !border-border !bg-background !p-0 !text-foreground !shadow-2xl duration-300 animate-in slide-in-from-bottom [&>button:last-child]:hidden flex flex-col overflow-hidden"
         style={{
           left: 0,
           right: 0,

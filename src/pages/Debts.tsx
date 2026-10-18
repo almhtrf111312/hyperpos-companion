@@ -633,8 +633,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 </div>
 
                 {/* Header Row: Customer Name & Badges */}
-                <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap">
-                  <span className="font-black text-foreground text-sm truncate">{debt.customerName}</span>
+                <div className="flex items-center gap-2 pr-0 pl-8 flex-wrap min-w-0">
+                  <span className="font-black text-foreground text-sm truncate max-w-full" title={debt.customerName}>{debt.customerName}</span>
                   <span className={cn(
                     "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border",
                     debt.status === 'fully_paid' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :

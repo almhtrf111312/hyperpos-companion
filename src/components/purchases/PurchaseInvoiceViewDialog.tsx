@@ -152,7 +152,7 @@ export function PurchaseInvoiceViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[90vh] p-4 sm:p-6 overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[90vh] max-h-[90dvh] p-4 sm:p-6 overflow-y-auto">
         <DialogHeader className="pb-3 border-b">
           <DialogTitle className="flex items-center justify-between gap-2 text-base sm:text-lg">
             <div className="flex items-center gap-2">

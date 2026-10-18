@@ -82,10 +82,10 @@ export function ScannedProductDialog({
                 <Package className="w-10 h-10 text-muted-foreground" />
               )}
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg text-foreground mb-1">{product.name}</h3>
-              <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
-              <p className="text-2xl font-bold text-primary">${product.price}</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-lg text-foreground mb-1 line-clamp-2 break-words" title={product.name}>{product.name}</h3>
+              <p className="text-sm text-muted-foreground mb-2 truncate">{product.category}</p>
+              <p className="text-2xl font-bold text-primary tabular-nums">${product.price}</p>
             </div>
           </div>
 

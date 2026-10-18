@@ -492,7 +492,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="w-[calc(100vw-1.25rem)] sm:w-full sm:max-w-lg max-h-[88vh] overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 text-xs sm:text-sm rounded-2xl"
+          className="w-[calc(100vw-1.25rem)] sm:w-full sm:max-w-lg max-h-[88vh] max-h-[88dvh] overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 text-xs sm:text-sm rounded-2xl"
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <DialogHeader className="pb-2 border-b">

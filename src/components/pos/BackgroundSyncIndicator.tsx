@@ -200,7 +200,7 @@ export function BackgroundSyncIndicator({
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md w-[95vw] max-h-[85vh] flex flex-col p-4 sm:p-6" dir={isRTL ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-md w-[95vw] max-h-[85vh] max-h-[85dvh] flex flex-col p-4 sm:p-6" dir={isRTL ? "rtl" : "ltr"}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
@@ -208,7 +208,7 @@ export function BackgroundSyncIndicator({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-2.5 py-2 max-h-[50vh]">
+          <div className="flex-1 overflow-y-auto space-y-2.5 py-2 max-h-[50vh] max-h-[50dvh]">
             {failedOps.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 {isRTL ? 'لا توجد عمليات معلقة أو فاشلة حالياً' : 'No pending or failed operations'}

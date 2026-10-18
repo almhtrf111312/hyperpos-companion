@@ -51,7 +51,7 @@ export function VariantPickerDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto py-2">
+        <div className="space-y-2 max-h-[60vh] max-h-[60dvh] overflow-y-auto py-2">
           {products.map((product) => (
             <button
               key={product.id}
@@ -73,12 +73,12 @@ export function VariantPickerDialog({
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground truncate">{product.name}</p>
+                <p className="font-semibold text-foreground truncate" title={product.name}>{product.name}</p>
                 {product.variantLabel && (
                   <p className="text-sm text-primary font-medium">({product.variantLabel})</p>
                 )}
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                  <span className="font-bold text-foreground text-sm">${product.price}</span>
+                  <span className="font-bold text-foreground text-sm tabular-nums">${product.price}</span>
                   <span>
                     {language === 'en' ? 'Available:' : 'متوفر:'} {product.quantity} {getLocalizedUnit(product.smallUnit, false, language)}
                   </span>

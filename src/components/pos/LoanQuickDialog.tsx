@@ -94,7 +94,7 @@ export function LoanQuickDialog({
           {/* Book Name */}
           <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
             <p className="text-xs text-muted-foreground">{language === 'en' ? 'Book' : 'الكتاب'}</p>
-            <p className="font-semibold text-foreground">{productName}</p>
+            <p className="font-semibold text-foreground break-words">{productName}</p>
           </div>
 
           {/* Member Search */}

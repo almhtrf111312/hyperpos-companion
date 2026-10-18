@@ -484,7 +484,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl max-h-[92vh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl max-h-[92vh] max-h-[92dvh] p-0 overflow-hidden border-0 shadow-2xl rounded-[24px]">
         
         {/* Premium Header with gradient background */}
         <div className="bg-gradient-to-br from-primary/5 via-background to-background px-6 pt-8 pb-6 border-b border-border/50">
@@ -534,7 +534,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(92vh-220px)] scrollbar-thin">
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-220px)] max-h-[calc(92dvh-220px)] scrollbar-thin">
 
         {/* Step 1: Header */}
         {step === 'header' && (
