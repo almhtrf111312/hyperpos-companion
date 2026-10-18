@@ -18,6 +18,22 @@ import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
 import { injectGuestDemoData, clearGuestDemoData } from '@/lib/demo-data';
 import { cn } from '@/lib/utils';
 
+interface PasswordCriteria {
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+  hasMinLength: boolean;
+}
+
+const checkPasswordStrength = (pwd: string): PasswordCriteria => ({
+  hasUpper: /[A-Z]/.test(pwd),
+  hasLower: /[a-z]/.test(pwd),
+  hasNumber: /[0-9]/.test(pwd),
+  hasSpecial: /[^A-Za-z0-9]/.test(pwd),
+  hasMinLength: pwd.length >= 8,
+});
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,6 +60,11 @@ export default function Login() {
   const [isTgLoading, setIsTgLoading] = useState(false);
   const [tgBotLink, setTgBotLink] = useState<string | null>(null);
   const [tgNotLinkedError, setTgNotLinkedError] = useState(false);
+
+  const isPasswordValid = (() => {
+    const c = checkPasswordStrength(tgNewPassword);
+    return c.hasUpper && c.hasLower && c.hasNumber && c.hasSpecial && c.hasMinLength;
+  })();
 
   const { signIn } = useAuth();
   const { t, direction } = useLanguage();
@@ -191,8 +212,8 @@ export default function Login() {
       return;
     }
 
-    if (!tgNewPassword || tgNewPassword.length < 6) {
-      toast.error('كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل');
+    if (!isPasswordValid) {
+      toast.error('يرجى استيفاء جميع معايير كلمة المرور (حرف كبير، حرف صغير، رقم، رمز خاص، و8 خانات)');
       return;
     }
 
@@ -810,7 +831,8 @@ export default function Login() {
                   </div>
 
                   {/* New Password */}
-                  <div className="space-y-1.5">
+                  {/* حقل كلمة المرور الجديدة ومؤشر المعايير */}
+                  <div className="space-y-2">
                     <Label htmlFor="tgNewPassword" className="text-xs font-semibold text-foreground">
                       كلمة المرور الجديدة
                     </Label>
@@ -834,6 +856,47 @@ export default function Login() {
                         {tgShowNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+
+                    {/* شريط ومؤشرات المعايير الأربعة الحية */}
+                    {tgNewPassword.length > 0 && (() => {
+                      const criteria = checkPasswordStrength(tgNewPassword);
+                      const checks = [
+                        { label: 'حرف كبير (A-Z)', valid: criteria.hasUpper },
+                        { label: 'حرف صغير (a-z)', valid: criteria.hasLower },
+                        { label: 'رقم (0-9)', valid: criteria.hasNumber },
+                        { label: 'رمز خاص (@#$%)', valid: criteria.hasSpecial },
+                      ];
+                      const score = checks.filter(c => c.valid).length + (criteria.hasMinLength ? 1 : 0);
+
+                      return (
+                        <div className="p-3 bg-muted/40 rounded-xl border border-border/50 space-y-2 text-xs">
+                          <div className="flex items-center justify-between font-medium">
+                            <span className="text-muted-foreground">قوة كلمة المرور:</span>
+                            <span className={score === 5 ? 'text-emerald-500 font-bold' : score >= 3 ? 'text-amber-500' : 'text-rose-500'}>
+                              {score === 5 ? 'ممتازة وقوية' : score >= 3 ? 'متوسطة (أكمل الشروط)' : 'ضعيفة'}
+                            </span>
+                          </div>
+
+                          {/* شبكة النقاط الأربعة */}
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
+                            {checks.map((item, idx) => (
+                              <div key={idx} className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full transition-colors ${item.valid ? 'bg-emerald-500 ring-2 ring-emerald-500/20' : 'bg-muted-foreground/30'}`} />
+                                <span className={item.valid ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-muted-foreground'}>
+                                  {item.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {!criteria.hasMinLength && (
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400 pt-1">
+                              * يجب ألا تقل عن 8 أحرف لتفادي رفض الخادم
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Confirm Password */}
@@ -867,7 +930,7 @@ export default function Login() {
                   <Button
                     type="button"
                     onClick={handleVerifyAndResetPassword}
-                    disabled={isTgLoading || tgCode.length !== 6 || !tgNewPassword || tgNewPassword.length < 6}
+                    disabled={isTgLoading || tgCode.length !== 6 || !isPasswordValid || tgNewPassword !== tgConfirmPassword}
                     className="w-full h-11 rounded-xl font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     {isTgLoading ? (

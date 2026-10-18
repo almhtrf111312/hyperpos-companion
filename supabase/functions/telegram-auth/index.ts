@@ -69,6 +69,20 @@ async function sendTelegramMessage(
   }
 }
 
+function formatAuthPasswordError(errorMsg: string): string {
+  const msg = errorMsg.toLowerCase();
+  if (msg.includes("weak") || msg.includes("different one") || msg.includes("easy to guess")) {
+    return "كلمة المرور سهلة التخمين وشائعة. اختر كلمة أكثر تعقيداً تحتوي على أحرف وأرقام ورموز.";
+  }
+  if (msg.includes("different from the old") || msg.includes("same_password")) {
+    return "يجب أن تكون كلمة المرور الجديدة مختلفة عن كلمة المرور السابقة تماماً.";
+  }
+  if (msg.includes("at least") || msg.includes("characters")) {
+    return "كلمة المرور يجب أن تتكون من 8 خانات على الأقل وتلبي شروط الأمان.";
+  }
+  return `فشل تحديث كلمة المرور: ${errorMsg}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -408,9 +422,9 @@ serve(async (req) => {
         );
       }
 
-      if (newPassword.length < 6) {
+      if (newPassword.length < 8) {
         return new Response(
-          JSON.stringify({ error: "كلمة المرور الجديدة يجب أن تكون 6 خانات على الأقل" }),
+          JSON.stringify({ error: "كلمة المرور يجب أن تتكون من 8 خانات على الأقل وتلبي شروط الأمان" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -537,8 +551,8 @@ serve(async (req) => {
       if (resetErr) {
         console.error("[TelegramAuth] Error updating password:", resetErr);
         return new Response(
-          JSON.stringify({ error: `فشل تحديث كلمة المرور: ${resetErr.message}` }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: formatAuthPasswordError(resetErr.message) }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
