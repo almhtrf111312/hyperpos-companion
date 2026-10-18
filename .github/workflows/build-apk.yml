@@ -78,6 +78,15 @@ jobs:
         shell: bash
         # Always sign with the SAME committed key so new APKs install over old ones
         run: |
+          KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+          KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
+          if [ -z "$KEYSTORE_PASS" ]; then
+            KEYSTORE_PASS="flowpos123"
+          fi
+          if [ -z "$KEY_PASS" ]; then
+            KEY_PASS="flowpos123"
+          fi
+
           if [ ! -f "android/app/flowpos-release.keystore" ]; then
             echo "Keystore not found, generating fallback release keystore..."
             keytool -genkeypair -v \
@@ -86,14 +95,14 @@ jobs:
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
-              -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-              -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
+              -storepass "$KEYSTORE_PASS" \
+              -keypass "$KEY_PASS" \
               -dname "CN=FlowPOS Pro, OU=POS Department, O=FlowPOS, L=Dubai, ST=Dubai, C=AE"
           fi
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
-          echo "KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASS" >> "$GITHUB_ENV"
           echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         working-directory: android
