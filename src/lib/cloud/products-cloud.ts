@@ -931,8 +931,32 @@ export const addProductCloud = async (product: Omit<Product, 'id' | 'status'>): 
     triggerAutoBackup(`منتج جديد: ${product.name}`);
     return newProduct;
   }
+  // Fallback to local cache + sync-queue if direct cloud insert failed
+  const tempId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const userId = getCurrentUserId() || 'offline';
+  const offlineProduct: Product = {
+    ...product,
+    id: tempId,
+    status: getStatus(product.quantity || 0, product.minStockLevel),
+  };
+  if (productsCache) {
+    productsCache.unshift(offlineProduct);
+  } else {
+    productsCache = [offlineProduct];
+  }
+  cacheTimestamp = Date.now();
+  saveToLocalCache(productsCache);
 
-  return null;
+  const { addToQueue } = await import('../sync-queue');
+  addToQueue('sale', {
+    _operation: 'product_add',
+    product: { ...cloudData, user_id: userId },
+    tempId,
+  });
+
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  triggerAutoBackup(`منتج جديد: ${product.name}`);
+  return offlineProduct;
 };
 
 // Update product in cloud
@@ -1071,56 +1095,69 @@ export const updateProductCloud = async (id: string, data: Partial<Omit<Product,
   }
   // === END OFFLINE SUPPORT ===
 
-  const success = await updateInSupabase('products', id, updates);
-
-  if (success) {
-    if (data.archived === true) {
-      removeProductFromLocalCache(id);
-    } else if (productsCache) {
-      const idx = productsCache.findIndex(p => p.id === id);
-      if (idx !== -1) {
-        productsCache = productsCache.map(p =>
-          p.id === id ? { ...p, ...data, archived: false, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
-        );
-      } else {
-        const restoredProduct: Product = {
-          id,
-          name: data.name || '',
-          barcode: data.barcode || '',
-          barcode2: data.barcode2,
-          barcode3: data.barcode3,
-          variantLabel: data.variantLabel,
-          category: data.category || '',
-          costPrice: data.costPrice || 0,
-          salePrice: data.salePrice || 0,
-          quantity: data.quantity || 0,
-          minStockLevel: data.minStockLevel || 1,
-          status: getStatus(data.quantity || 0, data.minStockLevel || 1),
-          laborCost: data.laborCost || 0,
-          bulkUnit: data.bulkUnit || 'كرتونة',
-          smallUnit: data.smallUnit || 'قطعة',
-          conversionFactor: data.conversionFactor || 1,
-          bulkCostPrice: data.bulkCostPrice || 0,
-          bulkSalePrice: data.bulkSalePrice || 0,
-          trackByUnit: data.trackByUnit || 'piece',
-          image: data.image,
-          expiryDate: data.expiryDate,
-          customFields: data.customFields,
-          archived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        productsCache.unshift(restoredProduct);
-      }
-      cacheTimestamp = Date.now();
-      saveToLocalCache(productsCache);
-      updateProductInIDB(id, { ...data, archived: false }).catch(() => {});
-    }
-    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
-    triggerAutoBackup(`تعديل منتج: ${id}`);
+  let success = false;
+  try {
+    success = await updateInSupabase('products', id, updates);
+  } catch (err) {
+    console.warn('[updateProductCloud] Direct update threw, falling back to offline queue:', err);
   }
 
-  return success;
+  if (data.archived === true) {
+    removeProductFromLocalCache(id);
+  } else if (productsCache) {
+    const idx = productsCache.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      productsCache = productsCache.map(p =>
+        p.id === id ? { ...p, ...data, archived: false, status: data.quantity !== undefined ? getStatus(data.quantity, p.minStockLevel) : p.status } : p
+      );
+    } else {
+      const restoredProduct: Product = {
+        id,
+        name: data.name || '',
+        barcode: data.barcode || '',
+        barcode2: data.barcode2,
+        barcode3: data.barcode3,
+        variantLabel: data.variantLabel,
+        category: data.category || '',
+        costPrice: data.costPrice || 0,
+        salePrice: data.salePrice || 0,
+        quantity: data.quantity || 0,
+        minStockLevel: data.minStockLevel || 1,
+        status: getStatus(data.quantity || 0, data.minStockLevel || 1),
+        laborCost: data.laborCost || 0,
+        bulkUnit: data.bulkUnit || 'كرتونة',
+        smallUnit: data.smallUnit || 'قطعة',
+        conversionFactor: data.conversionFactor || 1,
+        bulkCostPrice: data.bulkCostPrice || 0,
+        bulkSalePrice: data.bulkSalePrice || 0,
+        trackByUnit: data.trackByUnit || 'piece',
+        image: data.image,
+        expiryDate: data.expiryDate,
+        customFields: data.customFields,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      productsCache.unshift(restoredProduct);
+    }
+    cacheTimestamp = Date.now();
+    saveToLocalCache(productsCache);
+    updateProductInIDB(id, { ...data, archived: false }).catch(() => {});
+  }
+  emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+  triggerAutoBackup(`تعديل منتج: ${id}`);
+
+  if (!success) {
+    const { addToQueue } = await import('../sync-queue');
+    addToQueue('sale', {
+      _operation: 'product_update',
+      id,
+      updates,
+    });
+    console.log('[updateProductCloud] 📴 Cloud update failed, queued for background sync:', id);
+  }
+
+  return true;
 };
 
 // Load archived products from cloud (archived = true)
@@ -1180,24 +1217,44 @@ export const deleteProductCloud = async (id: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) return false;
 
-  // الحذف الفوري من الكاش المحلي ومصفوفة الذاكرة
+  // 1. الحذف الفوري من الكاش المحلي ومصفوفة الذاكرة و IndexedDB وبث التحديث (0ms)
   removeProductFromLocalCache(id);
+  deleteProductFromIDB(id).catch(() => {});
+  emitEvent(EVENTS.PRODUCT_DELETED, id);
+  emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
 
+  // 2. إذا كان أوفلاين، نضع العملية في طابور المزامنة فوراً
+  if (!navigator.onLine) {
+    const { addToQueue } = await import('../sync-queue');
+    addToQueue('sale', {
+      _operation: 'product_delete',
+      id,
+    });
+    console.log('[deleteProductCloud] 📴 Deleted offline, queued for sync:', id);
+    return true;
+  }
+
+  // 3. المحاولة في السحابة مع الرجوع للطابور عند الفشل
   try {
     const { error } = await supabase.rpc('hard_delete_product_atomic', { _product_id: id });
 
     if (error) {
-      console.error('[deleteProductCloud] Hard delete failed:', error.message);
-      return false;
+      console.warn('[deleteProductCloud] Hard delete RPC failed, queuing for sync:', error.message);
+      const { addToQueue } = await import('../sync-queue');
+      addToQueue('sale', {
+        _operation: 'product_delete',
+        id,
+      });
     }
-
-    await deleteProductFromIDB(id);
-    emitEvent(EVENTS.PRODUCT_DELETED, id);
-    emitEvent(EVENTS.PRODUCTS_UPDATED, productsCache);
     return true;
   } catch (error) {
-    console.error('[deleteProductCloud] Error:', error);
-    return false;
+    console.warn('[deleteProductCloud] Network error, queuing for sync:', error);
+    const { addToQueue } = await import('../sync-queue');
+    addToQueue('sale', {
+      _operation: 'product_delete',
+      id,
+    });
+    return true;
   }
 };
 

@@ -100,6 +100,15 @@ export async function processGenericQueuedOperation(operation: QueuedOperation):
         const cleanUpdates = filterTablePayload('products', data.updates as Record<string, unknown>);
         return assertSuccess(sb.from('products').update(cleanUpdates).eq('id', String(data.id)));
       }
+      if (data._operation === 'product_delete') {
+        if (!data.id) throw new Error('Missing product id for deletion');
+        const { error } = await sb.rpc('hard_delete_product_atomic', { _product_id: String(data.id) });
+        if (error) {
+          if (error.message?.includes('not found') || (error as any).code === 'P0002') return true;
+          throw error;
+        }
+        return true;
+      }
       // ✅ العمليات القديمة (legacy) — تمريرها بدون حجب الطابور
       console.warn('[SyncProcessor] Legacy sale queue item skipped (auto-cleaned):', operation.id, data);
       return true;

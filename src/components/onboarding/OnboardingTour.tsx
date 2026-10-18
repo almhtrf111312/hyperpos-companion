@@ -413,8 +413,7 @@ export function OnboardingTour() {
     if (!user || !role) return;
     const completed = localStorage.getItem(ONBOARDING_KEY);
     if (!completed) {
-      const timer = setTimeout(() => setIsActive(true), 1500);
-      return () => clearTimeout(timer);
+      setIsActive(true);
     }
   }, [user, role]);
 

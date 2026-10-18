@@ -753,36 +753,7 @@ export function CartPanel({
         }
       }
 
-      // ✅ إضافة الفاتورة للطابور فوراً (محلياً - 0ms)
-      addUniqueOperation('invoice_create', {
-        operationId,
-        bundle: {
-          invoiceNumber,
-          customerName: customerNameSnapshot || 'عميل نقدي',
-          items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit - i.total * discountRatio) })),
-          subtotal,
-          discount: effectiveDiscountAmount,
-          discountPercentage: discountType === 'percent' ? discount : 0,
-          taxRate: effectiveTaxRate,
-          taxAmount,
-          total: totalSnapshot,
-          totalInCurrency: roundCurrency(totalSnapshot * activeRate),
-
-          currency: selectedCurrency.code,
-          currencySymbol: effectiveCurrencySymbol,
-          exchangeRate: activeRate,
-          profit: discountedProfit,
-          cogs: totalCOGS,
-          profitsByCategory: Object.fromEntries(
-            Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(localItems.filter(i => i.category === k).reduce((s, i) => s + (i.profit - i.total * discountRatio), 0))])
-          ),
-          stockItems: stockItemsLocal,
-          warehouseId: stockWarehouseId,
-          wholesaleMode,
-        },
-      }, operationId);
-
-      // ✅ تسجيل الفاتورة محلياً فوراً لتظهر في قائمة الفواتير بدون انتظار الإنترنت (0ms)
+      // 1. ✅ تسجيل الفاتورة محلياً فوراً وبث التحديث للشاشة (0ms)
       const offlineCashInvoice: Invoice = {
         id: invoiceNumber,
         type: 'sale',
@@ -823,6 +794,35 @@ export function CartPanel({
 
       // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
       addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
+
+      // 2. ✅ إضافة الفاتورة لطابور المزامنة sync-queue
+      addUniqueOperation('invoice_create', {
+        operationId,
+        bundle: {
+          invoiceNumber,
+          customerName: customerNameSnapshot || 'عميل نقدي',
+          items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit - i.total * discountRatio) })),
+          subtotal,
+          discount: effectiveDiscountAmount,
+          discountPercentage: discountType === 'percent' ? discount : 0,
+          taxRate: effectiveTaxRate,
+          taxAmount,
+          total: totalSnapshot,
+          totalInCurrency: roundCurrency(totalSnapshot * activeRate),
+
+          currency: selectedCurrency.code,
+          currencySymbol: effectiveCurrencySymbol,
+          exchangeRate: activeRate,
+          profit: discountedProfit,
+          cogs: totalCOGS,
+          profitsByCategory: Object.fromEntries(
+            Object.entries(profitsByCategory).map(([k, v]) => [k, roundCurrency(localItems.filter(i => i.category === k).reduce((s, i) => s + (i.profit - i.total * discountRatio), 0))])
+          ),
+          stockItems: stockItemsLocal,
+          warehouseId: stockWarehouseId,
+          wholesaleMode,
+        },
+      }, operationId);
 
       // ✅ تسجيل النشاط
       if (user) {
@@ -1097,9 +1097,7 @@ export function CartPanel({
         }
       }
 
-      addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
-
-      // ✅ تسجيل الفاتورة محلياً فوراً لتظهر في قائمة الفواتير بدون انتظار الإنترنت (0ms)
+      // 1. ✅ تسجيل الفاتورة محلياً فوراً وبث التحديث للشاشة (0ms)
       const offlineDebtInvoice: Invoice = {
         id: invoiceNumber,
         type: 'sale',
@@ -1157,6 +1155,9 @@ export function CartPanel({
 
       // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
       addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
+
+      // 2. ✅ إضافة حزمة البيع الآجل لطابور المزامنة sync-queue
+      addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
 
       // ✅ تسجيل النشاط
       if (user) {
@@ -2241,7 +2242,7 @@ export function CartPanel({
                 onClick={() => {
                   handleApplyDeficitAsDiscount();
                   setShowDeficitDialog(false);
-                  setTimeout(() => setShowCashDialog(true), 150);
+                  setShowCashDialog(true);
                 }}
               >
                 {t('pos.applyShortageAsDiscountBtn')}

@@ -98,6 +98,7 @@ import { getEffectiveFieldsConfig, ProductFieldsConfig } from '@/lib/product-fie
 import { getEnabledCustomFields, CustomField } from '@/lib/custom-fields-config';
 import { EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
+import { useDebounce } from '@/hooks/use-debounce';
 import { getLocalizedUnit as localizeProductUnit } from '@/lib/product-units';
 import { useCamera } from '@/hooks/use-camera';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
@@ -153,7 +154,7 @@ export default function Products() {
   const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStock[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const deleteGuard = useActionGuard();
@@ -442,16 +443,6 @@ export default function Products() {
       console.error('Failed to restore form state', e);
     }
   }, []);
-
-
-
-  // Debounce search (300ms)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   // Load data - Local-First (0ms instant display) + non-blocking background refresh
   const loadData = useCallback(async (isBackground = false) => {

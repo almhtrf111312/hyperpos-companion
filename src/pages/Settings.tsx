@@ -1538,21 +1538,22 @@ export default function Settings() {
           backupSettings: data.settings?.backupSettings || backupSettings,
         });
 
+        // Apply settings directly to runtime
+        const updatedUnified = loadUnifiedStoreSettings();
+        applySettingsToRuntime(updatedUnified);
+
         // Dispatch standardized events to update all components
         emitEvent(EVENTS.CUSTOMERS_UPDATED);
         emitEvent(EVENTS.DEBTS_UPDATED);
         emitEvent(EVENTS.INVOICES_UPDATED);
         emitEvent(EVENTS.PRODUCTS_UPDATED);
+        emitEvent(EVENTS.PARTNERS_UPDATED);
+        emitEvent(EVENTS.EXPENSES_UPDATED);
 
         toast({
           title: t('settings.restoreComplete'),
-          description: t('settings.pageReloading'),
+          description: t('localBackup.restoreSuccess') || t('settings.restoreComplete'),
         });
-
-        // Reload the page after a short delay to apply all changes
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
       } catch (error) {
         console.error('Import error:', error);
         toast({

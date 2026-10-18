@@ -14,6 +14,8 @@ import {
   LocalBackup,
 } from '@/lib/local-auto-backup';
 import { toast } from 'sonner';
+import { emitEvent, EVENTS } from '@/lib/events';
+import { loadUnifiedStoreSettings, applySettingsToRuntime } from '@/lib/store-settings-sync';
 
 export function LocalBackupSection() {
   const { t, language } = useLanguage();
@@ -32,8 +34,15 @@ export function LocalBackupSection() {
   const handleRestore = (id: string) => {
     const success = restoreFromBackup(id);
     if (success) {
+      const updatedSettings = loadUnifiedStoreSettings();
+      applySettingsToRuntime(updatedSettings);
+      emitEvent(EVENTS.CUSTOMERS_UPDATED);
+      emitEvent(EVENTS.DEBTS_UPDATED);
+      emitEvent(EVENTS.INVOICES_UPDATED);
+      emitEvent(EVENTS.PRODUCTS_UPDATED);
+      emitEvent(EVENTS.PARTNERS_UPDATED);
+      emitEvent(EVENTS.EXPENSES_UPDATED);
       toast.success(t('localBackup.restoreSuccess'));
-      setTimeout(() => window.location.reload(), 1500);
     } else {
       toast.error(t('localBackup.restoreFailed'));
     }

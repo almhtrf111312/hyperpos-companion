@@ -77,6 +77,7 @@ import { toast } from 'sonner';
 import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
+import { useDebounce } from '@/hooks/use-debounce';
 import { getCurrencySymbolByCode, resolveHistoricalCurrency, PREDEFINED_CURRENCIES } from '@/lib/currencies';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
@@ -266,7 +267,7 @@ export default function Invoices() {
   const [activeMainTab, setActiveMainTab] = useState<'sales' | 'purchases'>('sales');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | InvoiceType | 'shipping'>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt' | 'card'>('all');
@@ -543,14 +544,6 @@ export default function Invoices() {
     setSearchQuery('');
     setActiveKpi('total');
   };
-
-  // Debounce search (300ms)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   // Load invoices with proper cleanup & silent background updates
   const isAnyModalOpenRef = useRef(false);
@@ -882,12 +875,15 @@ export default function Invoices() {
     setShowRefundDialog(false);
     setInvoiceToRefund(null);
 
-    // ✅ Offline path: queue and stop here
+    // ✅ Offline path: update local state immediately and queue
     if (!isOnline) {
+      setInvoices(prev => prev.map(inv =>
+        inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+      ));
       addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel }, `invoice-refund:${invoiceLabel}`);
-      toast.info(`تم جدولة استرداد ${invoiceLabel}`, {
+      toast.info(`تم استرداد ${invoiceLabel} محلياً`, {
         id: toastId,
-        description: `المبلغ: ${formatCurrency(invoiceTotal, invoiceCurrencySymbol, refundFin.decimals)} — سيُنفَّذ عند عودة الإنترنت`,
+        description: `المبلغ: ${formatCurrency(invoiceTotal, invoiceCurrencySymbol, refundFin.decimals)} — سيُرفع الاسترداد تلقائياً عند عودة الإنترنت`,
         duration: 3500,
       });
       return;
