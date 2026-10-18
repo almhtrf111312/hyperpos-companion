@@ -43,7 +43,7 @@ export function InvoiceSummaryDisplay({
   const paidInUSD = paidAmount / exchangeRate;
 
   return (
-    <div className="p-4 bg-muted/30 rounded-lg space-y-3 text-sm">
+    <div className="p-4 bg-muted/30 rounded-lg space-y-3 text-sm tabular-nums">
       {/* Subtotal */}
       <div className="flex justify-between">
         <span className="text-muted-foreground">{t('pos.subtotal')}</span>

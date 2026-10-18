@@ -2134,7 +2134,7 @@ export function CartPanel({
               </div>
               <div className="flex justify-between items-center text-lg font-bold border-t border-border pt-2 mt-2 gap-2">
                 <span className="shrink-0">{t('pos.total') || 'الإجمالي'}:</span>
-                <span className="text-primary font-mono text-base sm:text-lg shrink-0" dir="ltr">
+                <span className="text-primary font-mono tabular-nums text-base sm:text-lg shrink-0" dir="ltr">
                   {formatCurrency(totalInCurrency, selectedCurrency.symbol)}
                 </span>
               </div>

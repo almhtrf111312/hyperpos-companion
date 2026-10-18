@@ -2185,12 +2185,12 @@ export default function Products() {
                           {!noInventory && (
                             <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-md border border-border/70 shadow-2xs">
                               <span className="text-[9px] font-sans text-muted-foreground font-medium">{t('products.buy') || 'شراء'}:</span>
-                              <span className="text-foreground font-bold">{formatPrice(product.costPrice)}</span>
+                              <span className="text-foreground font-bold tabular-nums">{formatPrice(product.costPrice)}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 shadow-2xs text-primary">
                             <span className="text-[9px] font-sans text-primary/80 font-medium">{t('products.sell') || 'بيع'}:</span>
-                            <span className="text-foreground font-black">{formatPrice(product.salePrice)}</span>
+                            <span className="text-foreground font-black tabular-nums">{formatPrice(product.salePrice)}</span>
                           </div>
                         </div>
                       </div>

@@ -1865,7 +1865,7 @@ export default function Invoices() {
                   )}
                 >
                   <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.todaySales', 'مبيعات اليوم')}</span>
-                  <span className="text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
+                  <span className="text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums whitespace-nowrap">
                     {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
                   </span>
                 </button>
@@ -1880,7 +1880,7 @@ export default function Invoices() {
                   )}
                 >
                   <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.totalProfits', 'إجمالي الأرباح')}</span>
-                  <span className="text-[11px] sm:text-xs font-black text-primary font-mono whitespace-nowrap">
+                  <span className="text-[11px] sm:text-xs font-black text-primary font-mono tabular-nums whitespace-nowrap">
                     {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
                   </span>
                 </button>

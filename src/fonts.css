@@ -683,26 +683,50 @@
    ========================================================================== */
 :root {
   --app-font-family: 'Cairo';
+  --app-line-height: 1.55;
+  --app-button-line-height: 1.4;
+  --app-input-line-height: 1.45;
+  --app-badge-line-height: 1.35;
 }
 
 :root[data-font="cairo"], [data-font="cairo"] {
   --app-font-family: 'Cairo';
+  --app-line-height: 1.55;
+  --app-button-line-height: 1.4;
+  --app-input-line-height: 1.45;
+  --app-badge-line-height: 1.35;
 }
 
 :root[data-font="tajawal"], [data-font="tajawal"] {
   --app-font-family: 'Tajawal';
+  --app-line-height: 1.50;
+  --app-button-line-height: 1.35;
+  --app-input-line-height: 1.40;
+  --app-badge-line-height: 1.30;
 }
 
 :root[data-font="ibm-plex"], [data-font="ibm-plex"] {
   --app-font-family: 'IBM Plex Sans Arabic';
+  --app-line-height: 1.55;
+  --app-button-line-height: 1.40;
+  --app-input-line-height: 1.45;
+  --app-badge-line-height: 1.35;
 }
 
 :root[data-font="almarai"], [data-font="almarai"] {
   --app-font-family: 'Almarai';
+  --app-line-height: 1.45;
+  --app-button-line-height: 1.30;
+  --app-input-line-height: 1.35;
+  --app-badge-line-height: 1.25;
 }
 
 :root[data-font="readex"], [data-font="readex"] {
   --app-font-family: 'Readex Pro';
+  --app-line-height: 1.48;
+  --app-button-line-height: 1.35;
+  --app-input-line-height: 1.40;
+  --app-badge-line-height: 1.30;
 }
 
 /* Helper preview classes for Font Selector cards */

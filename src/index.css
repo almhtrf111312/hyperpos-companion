@@ -1275,6 +1275,7 @@ html.theme-transitioning *::after {
 
   body {
     @apply bg-background text-foreground font-cairo antialiased;
+    line-height: var(--app-line-height, 1.55);
     font-feature-settings: "rlig" 1, "calt" 1;
     pointer-events: auto !important;
     touch-action: manipulation;

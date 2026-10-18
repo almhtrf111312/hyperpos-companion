@@ -2310,7 +2310,7 @@ export default function Reports() {
                   </div>
                 </div>
                 <div className="my-1">
-                  <p className={cn("text-xl sm:text-2xl font-black tracking-tight truncate", idx === 0 ? "text-primary" : "text-foreground")} title={String(card.value)}>
+                  <p className={cn("text-xl sm:text-2xl font-black tracking-tight truncate tabular-nums", idx === 0 ? "text-primary" : "text-foreground")} title={String(card.value)}>
                     {card.value}
                   </p>
                 </div>

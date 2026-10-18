@@ -525,19 +525,19 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       <div className="grid grid-cols-4 gap-1.5 text-center select-none">
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('debts.total')}</span>
-          <span className="text-xs font-black text-foreground font-mono whitespace-nowrap">{formatCurrency(stats.total)}</span>
+          <span className="text-xs font-black text-foreground font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.total)}</span>
         </div>
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-destructive font-medium block truncate">{t('debts.remaining')}</span>
-          <span className="text-xs font-black text-destructive font-mono whitespace-nowrap">{formatCurrency(stats.remaining)}</span>
+          <span className="text-xs font-black text-destructive font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.remaining)}</span>
         </div>
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">{t('debts.paid')}</span>
-          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">{formatCurrency(stats.paid)}</span>
+          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.paid)}</span>
         </div>
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('debts.overdue')}</span>
-          <span className="text-xs font-black text-orange-600 dark:text-orange-400 font-mono whitespace-nowrap">{formatCurrency(stats.overdue)}</span>
+          <span className="text-xs font-black text-orange-600 dark:text-orange-400 font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.overdue)}</span>
         </div>
       </div>
 
