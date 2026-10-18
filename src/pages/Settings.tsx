@@ -86,6 +86,12 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { isGuestDemoMode } from '@/lib/demo-data';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { saveStoreSettings, fetchStoreSettings } from '@/lib/supabase-store';
+import {
+  loadUnifiedStoreSettings,
+  mergeStoreSettings,
+  applySettingsToRuntime,
+  saveUnifiedStoreSettings,
+} from '@/lib/store-settings-sync';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import type { TranslationKey } from '@/lib/i18n';
@@ -463,14 +469,14 @@ export default function Settings() {
 
   // Custom currency names
   const [currencyNames, setCurrencyNames] = useState({
-    TRY: persisted?.currencyNames?.TRY ?? t('settings.tryName'),
-    SYP: persisted?.currencyNames?.SYP ?? t('settings.sypName'),
+    TRY: (persisted?.currencyNames?.TRY && persisted.currencyNames.TRY.trim()) ? persisted.currencyNames.TRY.trim() : 'ليرة تركية',
+    SYP: (persisted?.currencyNames?.SYP && persisted.currencyNames.SYP.trim()) ? persisted.currencyNames.SYP.trim() : 'ليرة سورية',
   });
 
   // Custom currency symbols
   const [currencySymbols, setCurrencySymbols] = useState({
-    TRY: persisted?.currencySymbols?.TRY ?? '₺',
-    SYP: persisted?.currencySymbols?.SYP ?? 'ل.س',
+    TRY: (persisted?.currencySymbols?.TRY && persisted.currencySymbols.TRY.trim()) ? persisted.currencySymbols.TRY.trim() : '₺',
+    SYP: (persisted?.currencySymbols?.SYP && persisted.currencySymbols.SYP.trim()) ? persisted.currencySymbols.SYP.trim() : 'ل.س',
   });
 
   // Sync settings
@@ -657,168 +663,87 @@ export default function Settings() {
         const cloudData = await fetchStoreSettings();
         if (!cloudData) return;
 
-        // 1. Resolved Store settings
-        const freshStoreSettings = {
-          name: cloudData.name ?? '',
-          type: cloudData.store_type ?? 'phones',
-          phone: cloudData.phone ?? '',
-          email: (cloudData.email as string | null | undefined) ?? '',
-          address: cloudData.address ?? '',
-          logo: cloudData.logo_url ?? '',
-        };
-        setStoreSettings(freshStoreSettings);
+        const localSettings = loadUnifiedStoreSettings();
+        const merged = mergeStoreSettings(localSettings, cloudData);
 
-        // 2. Resolved Tax settings
-        const freshTaxEnabled = typeof cloudData.tax_enabled === 'boolean' ? cloudData.tax_enabled : false;
-        const freshTaxRate = typeof cloudData.tax_rate === 'number' ? cloudData.tax_rate : 0;
-        setTaxEnabled(freshTaxEnabled);
-        setTaxRate(freshTaxRate);
-
-        // 3. Resolved Notification settings
-        const freshNotificationSettings = (cloudData.notification_settings && typeof cloudData.notification_settings === 'object'
-          ? { ...notificationSettings, ...cloudData.notification_settings }
-          : notificationSettings) as typeof notificationSettings;
-        setNotificationSettings(freshNotificationSettings);
-
-        // 4. Resolved Print settings
-        const freshPrintSettings = (cloudData.print_settings && typeof cloudData.print_settings === 'object'
-          ? { ...printSettings, ...cloudData.print_settings }
-          : printSettings) as typeof printSettings;
-        setPrintSettings(freshPrintSettings);
-
-        // 5. Resolved Exchange rates
-        const rates = (cloudData.exchange_rates && typeof cloudData.exchange_rates === 'object')
-          ? cloudData.exchange_rates as Record<string, number>
-          : {};
-        const freshExchangeRates = {
-          TRY: rates.TRY !== undefined ? String(rates.TRY) : '',
-          SYP: rates.SYP !== undefined ? String(rates.SYP) : '',
-        };
-        setExchangeRates(freshExchangeRates);
-
-        // 6. Resolved Sync settings
-        const syncObj = cloudData.sync_settings && typeof cloudData.sync_settings === 'object' 
-          ? cloudData.sync_settings as Record<string, unknown> : {};
-
-        // 5.5 Resolved Primary Currency
-        const freshPrimaryCurrency = (cloudData.primary_currency as 'USD' | 'TRY' | 'SYP') 
-          || ((syncObj as any)?.primaryCurrency as 'USD' | 'TRY' | 'SYP') 
-          || persisted?.primaryCurrency 
-          || 'USD';
-        setPrimaryCurrency(freshPrimaryCurrency);
-
-        const freshDiscountPercent = typeof syncObj.discountPercentEnabled === 'boolean' ? syncObj.discountPercentEnabled : true;
-        const freshDiscountFixed = typeof syncObj.discountFixedEnabled === 'boolean' ? syncObj.discountFixedEnabled : true;
-        const freshBarcodeMode = (syncObj.barcodeScanMode === 'search' || syncObj.barcodeScanMode === 'add') ? syncObj.barcodeScanMode : 'search';
-        const freshHideMaintenance = typeof syncObj.hideMaintenanceSection === 'boolean' ? syncObj.hideMaintenanceSection : false;
-        const freshTrackCapital = typeof syncObj.trackCapital === 'boolean' ? syncObj.trackCapital : false;
-        const freshInitialCapital = typeof syncObj.initialCapital === 'number' 
-          ? syncObj.initialCapital 
-          : (Number(syncObj.initialCapital) || 0);
-
-        setDiscountPercentEnabled(freshDiscountPercent);
-        setDiscountFixedEnabled(freshDiscountFixed);
-        setBarcodeScanMode(freshBarcodeMode);
-        setHideMaintenanceSection(freshHideMaintenance);
-        setTrackCapital(freshTrackCapital);
-        setInitialCapital(freshInitialCapital);
-
-        const cn = (syncObj.currencyNames && typeof syncObj.currencyNames === 'object')
-          ? syncObj.currencyNames as Record<string, string>
-          : {};
-        const freshCurrencyNames = {
-          TRY: cn.TRY ?? '',
-          SYP: cn.SYP ?? '',
-        };
-        setCurrencyNames(freshCurrencyNames);
-
-        const syms = (syncObj.currencySymbols && typeof syncObj.currencySymbols === 'object')
-          ? syncObj.currencySymbols as Record<string, string>
-          : {};
-        const freshCurrencySymbols = {
-          TRY: (syms.TRY && typeof syms.TRY === 'string') ? syms.TRY : (persisted?.currencySymbols?.TRY || '₺'),
-          SYP: (syms.SYP && typeof syms.SYP === 'string') ? syms.SYP : (persisted?.currencySymbols?.SYP || 'ل.س'),
-        };
-        setCurrencySymbols(freshCurrencySymbols);
-
-        const bs = (syncObj.backupSettings && typeof syncObj.backupSettings === 'object')
-          ? syncObj.backupSettings as Record<string, unknown>
-          : {};
-        const freshBackupSettings = {
-          autoBackup: typeof bs.autoBackup === 'boolean' ? bs.autoBackup : true,
-          interval: typeof bs.interval === 'string' ? bs.interval : 'daily',
-          keepDays: typeof bs.keepDays === 'string' ? bs.keepDays : String(bs.keepDays ?? '7'),
-        };
-        setBackupSettings(freshBackupSettings);
-
-        // عدم الكتابة فوق الخط المحلي المختار إذا كان محدداً مسبقاً في الجهاز
-        const localStoredFont = localStorage.getItem(APP_FONT_STORAGE_KEY);
-        if (!localStoredFont && typeof syncObj.appFont === 'string' && isValidAppFontId(syncObj.appFont)) {
-          setStoredAppFont(syncObj.appFont);
-        }
-
-        let freshProductFieldsConfig = productFieldsConfig;
-        if (syncObj.productFieldsConfig) {
-          freshProductFieldsConfig = syncObj.productFieldsConfig as ProductFieldsConfig;
-          setProductFieldsConfig(freshProductFieldsConfig);
-          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(freshProductFieldsConfig));
-          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, freshProductFieldsConfig);
-        }
-
-        if (syncObj.customFields && Array.isArray(syncObj.customFields)) {
-          localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncObj.customFields));
-          emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncObj.customFields);
-        }
-
-        const rawEC = (syncObj as any)?.enabledCurrencies || persisted?.enabledCurrencies;
-        const freshEnabledCurrencies = {
-          USD: rawEC?.USD !== false,
-          TRY: rawEC?.TRY !== false,
-          SYP: rawEC?.SYP !== false,
-        };
-        setEnabledCurrencies(freshEnabledCurrencies);
-
-        // Persist to localStorage so offline reads stay in sync
-        savePersistedSettings({
-          storeSettings: freshStoreSettings,
-          primaryCurrency: freshPrimaryCurrency,
-          enabledCurrencies: freshEnabledCurrencies,
-          exchangeRates: freshExchangeRates,
-          currencyNames: freshCurrencyNames,
-          currencySymbols: freshCurrencySymbols,
-          taxEnabled: freshTaxEnabled,
-          taxRate: freshTaxRate,
-          notificationSettings: freshNotificationSettings,
-          printSettings: freshPrintSettings,
-          backupSettings: freshBackupSettings,
-          hideMaintenanceSection: freshHideMaintenance,
-          discountPercentEnabled: freshDiscountPercent,
-          discountFixedEnabled: freshDiscountFixed,
-          barcodeScanMode: freshBarcodeMode,
-          trackCapital: freshTrackCapital,
-          initialCapital: freshInitialCapital,
+        setStoreSettings(merged.storeSettings);
+        setTaxEnabled(merged.taxEnabled);
+        setTaxRate(merged.taxRate);
+        setNotificationSettings(merged.notificationSettings as typeof notificationSettings);
+        setPrintSettings(merged.printSettings as typeof printSettings);
+        setExchangeRates({
+          TRY: String(merged.exchangeRates.TRY),
+          SYP: String(merged.exchangeRates.SYP),
+        });
+        setPrimaryCurrency(merged.primaryCurrency as 'USD' | 'TRY' | 'SYP');
+        setEnabledCurrencies({
+          USD: merged.enabledCurrencies.USD !== false,
+          TRY: merged.enabledCurrencies.TRY !== false,
+          SYP: merged.enabledCurrencies.SYP !== false,
+        });
+        setDiscountPercentEnabled(merged.discountPercentEnabled);
+        setDiscountFixedEnabled(merged.discountFixedEnabled);
+        setBarcodeScanMode(merged.barcodeScanMode);
+        setHideMaintenanceSection(merged.hideMaintenanceSection);
+        setTrackCapital(merged.trackCapital);
+        setInitialCapital(merged.initialCapital);
+        setCurrencyNames({
+          TRY: merged.currencyNames.TRY,
+          SYP: merged.currencyNames.SYP,
+        });
+        setCurrencySymbols({
+          TRY: merged.currencySymbols.TRY,
+          SYP: merged.currencySymbols.SYP,
+        });
+        setBackupSettings({
+          autoBackup: Boolean(merged.backupSettings.autoBackup),
+          interval: String(merged.backupSettings.interval || 'daily'),
+          keepDays: String(merged.backupSettings.keepDays || '7'),
         });
 
-        // ✅ Update snapshot with the EXACT identical fresh values from cloud
+        if (merged.productFieldsConfig) {
+          setProductFieldsConfig(merged.productFieldsConfig);
+        }
+
+        applySettingsToRuntime(merged);
+
+        // ✅ Update snapshot with the EXACT identical fresh values
         settingsSnapshotRef.current = {
-          storeSettings: { ...freshStoreSettings },
-          primaryCurrency: freshPrimaryCurrency,
-          enabledCurrencies: { ...freshEnabledCurrencies },
-          exchangeRates: { ...freshExchangeRates },
-          currencyNames: { ...freshCurrencyNames },
-          currencySymbols: { ...freshCurrencySymbols },
-          notificationSettings: { ...freshNotificationSettings },
-          printSettings: { ...freshPrintSettings },
-          backupSettings: { ...freshBackupSettings },
-          hideMaintenanceSection: freshHideMaintenance,
-          productFieldsConfig: freshProductFieldsConfig ? { ...freshProductFieldsConfig } : loadProductFieldsConfig(),
-          taxEnabled: freshTaxEnabled,
-          taxRate: freshTaxRate,
-          discountPercentEnabled: freshDiscountPercent,
-          discountFixedEnabled: freshDiscountFixed,
-          barcodeScanMode: freshBarcodeMode,
-          trackCapital: freshTrackCapital,
-          initialCapital: freshInitialCapital,
+          storeSettings: { ...merged.storeSettings },
+          primaryCurrency: merged.primaryCurrency as 'USD' | 'TRY' | 'SYP',
+          enabledCurrencies: {
+            USD: merged.enabledCurrencies.USD !== false,
+            TRY: merged.enabledCurrencies.TRY !== false,
+            SYP: merged.enabledCurrencies.SYP !== false,
+          },
+          exchangeRates: {
+            TRY: String(merged.exchangeRates.TRY),
+            SYP: String(merged.exchangeRates.SYP),
+          },
+          currencyNames: {
+            TRY: merged.currencyNames.TRY,
+            SYP: merged.currencyNames.SYP,
+          },
+          currencySymbols: {
+            TRY: merged.currencySymbols.TRY,
+            SYP: merged.currencySymbols.SYP,
+          },
+          notificationSettings: { ...(merged.notificationSettings as typeof notificationSettings) },
+          printSettings: { ...(merged.printSettings as typeof printSettings) },
+          backupSettings: {
+            autoBackup: Boolean(merged.backupSettings.autoBackup),
+            interval: String(merged.backupSettings.interval || 'daily'),
+            keepDays: String(merged.backupSettings.keepDays || '7'),
+          },
+          hideMaintenanceSection: merged.hideMaintenanceSection,
+          productFieldsConfig: merged.productFieldsConfig || loadProductFieldsConfig(),
+          taxEnabled: merged.taxEnabled,
+          taxRate: merged.taxRate,
+          discountPercentEnabled: merged.discountPercentEnabled,
+          discountFixedEnabled: merged.discountFixedEnabled,
+          barcodeScanMode: merged.barcodeScanMode,
+          trackCapital: merged.trackCapital,
+          initialCapital: merged.initialCapital,
         };
 
         console.log('[Settings] Loaded and synced from cloud successfully');
@@ -1154,84 +1079,33 @@ export default function Settings() {
     try {
       setIsSavingSettings(true);
 
-      // Save to localStorage for local caching
-      savePersistedSettings({
+      const existingCustomFields = loadCustomFields();
+      const existingProductFields = productFieldsConfig || loadProductFieldsConfig();
+
+      const saveResult = await saveUnifiedStoreSettings({
         storeSettings,
         primaryCurrency,
         enabledCurrencies,
-        exchangeRates,
+        exchangeRates: { USD: 1, TRY: tryRate, SYP: sypRate },
         currencyNames,
         currencySymbols,
-        syncSettings,
-        notificationSettings,
-        printSettings,
-        backupSettings,
-        hideMaintenanceSection,
         taxEnabled,
         taxRate,
         discountPercentEnabled,
         discountFixedEnabled,
         barcodeScanMode,
+        hideMaintenanceSection,
         trackCapital,
         initialCapital,
+        notificationSettings,
+        printSettings,
+        backupSettings,
+        productFieldsConfig: existingProductFields,
+        customFields: existingCustomFields,
       });
 
       localStorage.setItem('hyperpos_toast_duration', String((notificationSettings.durationSeconds || 2) * 1000));
 
-      // Build merged sync_settings: keep productFieldsConfig alongside sync settings
-      const mergedSyncSettings: Record<string, unknown> = {
-        ...syncSettings,
-        trackCapital,
-        initialCapital,
-      };
-      if (productFieldsConfig) {
-        mergedSyncSettings.productFieldsConfig = productFieldsConfig;
-      } else {
-        // Preserve existing productFieldsConfig from localStorage
-        const existingPFC = loadProductFieldsConfig();
-        if (existingPFC) {
-          mergedSyncSettings.productFieldsConfig = existingPFC;
-        }
-      }
-
-      // Add discount settings to merged sync_settings
-      mergedSyncSettings.discountPercentEnabled = discountPercentEnabled;
-      mergedSyncSettings.discountFixedEnabled = discountFixedEnabled;
-      mergedSyncSettings.barcodeScanMode = barcodeScanMode;
-
-      // Preserve and sync customFields to cloud
-      const existingCustomFields = loadCustomFields();
-      if (existingCustomFields && existingCustomFields.length > 0) {
-        mergedSyncSettings.customFields = existingCustomFields;
-      }
-
-      // Sync additional preferences to cloud
-      mergedSyncSettings.hideMaintenanceSection = hideMaintenanceSection;
-      mergedSyncSettings.currencyNames = currencyNames;
-      mergedSyncSettings.currencySymbols = currencySymbols;
-      mergedSyncSettings.primaryCurrency = primaryCurrency;
-      mergedSyncSettings.enabledCurrencies = enabledCurrencies;
-      mergedSyncSettings.backupSettings = backupSettings;
-      mergedSyncSettings.appFont = localStorage.getItem(APP_FONT_STORAGE_KEY) || 'cairo';
-
-      // Save to cloud with merged sync_settings
-      const cloudSuccess = await saveStoreSettings({
-        name: storeSettings.name,
-        store_type: storeSettings.type,
-        phone: storeSettings.phone,
-        email: storeSettings.email,
-        address: storeSettings.address,
-        logo_url: storeSettings.logo,
-        primary_currency: primaryCurrency,
-        exchange_rates: { USD: 1, TRY: tryRate, SYP: sypRate },
-        tax_enabled: taxEnabled,
-        tax_rate: taxRate,
-        sync_settings: mergedSyncSettings,
-        notification_settings: notificationSettings,
-        print_settings: printSettings,
-      });
-
-      // Also save product fields to localStorage if present
       if (productFieldsConfig) {
         localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(productFieldsConfig));
         emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, productFieldsConfig);
@@ -1250,7 +1124,7 @@ export default function Settings() {
         printSettings: { ...printSettings },
         backupSettings: { ...backupSettings },
         hideMaintenanceSection,
-        productFieldsConfig: productFieldsConfig ? { ...productFieldsConfig } : loadProductFieldsConfig(),
+        productFieldsConfig: existingProductFields ? { ...existingProductFields } : null,
         taxEnabled,
         taxRate,
         discountPercentEnabled,
@@ -1261,8 +1135,6 @@ export default function Settings() {
       };
 
       // Activate interactive save success state in floating action banner
-      window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: { ...persisted, primaryCurrency, exchangeRates, currencyNames, currencySymbols, enabledCurrencies } }));
-      emitEvent(EVENTS.SETTINGS_UPDATED, { ...persisted, primaryCurrency, exchangeRates, currencyNames, currencySymbols, enabledCurrencies });
       setIsSaveSuccess(true);
       if (saveSuccessTimeoutRef.current) {
         clearTimeout(saveSuccessTimeoutRef.current);
@@ -1271,15 +1143,15 @@ export default function Settings() {
         setIsSaveSuccess(false);
       }, 1800);
 
-      if (cloudSuccess) {
+      if (saveResult.status === 'synced') {
         toast({
           title: t('common.saved'),
-          description: t('settings.settingsSaved'),
+          description: isRTL ? 'تم حفظ الإعدادات ومزامنتها سحابياً بنجاح' : 'Settings saved & synced to cloud successfully',
         });
       } else {
         toast({
           title: t('common.saved'),
-          description: t('settings.savedLocallyCloudIssue'),
+          description: isRTL ? 'تم حفظ الإعدادات محلياً بنجاح (بانتظار المزامنة عند الاتصال)' : 'Settings saved locally (queued for cloud sync)',
         });
       }
     } catch (err) {

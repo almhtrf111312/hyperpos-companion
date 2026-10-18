@@ -6,6 +6,11 @@ import { EVENTS, emitEvent } from '@/lib/events';
 import { invalidateAllCaches } from '@/lib/cloud';
 import { fetchStoreSettings, getOwnerIdForInsert } from '@/lib/supabase-store';
 import { isGuestDemoMode } from '@/lib/demo-data';
+import {
+  loadUnifiedStoreSettings,
+  mergeStoreSettings,
+  applySettingsToRuntime,
+} from '@/lib/store-settings-sync';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 
@@ -105,28 +110,10 @@ export function useRealtimeSync() {
         const settings = await fetchStoreSettings();
         if (settings) {
           try {
-            const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-            const existing = existingRaw ? JSON.parse(existingRaw) : {};
-            const updated = {
-              ...existing,
-              storeSettings: {
-                name: settings.name || existing.storeSettings?.name,
-                phone: settings.phone || existing.storeSettings?.phone,
-                address: settings.address || existing.storeSettings?.address,
-                logo: settings.logo_url || existing.storeSettings?.logo,
-              },
-              primaryCurrency: (settings.primary_currency as any) || (settings.sync_settings as any)?.primaryCurrency || existing.primaryCurrency || 'USD',
-              exchangeRates: settings.exchange_rates || existing.exchangeRates,
-              language: settings.language || existing.language,
-              theme: settings.theme || existing.theme,
-              taxEnabled: settings.tax_enabled ?? existing.taxEnabled,
-              taxRate: settings.tax_rate ?? existing.taxRate,
-              discountPercentEnabled: settings.sync_settings?.discountPercentEnabled ?? existing.discountPercentEnabled,
-              discountFixedEnabled: settings.sync_settings?.discountFixedEnabled ?? existing.discountFixedEnabled,
-              barcodeScanMode: settings.sync_settings?.barcodeScanMode ?? existing.barcodeScanMode,
-            };
-            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
-            emitEvent(EVENTS.SETTINGS_UPDATED);
+            const localSettings = loadUnifiedStoreSettings();
+            const merged = mergeStoreSettings(localSettings, settings);
+            applySettingsToRuntime(merged);
+            console.log('[Realtime] Unified store settings updated & applied to runtime');
           } catch (e) {
             console.error('[Realtime] Failed to update local settings:', e);
           }

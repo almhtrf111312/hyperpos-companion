@@ -5,7 +5,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { AppFontId } from '@/lib/app-font-config';
 import { showToast } from '@/lib/toast-config';
 import { cn } from '@/lib/utils';
-import { saveStoreSettings } from '@/lib/supabase-store';
+import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 
 interface FontSelectorProps {
   className?: string;
@@ -19,11 +19,16 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
   const handleSelectFont = async (fontId: AppFontId, fontName: string) => {
     if (fontId === currentFont) return;
     setFont(fontId);
-    showToast.success(isRTL ? `تم اعتماد خط: ${fontName}` : `Font changed to: ${fontName}`);
     try {
-      await saveStoreSettings({ sync_settings: { appFont: fontId } });
+      const res = await saveUnifiedStoreSettings({ appFont: fontId });
+      if (res.status === 'synced') {
+        showToast.success(isRTL ? `تم اعتماد خط: ${fontName} (تمت المزامنة سحابياً)` : `Font changed & synced: ${fontName}`);
+      } else {
+        showToast.info(isRTL ? `تم اعتماد خط: ${fontName} (محفوظ محلياً - بانتظار المزامنة)` : `Font changed locally (queued): ${fontName}`);
+      }
     } catch (e) {
       console.warn('Sync appFont error:', e);
+      showToast.success(isRTL ? `تم اعتماد خط: ${fontName}` : `Font changed to: ${fontName}`);
     }
   };
 

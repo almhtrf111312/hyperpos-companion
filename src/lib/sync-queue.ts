@@ -244,6 +244,47 @@ export const addUniqueOperation = (
 };
 
 /**
+ * إضافة أو دمج عملية تحديث إعدادات المتجر في الطابور
+ * إذا كانت هناك عملية سابقة معلقة، يتم دمج البيانات بها لتجنب التكرار وضمان شمول التحديث
+ */
+export const enqueueStoreSettingsUpdate = (
+  data: Record<string, unknown>,
+  maxRetries: number = 5
+): QueuedOperation => {
+  const queue = loadQueue();
+  const existingIndex = queue.findIndex(
+    op => op.type === 'store_settings_update' && (op.status === 'pending' || op.status === 'failed')
+  );
+
+  if (existingIndex !== -1) {
+    const existingOp = queue[existingIndex];
+    const prevSync = (existingOp.data.sync_settings as Record<string, unknown>) || {};
+    const newSync = (data.sync_settings as Record<string, unknown>) || {};
+    existingOp.data = {
+      ...existingOp.data,
+      ...data,
+      sync_settings: {
+        ...prevSync,
+        ...newSync,
+      },
+    };
+    existingOp.status = 'pending';
+    existingOp.timestamp = new Date().toISOString();
+    saveQueue(queue);
+    try {
+      localStorage.setItem('hyperpos_sync_pending_' + existingOp.id, JSON.stringify(existingOp));
+    } catch {
+      // ignore
+    }
+    console.log('[SyncQueue] Merged store_settings_update into existing queued operation:', existingOp.id);
+    return existingOp;
+  }
+
+  return addToQueue('store_settings_update', data, maxRetries);
+};
+
+
+/**
  * تحديث حالة عملية
  */
 export const updateOperationStatus = (

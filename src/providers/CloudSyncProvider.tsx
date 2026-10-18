@@ -14,6 +14,14 @@ import { useNetworkStatus, checkRealInternetAccess } from '@/hooks/use-network-s
 import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-processor';
 import { warmupAllCaches } from '@/lib/cloud/cache-warmup';
 import { isGuestDemoMode } from '@/lib/demo-data';
+import {
+  loadUnifiedStoreSettings,
+  mergeStoreSettings,
+  applySettingsToRuntime,
+  saveUnifiedStoreSettings,
+  buildCloudStorePayload,
+  DEFAULT_UNIFIED_SETTINGS,
+} from '@/lib/store-settings-sync';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
 const LAST_USER_KEY = 'hyperpos_last_user_id';
@@ -221,89 +229,41 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       });
 
       const cloudSettings = await fetchStoreSettings();
+      const localSettings = loadUnifiedStoreSettings();
       
       if (cloudSettings) {
-        // Apply cloud settings to localStorage (cloud is source of truth)
-        const syncObj = cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object' 
-          ? cloudSettings.sync_settings as Record<string, unknown> : {};
-        const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        const resolvedPrimaryCurrency = (cloudSettings.primary_currency as any) || (syncObj as any)?.primaryCurrency || (existingRaw ? JSON.parse(existingRaw)?.primaryCurrency : undefined) || 'USD';
-        const resolvedEnabledCurrencies = (syncObj as any)?.enabledCurrencies || (existingRaw ? JSON.parse(existingRaw)?.enabledCurrencies : undefined) || { USD: true, TRY: true, SYP: true };
-        
-        const settings = {
-          storeSettings: {
-            name: cloudSettings.name ?? '',
-            type: cloudSettings.store_type ?? 'general',
-            phone: cloudSettings.phone ?? '',
-            email: (cloudSettings.email as string | null | undefined) ?? '',
-            address: cloudSettings.address ?? '',
-            logo: cloudSettings.logo_url ?? '',
-          },
-          primaryCurrency: resolvedPrimaryCurrency,
-          enabledCurrencies: resolvedEnabledCurrencies,
-          exchangeRates: cloudSettings.exchange_rates || { TRY: '', SYP: '' },
-          language: cloudSettings.language || 'ar',
-          theme: cloudSettings.theme || 'dark',
-          taxEnabled: cloudSettings.tax_enabled ?? false,
-          taxRate: cloudSettings.tax_rate ?? 0,
-          printSettings: cloudSettings.print_settings || {},
-          notificationSettings: cloudSettings.notification_settings || {},
-          // ✅ Restore all synced preferences from cloud
-          discountPercentEnabled: syncObj.discountPercentEnabled ?? true,
-          discountFixedEnabled: syncObj.discountFixedEnabled ?? true,
-          barcodeScanMode: syncObj.barcodeScanMode === 'add' ? 'add' : 'search',
-          hideMaintenanceSection: syncObj.hideMaintenanceSection ?? false,
-          trackCapital: syncObj.trackCapital ?? false,
-          initialCapital: Number(syncObj.initialCapital) || 0,
-          currencyNames: syncObj.currencyNames,
-          currencySymbols: syncObj.currencySymbols,
-          backupSettings: syncObj.backupSettings,
-        };
-        
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+        // الدمج الموحد والذكي: الحفاظ على القيم المحلية وتحديثها بما يرد من السحابة دون مسح أي حقل
+        const merged = mergeStoreSettings(localSettings, cloudSettings);
+        applySettingsToRuntime(merged);
+
         const isJustSignedUp = typeof window !== 'undefined' && sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
         if (!isJustSignedUp) {
           localStorage.setItem('hyperpos_setup_complete', 'true');
         }
 
-        // ✅ Restore product fields from cloud if available
-        if (syncObj.productFieldsConfig) {
-          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(syncObj.productFieldsConfig));
-          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, syncObj.productFieldsConfig);
-        }
-        // ✅ Restore custom fields from cloud if available
-        if (syncObj.customFields && Array.isArray(syncObj.customFields)) {
-          localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncObj.customFields));
-          emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncObj.customFields);
-        }
+        // إذا كانت السحابة تفتقر لبيانات محلية مهمة أُنشئت أوفلاين، نرفعها بهدوء في الخلفية
+        const cloudSync = (cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object'
+          ? cloudSettings.sync_settings as Record<string, unknown>
+          : {}) as Record<string, any>;
+        const cloudMissingStoreInfo = !cloudSettings.name && Boolean(localSettings.storeSettings?.name);
+        const cloudMissingCurrencies = !cloudSync.currencyNames && Boolean(localSettings.currencyNames);
+        const cloudMissingFont = !cloudSettings.font_family && !cloudSync.appFont && Boolean(localSettings.appFont);
+        const cloudMissingScale = !cloudSync.uiScale && Boolean(localSettings.uiScale);
 
-        emitEvent(EVENTS.SETTINGS_UPDATED);
-        emitEvent(EVENTS.STORE_TYPE_CHANGED);
+        if (cloudMissingStoreInfo || cloudMissingCurrencies || cloudMissingFont || cloudMissingScale) {
+          saveUnifiedStoreSettings(merged).catch((e) => console.warn('[CloudSync] Background sync back error:', e));
+        }
       } else {
-        // ✅ Check if we already have local settings before overwriting with defaults
+        // ✅ فحص الإعدادات المحلية أولاً لتجنب استبدالها ببيانات افتراضية عند انقطاع الإنترنت أو بطء الاستجابة
         const existingLocal = localStorage.getItem(SETTINGS_STORAGE_KEY);
         if (!existingLocal) {
-          // First time user - create empty default store (don't migrate old localStorage)
-          await saveStoreSettings({
-            name: '',
-            store_type: 'general',
-            language: 'ar',
-            theme: 'dark',
-            exchange_rates: { TRY: 0, SYP: 0, USD: 1 },
-          });
-          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
-            storeSettings: { name: '', type: 'general', phone: '', address: '', logo: '' },
-            exchangeRates: { TRY: 0, SYP: 0 },
-            language: 'ar',
-            theme: 'dark',
-            taxEnabled: false,
-            taxRate: 0,
-          }));
-          emitEvent(EVENTS.SETTINGS_UPDATED);
+          const defaults = { ...DEFAULT_UNIFIED_SETTINGS };
+          applySettingsToRuntime(defaults);
+          saveStoreSettings(buildCloudStorePayload(defaults)).catch(() => {});
         } else {
-          // ✅ Local settings exist (offline scenario) — keep them, don't overwrite
-          console.log('[CloudSync] Cloud returned null but local settings exist, keeping local');
-          emitEvent(EVENTS.STORE_TYPE_CHANGED);
+          // تطبيق الإعدادات المحلية الموجودة لضمان عمل الخط والمقياس والثيم فوراً دون اتصال
+          applySettingsToRuntime(localSettings);
+          console.log('[CloudSync] Cloud returned null but local settings exist, keeping local and applied to runtime');
         }
       }
 
@@ -470,53 +430,13 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
       const cloudSettings = await fetchStoreSettings();
       if (cloudSettings) {
-        const existingRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        const existing = existingRaw ? JSON.parse(existingRaw) : {};
+        const localSettings = loadUnifiedStoreSettings();
+        const merged = mergeStoreSettings(localSettings, cloudSettings);
+        applySettingsToRuntime(merged);
 
-        const syncSettingsObj = cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object' ? cloudSettings.sync_settings as Record<string, unknown> : {};
-
-        const merged = {
-          ...existing,
-          storeSettings: {
-            name: cloudSettings.name || existing.storeSettings?.name,
-            type: cloudSettings.store_type || existing.storeSettings?.type || 'general',
-            phone: cloudSettings.phone || existing.storeSettings?.phone,
-            email: (cloudSettings.email as string | null | undefined) || existing.storeSettings?.email,
-            address: cloudSettings.address || existing.storeSettings?.address,
-            logo: cloudSettings.logo_url || existing.storeSettings?.logo,
-          },
-          primaryCurrency: (cloudSettings.primary_currency as any) || (syncSettingsObj as any)?.primaryCurrency || existing.primaryCurrency || 'USD',
-          exchangeRates: cloudSettings.exchange_rates || existing.exchangeRates,
-          taxEnabled: cloudSettings.tax_enabled ?? existing.taxEnabled ?? false,
-          taxRate: cloudSettings.tax_rate ?? existing.taxRate ?? 0,
-          discountPercentEnabled: syncSettingsObj.discountPercentEnabled ?? existing.discountPercentEnabled ?? true,
-          discountFixedEnabled: syncSettingsObj.discountFixedEnabled ?? existing.discountFixedEnabled ?? true,
-          barcodeScanMode: syncSettingsObj.barcodeScanMode === 'add' ? 'add' : (existing.barcodeScanMode ?? 'search'),
-          hideMaintenanceSection: syncSettingsObj.hideMaintenanceSection ?? existing.hideMaintenanceSection ?? false,
-          trackCapital: syncSettingsObj.trackCapital ?? existing.trackCapital ?? false,
-          initialCapital: syncSettingsObj.initialCapital !== undefined ? (Number(syncSettingsObj.initialCapital) || 0) : (existing.initialCapital ?? 0),
-          currencyNames: syncSettingsObj.currencyNames ?? existing.currencyNames,
-          currencySymbols: syncSettingsObj.currencySymbols ?? existing.currencySymbols,
-          backupSettings: syncSettingsObj.backupSettings ?? existing.backupSettings,
-          notificationSettings: cloudSettings.notification_settings ?? existing.notificationSettings,
-          printSettings: cloudSettings.print_settings ?? existing.printSettings,
-        };
-
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
         const isJustSignedUp = typeof window !== 'undefined' && sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
         if (!isJustSignedUp) {
           localStorage.setItem('hyperpos_setup_complete', 'true');
-        }
-
-        // ✅ Restore product fields from cloud if available
-        if (syncSettingsObj.productFieldsConfig) {
-          localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(syncSettingsObj.productFieldsConfig));
-          emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, syncSettingsObj.productFieldsConfig);
-        }
-        // ✅ Restore custom fields from cloud if available
-        if (syncSettingsObj.customFields && Array.isArray(syncSettingsObj.customFields)) {
-          localStorage.setItem('hyperpos_custom_fields_v1', JSON.stringify(syncSettingsObj.customFields));
-          emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, syncSettingsObj.customFields);
         }
       }
 

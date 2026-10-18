@@ -88,6 +88,13 @@ export function isValidUIScaleId(val: unknown): val is UIScaleId {
 export function getStoredUIScale(): UIScaleId {
   try {
     let stored = localStorage.getItem(UI_SCALE_STORAGE_KEY);
+    if (!stored) {
+      const rawSettings = localStorage.getItem('hyperpos_settings_v1');
+      if (rawSettings) {
+        const parsed = JSON.parse(rawSettings);
+        stored = parsed?.uiScale || parsed?.sync_settings?.uiScale || parsed?.syncSettings?.uiScale;
+      }
+    }
     if (stored) {
       stored = stored.trim().replace(/^['"]|['"]$/g, '');
     }
@@ -114,6 +121,14 @@ export function setStoredUIScale(scaleId: UIScaleId): void {
   if (!isValidUIScaleId(scaleId)) return;
   try {
     localStorage.setItem(UI_SCALE_STORAGE_KEY, scaleId);
+    const rawSettings = localStorage.getItem('hyperpos_settings_v1');
+    if (rawSettings) {
+      const parsed = JSON.parse(rawSettings);
+      parsed.uiScale = scaleId;
+      if (!parsed.sync_settings) parsed.sync_settings = {};
+      parsed.sync_settings.uiScale = scaleId;
+      localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
+    }
   } catch {
     // ignore
   }

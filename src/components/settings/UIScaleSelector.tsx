@@ -10,7 +10,7 @@ import {
 } from '@/lib/ui-scale-config';
 import { toast } from 'sonner';
 import { Slider } from '@/components/ui/slider';
-import { saveStoreSettings } from '@/lib/supabase-store';
+import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 
 import { cn } from '@/lib/utils';
 
@@ -41,12 +41,17 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
     onPendingChange?.(newScale, true);
 
     const option = UI_SCALE_OPTIONS.find((s) => s.id === newScale);
-    toast.success(isRTL ? `المقياس الحالي: ${option?.labelAr}` : `Scale: ${option?.labelEn}`);
 
     try {
-      await saveStoreSettings({ sync_settings: { uiScale: newScale } });
+      const res = await saveUnifiedStoreSettings({ uiScale: newScale });
+      if (res.status === 'synced') {
+        toast.success(isRTL ? `المقياس الحالي: ${option?.labelAr} (تمت المزامنة سحابياً)` : `Scale: ${option?.labelEn} (Synced)`);
+      } else {
+        toast.info(isRTL ? `المقياس الحالي: ${option?.labelAr} (محفوظ محلياً - بانتظار المزامنة)` : `Scale: ${option?.labelEn} (Saved locally - Queued)`);
+      }
     } catch (e) {
       console.warn('Sync uiScale error:', e);
+      toast.success(isRTL ? `المقياس الحالي: ${option?.labelAr}` : `Scale: ${option?.labelEn}`);
     }
   };
 

@@ -75,6 +75,13 @@ export function isValidAppFontId(val: unknown): val is AppFontId {
 export function getStoredAppFont(): AppFontId {
   try {
     let stored = localStorage.getItem(APP_FONT_STORAGE_KEY);
+    if (!stored) {
+      const rawSettings = localStorage.getItem('hyperpos_settings_v1');
+      if (rawSettings) {
+        const parsed = JSON.parse(rawSettings);
+        stored = parsed?.appFont || parsed?.font_family || parsed?.sync_settings?.appFont || parsed?.syncSettings?.appFont;
+      }
+    }
     if (stored) {
       stored = stored.trim().replace(/^['"]|['"]$/g, '');
     }
@@ -100,6 +107,15 @@ export function setStoredAppFont(fontId: AppFontId): void {
   if (!isValidAppFontId(fontId)) return;
   try {
     localStorage.setItem(APP_FONT_STORAGE_KEY, fontId);
+    const rawSettings = localStorage.getItem('hyperpos_settings_v1');
+    if (rawSettings) {
+      const parsed = JSON.parse(rawSettings);
+      parsed.appFont = fontId;
+      parsed.font_family = fontId;
+      if (!parsed.sync_settings) parsed.sync_settings = {};
+      parsed.sync_settings.appFont = fontId;
+      localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
+    }
   } catch {
     // ignore
   }

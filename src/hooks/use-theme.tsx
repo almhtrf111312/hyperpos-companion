@@ -442,21 +442,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const syncFromCloud = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: store } = await (supabase as any)
-          .from('stores')
-          .select('theme_settings')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const { fetchStoreSettings } = await import('@/lib/supabase-store');
+        const store = await fetchStoreSettings();
+        if (!store) return;
 
-        const cloudSettings = store?.theme_settings;
-        if (cloudSettings && cloudSettings.mode) {
-          const finalMode = cloudSettings.mode || DEFAULT_MODE;
-          const finalColor = cloudSettings.color || DEFAULT_COLOR;
+        const cloudSettings = (store.theme_settings && typeof store.theme_settings === 'object')
+          ? store.theme_settings as Record<string, any>
+          : ((store.sync_settings as any)?.theme || {});
+
+        const modeFromStore = (store.theme === 'light' || store.theme === 'dark') ? store.theme : cloudSettings.mode;
+        if (modeFromStore || cloudSettings.color) {
+          const finalMode: ThemeMode = modeFromStore === 'light' ? 'light' : 'dark';
+          const finalColor: ThemeColor = cloudSettings.color || DEFAULT_COLOR;
           const finalBlur = cloudSettings.blur ?? DEFAULT_BLUR;
-          const finalTransparency = cloudSettings.transparency ?? DEFAULT_TRANSPARENCY;
+          const finalTransparency = typeof cloudSettings.transparency === 'number' ? cloudSettings.transparency : DEFAULT_TRANSPARENCY;
           setModeState(finalMode);
           setColorState(finalColor);
           setBlurEnabledState(finalBlur);
@@ -472,14 +471,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const syncThemeToCloud = useCallback(async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
       const themeSettings = { mode: m, color: c, blur: b, transparency: t };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
-        .from('stores')
-        .update({ theme_settings: themeSettings })
-        .eq('user_id', user.id);
+      const { saveStoreSettings } = await import('@/lib/supabase-store');
+      await saveStoreSettings({
+        theme: m,
+        theme_settings: themeSettings,
+        sync_settings: {
+          theme: themeSettings,
+        },
+      });
     } catch { /* ignore cloud sync errors */ }
   }, []);
 

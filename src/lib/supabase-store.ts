@@ -721,9 +721,9 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
   // If offline, save into sync queue immediately
   if (!navigator.onLine) {
     try {
-      const { addToQueue } = await import('./sync-queue');
-      addToQueue('store_settings_update', settings);
-      console.log('[StoreSettings] Saved offline to sync queue');
+      const { enqueueStoreSettingsUpdate } = await import('./sync-queue');
+      enqueueStoreSettingsUpdate(settings);
+      console.log('[StoreSettings] Saved offline to consolidated sync queue');
     } catch (e) {
       console.warn('[StoreSettings] Failed to enqueue offline settings update:', e);
     }
@@ -734,9 +734,9 @@ export async function saveStoreSettings(settings: Record<string, unknown>): Prom
   const success = await saveStoreSettingsDirect(settings);
   if (!success) {
     try {
-      const { addToQueue } = await import('./sync-queue');
-      addToQueue('store_settings_update', settings);
-      console.log('[StoreSettings] Enqueued to sync queue after network failure');
+      const { enqueueStoreSettingsUpdate } = await import('./sync-queue');
+      enqueueStoreSettingsUpdate(settings);
+      console.log('[StoreSettings] Enqueued to consolidated sync queue after network failure');
       return true;
     } catch {
       return false;
