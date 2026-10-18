@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -35,29 +35,28 @@ import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import { useAppPermissions } from "./hooks/use-app-permissions";
 import { PrivacyPolicyScreen, usePrivacyAccepted } from "./components/PrivacyPolicyScreen";
-import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
-import Debts from "./pages/Debts";
-import Partners from "./pages/Partners";
-import Settings from "./pages/Settings";
 import Services from "./pages/Services";
 import Invoices from "./pages/Invoices";
 import InvoiceTracking from "./pages/InvoiceTracking";
-import Reports from "./pages/Reports";
 import Expenses from "./pages/Expenses";
 import CashShifts from "./pages/CashShifts";
 import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
-import Purchases from "./pages/Purchases";
-import Signup from "./pages/Signup";
-import Appearance from "./pages/Appearance";
 import NotFound from "./pages/NotFound";
-import Help from "./pages/Help";
-import ContactDeveloper from "./pages/ContactDeveloper";
-import BossPanel from "./pages/BossPanel";
-import LibraryMembers from "./pages/LibraryMembers";
+
+// Lazy-loaded heavy and rarely-used pages to keep the initial startup bundle ultra-fast
+const Settings = lazy(() => import("./pages/Settings"));
+const Reports = lazy(() => import("./pages/Reports"));
+const BossPanel = lazy(() => import("./pages/BossPanel"));
+const Purchases = lazy(() => import("./pages/Purchases"));
+const Appearance = lazy(() => import("./pages/Appearance"));
+const LibraryMembers = lazy(() => import("./pages/LibraryMembers"));
+const Help = lazy(() => import("./pages/Help"));
+const ContactDeveloper = lazy(() => import("./pages/ContactDeveloper"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Signup = lazy(() => import("./pages/Signup"));
 import { WarehouseProvider } from "./hooks/use-warehouse";
 import { useLicenseReminder } from "./hooks/use-license-reminder";
 import { useDueExpensesChecker } from "./hooks/use-due-expenses-checker";
@@ -95,9 +94,11 @@ const AppContent = () => {
     saveLastRoute(location.pathname + location.search);
   }, [location]);
 
-  // Hide native splash screen immediately once React UI mounts without waiting for cloud
+  // Hide native splash screen immediately after initial layout render without waiting for cloud
   useEffect(() => {
-    hideSplashScreen();
+    requestAnimationFrame(() => {
+      hideSplashScreen();
+    });
   }, []);
 
   // تفريغ السلة وحالتها من التخزين عند تشغيل التطبيق بالكامل (Cold Start) لضمان بدء السلة مغلقة دائماً
@@ -379,11 +380,19 @@ const AppContent = () => {
     }
   }
 
+const PageFallback = () => (
+  <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] gap-3 p-4">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    <span className="text-xs text-muted-foreground font-medium">جاري تحميل الصفحة...</span>
+  </div>
+);
+
   return (
     <>
       {isDebugClick && <ClickProbe />}
       <ExitConfirmDialog />
-      <Routes>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
 
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
@@ -427,6 +436,7 @@ const AppContent = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </>
   );
 };
