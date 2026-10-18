@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
 import { toast } from '@/hooks/use-toast';
+import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 
 type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
 
@@ -24,11 +25,23 @@ export default function Appearance() {
     return (localStorage.getItem('hyperpos_dashboard_design_v1') as any) || 'classic';
   });
 
-  const handleDesignChange = (design: 'classic' | 'unified_pro') => {
+  const handleDesignChange = async (design: 'classic' | 'unified_pro') => {
     setDashboardDesign(design);
     localStorage.setItem('hyperpos_dashboard_design_v1', design);
     window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: design }));
-    toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم بنجاح' : 'Layout updated' });
+
+    try {
+      const res = await saveUnifiedStoreSettings({
+        appearanceSettings: { dashboardDesign: design },
+      });
+      if (res.status === 'synced') {
+        toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم ومزامنته سحابياً بنجاح' : 'Layout updated & synced to cloud' });
+      } else {
+        toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم محلياً (بانتظار المزامنة)' : 'Layout updated locally (queued for sync)' });
+      }
+    } catch {
+      toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم بنجاح' : 'Layout updated' });
+    }
   };
 
   const handleSaveTheme = async () => {

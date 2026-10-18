@@ -91,6 +91,7 @@ import {
   mergeStoreSettings,
   applySettingsToRuntime,
   saveUnifiedStoreSettings,
+  StoreSettingsSaveStatus,
 } from '@/lib/store-settings-sync';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
@@ -162,8 +163,8 @@ export interface PersistedSettings {
   primaryCurrency?: 'USD' | 'TRY' | 'SYP';
   enabledCurrencies?: { USD: boolean; TRY: boolean; SYP: boolean };
   storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
-  exchangeRates?: Partial<{ TRY: string; SYP: string }>;
-  currencyNames?: Partial<{ TRY: string; SYP: string }>;
+  exchangeRates?: Partial<{ USD?: number; TRY: string; SYP: string }>;
+  currencyNames?: Partial<{ USD?: string; TRY?: string; SYP?: string }>;
   currencySymbols?: Partial<{ USD?: string; TRY?: string; SYP?: string }>;
   syncSettings?: Partial<SyncSettingsType>;
   notificationSettings?: Partial<NotificationSettingsType>;
@@ -285,32 +286,36 @@ export default function Settings() {
   };
 
   const persisted = loadPersistedSettings();
+  const initialUnified = loadUnifiedStoreSettings();
 
-  // Store settings - فارغة افتراضياً للحسابات الجديدة
+  const [isSettingsReady, setIsSettingsReady] = useState(false);
+  const [lastSaveStatus, setLastSaveStatus] = useState<StoreSettingsSaveStatus | null>(null);
+
+  // Store settings
   const [storeSettings, setStoreSettings] = useState({
-    name: persisted?.storeSettings?.name ?? '',
-    type: persisted?.storeSettings?.type ?? 'phones',
-    phone: persisted?.storeSettings?.phone ?? '',
-    email: persisted?.storeSettings?.email ?? '',
-    address: persisted?.storeSettings?.address ?? '',
-    logo: persisted?.storeSettings?.logo ?? '',
+    name: initialUnified?.storeSettings?.name ?? (persisted?.storeSettings?.name ?? ''),
+    type: initialUnified?.storeSettings?.type ?? (persisted?.storeSettings?.type ?? 'phones'),
+    phone: initialUnified?.storeSettings?.phone ?? (persisted?.storeSettings?.phone ?? ''),
+    email: initialUnified?.storeSettings?.email ?? (persisted?.storeSettings?.email ?? ''),
+    address: initialUnified?.storeSettings?.address ?? (persisted?.storeSettings?.address ?? ''),
+    logo: initialUnified?.storeSettings?.logo ?? (persisted?.storeSettings?.logo ?? ''),
   });
 
   // Tax settings
-  const [taxEnabled, setTaxEnabled] = useState(persisted?.taxEnabled ?? false);
-  const [taxRate, setTaxRate] = useState(persisted?.taxRate ?? 0);
+  const [taxEnabled, setTaxEnabled] = useState(initialUnified?.taxEnabled ?? (persisted?.taxEnabled ?? false));
+  const [taxRate, setTaxRate] = useState(initialUnified?.taxRate ?? (persisted?.taxRate ?? 0));
 
   // Discount control settings
-  const [discountPercentEnabled, setDiscountPercentEnabled] = useState(persisted?.discountPercentEnabled ?? true);
-  const [discountFixedEnabled, setDiscountFixedEnabled] = useState(persisted?.discountFixedEnabled ?? true);
-  const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(persisted?.barcodeScanMode ?? 'search');
+  const [discountPercentEnabled, setDiscountPercentEnabled] = useState(initialUnified?.discountPercentEnabled ?? (persisted?.discountPercentEnabled ?? true));
+  const [discountFixedEnabled, setDiscountFixedEnabled] = useState(initialUnified?.discountFixedEnabled ?? (persisted?.discountFixedEnabled ?? true));
+  const [barcodeScanMode, setBarcodeScanMode] = useState<'search' | 'add'>(initialUnified?.barcodeScanMode ?? (persisted?.barcodeScanMode ?? 'search'));
 
   // Capital tracking settings
   const [trackCapital, setTrackCapital] = useState<boolean>(
-    persisted?.trackCapital ?? (persisted?.syncSettings?.trackCapital ?? false)
+    initialUnified?.trackCapital ?? (persisted?.trackCapital ?? (persisted?.syncSettings?.trackCapital ?? false))
   );
   const [initialCapital, setInitialCapital] = useState<number>(
-    persisted?.initialCapital ?? (persisted?.syncSettings?.initialCapital ?? 0)
+    initialUnified?.initialCapital ?? (persisted?.initialCapital ?? (persisted?.syncSettings?.initialCapital ?? 0))
   );
 
   const [notificationPerm, setNotificationPerm] = useState<string>('prompt');
@@ -404,9 +409,9 @@ export default function Settings() {
 
   // Enabled currencies state
   const [enabledCurrencies, setEnabledCurrencies] = useState({
-    USD: persisted?.enabledCurrencies?.USD !== false,
-    TRY: persisted?.enabledCurrencies?.TRY ?? true,
-    SYP: persisted?.enabledCurrencies?.SYP ?? true,
+    USD: initialUnified?.enabledCurrencies?.USD !== false && persisted?.enabledCurrencies?.USD !== false,
+    TRY: initialUnified?.enabledCurrencies?.TRY !== false && (persisted?.enabledCurrencies?.TRY ?? true),
+    SYP: initialUnified?.enabledCurrencies?.SYP !== false && (persisted?.enabledCurrencies?.SYP ?? true),
   });
 
   const toggleCurrency = (currency: 'USD' | 'TRY' | 'SYP', enabled: boolean) => {
@@ -452,30 +457,38 @@ export default function Settings() {
 
     savePersistedSettings(updated as PersistedSettings);
 
+    // الحفظ المتزامن والموحد في الخلفية (Offline-First)
+    saveUnifiedStoreSettings({
+      enabledCurrencies: nextEnabled,
+      primaryCurrency: newPrimary,
+    }).catch(e => console.warn('[Settings] toggleCurrency unified save error:', e));
+
     // 5. إشعار جميع التبويبات والشاشات بالحدث الرسمي الموحد
     emitEvent(EVENTS.SETTINGS_UPDATED, updated);
   };
 
   // Exchange rates (string to avoid mobile keyboard/focus issues)
   const [primaryCurrency, setPrimaryCurrency] = useState<'USD' | 'TRY' | 'SYP'>(
-    persisted?.primaryCurrency || 'USD'
+    (initialUnified?.primaryCurrency as 'USD' | 'TRY' | 'SYP') || persisted?.primaryCurrency || 'USD'
   );
 
   const [exchangeRates, setExchangeRates] = useState({
-    TRY: persisted?.exchangeRates?.TRY ?? '',
-    SYP: persisted?.exchangeRates?.SYP ?? '',
+    TRY: initialUnified?.exchangeRates?.TRY ? String(initialUnified.exchangeRates.TRY) : (persisted?.exchangeRates?.TRY ?? ''),
+    SYP: initialUnified?.exchangeRates?.SYP ? String(initialUnified.exchangeRates.SYP) : (persisted?.exchangeRates?.SYP ?? ''),
   });
 
-  // Custom currency names
+  // Custom currency names (USD, TRY, SYP)
   const [currencyNames, setCurrencyNames] = useState({
-    TRY: (persisted?.currencyNames?.TRY && persisted.currencyNames.TRY.trim()) ? persisted.currencyNames.TRY.trim() : 'ليرة تركية',
-    SYP: (persisted?.currencyNames?.SYP && persisted.currencyNames.SYP.trim()) ? persisted.currencyNames.SYP.trim() : 'ليرة سورية',
+    USD: (persisted?.currencyNames?.USD && persisted.currencyNames.USD.trim()) ? persisted.currencyNames.USD.trim() : (initialUnified?.currencyNames?.USD || 'دولار'),
+    TRY: (persisted?.currencyNames?.TRY && persisted.currencyNames.TRY.trim()) ? persisted.currencyNames.TRY.trim() : (initialUnified?.currencyNames?.TRY || 'ليرة تركية'),
+    SYP: (persisted?.currencyNames?.SYP && persisted.currencyNames.SYP.trim()) ? persisted.currencyNames.SYP.trim() : (initialUnified?.currencyNames?.SYP || 'ليرة سورية'),
   });
 
-  // Custom currency symbols
+  // Custom currency symbols (USD, TRY, SYP)
   const [currencySymbols, setCurrencySymbols] = useState({
-    TRY: (persisted?.currencySymbols?.TRY && persisted.currencySymbols.TRY.trim()) ? persisted.currencySymbols.TRY.trim() : '₺',
-    SYP: (persisted?.currencySymbols?.SYP && persisted.currencySymbols.SYP.trim()) ? persisted.currencySymbols.SYP.trim() : 'ل.س',
+    USD: (persisted?.currencySymbols?.USD && persisted.currencySymbols.USD.trim()) ? persisted.currencySymbols.USD.trim() : (initialUnified?.currencySymbols?.USD || '$'),
+    TRY: (persisted?.currencySymbols?.TRY && persisted.currencySymbols.TRY.trim()) ? persisted.currencySymbols.TRY.trim() : (initialUnified?.currencySymbols?.TRY || '₺'),
+    SYP: (persisted?.currencySymbols?.SYP && persisted.currencySymbols.SYP.trim()) ? persisted.currencySymbols.SYP.trim() : (initialUnified?.currencySymbols?.SYP || 'ل.س'),
   });
 
   // Sync settings
@@ -489,32 +502,32 @@ export default function Settings() {
 
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsType>({
-    masterEnabled: persisted?.notificationSettings?.masterEnabled ?? true,
-    sound: persisted?.notificationSettings?.sound ?? true,
-    newSale: persisted?.notificationSettings?.newSale ?? true,
-    lowStock: persisted?.notificationSettings?.lowStock ?? true,
-    newDebt: persisted?.notificationSettings?.newDebt ?? true,
-    paymentReceived: persisted?.notificationSettings?.paymentReceived ?? true,
-    dailyReport: persisted?.notificationSettings?.dailyReport ?? false,
-    durationSeconds: persisted?.notificationSettings?.durationSeconds ?? 2,
+    masterEnabled: persisted?.notificationSettings?.masterEnabled ?? (initialUnified?.notificationSettings as any)?.masterEnabled ?? true,
+    sound: persisted?.notificationSettings?.sound ?? (initialUnified?.notificationSettings as any)?.sound ?? true,
+    newSale: persisted?.notificationSettings?.newSale ?? (initialUnified?.notificationSettings as any)?.newSale ?? true,
+    lowStock: persisted?.notificationSettings?.lowStock ?? (initialUnified?.notificationSettings as any)?.lowStock ?? true,
+    newDebt: persisted?.notificationSettings?.newDebt ?? (initialUnified?.notificationSettings as any)?.newDebt ?? true,
+    paymentReceived: persisted?.notificationSettings?.paymentReceived ?? (initialUnified?.notificationSettings as any)?.paymentReceived ?? true,
+    dailyReport: persisted?.notificationSettings?.dailyReport ?? (initialUnified?.notificationSettings as any)?.dailyReport ?? false,
+    durationSeconds: persisted?.notificationSettings?.durationSeconds ?? (initialUnified?.notificationSettings as any)?.durationSeconds ?? 2,
   });
 
   // Printing settings
   const [printSettings, setPrintSettings] = useState({
-    autoPrint: persisted?.printSettings?.autoPrint ?? true,
-    showStoreName: persisted?.printSettings?.showStoreName ?? true,
-    showLogo: persisted?.printSettings?.showLogo ?? true,
-    showAddress: persisted?.printSettings?.showAddress ?? true,
-    showPhone: persisted?.printSettings?.showPhone ?? true,
-    showEmail: persisted?.printSettings?.showEmail ?? true,
-    showInvoiceNumber: persisted?.printSettings?.showInvoiceNumber ?? true,
-    showDateTime: persisted?.printSettings?.showDateTime ?? true,
-    showCashierName: persisted?.printSettings?.showCashierName ?? true,
-    welcomeMessage: persisted?.printSettings?.welcomeMessage ?? '',
-    footer: persisted?.printSettings?.footer || t('settings.defaultFooter'),
-    showAlternativeCurrencies: persisted?.printSettings?.showAlternativeCurrencies ?? false,
-    paperSize: persisted?.printSettings?.paperSize || '80mm',
-    copies: String(persisted?.printSettings?.copies ?? 1),
+    autoPrint: persisted?.printSettings?.autoPrint ?? (initialUnified?.printSettings as any)?.autoPrint ?? true,
+    showStoreName: persisted?.printSettings?.showStoreName ?? (initialUnified?.printSettings as any)?.showStoreName ?? true,
+    showLogo: persisted?.printSettings?.showLogo ?? (initialUnified?.printSettings as any)?.showLogo ?? true,
+    showAddress: persisted?.printSettings?.showAddress ?? (initialUnified?.printSettings as any)?.showAddress ?? true,
+    showPhone: persisted?.printSettings?.showPhone ?? (initialUnified?.printSettings as any)?.showPhone ?? true,
+    showEmail: persisted?.printSettings?.showEmail ?? (initialUnified?.printSettings as any)?.showEmail ?? true,
+    showInvoiceNumber: persisted?.printSettings?.showInvoiceNumber ?? (initialUnified?.printSettings as any)?.showInvoiceNumber ?? true,
+    showDateTime: persisted?.printSettings?.showDateTime ?? (initialUnified?.printSettings as any)?.showDateTime ?? true,
+    showCashierName: persisted?.printSettings?.showCashierName ?? (initialUnified?.printSettings as any)?.showCashierName ?? true,
+    welcomeMessage: persisted?.printSettings?.welcomeMessage ?? (initialUnified?.printSettings as any)?.welcomeMessage ?? '',
+    footer: persisted?.printSettings?.footer || (initialUnified?.printSettings as any)?.footer || t('settings.defaultFooter'),
+    showAlternativeCurrencies: persisted?.printSettings?.showAlternativeCurrencies ?? (initialUnified?.printSettings as any)?.showAlternativeCurrencies ?? false,
+    paperSize: persisted?.printSettings?.paperSize || (initialUnified?.printSettings as any)?.paperSize || '80mm',
+    copies: String(persisted?.printSettings?.copies ?? (initialUnified?.printSettings as any)?.copies ?? 1),
   });
 
   // Users are now managed by useUsersManagement hook
@@ -527,14 +540,14 @@ export default function Settings() {
   ]);
 
   const [backupSettings, setBackupSettings] = useState({
-    autoBackup: persisted?.backupSettings?.autoBackup ?? true,
-    interval: persisted?.backupSettings?.interval ?? 'daily',
-    keepDays: String(persisted?.backupSettings?.keepDays ?? 30),
+    autoBackup: persisted?.backupSettings?.autoBackup ?? initialUnified?.backupSettings?.autoBackup ?? true,
+    interval: persisted?.backupSettings?.interval ?? initialUnified?.backupSettings?.interval ?? 'daily',
+    keepDays: String(persisted?.backupSettings?.keepDays ?? initialUnified?.backupSettings?.keepDays ?? 30),
   });
 
   // POS options
   const [hideMaintenanceSection, setHideMaintenanceSection] = useState(
-    persisted?.hideMaintenanceSection ?? false
+    persisted?.hideMaintenanceSection ?? initialUnified?.hideMaintenanceSection ?? false
   );
 
   // Product fields config state (for unified save)
@@ -657,101 +670,118 @@ export default function Settings() {
 
   // ✅ Load settings from cloud on mount to ensure persistence across reinstalls/updates
   useEffect(() => {
+    let isMounted = true;
     const loadFromCloud = async () => {
       try {
         const cloudData = await fetchStoreSettings();
-        if (!cloudData) return;
+        if (!isMounted) return;
 
         const localSettings = loadUnifiedStoreSettings();
-        const merged = mergeStoreSettings(localSettings, cloudData);
+        if (cloudData) {
+          const merged = mergeStoreSettings(localSettings, cloudData);
 
-        setStoreSettings(merged.storeSettings);
-        setTaxEnabled(merged.taxEnabled);
-        setTaxRate(merged.taxRate);
-        setNotificationSettings(merged.notificationSettings as typeof notificationSettings);
-        setPrintSettings(merged.printSettings as typeof printSettings);
-        setExchangeRates({
-          TRY: String(merged.exchangeRates.TRY),
-          SYP: String(merged.exchangeRates.SYP),
-        });
-        setPrimaryCurrency(merged.primaryCurrency as 'USD' | 'TRY' | 'SYP');
-        setEnabledCurrencies({
-          USD: merged.enabledCurrencies.USD !== false,
-          TRY: merged.enabledCurrencies.TRY !== false,
-          SYP: merged.enabledCurrencies.SYP !== false,
-        });
-        setDiscountPercentEnabled(merged.discountPercentEnabled);
-        setDiscountFixedEnabled(merged.discountFixedEnabled);
-        setBarcodeScanMode(merged.barcodeScanMode);
-        setHideMaintenanceSection(merged.hideMaintenanceSection);
-        setTrackCapital(merged.trackCapital);
-        setInitialCapital(merged.initialCapital);
-        setCurrencyNames({
-          TRY: merged.currencyNames.TRY,
-          SYP: merged.currencyNames.SYP,
-        });
-        setCurrencySymbols({
-          TRY: merged.currencySymbols.TRY,
-          SYP: merged.currencySymbols.SYP,
-        });
-        setBackupSettings({
-          autoBackup: Boolean(merged.backupSettings.autoBackup),
-          interval: String(merged.backupSettings.interval || 'daily'),
-          keepDays: String(merged.backupSettings.keepDays || '7'),
-        });
-
-        if (merged.productFieldsConfig) {
-          setProductFieldsConfig(merged.productFieldsConfig);
-        }
-
-        applySettingsToRuntime(merged);
-
-        // ✅ Update snapshot with the EXACT identical fresh values
-        settingsSnapshotRef.current = {
-          storeSettings: { ...merged.storeSettings },
-          primaryCurrency: merged.primaryCurrency as 'USD' | 'TRY' | 'SYP',
-          enabledCurrencies: {
+          setStoreSettings(merged.storeSettings);
+          setTaxEnabled(merged.taxEnabled);
+          setTaxRate(merged.taxRate);
+          setNotificationSettings(merged.notificationSettings as typeof notificationSettings);
+          setPrintSettings(merged.printSettings as typeof printSettings);
+          setExchangeRates({
+            TRY: String(merged.exchangeRates.TRY),
+            SYP: String(merged.exchangeRates.SYP),
+          });
+          setPrimaryCurrency(merged.primaryCurrency as 'USD' | 'TRY' | 'SYP');
+          setEnabledCurrencies({
             USD: merged.enabledCurrencies.USD !== false,
             TRY: merged.enabledCurrencies.TRY !== false,
             SYP: merged.enabledCurrencies.SYP !== false,
-          },
-          exchangeRates: {
-            TRY: String(merged.exchangeRates.TRY),
-            SYP: String(merged.exchangeRates.SYP),
-          },
-          currencyNames: {
-            TRY: merged.currencyNames.TRY,
-            SYP: merged.currencyNames.SYP,
-          },
-          currencySymbols: {
-            TRY: merged.currencySymbols.TRY,
-            SYP: merged.currencySymbols.SYP,
-          },
-          notificationSettings: { ...(merged.notificationSettings as typeof notificationSettings) },
-          printSettings: { ...(merged.printSettings as typeof printSettings) },
-          backupSettings: {
+          });
+          setDiscountPercentEnabled(merged.discountPercentEnabled);
+          setDiscountFixedEnabled(merged.discountFixedEnabled);
+          setBarcodeScanMode(merged.barcodeScanMode);
+          setHideMaintenanceSection(merged.hideMaintenanceSection);
+          setTrackCapital(merged.trackCapital);
+          setInitialCapital(merged.initialCapital);
+          setCurrencyNames({
+            USD: merged.currencyNames.USD || 'دولار',
+            TRY: merged.currencyNames.TRY || 'ليرة تركية',
+            SYP: merged.currencyNames.SYP || 'ليرة سورية',
+          });
+          setCurrencySymbols({
+            USD: merged.currencySymbols.USD || '$',
+            TRY: merged.currencySymbols.TRY || '₺',
+            SYP: merged.currencySymbols.SYP || 'ل.س',
+          });
+          setBackupSettings({
             autoBackup: Boolean(merged.backupSettings.autoBackup),
             interval: String(merged.backupSettings.interval || 'daily'),
             keepDays: String(merged.backupSettings.keepDays || '7'),
-          },
-          hideMaintenanceSection: merged.hideMaintenanceSection,
-          productFieldsConfig: merged.productFieldsConfig || loadProductFieldsConfig(),
-          taxEnabled: merged.taxEnabled,
-          taxRate: merged.taxRate,
-          discountPercentEnabled: merged.discountPercentEnabled,
-          discountFixedEnabled: merged.discountFixedEnabled,
-          barcodeScanMode: merged.barcodeScanMode,
-          trackCapital: merged.trackCapital,
-          initialCapital: merged.initialCapital,
-        };
+          });
 
-        console.log('[Settings] Loaded and synced from cloud successfully');
+          if (merged.productFieldsConfig) {
+            setProductFieldsConfig(merged.productFieldsConfig);
+          }
+
+          applySettingsToRuntime(merged);
+
+          // ✅ Update snapshot with the EXACT identical fresh values
+          settingsSnapshotRef.current = {
+            storeSettings: { ...merged.storeSettings },
+            primaryCurrency: merged.primaryCurrency as 'USD' | 'TRY' | 'SYP',
+            enabledCurrencies: {
+              USD: merged.enabledCurrencies.USD !== false,
+              TRY: merged.enabledCurrencies.TRY !== false,
+              SYP: merged.enabledCurrencies.SYP !== false,
+            },
+            exchangeRates: {
+              TRY: String(merged.exchangeRates.TRY),
+              SYP: String(merged.exchangeRates.SYP),
+            },
+            currencyNames: {
+              USD: merged.currencyNames.USD || 'دولار',
+              TRY: merged.currencyNames.TRY || 'ليرة تركية',
+              SYP: merged.currencyNames.SYP || 'ليرة سورية',
+            },
+            currencySymbols: {
+              USD: merged.currencySymbols.USD || '$',
+              TRY: merged.currencySymbols.TRY || '₺',
+              SYP: merged.currencySymbols.SYP || 'ل.س',
+            },
+            notificationSettings: { ...(merged.notificationSettings as typeof notificationSettings) },
+            printSettings: { ...(merged.printSettings as typeof printSettings) },
+            backupSettings: {
+              autoBackup: Boolean(merged.backupSettings.autoBackup),
+              interval: String(merged.backupSettings.interval || 'daily'),
+              keepDays: String(merged.backupSettings.keepDays || '7'),
+            },
+            hideMaintenanceSection: merged.hideMaintenanceSection,
+            productFieldsConfig: merged.productFieldsConfig || loadProductFieldsConfig(),
+            taxEnabled: merged.taxEnabled,
+            taxRate: merged.taxRate,
+            discountPercentEnabled: merged.discountPercentEnabled,
+            discountFixedEnabled: merged.discountFixedEnabled,
+            barcodeScanMode: merged.barcodeScanMode,
+            trackCapital: merged.trackCapital,
+            initialCapital: merged.initialCapital,
+          };
+
+          console.log('[Settings] Loaded and synced from cloud successfully');
+        } else {
+          // In offline mode or cloud not reachable, apply local unified settings
+          applySettingsToRuntime(localSettings);
+        }
       } catch (err) {
         console.warn('[Settings] Could not load from cloud, using local cache:', err);
+      } finally {
+        if (isMounted) {
+          setIsSettingsReady(true);
+        }
       }
     };
 
     loadFromCloud();
+    return () => {
+      isMounted = false;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Capture snapshot on first render only
@@ -1023,6 +1053,7 @@ export default function Settings() {
     setDiscountFixedEnabled(snap.discountFixedEnabled);
     setBarcodeScanMode(snap.barcodeScanMode);
     setIsSaveSuccess(false);
+    setLastSaveStatus(null);
     if (saveSuccessTimeoutRef.current) {
       clearTimeout(saveSuccessTimeoutRef.current);
     }
@@ -1134,23 +1165,29 @@ export default function Settings() {
       };
 
       // Activate interactive save success state in floating action banner
+      setLastSaveStatus(saveResult.status);
       setIsSaveSuccess(true);
       if (saveSuccessTimeoutRef.current) {
         clearTimeout(saveSuccessTimeoutRef.current);
       }
       saveSuccessTimeoutRef.current = setTimeout(() => {
         setIsSaveSuccess(false);
-      }, 1800);
+      }, 2500);
 
       if (saveResult.status === 'synced') {
         toast({
           title: t('common.saved'),
-          description: isRTL ? 'تم حفظ الإعدادات ومزامنتها سحابياً بنجاح' : 'Settings saved & synced to cloud successfully',
+          description: isRTL ? 'تم حفظ الإعدادات ومزامنتها سحابياً بنجاح ☁️' : 'Settings saved & synced to cloud successfully ☁️',
+        });
+      } else if (saveResult.status === 'queued') {
+        toast({
+          title: t('common.saved'),
+          description: isRTL ? 'تم حفظ الإعدادات محلياً — بانتظار المزامنة عند توفر الاتصال ⏳' : 'Settings saved locally — queued for cloud sync ⏳',
         });
       } else {
         toast({
           title: t('common.saved'),
-          description: isRTL ? 'تم حفظ الإعدادات محلياً بنجاح (بانتظار المزامنة عند الاتصال)' : 'Settings saved locally (queued for cloud sync)',
+          description: isRTL ? 'تم حفظ الإعدادات محلياً بنجاح 💾' : 'Settings saved locally on this device 💾',
         });
       }
     } catch (err) {
@@ -3617,7 +3654,16 @@ export default function Settings() {
 
           {/* Content */}
           <div className="bg-card/70 sm:bg-card rounded-2xl border border-border/70 sm:border-border p-3.5 sm:p-6 overflow-hidden max-w-full pb-28">
-            {renderTabContent()}
+            {!isSettingsReady ? (
+              <div className="flex flex-col items-center justify-center py-16 space-y-3">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="text-xs text-muted-foreground font-semibold">
+                  {isRTL ? 'جاري مطابقة وتحديث إعدادات المتجر...' : 'Synchronizing store settings...'}
+                </p>
+              </div>
+            ) : (
+              renderTabContent()
+            )}
           </div>
         </>
       )}
@@ -3908,7 +3954,7 @@ export default function Settings() {
         className={cn(
           "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
           isRTL ? "left-6" : "right-6",
-          hasUnsavedChanges
+          (hasUnsavedChanges || isSaveSuccess)
             ? "scale-100 opacity-100"
             : "scale-0 opacity-0 pointer-events-none"
         )}
@@ -3917,23 +3963,32 @@ export default function Settings() {
         <Button
           onClick={handleSaveSettings}
           disabled={isSavingSettings}
-          className="w-14 h-14 rounded-full shadow-2xl p-0 bg-primary text-primary-foreground hover:scale-105 active:scale-95 transition-transform"
+          className={cn(
+            "w-14 h-14 rounded-full shadow-2xl p-0 transition-all duration-200",
+            isSaveSuccess
+              ? (lastSaveStatus === 'synced' ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-amber-600 text-white hover:bg-amber-700")
+              : "bg-primary text-primary-foreground hover:scale-105 active:scale-95"
+          )}
           title={t('common.save') || (isRTL ? 'حفظ' : 'Save')}
         >
           {isSavingSettings ? (
             <Loader2 className="w-6 h-6 animate-spin" />
+          ) : isSaveSuccess ? (
+            lastSaveStatus === 'synced' ? <Check className="w-6 h-6 stroke-[3]" /> : <Clock className="w-6 h-6" />
           ) : (
             <Save className="w-6 h-6" />
           )}
         </Button>
-        <Button
-          variant="secondary"
-          onClick={handleRevert}
-          className="w-14 h-14 rounded-full shadow-2xl p-0 hover:scale-105 active:scale-95 transition-transform"
-          title={t('common.cancel') || (isRTL ? 'تراجع' : 'Cancel')}
-        >
-          <Undo2 className="w-6 h-6" />
-        </Button>
+        {hasUnsavedChanges && !isSaveSuccess && (
+          <Button
+            variant="secondary"
+            onClick={handleRevert}
+            className="w-14 h-14 rounded-full shadow-2xl p-0 hover:scale-105 active:scale-95 transition-transform"
+            title={t('common.cancel') || (isRTL ? 'تراجع' : 'Cancel')}
+          >
+            <Undo2 className="w-6 h-6" />
+          </Button>
+        )}
       </div>
 
       {/* تأكيد تغيير التصنيفات عند تغيير نوع المحل */}
@@ -3949,19 +4004,11 @@ export default function Settings() {
             <Button
               variant="outline"
               onClick={async () => {
-                // ✅ حفظ في localStorage أولاً
                 try {
-                  const raw = localStorage.getItem('hyperpos_settings_v1');
-                  if (raw) {
-                    const parsed = JSON.parse(raw);
-                    parsed.storeSettings = { ...parsed.storeSettings, type: storeSettings.type };
-                    localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
-                  }
-                } catch (e) { console.warn('Failed to persist store type:', e); }
-                // ✅ رفع نوع المتجر للسحابة فوراً
-                try {
-                  await saveStoreSettings({ store_type: storeSettings.type });
-                } catch (e) { console.warn('[Settings] Cloud store_type save failed:', e); }
+                  await saveUnifiedStoreSettings({
+                    storeSettings: { ...storeSettings, type: storeSettings.type },
+                  });
+                } catch (e) { console.warn('[Settings] Unified store_type save failed:', e); }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 emitEvent(EVENTS.STORE_TYPE_CHANGED);
@@ -3997,19 +4044,11 @@ export default function Settings() {
                     }
                   })();
                 }
-                // ✅ حفظ في localStorage أولاً
                 try {
-                  const raw = localStorage.getItem('hyperpos_settings_v1');
-                  if (raw) {
-                    const parsed = JSON.parse(raw);
-                    parsed.storeSettings = { ...parsed.storeSettings, type: storeSettings.type };
-                    localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
-                  }
-                } catch (e) { console.warn('Failed to persist store type:', e); }
-                // ✅ رفع نوع المتجر للسحابة فوراً
-                try {
-                  await saveStoreSettings({ store_type: storeSettings.type });
-                } catch (e) { console.warn('[Settings] Cloud store_type save failed:', e); }
+                  await saveUnifiedStoreSettings({
+                    storeSettings: { ...storeSettings, type: storeSettings.type },
+                  });
+                } catch (e) { console.warn('[Settings] Unified store_type save failed:', e); }
                 setStoreTypeConfirmOpen(false);
                 setPendingStoreType(null);
                 emitEvent(EVENTS.STORE_TYPE_CHANGED);

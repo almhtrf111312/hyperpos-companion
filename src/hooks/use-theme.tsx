@@ -452,10 +452,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
         const modeFromStore = (store.theme === 'light' || store.theme === 'dark') ? store.theme : cloudSettings.mode;
         if (modeFromStore || cloudSettings.color) {
-          const finalMode: ThemeMode = modeFromStore === 'light' ? 'light' : 'dark';
-          const finalColor: ThemeColor = cloudSettings.color || DEFAULT_COLOR;
-          const finalBlur = cloudSettings.blur ?? DEFAULT_BLUR;
-          const finalTransparency = typeof cloudSettings.transparency === 'number' ? cloudSettings.transparency : DEFAULT_TRANSPARENCY;
+          const finalMode: ThemeMode = modeFromStore === 'light' ? 'light' : (modeFromStore === 'dark' ? 'dark' : mode);
+          const finalColor: ThemeColor = cloudSettings.color || color;
+          const finalBlur = cloudSettings.blur ?? blurEnabled;
+          const finalTransparency = typeof cloudSettings.transparency === 'number' ? cloudSettings.transparency : transparencyLevel;
           setModeState(finalMode);
           setColorState(finalColor);
           setBlurEnabledState(finalBlur);
@@ -467,18 +467,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       } catch { /* ignore cloud sync errors */ }
     };
     syncFromCloud();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncThemeToCloud = useCallback(async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
     try {
       const themeSettings = { mode: m, color: c, blur: b, transparency: t };
-      const { saveStoreSettings } = await import('@/lib/supabase-store');
-      await saveStoreSettings({
+      const { saveUnifiedStoreSettings } = await import('@/lib/store-settings-sync');
+      await saveUnifiedStoreSettings({
         theme: m,
-        theme_settings: themeSettings,
-        sync_settings: {
-          theme: themeSettings,
-        },
+        themeSettings,
       });
     } catch { /* ignore cloud sync errors */ }
   }, []);

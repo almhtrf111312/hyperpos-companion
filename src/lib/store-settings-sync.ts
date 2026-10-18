@@ -610,6 +610,7 @@ export function buildCloudStorePayload(
     enabledCurrencies: settings.enabledCurrencies,
     currencyNames: settings.currencyNames,
     currencySymbols: settings.currencySymbols,
+    exchangeRates: settings.exchangeRates,
     discountPercentEnabled: settings.discountPercentEnabled,
     discountFixedEnabled: settings.discountFixedEnabled,
     barcodeScanMode: settings.barcodeScanMode,
@@ -693,12 +694,20 @@ export async function saveUnifiedStoreSettings(
       ...(partial.exchangeRates || {}),
     },
     currencyNames: {
-      ...current.currencyNames,
-      ...(partial.currencyNames || {}),
+      USD: (typeof partial.currencyNames?.USD === 'string' && partial.currencyNames.USD.trim()) || current.currencyNames.USD || DEFAULT_UNIFIED_SETTINGS.currencyNames.USD,
+      TRY: (typeof partial.currencyNames?.TRY === 'string' && partial.currencyNames.TRY.trim()) || current.currencyNames.TRY || DEFAULT_UNIFIED_SETTINGS.currencyNames.TRY,
+      SYP: (typeof partial.currencyNames?.SYP === 'string' && partial.currencyNames.SYP.trim()) || current.currencyNames.SYP || DEFAULT_UNIFIED_SETTINGS.currencyNames.SYP,
+      ...(partial.currencyNames ? Object.fromEntries(
+        Object.entries(partial.currencyNames).filter(([_, v]) => typeof v === 'string' && v.trim() !== '')
+      ) : {}),
     },
     currencySymbols: {
-      ...current.currencySymbols,
-      ...(partial.currencySymbols || {}),
+      USD: (typeof partial.currencySymbols?.USD === 'string' && partial.currencySymbols.USD.trim()) || current.currencySymbols.USD || DEFAULT_UNIFIED_SETTINGS.currencySymbols.USD,
+      TRY: (typeof partial.currencySymbols?.TRY === 'string' && partial.currencySymbols.TRY.trim()) || current.currencySymbols.TRY || DEFAULT_UNIFIED_SETTINGS.currencySymbols.TRY,
+      SYP: (typeof partial.currencySymbols?.SYP === 'string' && partial.currencySymbols.SYP.trim()) || current.currencySymbols.SYP || DEFAULT_UNIFIED_SETTINGS.currencySymbols.SYP,
+      ...(partial.currencySymbols ? Object.fromEntries(
+        Object.entries(partial.currencySymbols).filter(([_, v]) => typeof v === 'string' && v.trim() !== '')
+      ) : {}),
     },
     themeSettings: {
       ...current.themeSettings,
