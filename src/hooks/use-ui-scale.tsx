@@ -11,6 +11,7 @@ import {
   applyUIScaleToDOM,
   isValidUIScaleId,
 } from '@/lib/ui-scale-config';
+import { EVENTS } from '@/lib/events';
 
 export function useUIScale() {
   const [currentScale, setCurrentScaleState] = useState<UIScaleId>(() => {
@@ -38,11 +39,19 @@ export function useUIScale() {
       }
     };
 
+    const handleSettingsUpdated = () => {
+      const stored = getStoredUIScale();
+      setCurrentScaleState(stored);
+      applyUIScaleToDOM(stored);
+    };
+
     window.addEventListener(UI_SCALE_CHANGED_EVENT, handleCustomChange);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, handleSettingsUpdated);
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener(UI_SCALE_CHANGED_EVENT, handleCustomChange);
+      window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleSettingsUpdated);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [currentScale]);

@@ -322,6 +322,7 @@ export default function Products() {
     const handleFieldsUpdated = () => reloadFieldsConfig();
     window.addEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
     window.addEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, handleFieldsUpdated);
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key?.includes('hyperpos_product_fields') || e.key?.includes('hyperpos_custom_fields')) {
@@ -335,6 +336,7 @@ export default function Products() {
     return () => {
       window.removeEventListener(EVENTS.PRODUCT_FIELDS_UPDATED, handleFieldsUpdated);
       window.removeEventListener(EVENTS.CUSTOM_FIELDS_UPDATED, handleFieldsUpdated);
+      window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleFieldsUpdated);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);

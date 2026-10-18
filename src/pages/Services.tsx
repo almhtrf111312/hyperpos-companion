@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { EVENTS } from '@/lib/events';
+import { EVENTS, emitEvent } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -87,7 +87,7 @@ const loadServices = (): RepairRequest[] => {
 const saveServices = (services: RepairRequest[]) => {
   try {
     localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(services));
-    window.dispatchEvent(new CustomEvent(EVENTS.SERVICES_UPDATED, { detail: services }));
+    emitEvent(EVENTS.SERVICES_UPDATED, services);
   } catch {
     // ignore
   }

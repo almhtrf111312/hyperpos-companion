@@ -524,8 +524,6 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
     // 7. Dispatch system events so POS, Sidebar, and Themes update immediately
     emitEvent(EVENTS.SETTINGS_UPDATED, newSettings);
     emitEvent(EVENTS.STORE_TYPE_CHANGED, storeType);
-    window.dispatchEvent(new CustomEvent('setup:complete'));
-    window.dispatchEvent(new CustomEvent('storeTypeChanged'));
 
     toast.success('تم إعداد المتجر بنجاح! مرحباً بك في Flow POS', {
       description: 'نظامك جاهز للعمل الآن بأعلى كفاءة',

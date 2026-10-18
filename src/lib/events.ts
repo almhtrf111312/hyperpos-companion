@@ -41,14 +41,8 @@ export function subscribeToEvent(eventName: string, callback: (event: CustomEven
 
 export function emitEvent(name: string, detail?: any) {
   try {
-    // CustomEvent to notify listeners in the same tab/window
+    // Dispatch a single unified CustomEvent to notify listeners in the same window/tab
     window.dispatchEvent(new CustomEvent(name, { detail }));
-    // Emit a simple legacy event name (without prefix) for backward compatibility with existing listeners,
-    // excluding settings-updated to maintain a single unified event channel.
-    const legacy = name.replace(/^hyperpos:/, '');
-    if (legacy && name !== EVENTS.SETTINGS_UPDATED) {
-      window.dispatchEvent(new Event(legacy));
-    }
   } catch {
     // ignore (server-side rendering or no window)
   }

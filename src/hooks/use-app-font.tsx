@@ -11,6 +11,7 @@ import {
   applyAppFontToDOM,
   isValidAppFontId,
 } from '@/lib/app-font-config';
+import { EVENTS } from '@/lib/events';
 
 export function useAppFont() {
   const [currentFont, setCurrentFontState] = useState<AppFontId>(() => {
@@ -38,11 +39,19 @@ export function useAppFont() {
       }
     };
 
+    const handleSettingsUpdated = () => {
+      const stored = getStoredAppFont();
+      setCurrentFontState(stored);
+      applyAppFontToDOM(stored);
+    };
+
     window.addEventListener(APP_FONT_CHANGED_EVENT, handleCustomChange);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, handleSettingsUpdated);
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener(APP_FONT_CHANGED_EVENT, handleCustomChange);
+      window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleSettingsUpdated);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [currentFont]);
