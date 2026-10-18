@@ -2602,7 +2602,7 @@ export default function Reports() {
         {isAllReportsModalOpen && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-black/70 transition-opacity"
               onClick={() => setIsAllReportsModalOpen(false)}
             />
             <div className="relative w-full max-w-lg bg-card rounded-t-[2.5rem] sm:rounded-3xl border border-border shadow-2xl z-10 max-h-[88vh] overflow-y-auto p-5 pb-8 space-y-5 animate-in slide-in-from-bottom duration-300">
@@ -2665,7 +2665,7 @@ export default function Reports() {
         {/* Custom Date Modal */}
         {showCustomDateModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCustomDateModal(false)} />
+            <div className="fixed inset-0 bg-black/70" onClick={() => setShowCustomDateModal(false)} />
             <div className="relative bg-card rounded-3xl border border-border p-5 max-w-sm w-full space-y-4 shadow-2xl z-10 animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between pb-2 border-b border-border/50">
                 <h3 className="font-bold text-sm text-foreground">{t('reports.selectTimePeriod')}</h3>

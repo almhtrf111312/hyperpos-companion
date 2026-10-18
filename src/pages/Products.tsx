@@ -3804,7 +3804,7 @@ export default function Products() {
               className={cn(
                 "pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full",
                 "bg-gradient-primary hover:opacity-95 active:scale-95 text-primary-foreground font-bold",
-                "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 backdrop-blur-md ring-4 ring-primary/15 transition-all cursor-pointer"
+                "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 ring-4 ring-primary/15 transition-[transform,opacity] duration-300 ease-out cursor-pointer"
               )}
               title={tDynamic('addProduct')}
               aria-label={tDynamic('addProduct')}

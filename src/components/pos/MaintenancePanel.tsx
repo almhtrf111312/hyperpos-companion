@@ -386,7 +386,7 @@ ${footer}`;
   return (
     <>
       <div className={cn(
-        "bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-xl flex flex-col h-full shadow-2xl",
+        "bg-background flex flex-col h-full shadow-2xl",
         isMobile ? "rounded-t-2xl" : fullWidth ? "" : "border-r border-border"
       )}>
         {/* Header */}

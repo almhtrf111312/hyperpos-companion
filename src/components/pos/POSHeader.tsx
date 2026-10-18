@@ -28,7 +28,7 @@ export function POSHeader({
   const { t, tDynamic } = useLanguage();
 
   return (
-    <header className="h-14 md:h-20 flex items-center justify-between px-3 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl shadow-xs border-b border-border/40 transition-all duration-300">
+    <header className="h-14 md:h-20 flex items-center justify-between px-3 md:px-6 sticky top-0 z-20 pt-[env(safe-area-inset-top)] shrink-0 bg-background/95 shadow-xs border-b border-border/40 transition-[transform,opacity] duration-300">
       {/* جهة اليمين (RTL): زر القائمة المدمج + عنوان نقطة البيع */}
       <div className="flex items-center gap-2 overflow-hidden">
         {/* زر فتح القائمة الجانبية المدمج للموبايل بدلاً من الزر العائم */}
@@ -37,7 +37,7 @@ export function POSHeader({
             type="button"
             onClick={onMenuClick}
             aria-label="القائمة الرئيسية"
-            className="w-9 h-9 rounded-xl bg-muted/60 dark:bg-zinc-900/80 border border-border/40 text-foreground flex items-center justify-center shrink-0 hover:bg-muted active:scale-95 transition-all cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-muted/60 dark:bg-zinc-900/80 border border-border/40 text-foreground flex items-center justify-center shrink-0 hover:bg-muted active:scale-95 transition-opacity cursor-pointer"
           >
             <Menu className="w-5 h-5 text-foreground" />
           </button>
@@ -55,7 +55,7 @@ export function POSHeader({
 
         {/* أزرار الوضع على الديسكتوب */}
         {!isMobile && !hideMaintenance && onModeChange && (
-          <div className="flex items-center p-1 rounded-full bg-slate-100/80 dark:bg-zinc-900/80 border border-black/5 dark:border-white/5 shadow-inner backdrop-blur-3xl ms-2">
+          <div className="flex items-center p-1 rounded-full bg-slate-100 dark:bg-zinc-900 border border-black/5 dark:border-white/5 shadow-inner ms-2">
             <button
               type="button"
               onClick={() => onModeChange('products')}

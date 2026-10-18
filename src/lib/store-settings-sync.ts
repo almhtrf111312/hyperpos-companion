@@ -587,7 +587,6 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
     // 7. إطلاق الأحداث العامة لتحديث شاشات الكاشير، الفواتير، والمنتجات
     emitEvent(EVENTS.SETTINGS_UPDATED, settings);
     emitEvent(EVENTS.STORE_TYPE_CHANGED);
-    window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: settings }));
   } catch (err) {
     console.error('[StoreSettingsSync] Failed to apply settings to runtime:', err);
   }

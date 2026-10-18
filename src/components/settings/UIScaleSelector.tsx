@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import {
   UIScaleId,
   UI_SCALE_OPTIONS,
+  UI_SCALE_CHANGED_EVENT,
   getStoredUIScale,
   setStoredUIScale,
   applyUIScaleToDOM,
@@ -11,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { Slider } from '@/components/ui/slider';
 import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
+import { EVENTS } from '@/lib/events';
 
 import { cn } from '@/lib/utils';
 
@@ -30,6 +32,18 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
 }) => {
   const { isRTL } = useLanguage();
   const [currentScale, setCurrentScale] = useState<UIScaleId>(getStoredUIScale);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setCurrentScale(getStoredUIScale());
+    };
+    window.addEventListener(UI_SCALE_CHANGED_EVENT, handleUpdate);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, handleUpdate);
+    return () => {
+      window.removeEventListener(UI_SCALE_CHANGED_EVENT, handleUpdate);
+      window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleUpdate);
+    };
+  }, []);
 
   const stepIndex = SCALE_STEPS.indexOf(currentScale);
 

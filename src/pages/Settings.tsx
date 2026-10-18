@@ -452,9 +452,8 @@ export default function Settings() {
 
     savePersistedSettings(updated as PersistedSettings);
 
-    // 5. إشعار جميع التبويبات والشاشات (POS، Products، Invoices) بالتغيير الفوري
-    window.dispatchEvent(new CustomEvent('STORE_SETTINGS_UPDATED', { detail: updated }));
-    window.dispatchEvent(new CustomEvent('settings-updated'));
+    // 5. إشعار جميع التبويبات والشاشات بالحدث الرسمي الموحد
+    emitEvent(EVENTS.SETTINGS_UPDATED, updated);
   };
 
   // Exchange rates (string to avoid mobile keyboard/focus issues)

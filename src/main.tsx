@@ -21,7 +21,19 @@ initializeLanguage();
 // Cold-start only: if the WebView opened at "/", put the user back on the last screen.
 restoreLastRouteIfNeeded();
 
-// Register Service Worker for offline support — as early as possible
+// Unregister any lingering Service Worker if running inside native Android/Capacitor
+// to prevent reload loops and cache conflicts with local APK assets.
+if (Capacitor.isNativePlatform()) {
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        reg.unregister().catch(() => {});
+      }
+    }).catch(() => {});
+  }
+}
+
+// Register Service Worker for offline support — strictly for browser-based Web PWA
 const updateSW = Capacitor.isNativePlatform() ? null : registerSW({
   immediate: true,
   onNeedRefresh() {

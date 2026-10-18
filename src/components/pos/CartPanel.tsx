@@ -1515,7 +1515,7 @@ export function CartPanel({
   return (
     <>
       <div className={cn(
-        "bg-white/90 dark:bg-zinc-900/90 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-zinc-900/60 backdrop-blur-3xl flex flex-col h-full shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+        "bg-card flex flex-col h-full shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
           isMobile ? "rounded-t-3xl" : "rounded-3xl border border-black/5 dark:border-white/10"
       )}>
         {/* Cart Header */}
@@ -1803,7 +1803,7 @@ export function CartPanel({
         </div>
 
         {/* Cart Footer - Modern & Compact */}
-        <div className="border-t border-border/60 bg-card/95 backdrop-blur-sm p-2.5 space-y-2">
+        <div className="border-t border-border/60 bg-card p-2.5 space-y-2">
           {/* Row 1: Currency Pills (compact) + Tax Toggle */}
           <div className="flex items-center gap-1.5">
             {/* Currency pills - compact */}

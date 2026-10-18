@@ -191,10 +191,12 @@ const getCachedSession = (): { user: User | null; session: Session | null } => {
         const item = localStorage.getItem(key);
         if (item) {
           const parsed = JSON.parse(item);
-          if (parsed?.user) {
+          const foundUser = parsed?.user || parsed?.currentSession?.user || parsed?.session?.user;
+          const foundSession = parsed?.session || parsed?.currentSession || (parsed?.access_token ? parsed : null);
+          if (foundUser) {
             return {
-              user: parsed.user as User,
-              session: parsed as unknown as Session,
+              user: foundUser as User,
+              session: (foundSession || { user: foundUser, access_token: 'cached-token' }) as unknown as Session,
             };
           }
         }

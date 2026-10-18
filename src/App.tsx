@@ -29,6 +29,7 @@ import { clearDemoDataOnce } from "./lib/clear-demo-data";
 import { checkSettingsVersion } from "./lib/settings-version";
 import { EVENTS } from "./lib/events";
 import { saveLastRoute } from "./lib/last-route";
+import { hideSplashScreen } from "./lib/splash-screen";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
@@ -93,6 +94,11 @@ const AppContent = () => {
   useEffect(() => {
     saveLastRoute(location.pathname + location.search);
   }, [location]);
+
+  // Hide native splash screen immediately once React UI mounts without waiting for cloud
+  useEffect(() => {
+    hideSplashScreen();
+  }, []);
 
   // تفريغ السلة وحالتها من التخزين عند تشغيل التطبيق بالكامل (Cold Start) لضمان بدء السلة مغلقة دائماً
   useEffect(() => {
