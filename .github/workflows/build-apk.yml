@@ -86,14 +86,14 @@ jobs:
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
-              -storepass flowpos123 \
-              -keypass flowpos123 \
+              -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+              -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
               -dname "CN=FlowPOS Pro, OU=POS Department, O=FlowPOS, L=Dubai, ST=Dubai, C=AE"
           fi
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
-          echo "KEYSTORE_PASSWORD=flowpos123" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
           echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=flowpos123" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         working-directory: android

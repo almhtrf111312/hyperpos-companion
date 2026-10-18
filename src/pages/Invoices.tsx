@@ -86,6 +86,7 @@ import {
   deleteInvoiceCloud,
   refundInvoiceCloud,
   refundInvoicePartialCloud,
+  markInvoiceRefundedLocally,
   PartialRefundItem,
   updateInvoiceCloud,
   getInvoiceStatsCloud,
@@ -877,9 +878,15 @@ export default function Invoices() {
 
     // ✅ Offline path: update local state immediately and queue
     if (!isOnline) {
+      markInvoiceRefundedLocally(invoiceLabel);
       setInvoices(prev => prev.map(inv =>
         inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
       ));
+      if (invoice.customerId) {
+        import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
+          updateCustomerStatsCloud(invoice.customerId!).catch(() => {});
+        });
+      }
       addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel }, `invoice-refund:${invoiceLabel}`);
       toast.info(`تم استرداد ${invoiceLabel} محلياً`, {
         id: toastId,
@@ -894,6 +901,7 @@ export default function Invoices() {
     try {
         const result = await refundInvoiceCloud(invoiceLabel, 'online');
         if (typeof result === 'object' && result.alreadyRefunded) {
+          markInvoiceRefundedLocally(invoiceLabel);
           setInvoices(prev => prev.map(inv =>
             inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
           ));
@@ -917,11 +925,18 @@ export default function Invoices() {
           return;
         }
 
-        // Confirmed by the server → now reflect the refunded state in the list
+        // Confirmed by the server → now reflect the refunded state in the list and local cache
+        markInvoiceRefundedLocally(invoiceLabel);
         setInvoices(prev => prev.map(inv =>
           inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
         ));
         invalidateInvoicesCache();
+
+        if (invoice.customerId) {
+          import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
+            updateCustomerStatsCloud(invoice.customerId!).catch(() => {});
+          });
+        }
 
 
         // Refresh stats silently — don't block UI

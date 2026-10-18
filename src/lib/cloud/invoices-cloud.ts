@@ -230,6 +230,24 @@ export const recordOfflineInvoiceLocal = (offlineInvoice: Invoice) => {
   }
 };
 
+/**
+ * تحديث حالة الفاتورة كمستردة فورياً في الذاكرة والكاش المحلي وبث الحدث للشاشات (0ms)
+ */
+export const markInvoiceRefundedLocally = (id: string) => {
+  try {
+    const currentList = invoicesCache || loadInvoicesFromLocalCache() || [];
+    const updated = currentList.map(inv =>
+      inv.id === id ? { ...inv, status: 'refunded' as InvoiceStatus, updatedAt: new Date().toISOString() } : inv
+    );
+    invoicesCache = updated;
+    cacheTimestamp = Date.now();
+    saveInvoicesToLocalCache(updated);
+    emitEvent(EVENTS.INVOICES_UPDATED, updated);
+  } catch (err) {
+    console.warn('[InvoicesCloud] markInvoiceRefundedLocally failed:', err);
+  }
+};
+
 // Generate invoice number — uses central RPC for cross-device uniqueness, falls back to date-based scan
 const getNextInvoiceNumber = async (): Promise<string> => {
   const date = new Date();
@@ -488,6 +506,7 @@ export const addInvoiceCloud = async (
     addToQueue('invoice_create', {
       operationId: invoiceNumber,
       bundle: {
+        customerId: invoice.customerId,
         customerName: invoice.customerName,
         items: invoice.items,
         subtotal: invoice.subtotal,
@@ -521,6 +540,7 @@ export const addInvoiceCloud = async (
     invoice_type: invoice.type,
     date: now.toISOString().split('T')[0],
     time: now.toTimeString().split(' ')[0],
+    customer_id: invoice.customerId || null,
     customer_name: invoice.customerName,
     customer_phone: invoice.customerPhone || null,
     subtotal: Math.round((invoice.subtotal || 0) * 100) / 100,
@@ -586,6 +606,7 @@ export const addInvoiceCloud = async (
   addToQueue('invoice_create', {
     operationId: invoiceNumber,
     bundle: {
+      customerId: invoice.customerId,
       customerName: invoice.customerName,
       items: invoice.items,
       subtotal: invoice.subtotal,
@@ -881,7 +902,11 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
     };
   }
 
-  // تحديث فوري لكميات المنتجات في الكاش المحلي (ذاكرة و IndexedDB ومستودع)
+  if (!atomic.success) {
+    return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
+  }
+
+  // تحديث فوري لكميات المنتجات في الكاش المحلي (ذاكرة و IndexedDB ومستودع) بعد التحقق من نجاح الاسترداد
   try {
     const { data: invItems } = await sb
       .from('invoice_items')
@@ -914,8 +939,6 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   } catch (err) {
     console.warn('[refundInvoiceCloud] Error updating cache for refunded items:', err);
   }
-
-  if (!atomic.success) return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
 
   // حساب النقدية الواجب إرجاعها (كاش كامل أو دفعة دين سابقة)
   const cashToRefund = isTargetCash
@@ -964,6 +987,18 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   invalidateDebtsCache();
   const { invalidateCustomersCache } = await import('./customers-cloud');
   invalidateCustomersCache();
+
+  // ✅ إعادة احتساب إحصائيات العميل بعد الاسترداد
+  const resolvedCustomerId = targetInvoice?.customerId;
+  if (resolvedCustomerId) {
+    try {
+      const { updateCustomerStatsCloud } = await import('./customers-cloud');
+      await updateCustomerStatsCloud(resolvedCustomerId);
+    } catch (e) {
+      console.warn('[refundInvoiceCloud] Failed to update customer stats:', e);
+    }
+  }
+
   emitEvent(EVENTS.INVOICES_UPDATED, null);
   emitEvent(EVENTS.DEBTS_UPDATED, null);
   emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
@@ -1093,6 +1128,15 @@ export const refundInvoicePartialCloud = async (
     } catch { /* silent */ }
   }
 
+  // ✅ إعادة احتساب إحصائيات العميل بعد الاسترداد الجزئي
+  try {
+    const loadedInv = (invoicesCache || loadInvoicesFromLocalCache() || []).find(i => i.id === invoiceNumber);
+    if (loadedInv?.customerId) {
+      const { updateCustomerStatsCloud } = await import('./customers-cloud');
+      await updateCustomerStatsCloud(loadedInv.customerId);
+    }
+  } catch { /* silent */ }
+
   emitEvent(EVENTS.INVOICES_UPDATED, null);
   emitEvent(EVENTS.PRODUCTS_UPDATED, null);
   emitEvent(EVENTS.DEBTS_UPDATED, null);
@@ -1219,6 +1263,7 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
         queueInvoices.push({
           id: invId,
           type: (bundle.type as InvoiceType) || 'sale',
+          customerId: bundle.customerId || data?.customerId,
           customerName: bundle.customerName || 'عميل نقدي',
           customerPhone: bundle.customerPhone || undefined,
           items,

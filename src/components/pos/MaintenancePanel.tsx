@@ -190,9 +190,26 @@ export function MaintenancePanel({
         description
       ].filter(Boolean).join(' - ');
 
+      const existingCustomers = await loadCustomersCloud();
+      const matchedCustomer = existingCustomers.find(c =>
+        c.name.toLowerCase().trim() === customerName.toLowerCase().trim()
+      );
+
+      if (customerName.trim() && !matchedCustomer) {
+        if (paymentType === 'debt') {
+          toast.error('العميل المحدد غير مسجل في النظام. لا يمكن تسجيل صيانة بالدين بدون عميل مسجل.');
+          savingRef.current = false;
+          setIsSaving(false);
+          return;
+        } else {
+          toast.warning('العميل المدخل غير مسجل كعميل في النظام، وسيتم حفظ فاتورة الصيانة بدون معرف عميل.');
+        }
+      }
+
       // ✅ Add to invoices using Cloud API
       const invoice = await addInvoiceCloud({
         type: 'maintenance',
+        customerId: matchedCustomer?.id,
         customerName: effectiveName,
         customerPhone,
         items: [],
@@ -215,6 +232,12 @@ export function MaintenancePanel({
       if (!invoice) {
         toast.error('فشل في حفظ الفاتورة');
         return;
+      }
+
+      if (matchedCustomer?.id) {
+        import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
+          updateCustomerStatsCloud(matchedCustomer.id).catch(() => {});
+        });
       }
 
       // ✅ تسجيل تكلفة القطع كمصروف تلقائي (إذا كانت أكبر من 0) - Cloud API

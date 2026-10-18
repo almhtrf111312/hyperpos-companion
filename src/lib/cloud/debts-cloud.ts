@@ -444,6 +444,11 @@ export const recordPaymentCloud = async (
   emitEvent(EVENTS.INVOICES_UPDATED, null);
   const debts = await loadDebtsCloud();
   const fresh = debts.find(d => d.id === debtId);
+  if (fresh?.customerId) {
+    import('./customers-cloud').then(({ updateCustomerStatsCloud }) => {
+      updateCustomerStatsCloud(fresh.customerId!).catch(() => {});
+    });
+  }
   if (fresh) return fresh;
   return {
     id: debtId,

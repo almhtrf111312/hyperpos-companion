@@ -33,6 +33,7 @@ export interface DebtSaleItem {
 }
 
 export interface DebtSaleBundle {
+  customerId?: string;
   // Customer info
   customerName: string;
   customerPhone: string;
@@ -162,8 +163,11 @@ export async function processDebtSaleWithOfflineSupport(
 
     // Customer bookkeeping is best-effort and must never block the debt invoice.
     if (!sale.alreadyProcessed) {
-      const customer = await findOrCreateCustomerCloud(bundle.customerName, bundle.customerPhone).catch(() => null);
-      if (customer) await linkInvoiceToCustomerCloud(sale.invoiceNumber, customer.id).catch(() => {});
+      if (bundle.customerId) {
+        await linkInvoiceToCustomerCloud(sale.invoiceNumber, bundle.customerId).catch(() => {});
+      } else {
+        console.warn(`[DebtSale] Debt invoice ${sale.invoiceNumber} for "${bundle.customerName}" has no customerId. Name-based resolution skipped.`);
+      }
     }
     
     // Step 6: Record profit

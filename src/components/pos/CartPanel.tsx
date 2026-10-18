@@ -275,6 +275,8 @@ export function CartPanel({
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const addCustomerRef = useRef(false);
 
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+
   // Loaded customers for search
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
 
@@ -753,10 +755,20 @@ export function CartPanel({
         }
       }
 
+      const selectedCustomer = allCustomers.find(c =>
+        c.name.toLowerCase().trim() === (customerNameSnapshot || '').toLowerCase().trim()
+      );
+      const resolvedCustomerId = selectedCustomerId || selectedCustomer?.id;
+
+      if (isRealCustomerSelected(customerNameSnapshot) && !resolvedCustomerId) {
+        showToast.warning('اسم العميل المدخل غير مسجل كعميل في النظام، وسيتم حفظ الفاتورة النقدية بدون معرف عميل.');
+      }
+
       // 1. ✅ تسجيل الفاتورة محلياً فوراً وبث التحديث للشاشة (0ms)
       const offlineCashInvoice: Invoice = {
         id: invoiceNumber,
         type: 'sale',
+        customerId: resolvedCustomerId,
         customerName: customerNameSnapshot || 'عميل نقدي',
         items: localItems.map(i => ({
           id: i.id,
@@ -792,6 +804,13 @@ export function CartPanel({
       };
       recordOfflineInvoiceLocal(offlineCashInvoice);
 
+      // ✅ تحديث إحصائيات العميل النشطة فوراً
+      if (resolvedCustomerId) {
+        import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
+          updateCustomerStatsCloud(resolvedCustomerId).catch(() => {});
+        });
+      }
+
       // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
       addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
 
@@ -800,6 +819,7 @@ export function CartPanel({
         operationId,
         bundle: {
           invoiceNumber,
+          customerId: resolvedCustomerId,
           customerName: customerNameSnapshot || 'عميل نقدي',
           items: localItems.map(i => ({ ...i, profit: roundCurrency(i.profit - i.total * discountRatio) })),
           subtotal,
@@ -908,6 +928,17 @@ export function CartPanel({
       return;
     }
 
+    const customerNameSnapshot = customerName;
+    const selectedCustomer = allCustomers.find(c =>
+      c.name.toLowerCase().trim() === (customerNameSnapshot || '').toLowerCase().trim()
+    );
+    const resolvedCustomerId = selectedCustomerId || selectedCustomer?.id;
+
+    if (!resolvedCustomerId) {
+      showToast.error('العميل المحدد غير مسجل في النظام. يرجى اختيار عميل من القائمة أو إضافة عميل جديد لحفظ الفاتورة مع معرف العميل.');
+      return;
+    }
+
     // 🛡️ فحص استباقي حاسم قبل تفريغ السلة وتوليد الفاتورة
     const validation = await validateCartProducts(cart);
     if (!validation.isValid) {
@@ -927,7 +958,6 @@ export function CartPanel({
     // 💵 الدفعة الأولى المقبوضة عند البيع المؤجل أو المركب (محوّلة للدولار) — تُخصم من الدين وتدخل الصندوق
     const downPaymentSnapshot = roundCurrency(Math.max(0, Math.min(receivedUSD, totalSnapshot)));
     const debtRemainingSnapshot = roundCurrency(totalSnapshot - downPaymentSnapshot);
-    const customerNameSnapshot = customerName;
     const customerPhoneSnapshot = customerPhone;
 
     const operationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -1060,6 +1090,7 @@ export function CartPanel({
       // ✅ إضافة فاتورة الدين للطابور فوراً (محلياً - 0ms)
       const bundle = {
         invoiceNumber,
+        customerId: resolvedCustomerId,
         customerName: customerNameSnapshot,
         customerPhone: customerPhoneSnapshot || '',
         items: localItems,
@@ -1101,6 +1132,7 @@ export function CartPanel({
       const offlineDebtInvoice: Invoice = {
         id: invoiceNumber,
         type: 'sale',
+        customerId: resolvedCustomerId,
         customerName: customerNameSnapshot || (downPaymentSnapshot > 0 ? 'عميل بيع مركب' : 'عميل دين'),
         customerPhone: customerPhoneSnapshot || undefined,
         items: localItems.map(i => ({
@@ -1138,6 +1170,13 @@ export function CartPanel({
         warehouseId: stockWarehouseId,
       };
       recordOfflineInvoiceLocal(offlineDebtInvoice);
+
+      // ✅ تحديث إحصائيات العميل النشطة فوراً
+      if (resolvedCustomerId) {
+        import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
+          updateCustomerStatsCloud(resolvedCustomerId).catch(() => {});
+        });
+      }
 
       // ✅ تسجيل الدفعة النقدية المقبوضة في الصندوق والوردية النشطة فوراً
       if (downPaymentSnapshot > 0) {
@@ -1278,6 +1317,7 @@ export function CartPanel({
   // Smart instant customer search handler - uses fast memory & local cache with zero latency
   const handleCustomerSearch = (value: string) => {
     onCustomerNameChange(value);
+    setSelectedCustomerId(null);
     const cleanSearch = normalizeArabicSearch(value);
 
     if (cleanSearch.length >= 1) {
@@ -1298,6 +1338,7 @@ export function CartPanel({
   };
 
   const selectCustomer = (customer: Customer) => {
+    setSelectedCustomerId(customer.id);
     onCustomerNameChange(customer.name);
     setCustomerPhone(customer.phone || '');
     setShowSuggestions(false);
@@ -1336,6 +1377,7 @@ export function CartPanel({
       }
 
       // تحديث الحالة حتى لا يطلب الهاتف مرة أخرى
+      setSelectedCustomerId(created.id);
       onCustomerNameChange(created.name);
       setCustomerPhone(created.phone || '');
       setIsNewCustomer(false);

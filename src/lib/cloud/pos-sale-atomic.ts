@@ -213,6 +213,7 @@ async function fallbackDirectInsert(
       .from('invoices')
       .insert({
         invoice_number: invoiceNumber,
+        customer_id: (bundle as any).customerId || null,
         invoice_type: paymentType === 'debt' ? 'debt' : 'cash',
         customer_name: bundle.customerName,
         customer_phone: bundle.customerPhone || '',

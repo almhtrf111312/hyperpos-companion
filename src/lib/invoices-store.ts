@@ -25,6 +25,7 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string;
   type: InvoiceType;
+  customerId?: string;
   customerName: string;
   customerPhone?: string;
   items: InvoiceItem[];

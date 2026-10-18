@@ -17,6 +17,7 @@ import { emitEvent, EVENTS } from '@/lib/events';
 // ============= Types =============
 
 export interface CashSaleBundle {
+  customerId?: string;
   customerName: string;
   items: Array<{
     id: string;
@@ -82,13 +83,11 @@ export async function processCashSaleBundleFromQueue(
         ).catch(err => console.error('[CashSale] Partner distribution failed:', err));
       }
 
-      // 5. Link invoice to customer in background (non-blocking)
-      if (bundle.customerName && bundle.customerName !== 'عميل نقدي') {
-        findOrCreateCustomerCloud(bundle.customerName)
-          .then(customer => {
-            if (customer) return linkInvoiceToCustomerCloud(sale.invoiceNumber, customer.id);
-          })
-          .catch(() => {});
+      // 5. Link invoice to customer in background (only when customerId is provided)
+      if (bundle.customerId) {
+        linkInvoiceToCustomerCloud(sale.invoiceNumber, bundle.customerId).catch(() => {});
+      } else if (bundle.customerName && bundle.customerName !== 'عميل نقدي' && bundle.customerName !== 'زبون عام') {
+        console.warn(`[CashSale] Invoice ${sale.invoiceNumber} for "${bundle.customerName}" has no customerId. Name-based resolution skipped.`);
       }
     }
 

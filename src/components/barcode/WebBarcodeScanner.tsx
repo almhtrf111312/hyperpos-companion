@@ -3,6 +3,7 @@
  * Same useRef pattern as OfflineBarcodeScanner to prevent re-render loops.
  */
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, ScanLine, X } from 'lucide-react';
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { Button } from '@/components/ui/button';
@@ -185,8 +186,8 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
 
   if (!isOpen) return null;
 
-  return (
-    <div className="scanner-ui-overlay fixed inset-0 z-[120] bg-black flex flex-col">
+  return createPortal(
+    <div className="barcode-scanner-modal scanner-ui-overlay fixed inset-0 z-[99999] bg-black flex flex-col">
       {/* Header — floating over camera */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 pt-[calc(max(env(safe-area-inset-top),1.5rem)+0.5rem)] z-[9999]">
         <div className="flex items-center gap-2 text-white">
@@ -238,6 +239,7 @@ export function WebBarcodeScanner({ isOpen, onClose, onScan }: WebBarcodeScanner
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { BarcodeFormat, BarcodeScanner, Resolution } from '@capacitor-mlkit/barcode-scanning';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { playBeep } from '@/lib/sound-utils';
-import { ScanLine, X, Flashlight, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ScanLine, X, Flashlight, Loader2, ZoomIn, ZoomOut, AlertTriangle, Keyboard, RotateCcw, Check } from 'lucide-react';
 
 // Key used to persist the scanned barcode across potential app restarts
 export const PENDING_BARCODE_KEY = 'hyperpos_pending_scan';
@@ -82,6 +82,10 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
   const [minZoom, setMinZoom] = useState(1);
   const [maxZoom, setMaxZoom] = useState(8);
   const [tapCount, setTapCount] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [manualBarcode, setManualBarcode] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Store callbacks in refs to avoid effect re-triggers
@@ -119,8 +123,41 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     }
   }, []);
 
+  const handleClose = useCallback(() => {
+    if (autoZoomTimerRef.current) {
+      clearTimeout(autoZoomTimerRef.current);
+      autoZoomTimerRef.current = null;
+    }
+    safeStopScan();
+    setScannerTransparency(false);
+    setTorchOn(false);
+    scanningRef.current = false;
+    setErrorMessage(null);
+    setShowManualInput(false);
+    onCloseRef.current();
+  }, [safeStopScan]);
+
+  const handleRetry = useCallback(() => {
+    setErrorMessage(null);
+    setShowManualInput(false);
+    setIsStarting(true);
+    setRetryTrigger(c => c + 1);
+  }, []);
+
+  const handleManualSubmit = useCallback((e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = manualBarcode.trim();
+    if (!code) return;
+    try { localStorage.setItem(PENDING_BARCODE_KEY, code); } catch (e) {}
+    try { playBeep(); } catch {}
+    handleClose();
+    onScanRef.current(code);
+  }, [manualBarcode, handleClose]);
+
   useEffect(() => {
     if (!isOpen) {
+      setErrorMessage(null);
+      setShowManualInput(false);
       setScannerTransparency(false);
       return;
     }
@@ -131,6 +168,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     let errorListener: PluginListenerHandle | null = null;
     scanningRef.current = true;
     setIsStarting(true);
+    setErrorMessage(null);
     setCurrentZoom(1);
     setTorchOn(false);
 
@@ -157,13 +195,9 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     (async () => {
       try {
         const supported = await BarcodeScanner.isSupported();
-        if (!supported.supported) throw new Error('Barcode scanning is not supported');
-
-        // NOTE: We intentionally skip installGoogleBarcodeScannerModule here.
-        // CameraX + bundled ML Kit does NOT require Google Play Services scanner module.
-        // Installing/checking it blocks camera startup by 5–40 seconds on many devices.
-        // The module check is only needed for the separate GMS `.scan()` API, not for
-        // the continuous CameraX startScan flow we use here.
+        if (!supported.supported) {
+          throw new Error('قارئ ML Kit غير مدعوم على هذا النظام.');
+        }
 
         let status = await BarcodeScanner.checkPermissions();
         if (status.camera === 'prompt' || status.camera === 'prompt-with-rationale') {
@@ -174,7 +208,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           await cleanup();
           if (mountedRef.current && !cancelled) {
             setIsStarting(false);
-            onCloseRef.current();
+            setScannerTransparency(false);
+            setErrorMessage('لم يتم منح إذن الكاميرا. يمكنك كتابة رقم الباركود يدوياً أدناه أو تفعيل الإذن من إعدادات الجهاز.');
           }
           return;
         }
@@ -214,15 +249,17 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         errorListener = await BarcodeScanner.addListener('scanError', async ({ message }) => {
           console.warn('[MLKit Scanner] Scan error:', message);
           await cleanup();
-          if (mountedRef.current && !cancelled) onFallbackRef.current?.();
+          if (mountedRef.current && !cancelled) {
+            setIsStarting(false);
+            setScannerTransparency(false);
+            setErrorMessage(`تعذر استمرار المسح (${message || 'خطأ غير متوقع'}). يمكنك كتابة رقم الباركود يدوياً.`);
+          }
         });
 
         // Use 720p (default recommended by Google CameraX) for fast startup.
-        // 1080p adds ~300-500ms startup overhead with no real scanning benefit.
         await BarcodeScanner.startScan({ formats: SCAN_FORMATS, resolution: Resolution['1280x720'] });
 
         // Only make WebView transparent AFTER camera is confirmed started
-        // to prevent the "black screen flash" artifact
         if (!cancelled && mountedRef.current) {
           setScannerTransparency(true);
           setIsStarting(false);
@@ -238,12 +275,13 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           }
         }, 1800);
 
-      } catch (err) {
+      } catch (err: any) {
         console.warn('[MLKit Scanner] Failed to start scanner:', err);
         await cleanup();
         if (mountedRef.current && !cancelled) {
           setIsStarting(false);
-          onFallbackRef.current?.();
+          setScannerTransparency(false);
+          setErrorMessage(err?.message || 'تعذر تشغيل ماسح الباركود (ML Kit). يمكنك إدخال رقم الباركود يدوياً أو إعادة المحاولة.');
         }
       }
     })();
@@ -262,7 +300,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
         scanningRef.current = false;
       }
     };
-  }, [isOpen, safeStopScan]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, retryTrigger, safeStopScan]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleTorch = async () => {
     if (!hasTorch) return;
@@ -303,25 +341,13 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
     });
   }, [currentZoom, minZoom, maxZoom, handleZoomPreset]);
 
-  const handleClose = () => {
-    if (autoZoomTimerRef.current) {
-      clearTimeout(autoZoomTimerRef.current);
-      autoZoomTimerRef.current = null;
-    }
-    safeStopScan();
-    setScannerTransparency(false);
-    setTorchOn(false);
-    scanningRef.current = false;
-    onCloseRef.current();
-  };
-
   if (!isOpen) return null;
 
   const zoomPresets = ZOOM_STEPS.filter(z => z >= minZoom && z <= maxZoom);
 
   return createPortal(
     <div
-      className="barcode-scanner-modal fixed inset-0 z-[99999] bg-transparent flex flex-col pointer-events-auto"
+      className={`barcode-scanner-modal fixed inset-0 z-[99999] flex flex-col pointer-events-auto ${errorMessage || showManualInput ? 'bg-neutral-950/95 backdrop-blur-md' : 'bg-transparent'}`}
       onClick={handleScreenTap}
     >
       {/* Top bar */}
@@ -331,7 +357,16 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           <span className="text-sm font-semibold">مسح الباركود</span>
         </div>
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-          {hasTorch && (
+          <button
+            type="button"
+            onClick={() => setShowManualInput(prev => !prev)}
+            className={`h-11 px-3 rounded-full flex items-center gap-1.5 border transition-colors ${showManualInput ? 'bg-white text-black border-white' : 'bg-black/60 border-white/30 text-white'}`}
+            aria-label="إدخال يدوي"
+          >
+            <Keyboard className="w-4 h-4" />
+            <span className="text-xs font-medium">يدوي</span>
+          </button>
+          {hasTorch && !errorMessage && (
             <button
               type="button"
               onClick={toggleTorch}
@@ -354,13 +389,15 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
 
       {/* Camera viewfinder area */}
       <div className="flex-1 relative">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="w-[75%] h-[35%] rounded-xl border-2 border-white/70 relative shadow-[0_0_0_4000px_rgba(0,0,0,0.4)]">
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-white/80 animate-pulse" />
+        {!errorMessage && !showManualInput && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="w-[75%] h-[35%] rounded-xl border-2 border-white/70 relative shadow-[0_0_0_4000px_rgba(0,0,0,0.4)]">
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-white/80 animate-pulse" />
+            </div>
           </div>
-        </div>
+        )}
 
-        {isStarting && (
+        {isStarting && !errorMessage && (
           <div className="absolute inset-0 grid place-items-center bg-black/80 z-[100]">
             <div className="flex items-center gap-2 text-sm text-white">
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -369,8 +406,146 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           </div>
         )}
 
+        {/* Error message card with manual input & retry options */}
+        {errorMessage && (
+          <div className="absolute inset-0 z-[200] flex items-center justify-center p-4 bg-black/90">
+            <div
+              className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl text-white"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 text-amber-400 mb-3">
+                <AlertTriangle className="w-6 h-6 shrink-0" />
+                <h3 className="text-base font-semibold">تعذر تشغيل كاميرا الماسح</h3>
+              </div>
+              <p className="text-sm text-neutral-300 leading-relaxed mb-4">
+                {errorMessage}
+              </p>
+
+              {/* Manual barcode input form */}
+              <form onSubmit={handleManualSubmit} className="space-y-3 mb-5">
+                <label className="block text-xs font-medium text-neutral-400">
+                  إدخال الباركود يدوياً:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    dir="ltr"
+                    autoFocus
+                    value={manualBarcode}
+                    onChange={e => setManualBarcode(e.target.value)}
+                    placeholder="مثال: 628100123456"
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-neutral-800 border border-neutral-700 text-white placeholder:text-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!manualBarcode.trim()}
+                    className="px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none text-white text-sm font-medium flex items-center gap-1.5 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>تأكيد</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2 pt-2 border-t border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    className="flex-1 py-2.5 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-neutral-700"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>إعادة المحاولة</span>
+                  </button>
+                  {onFallbackRef.current && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleClose();
+                        onFallbackRef.current?.();
+                      }}
+                      className="flex-1 py-2.5 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-neutral-700"
+                    >
+                      <span>ماسح الويب</span>
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="w-full py-2 px-3 rounded-lg bg-transparent hover:bg-neutral-800 text-neutral-400 hover:text-white text-xs transition-colors"
+                >
+                  إلغاء وإغلاق
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manual entry modal when toggled voluntarily */}
+        {showManualInput && !errorMessage && (
+          <div
+            className="absolute inset-0 z-[150] flex items-center justify-center p-4 bg-black/80"
+            onClick={() => setShowManualInput(false)}
+          >
+            <div
+              className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl text-white"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-base font-semibold">إدخال الباركود يدوياً</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowManualInput(false)}
+                  className="p-1 rounded-lg text-neutral-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleManualSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1.5">
+                    رقم الباركود:
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    autoFocus
+                    value={manualBarcode}
+                    onChange={e => setManualBarcode(e.target.value)}
+                    placeholder="مثال: 628100123456"
+                    className="w-full px-3 py-2.5 rounded-lg bg-neutral-800 border border-neutral-700 text-white placeholder:text-neutral-500 font-mono text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={!manualBarcode.trim()}
+                    className="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>إضافة المنتج</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualInput(false)}
+                    className="px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-300 text-sm hover:bg-neutral-700 transition-colors"
+                  >
+                    رجوع للكاميرا
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Zoom controls overlay - positioned at bottom of viewfinder (forced LTR for logical order) */}
-        {!isStarting && zoomPresets.length > 1 && (
+        {!isStarting && !errorMessage && !showManualInput && zoomPresets.length > 1 && (
           <div
             dir="ltr"
             className="absolute bottom-6 inset-x-0 flex items-center justify-center gap-2 z-[9999]"
@@ -411,10 +586,12 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
       </div>
 
       {/* Bottom hint */}
-      <div className="px-4 py-6 text-center bg-black/80 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
-        <p className="text-sm font-medium text-white">وجّه الكاميرا نحو الباركود</p>
-        <p className="text-xs text-white/50 mt-1">انقر مرتين للتبديل بين 1× و 2×</p>
-      </div>
+      {!errorMessage && !showManualInput && (
+        <div className="px-4 py-6 text-center bg-black/80 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+          <p className="text-sm font-medium text-white">وجّه الكاميرا نحو الباركود</p>
+          <p className="text-xs text-white/50 mt-1">انقر مرتين للتبديل بين 1× و 2×</p>
+        </div>
+      )}
     </div>,
     document.body
   );
