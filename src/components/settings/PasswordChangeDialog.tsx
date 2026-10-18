@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Loader2, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ResponsiveDialog } from '@/components/ui/ResponsiveDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
@@ -216,118 +216,126 @@ export function PasswordChangeDialog({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md w-[95vw] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5 text-primary" />
-            {requireCurrentPassword
-              ? (t('password.change') || 'تغيير كلمة المرور')
-              : (userName ? `تعيين كلمة مرور لـ ${userName}` : (t('password.changeUser') || 'تعيين كلمة مرور جديدة'))}
-          </DialogTitle>
-        </DialogHeader>
+  const dialogTitle = (
+    <div className="flex items-center gap-2">
+      <Key className="w-5 h-5 text-primary" />
+      <span>
+        {requireCurrentPassword
+          ? (t('password.change') || 'تغيير كلمة المرور')
+          : (userName ? `تعيين كلمة مرور لـ ${userName}` : (t('password.changeUser') || 'تعيين كلمة مرور جديدة'))}
+      </span>
+    </div>
+  );
 
-        {!requireCurrentPassword && (
-          <div className="bg-primary/10 text-primary p-3 rounded-xl text-xs sm:text-sm font-medium border border-primary/20 flex items-center gap-2">
-            <Key className="w-4 h-4 shrink-0" />
-            <span>
-              {userName 
-                ? `تعيين كلمة مرور جديدة مباشرة للمستخدم: ${userName}`
-                : 'أدخل كلمة المرور الجديدة مباشرة دون الحاجة لكلمة المرور القديمة'}
-            </span>
+  const dialogFooter = (
+    <div className="flex flex-col sm:flex-row gap-2 w-full justify-end">
+      <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto min-h-[44px]" disabled={isLoading}>
+        {t('password.cancel') || 'إلغاء'}
+      </Button>
+      <Button onClick={handleSubmit} className="w-full sm:w-auto min-h-[44px]" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin ms-2" />
+            {t('password.saving') || 'جاري الحفظ...'}
+          </>
+        ) : (
+          (t('password.changeBtn') || 'حفظ كلمة المرور')
+        )}
+      </Button>
+    </div>
+  );
+
+  return (
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={handleClose}
+      title={dialogTitle}
+      footer={dialogFooter}
+      className="max-w-md"
+    >
+      {!requireCurrentPassword && (
+        <div className="bg-primary/10 text-primary p-3 rounded-xl text-xs sm:text-sm font-medium border border-primary/20 flex items-center gap-2 mb-3">
+          <Key className="w-4 h-4 shrink-0" />
+          <span>
+            {userName 
+              ? `تعيين كلمة مرور جديدة مباشرة للمستخدم: ${userName}`
+              : 'أدخل كلمة المرور الجديدة مباشرة دون الحاجة لكلمة المرور القديمة'}
+          </span>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        {requireCurrentPassword && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              {t('password.currentPassword') || 'كلمة المرور الحالية'}
+            </label>
+            <div className="relative">
+              <Input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={form.currentPassword}
+                onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+                placeholder="••••••••"
+                className="pe-10"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         )}
 
-        <div className="space-y-4 py-3">
-          {requireCurrentPassword && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('password.currentPassword') || 'كلمة المرور الحالية'}
-              </label>
-              <div className="relative">
-                <Input
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={form.currentPassword}
-                  onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
-                  placeholder="••••••••"
-                  className="pe-10"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('password.newPassword') || 'كلمة المرور الجديدة'}
-            </label>
-            <div className="relative">
-              <Input
-                type={showNewPassword ? 'text' : 'password'}
-                value={form.newPassword}
-                onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-                placeholder="••••••••"
-                className="pe-10"
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('password.confirmPassword') || 'تأكيد كلمة المرور الجديدة'}
-            </label>
-            <div className="relative">
-              <Input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={form.confirmPassword}
-                onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                placeholder="••••••••"
-                className="pe-10"
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            {t('password.newPassword') || 'كلمة المرور الجديدة'}
+          </label>
+          <div className="relative">
+            <Input
+              type={showNewPassword ? 'text' : 'password'}
+              value={form.newPassword}
+              onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+              placeholder="••••••••"
+              className="pe-10"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto" disabled={isLoading}>
-            {t('password.cancel') || 'إلغاء'}
-          </Button>
-          <Button onClick={handleSubmit} className="w-full sm:w-auto" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {t('password.saving') || 'جاري الحفظ...'}
-              </>
-            ) : (
-              (t('password.changeBtn') || 'حفظ كلمة المرور')
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            {t('password.confirmPassword') || 'تأكيد كلمة المرور الجديدة'}
+          </label>
+          <div className="relative">
+            <Input
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              placeholder="••••••••"
+              className="pe-10"
+              disabled={isLoading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ResponsiveDialog>
   );
 }

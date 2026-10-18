@@ -2194,3 +2194,10 @@ html { font-size: 14px; }
     opacity: 0.75;
   }
 }
+
+/* Accessible touch target standard (Package 7) */
+.touch-target,
+.min-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}

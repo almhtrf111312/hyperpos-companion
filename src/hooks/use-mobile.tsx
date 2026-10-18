@@ -1,12 +1,16 @@
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
-const TABLET_BREAKPOINT = 1024;
+export const MOBILE_BREAKPOINT = 768;
+export const TABLET_BREAKPOINT = 1024;
 
-export function useIsMobile() {
-  // Initialize with actual value immediately (SSR-safe)
+export type DeviceType = "mobile" | "tablet" | "desktop";
+
+/**
+ * Returns true if viewport is < 768px (Mobile)
+ */
+export function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = React.useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === "undefined") return false;
     return window.innerWidth < MOBILE_BREAKPOINT;
   });
 
@@ -23,18 +27,79 @@ export function useIsMobile() {
   return isMobile;
 }
 
-export function useIsTablet() {
-  const [isTablet, setIsTablet] = React.useState<boolean>(false);
+/**
+ * Returns true if viewport is >= 768px and < 1024px (iPad / Tablet)
+ */
+export function useIsTablet(): boolean {
+  const [isTablet, setIsTablet] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const w = window.innerWidth;
+    return w >= MOBILE_BREAKPOINT && w < TABLET_BREAKPOINT;
+  });
 
   React.useEffect(() => {
-    const check = () => {
-      const width = window.innerWidth;
-      setIsTablet(width >= MOBILE_BREAKPOINT && width < TABLET_BREAKPOINT);
+    const mql = window.matchMedia(
+      `(min-width: ${MOBILE_BREAKPOINT}px) and (max-width: ${TABLET_BREAKPOINT - 1}px)`
+    );
+    const onChange = () => {
+      const w = window.innerWidth;
+      setIsTablet(w >= MOBILE_BREAKPOINT && w < TABLET_BREAKPOINT);
     };
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    mql.addEventListener("change", onChange);
+    onChange();
+    return () => mql.removeEventListener("change", onChange);
   }, []);
 
   return isTablet;
+}
+
+/**
+ * Returns true if viewport is >= 1024px (PC / Desktop)
+ */
+export function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= TABLET_BREAKPOINT;
+  });
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${TABLET_BREAKPOINT}px)`);
+    const onChange = () => {
+      setIsDesktop(window.innerWidth >= TABLET_BREAKPOINT);
+    };
+    mql.addEventListener("change", onChange);
+    onChange();
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return isDesktop;
+}
+
+/**
+ * Returns active device type: 'mobile' | 'tablet' | 'desktop'
+ */
+export function useDeviceType(): DeviceType {
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+
+  if (isMobile) return "mobile";
+  if (isTablet) return "tablet";
+  return "desktop";
+}
+
+/**
+ * Comprehensive responsive hook for components that need multi-device awareness
+ */
+export function useResponsive() {
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const isDesktop = !isMobile && !isTablet;
+  const deviceType: DeviceType = isMobile ? "mobile" : isTablet ? "tablet" : "desktop";
+
+  return {
+    isMobile,
+    isTablet,
+    isDesktop,
+    deviceType,
+  };
 }

@@ -13,6 +13,11 @@ export default {
       },
     },
     extend: {
+      screens: {
+        mobile: { max: "767px" },
+        ipad: { min: "768px", max: "1023px" },
+        pc: { min: "1024px" },
+      },
       fontFamily: {
         cairo: ['Inter Digits', 'var(--app-font-family)', 'sans-serif'],
         sans: ['Inter Digits', 'var(--app-font-family)', 'sans-serif'],

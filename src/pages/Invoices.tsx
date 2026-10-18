@@ -2001,10 +2001,10 @@ export default function Invoices() {
           </div>
 
           {/* Invoices List */}
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {isLoading ? (
               // Skeleton loading state
-              [1, 2, 3, 4, 5].map(i => (
+              [1, 2, 3, 4, 5, 6].map(i => (
                 <Card key={i} className="rounded-2xl border-border bg-card">
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between gap-4">
@@ -2024,12 +2024,14 @@ export default function Invoices() {
                 </Card>
               ))
             ) : filteredInvoices.length === 0 ? (
-              <Card className="rounded-2xl border-border bg-card">
-                <CardContent className="p-8 text-center">
-                  <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">{t('invoices.noInvoices')}</p>
-                </CardContent>
-              </Card>
+              <div className="col-span-full">
+                <Card className="rounded-2xl border-border bg-card">
+                  <CardContent className="p-8 text-center">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">{t('invoices.noInvoices')}</p>
+                  </CardContent>
+                </Card>
+              </div>
             ) : (
               filteredInvoices.map((invoice) => {
                 const financials = getInvoiceFinancials(invoice);
