@@ -22,6 +22,7 @@ import {
   DEFAULT_UI_SCALE_ID,
   isValidUIScaleId,
   applyUIScaleToDOM,
+  setStoredUIScale,
 } from '@/lib/ui-scale-config';
 import { applyTheme, applyBlurTheme, ThemeMode, ThemeColor } from '@/hooks/use-theme';
 import { Language, setLanguage } from '@/lib/i18n';
@@ -538,13 +539,7 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
 
     // 3. تطبيق مقياس الواجهة وتحديث مفتاحه
     if (isValidUIScaleId(settings.uiScale)) {
-      try {
-        localStorage.setItem(UI_SCALE_STORAGE_KEY, settings.uiScale);
-        applyUIScaleToDOM(settings.uiScale);
-        window.dispatchEvent(new CustomEvent(UI_SCALE_CHANGED_EVENT, { detail: { scaleId: settings.uiScale } }));
-      } catch {
-        // ignore
-      }
+      setStoredUIScale(settings.uiScale);
     }
 
     // 4. تطبيق الثيم وتحديث مفتاحه

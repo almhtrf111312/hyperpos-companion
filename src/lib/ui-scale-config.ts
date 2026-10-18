@@ -3,6 +3,8 @@
  * 
  * Controls root document fontSize proportionally across the entire app
  * (Base 100% = 14px root fontSize).
+ * 
+ * Single Source of Truth for Root Font-Size Scaling.
  */
 
 export type UIScaleId = '80' | '90' | '100' | '110' | '120';
@@ -21,13 +23,26 @@ export interface UIScaleOption {
 
 export const UI_SCALE_STORAGE_KEY = 'hyperpos_ui_scale';
 export const DEFAULT_UI_SCALE_ID: UIScaleId = '100';
+export const DEFAULT_UI_SCALE_PX = '14px';
 export const UI_SCALE_CHANGED_EVENT = 'hyperpos:ui_scale_changed';
+
+/**
+ * Master mapping between UI scale identifiers and root document font-size in pixels.
+ * Paired identically with the early-bootstrap script in index.html.
+ */
+export const UI_SCALE_MAP: Readonly<Record<UIScaleId, string>> = {
+  '80': '11.2px',
+  '90': '12.6px',
+  '100': '14px',
+  '110': '15.4px',
+  '120': '16.8px',
+} as const;
 
 export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
   {
     id: '80',
     percentage: 80,
-    fontSizePx: '11.2px',
+    fontSizePx: UI_SCALE_MAP['80'],
     labelAr: 'صغير جداً (-20%)',
     labelEn: 'Extra Small (-20%)',
     badgeAr: 'أقصى اتساع',
@@ -38,7 +53,7 @@ export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
   {
     id: '90',
     percentage: 90,
-    fontSizePx: '12.6px',
+    fontSizePx: UI_SCALE_MAP['90'],
     labelAr: 'صغير (-10%)',
     labelEn: 'Small (-10%)',
     badgeAr: 'مساحة إضافية',
@@ -49,7 +64,7 @@ export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
   {
     id: '100',
     percentage: 100,
-    fontSizePx: '14px',
+    fontSizePx: UI_SCALE_MAP['100'],
     labelAr: 'وسط / قياسي (100%)',
     labelEn: 'Standard / Balanced (100%)',
     badgeAr: 'الافتراضي القياسي',
@@ -60,7 +75,7 @@ export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
   {
     id: '110',
     percentage: 110,
-    fontSizePx: '15.4px',
+    fontSizePx: UI_SCALE_MAP['110'],
     labelAr: 'كبير (+10%)',
     labelEn: 'Large (+10%)',
     badgeAr: 'قراءة مريحة',
@@ -71,7 +86,7 @@ export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
   {
     id: '120',
     percentage: 120,
-    fontSizePx: '16.8px',
+    fontSizePx: UI_SCALE_MAP['120'],
     labelAr: 'كبير جداً (+20%)',
     labelEn: 'Extra Large (+20%)',
     badgeAr: 'أقصى وضوح',
@@ -82,7 +97,7 @@ export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
 ] as const;
 
 export function isValidUIScaleId(val: unknown): val is UIScaleId {
-  return typeof val === 'string' && UI_SCALE_OPTIONS.some((o) => o.id === val);
+  return typeof val === 'string' && Object.prototype.hasOwnProperty.call(UI_SCALE_MAP, val);
 }
 
 export function getStoredUIScale(): UIScaleId {
@@ -102,18 +117,23 @@ export function getStoredUIScale(): UIScaleId {
       return stored;
     }
   } catch {
-    // localStorage might be unavailable
+    // localStorage might be unavailable in restricted contexts
   }
   return DEFAULT_UI_SCALE_ID;
 }
 
+/**
+ * Single authoritative DOM updater for UI scale.
+ * Sets documentElement font-size in pixels and assigns data-ui-scale attribute.
+ */
 export function applyUIScaleToDOM(scaleId: UIScaleId): void {
   if (typeof document === 'undefined') return;
-  const option = UI_SCALE_OPTIONS.find((o) => o.id === scaleId) || UI_SCALE_OPTIONS[2];
-  document.documentElement.style.fontSize = option.fontSizePx;
-  document.documentElement.setAttribute('data-ui-scale', scaleId);
+  const validId = isValidUIScaleId(scaleId) ? scaleId : DEFAULT_UI_SCALE_ID;
+  const fontSizePx = UI_SCALE_MAP[validId] || DEFAULT_UI_SCALE_PX;
+  document.documentElement.style.fontSize = fontSizePx;
+  document.documentElement.setAttribute('data-ui-scale', validId);
   if (document.body) {
-    document.body.setAttribute('data-ui-scale', scaleId);
+    document.body.setAttribute('data-ui-scale', validId);
   }
 }
 

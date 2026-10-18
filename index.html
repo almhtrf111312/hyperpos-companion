@@ -17,12 +17,25 @@
             localStorage.setItem('hyperpos_language', 'ar');
             lang = 'ar';
           }
+          // Paired UI Scale Map matching UI_SCALE_MAP in src/lib/ui-scale-config.ts
+          // DEFAULT_UI_SCALE_ID = '100' (14px)
           var scale = localStorage.getItem('hyperpos_ui_scale');
-          if (scale) scale = scale.trim().replace(/^['"]|['"]$/g, '');
+          if (!scale) {
+            try {
+              var rawSettings = localStorage.getItem('hyperpos_settings_v1');
+              if (rawSettings) {
+                var parsed = JSON.parse(rawSettings);
+                scale = parsed && (parsed.uiScale || (parsed.sync_settings && parsed.sync_settings.uiScale));
+              }
+            } catch (err) {}
+          }
+          if (scale) scale = String(scale).trim().replace(/^['"]|['"]$/g, '');
           var scaleMap = { '80': '11.2px', '90': '12.6px', '100': '14px', '110': '15.4px', '120': '16.8px' };
-          var scalePx = scaleMap[scale] || '14px';
+          var defaultScale = '100';
+          var activeScale = scaleMap[scale] ? scale : defaultScale;
+          var scalePx = scaleMap[activeScale];
           document.documentElement.style.fontSize = scalePx;
-          document.documentElement.setAttribute('data-ui-scale', scaleMap[scale] ? scale : '100');
+          document.documentElement.setAttribute('data-ui-scale', activeScale);
           var isRtl = lang === 'ar' || lang === 'fa' || lang === 'ku';
           document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
           document.documentElement.setAttribute('lang', lang);

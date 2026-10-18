@@ -1881,10 +1881,10 @@ html, body, #root {
 }
 
 
-/* Global smaller type scale */
-html { font-size: 14px; }
-/* Hide legacy sonner toasts so Smart Dynamic Island Notifications display exclusively */
-[data-sonner-toaster] { display: none !important; }
+/* Base fallback root font-size (100% = 14px) matching DEFAULT_UI_SCALE_ID in src/lib/ui-scale-config.ts */
+html {
+  font-size: 14px;
+}
 
 /* Smart Notification Animations */
 .notification-spring {

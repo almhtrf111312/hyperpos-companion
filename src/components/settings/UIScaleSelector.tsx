@@ -50,7 +50,6 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
   const handleStepChange = async (index: number) => {
     const newScale = SCALE_STEPS[index] || '100';
     setCurrentScale(newScale);
-    applyUIScaleToDOM(newScale);
     setStoredUIScale(newScale);
     onPendingChange?.(newScale, true);
 
