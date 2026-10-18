@@ -146,7 +146,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
       <div className="flex flex-wrap gap-2 items-center">
         {/* Search */}
         {config.showSearch !== false && (
-          <div className="relative flex-1 min-w-[200px] w-full sm:max-w-[360px]">
+          <div className="relative flex-1 min-w-48 w-full sm:max-w-xs">
             <Search className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
             <Input
               placeholder={t('reports.searchPlaceholder') || 'ابحث بالاسم أو الرقم أو الباركود...'}
@@ -170,7 +170,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {/* Status filter */}
         {config.showStatus && (
           <Select value={filters.status} onValueChange={(v) => update({ status: v })}>
-            <SelectTrigger className="h-8 text-xs w-[130px] rounded-lg">
+            <SelectTrigger className="h-8 text-xs w-full sm:w-32 min-w-28 rounded-lg">
               <SelectValue placeholder={t('common.status') || 'الحالة'} />
             </SelectTrigger>
             <SelectContent>
@@ -189,7 +189,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {/* Cashier filter */}
         {config.showCashier && config.cashiers && config.cashiers.length > 0 && (
           <Select value={filters.cashierId} onValueChange={(v) => update({ cashierId: v })}>
-            <SelectTrigger className="h-8 text-xs w-[140px] rounded-lg">
+            <SelectTrigger className="h-8 text-xs w-full sm:w-36 min-w-32 rounded-lg">
               <SelectValue placeholder={t('cashShifts.cashier') || 'الكاشير'} />
             </SelectTrigger>
             <SelectContent>
@@ -204,7 +204,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {/* Warehouse filter */}
         {config.showWarehouse && config.warehouses && config.warehouses.length > 0 && (
           <Select value={filters.warehouseId} onValueChange={(v) => update({ warehouseId: v })}>
-            <SelectTrigger className="h-8 text-xs w-[140px] rounded-lg">
+            <SelectTrigger className="h-8 text-xs w-full sm:w-36 min-w-32 rounded-lg">
               <SelectValue placeholder={t('reports.warehouse') || 'المستودع'} />
             </SelectTrigger>
             <SelectContent>
@@ -219,7 +219,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {/* Category filter */}
         {config.showCategory && config.categories && config.categories.length > 0 && (
           <Select value={filters.category} onValueChange={(v) => update({ category: v })}>
-            <SelectTrigger className="h-8 text-xs w-[140px] rounded-lg">
+            <SelectTrigger className="h-8 text-xs w-full sm:w-36 min-w-32 rounded-lg">
               <SelectValue placeholder={t('products.category') || 'القسم'} />
             </SelectTrigger>
             <SelectContent>
@@ -234,7 +234,7 @@ export function ReportFiltersBar({ filters, onChange, config }: Props) {
         {/* Payment type filter */}
         {config.showPaymentType && (
           <Select value={filters.paymentType} onValueChange={(v) => update({ paymentType: v })}>
-            <SelectTrigger className="h-8 text-xs w-[120px] rounded-lg">
+            <SelectTrigger className="h-8 text-xs w-full sm:w-28 min-w-24 rounded-lg">
               <SelectValue placeholder={t('reports.paymentType') || 'نوع الدفع'} />
             </SelectTrigger>
             <SelectContent>

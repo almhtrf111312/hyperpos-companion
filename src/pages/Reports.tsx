@@ -2915,7 +2915,7 @@ export default function Reports() {
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
               <span className="text-sm text-muted-foreground">{t('reports.selectPartnerLabel')}</span>
               <Select value={selectedPartnerId} onValueChange={setSelectedPartnerId}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-52">
                   <SelectValue placeholder={t('reports.allPartners')} />
                 </SelectTrigger>
                 <SelectContent>

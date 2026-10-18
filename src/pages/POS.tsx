@@ -1141,7 +1141,7 @@ export default function POS() {
           {/* Cart Panel - Desktop Only (not tablet) */}
           {!isMobile && (
             <div className={cn(
-              "w-[340px] md:w-[350px] lg:w-[390px] flex-shrink-0 p-2 md:p-3 flex flex-col h-full",
+              "w-80 lg:w-96 flex-shrink-0 p-2 md:p-3 flex flex-col h-full",
               isRTL ? "pl-0" : "pr-0"
             )} data-tour="cart-panel">
               <CartPanel

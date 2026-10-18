@@ -90,6 +90,20 @@ input, textarea {
     --pos-item-hover: 222 47% 14%;
     --pos-cart: 222 47% 8%;
     --pos-total: 160 84% 39%;
+
+    /* Flow POS Pro Standardized Palette Tokens (Package 6) */
+    --app-white: #ffffff;
+    --slate-50: #f8fafc;
+    --slate-200: #e2e8f0;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-700: #334155;
+    --slate-900: #0f172a;
+    --neutral-50: #fafafa;
+    --neutral-950: #0a0a0a;
+    --border-light: #c9c9c9;
+    --emerald-500: #10b981;
+    --navy-950: #1a1a2e;
   }
 
   /* Blur/Glassmorphism Theme Variables */

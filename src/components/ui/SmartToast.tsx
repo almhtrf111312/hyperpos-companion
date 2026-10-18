@@ -459,7 +459,7 @@ export function SmartToast() {
           text: 'text-emerald-500 dark:text-emerald-400',
           dot: 'bg-emerald-500',
           bar: 'bg-emerald-500',
-          shockColor: '#10b981',
+          shockColor: 'var(--emerald-500)',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -607,7 +607,7 @@ export function SmartToast() {
             key={`sw2-${shockwaveKey}`}
             className="shockwave-ring w-12 h-12"
             style={{
-              borderColor: '#ffffff',
+              borderColor: 'var(--app-white)',
               boxShadow: `0 0 20px ${config.shockColor}`,
               animationDelay: '0.05s',
               animationDuration: '0.52s',

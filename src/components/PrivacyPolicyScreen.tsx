@@ -346,27 +346,16 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] min-h-[100dvh] overflow-hidden"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] min-h-[100dvh] overflow-hidden bg-background text-foreground"
       dir={isRTL ? 'rtl' : 'ltr'}
-      style={{ backgroundColor: '#ffffff', color: '#1a1a2e' }}
     >
       <div className="w-full max-w-2xl flex flex-col items-center gap-2 sm:gap-2.5 h-full max-h-full overflow-hidden">
         {/* Header with circular icon badge */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1.5 text-center pt-0.5">
-          <div
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 aspect-square border border-blue-200 shadow-xs"
-            style={{
-              backgroundColor: '#eff6ff',
-              width: '44px',
-              height: '44px',
-              minWidth: '44px',
-              minHeight: '44px',
-              aspectRatio: '1 / 1'
-            }}
-          >
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" style={{ color: '#2563eb' }} />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 aspect-square border border-blue-200 bg-blue-50 dark:bg-blue-950/40 shadow-xs">
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-base sm:text-lg font-bold leading-tight" style={{ color: '#1e3a8a' }}>
+          <h1 className="text-base sm:text-lg font-bold leading-tight text-blue-900 dark:text-blue-100">
             {t('privacy.title')}
           </h1>
           <p className="text-[11px] sm:text-xs text-muted-foreground max-w-md px-2 leading-tight">
@@ -378,13 +367,11 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 w-full overflow-y-auto rounded-xl p-3 sm:p-4 text-xs sm:text-sm shadow-inner overscroll-contain"
+          className="flex-1 min-h-0 w-full overflow-y-auto rounded-xl p-3 sm:p-4 text-xs sm:text-sm shadow-inner overscroll-contain border border-blue-200 dark:border-blue-900/50 bg-blue-50/40 dark:bg-card"
           dir={isRTL ? 'rtl' : 'ltr'}
-          style={{ border: '1px solid #bfdbfe', backgroundColor: '#f8faff' }}
         >
           <div
-            className={`prose prose-sm max-w-none leading-relaxed space-y-3 sm:space-y-4 ${isRTL ? 'pr-1.5 text-right' : 'pl-1.5 text-left'}`}
-            style={{ color: '#1e3a8a' }}
+            className={`prose prose-sm max-w-none leading-relaxed space-y-3 sm:space-y-4 text-blue-950 dark:text-blue-100 ${isRTL ? 'pr-1.5 text-right' : 'pl-1.5 text-left'}`}
           >
             {renderTerms()}
           </div>
@@ -397,8 +384,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
             <button
               type="button"
               onClick={scrollToBottom}
-              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-2 px-4 rounded-xl shadow-xs cursor-pointer transition-all duration-300 hover:opacity-95 active:scale-[0.99] border border-blue-300"
-              style={{ backgroundColor: '#eff6ff', color: '#1d4ed8' }}
+              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-2 px-4 rounded-xl shadow-xs cursor-pointer transition-all duration-300 hover:opacity-95 active:scale-[0.99] border border-blue-300 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
             >
               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white shrink-0 animate-bounce">
                 <ArrowDown className="w-3 h-3" />
@@ -409,8 +395,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
             </button>
           ) : (
             <div
-              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg border border-green-200 text-xs font-medium text-green-700 animate-in fade-in duration-300"
-              style={{ backgroundColor: '#f0fdf4' }}
+              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg border border-green-200 dark:border-green-800 text-xs font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 animate-in fade-in duration-300"
             >
               <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
               <span>
@@ -449,8 +434,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
             />
             <Label
               htmlFor="terms-agree"
-              className="cursor-pointer text-xs sm:text-sm font-medium select-none flex-1 leading-snug"
-              style={{ color: '#1e3a8a' }}
+              className="cursor-pointer text-xs sm:text-sm font-medium select-none flex-1 leading-snug text-blue-950 dark:text-blue-100"
             >
               {t('privacy.agreeCheckbox')}
             </Label>
@@ -463,7 +447,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 h-[48px] px-3 sm:px-3.5 rounded-xl bg-blue-50/90 hover:bg-blue-100/90 text-blue-900 border border-blue-200 text-xs font-bold transition-all shadow-xs shrink-0 active:scale-[0.98]"
+                  className="flex items-center gap-1.5 h-12 px-3 sm:px-3.5 rounded-xl bg-blue-50/90 hover:bg-blue-100/90 text-blue-900 border border-blue-200 text-xs font-bold transition-all shadow-xs shrink-0 active:scale-[0.98]"
                   title="اختيار اللغة / Change language"
                 >
                   <Globe className="w-4 h-4 text-blue-600 shrink-0" />
@@ -472,7 +456,7 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
                   <ChevronDown className="w-3.5 h-3.5 text-blue-600 opacity-70 shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-48 p-1 z-[110] bg-white border border-blue-200 shadow-xl rounded-xl">
+              <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-48 p-1 z-[110] bg-popover text-popover-foreground border border-border shadow-xl rounded-xl">
                 {AVAILABLE_LANGUAGES.map((item) => (
                   <DropdownMenuItem
                     key={item.code}
@@ -480,15 +464,15 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
                     className={cn(
                       "flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors",
                       language === item.code
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-700 hover:bg-blue-50 hover:text-blue-900"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
                     <span className="flex items-center gap-2">
                       <span>{item.flag}</span>
                       <span>{item.label}</span>
                     </span>
-                    {language === item.code && <Check className="w-3.5 h-3.5 text-white" />}
+                    {language === item.code && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -496,8 +480,10 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
 
             {/* Continue Button */}
             <button
-              className="flex-1 gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-4 rounded-xl font-bold text-white shadow-md disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99] min-h-[48px]"
-              style={{ backgroundColor: agreed ? '#2563eb' : '#93c5fd', fontSize: '0.95rem' }}
+              className={cn(
+                "flex-1 gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-4 rounded-xl font-bold text-white shadow-md disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99] min-h-[48px] text-[0.95rem]",
+                agreed ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300"
+              )}
               disabled={!agreed}
               onClick={onAccept}
             >

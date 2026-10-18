@@ -382,7 +382,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                       <div className={cn(
                         "absolute px-3 py-2 bg-popover text-popover-foreground rounded-xl shadow-lg z-50 select-none",
                         "opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200",
-                        "border border-border min-w-[180px] max-w-[240px]",
+                        "border border-border min-w-44 max-w-60",
                         isRTL ? "right-full mr-2" : "left-full ml-2"
                       )}>
                         <p className="text-xs font-semibold text-foreground select-none">{item.labelOverride || t(item.translationKey)}</p>

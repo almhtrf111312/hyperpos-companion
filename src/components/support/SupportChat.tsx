@@ -570,7 +570,7 @@ export function SupportChat() {
       {open && (
         <div
           className={cn(
-            'mb-3 w-[340px] max-w-[calc(100vw-2.5rem)] rounded-2xl shadow-2xl border border-border bg-card flex flex-col',
+            'mb-3 w-80 sm:w-88 max-w-[calc(100vw-2.5rem)] rounded-2xl shadow-2xl border border-border bg-card flex flex-col',
             'animate-in slide-in-from-bottom-4 fade-in duration-200',
             'h-[500px] max-h-[calc(100vh-8rem)]',
           )}

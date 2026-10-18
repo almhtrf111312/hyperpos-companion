@@ -162,10 +162,10 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
 
   if (isFullyLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm" style={{ color: '#a1a1aa' }}>{t('license.loading')}</p>
+          <p className="text-muted-foreground text-sm">{t('license.loading')}</p>
         </div>
       </div>
     );
@@ -219,10 +219,10 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
 
   if (isStartingTrial) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground" style={{ color: '#a1a1aa' }}>{t('license.startingTrial')}</p>
+          <p className="text-muted-foreground text-sm">{t('license.startingTrial')}</p>
         </div>
       </div>
     );

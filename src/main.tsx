@@ -102,37 +102,23 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          minHeight: '100vh', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          backgroundColor: '#0a0a0a', color: '#fff',
-          padding: '24px', textAlign: 'center', fontFamily: 'system-ui, sans-serif',
-          direction: 'rtl',
-        }}>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', color: '#ef4444' }}>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-6 text-center dir-rtl font-sans">
+          <h2 className="text-xl font-bold mb-2 text-destructive">
             حدث خطأ أثناء تحميل واجهة التطبيق
           </h2>
-          <p style={{ fontSize: '0.875rem', color: '#a1a1aa', maxWidth: '380px', marginBottom: '24px', lineHeight: '1.5' }}>
+          <p className="text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed">
             تم رصد المشكلة وجاري توثيقها في رادار الأخطاء للتشخيص والمراجعة. يمكنك العودة للشاشة الرئيسية أو إعادة المحاولة بأمان.
           </p>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div className="flex gap-3 flex-wrap justify-center">
             <button
               onClick={this.handleGoHome}
-              style={{
-                backgroundColor: '#2563eb', color: '#fff', border: 'none',
-                padding: '10px 18px', borderRadius: '8px',
-                fontSize: '0.875rem', cursor: 'pointer', fontWeight: 600,
-              }}
+              className="bg-primary text-primary-foreground border-none px-4 py-2.5 rounded-lg text-sm cursor-pointer font-semibold shadow-xs hover:opacity-90 transition-opacity"
             >
               العودة للرئيسية (نقطة البيع)
             </button>
             <button
               onClick={this.handleRetry}
-              style={{
-                backgroundColor: '#27272a', color: '#e4e4e7', border: '1px solid #3f3f46',
-                padding: '10px 18px', borderRadius: '8px',
-                fontSize: '0.875rem', cursor: 'pointer', fontWeight: 500,
-              }}
+              className="bg-secondary text-secondary-foreground border border-border px-4 py-2.5 rounded-lg text-sm cursor-pointer font-medium hover:bg-secondary/80 transition-colors"
             >
               إعادة المحاولة
             </button>

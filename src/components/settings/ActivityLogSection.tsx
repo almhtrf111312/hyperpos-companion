@@ -263,7 +263,7 @@ export function ActivityLogSection() {
 
       {/* 3. Search Bar + Quick Indicators */}
       <div className="px-3 py-2 bg-slate-50 dark:bg-muted/30 border border-zinc-200 dark:border-border/80 rounded-xl flex items-center justify-between text-xs">
-        <div className="relative flex-1 max-w-[250px]">
+        <div className="relative flex-1 max-w-xs">
           <span className={cn("absolute inset-y-0 flex items-center pointer-events-none text-zinc-400", isRTL ? "right-2.5" : "left-2.5")}>
             <Search className="w-3.5 h-3.5" />
           </span>

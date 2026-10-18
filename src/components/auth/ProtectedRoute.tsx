@@ -73,10 +73,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // 4. Show loading while checking session (only if no user yet and within timeout)
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground" style={{ color: '#a1a1aa' }}>جاري التحميل...</p>
+          <p className="text-muted-foreground text-sm">جاري التحميل...</p>
         </div>
       </div>
     );
@@ -85,14 +85,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // 5. Show checking device status while attempting auto-login (only if no user yet and within timeout)
   if (isAutoLoginChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" style={{ backgroundColor: '#0a0a0a', color: '#fafafa' }}>
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
             <Smartphone className="w-10 h-10 text-primary" />
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full animate-ping" />
           </div>
-          <p className="text-muted-foreground" style={{ color: '#a1a1aa' }}>جاري التحقق من الجهاز...</p>
-          <p className="text-xs text-muted-foreground/60" style={{ color: '#71717a' }}>تسجيل دخول تلقائي</p>
+          <p className="text-muted-foreground text-sm">جاري التحقق من الجهاز...</p>
+          <p className="text-xs text-muted-foreground/60">تسجيل دخول تلقائي</p>
         </div>
       </div>
     );

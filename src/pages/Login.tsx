@@ -578,9 +578,8 @@ export default function Login() {
       {/* Device Blocked Dialog - Protected from accidental closure on mobile */}
       <Dialog open={showDeviceBlockedDialog} onOpenChange={(open) => { if (!open) return; }}>
         <DialogContent
-          className="sm:max-w-md [&>button:last-child]:hidden"
+          className="sm:max-w-md [&>button:last-child]:hidden z-[200]"
           dir={direction}
-          style={{ zIndex: 200 }}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}

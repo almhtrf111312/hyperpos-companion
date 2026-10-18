@@ -10,7 +10,7 @@ import { useLanguage } from '@/hooks/use-language';
 
 interface Props { dateRange: { from: string; to: string } }
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+const COLORS = ['#6366f1', 'var(--emerald-500)', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
 export function InventoryValueReport({ dateRange }: Props) {
   const { t } = useLanguage();

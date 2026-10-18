@@ -94,7 +94,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
 
   // Financial summary data for bar chart
   const financialDistributionData = useMemo(() => [
-    { name: t('reports.sales'), amount: stats.todaySales || 1, color: '#10b981' },
+    { name: t('reports.sales'), amount: stats.todaySales || 1, color: 'var(--emerald-500)' },
     { name: t('dashboard.cogs'), amount: stats.todayCOGS || 1, color: '#6366f1' },
     { name: t('dashboard.todayExpenses'), amount: stats.todayExpenses || 1, color: '#f59e0b' },
     { name: t('dashboard.netProfit'), amount: Math.max(stats.todayProfit || 0, 0), color: '#06b6d4' }
@@ -364,8 +364,8 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
               <AreaChart data={salesTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="var(--emerald-500)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--emerald-500)" stopOpacity={0.0} />
                   </linearGradient>
                   <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
@@ -377,16 +377,16 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
                 <YAxis tick={{ fontSize: 11, fill: '#888888' }} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    backgroundColor: 'hsl(var(--popover) / 0.95)',
                     borderRadius: '12px',
-                    border: '1px solid #334155',
-                    color: '#fff',
+                    border: '1px solid hsl(var(--border))',
+                    color: 'hsl(var(--popover-foreground))',
                     direction: isRTL ? 'rtl' : 'ltr',
                     textAlign: isRTL ? 'right' : 'left'
                   }}
                   formatter={(value: any) => [formatCurrency(Number(value)), '']}
                 />
-                <Area type="monotone" dataKey="sales" name={t('reports.sales')} stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#salesGrad)" />
+                <Area type="monotone" dataKey="sales" name={t('reports.sales')} stroke="var(--emerald-500)" strokeWidth={2.5} fillOpacity={1} fill="url(#salesGrad)" />
                 <Area type="monotone" dataKey="profit" name={t('invoices.profits')} stroke="#06b6d4" strokeWidth={2} fillOpacity={1} fill="url(#profitGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -411,10 +411,10 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#888888' }} axisLine={false} tickLine={false} width={80} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      backgroundColor: 'hsl(var(--popover) / 0.95)',
                       borderRadius: '12px',
-                      border: '1px solid #334155',
-                      color: '#fff',
+                      border: '1px solid hsl(var(--border))',
+                      color: 'hsl(var(--popover-foreground))',
                       direction: isRTL ? 'rtl' : 'ltr',
                       textAlign: isRTL ? 'right' : 'left'
                     }}

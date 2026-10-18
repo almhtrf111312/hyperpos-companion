@@ -718,7 +718,7 @@ export function OnboardingTour() {
   return createPortal(
     <div className="fixed inset-0 z-[9999]" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Overlay with spotlight cutout */}
-      <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
         <defs>
           <mask id="spotlight-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -738,7 +738,7 @@ export function OnboardingTour() {
           x="0" y="0" width="100%" height="100%"
           fill="rgba(0,0,0,0.6)"
           mask="url(#spotlight-mask)"
-          style={{ pointerEvents: 'all' }}
+          className="pointer-events-auto"
           onClick={completeTour}
         />
       </svg>

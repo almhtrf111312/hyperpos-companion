@@ -166,8 +166,7 @@ export function NativeCameraPreview({
         >
             {/* Modal container — بدون طبقات تمويه */}
             <div
-                className="relative w-[88vw] max-w-[340px] rounded-2xl overflow-hidden bg-black shadow-2xl"
-                style={{ maxHeight: '70vh' }}
+                className="relative w-[88vw] max-w-xs max-h-[70vh] rounded-2xl overflow-hidden bg-black shadow-2xl"
                 role="presentation"
                 onClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}
@@ -194,7 +193,7 @@ export function NativeCameraPreview({
                 </div>
 
                 {/* Video Feed — بدون أي طبقات فوق الفيديو */}
-                <div className="relative w-full bg-black" style={{ aspectRatio: '3/4' }}>
+                <div className="relative w-full bg-black aspect-[3/4]">
                     <video
                         ref={videoRef}
                         autoPlay

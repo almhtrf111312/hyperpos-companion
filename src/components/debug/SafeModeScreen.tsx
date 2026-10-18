@@ -23,56 +23,33 @@ export function SafeModeScreen() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '20px',
-        padding: '20px',
-        background: '#1a1a2e',
-        color: '#fff',
-        fontFamily: 'Cairo, sans-serif',
-        direction: 'rtl',
-      }}
-    >
-      <h1 style={{ fontSize: '24px', color: '#0f0' }}>🛡️ الوضع الآمن - Safe Mode</h1>
-      <p style={{ color: '#888', textAlign: 'center', maxWidth: '400px' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-5 p-5 bg-palette-navy-950 text-white font-sans dir-rtl">
+      <h1 className="text-2xl font-bold text-emerald-400">🛡️ الوضع الآمن - Safe Mode</h1>
+      <p className="text-muted-foreground text-center max-w-md text-sm">
         هذه الصفحة بسيطة جداً بدون أي overlays أو مكونات معقدة.
         <br />
         إذا كانت الأزرار تعمل هنا، فالمشكلة في مكوّنات التطبيق الأخرى.
       </p>
 
       {/* Test Button */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+      <div className="flex flex-col items-center gap-2.5">
         <button
           onClick={() => {
             console.log('[SafeMode] Button clicked! Count:', count + 1);
             setCount(prev => prev + 1);
           }}
           onPointerDown={() => console.log('[SafeMode] Button pointerdown')}
-          style={{
-            padding: '16px 32px',
-            fontSize: '18px',
-            background: '#10b981',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            touchAction: 'manipulation',
-          }}
+          className="px-8 py-4 text-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer touch-manipulation shadow-md transition-colors"
         >
           اضغط هنا للاختبار
         </button>
-        <div style={{ fontSize: '20px', color: '#0f0' }}>
+        <div className="text-xl font-bold text-emerald-400">
           العداد: {count}
         </div>
       </div>
 
       {/* Test Input */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+      <div className="flex flex-col items-center gap-2.5">
         <input
           type="text"
           value={inputValue}
@@ -82,19 +59,9 @@ export function SafeModeScreen() {
           }}
           onFocus={() => console.log('[SafeMode] Input focused')}
           placeholder="اكتب هنا للاختبار..."
-          style={{
-            padding: '12px 16px',
-            fontSize: '16px',
-            width: '280px',
-            background: '#2a2a4e',
-            color: '#fff',
-            border: '2px solid #444',
-            borderRadius: '8px',
-            outline: 'none',
-            touchAction: 'manipulation',
-          }}
+          className="px-4 py-3 text-base w-72 bg-secondary text-foreground border border-border rounded-lg outline-none touch-manipulation focus:ring-2 focus:ring-primary"
         />
-        <div style={{ fontSize: '14px', color: '#888' }}>
+        <div className="text-sm text-muted-foreground">
           المدخل: "{inputValue}"
         </div>
       </div>
@@ -102,17 +69,7 @@ export function SafeModeScreen() {
       {/* Reset Button */}
       <button
         onClick={handleReset}
-        style={{
-          marginTop: '20px',
-          padding: '12px 24px',
-          fontSize: '14px',
-          background: '#ef4444',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          touchAction: 'manipulation',
-        }}
+        className="mt-5 px-6 py-3 text-sm bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold rounded-lg cursor-pointer touch-manipulation shadow-sm transition-colors"
       >
         🗑️ مسح بيانات التطبيق وإعادة التحميل
       </button>
@@ -120,29 +77,13 @@ export function SafeModeScreen() {
       {/* Back to normal */}
       <a
         href="/"
-        style={{
-          marginTop: '10px',
-          color: '#888',
-          textDecoration: 'underline',
-        }}
+        className="mt-2.5 text-sm text-muted-foreground underline hover:text-foreground transition-colors"
       >
         العودة للوضع العادي
       </a>
 
       {/* Debug info */}
-      <div
-        style={{
-          marginTop: '30px',
-          padding: '12px',
-          background: '#0a0a1a',
-          borderRadius: '8px',
-          fontSize: '11px',
-          color: '#666',
-          fontFamily: 'monospace',
-          direction: 'ltr',
-          textAlign: 'left',
-        }}
-      >
+      <div className="mt-8 p-3 rounded-lg bg-black/40 border border-border/40 text-xs text-muted-foreground font-mono dir-ltr text-left max-w-md w-full">
         <div>pointer-events (body): {typeof window !== 'undefined' ? getComputedStyle(document.body).pointerEvents : '?'}</div>
         <div>touch-action (body): {typeof window !== 'undefined' ? getComputedStyle(document.body).touchAction : '?'}</div>
         <div>User Agent: {typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 60) + '...' : '?'}</div>
