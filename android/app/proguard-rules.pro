@@ -10,14 +10,14 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
-# Preserve Capacitor Bridge and Plugins
+# Preserve Capacitor Bridge, Cordova and Plugins
 -keep class com.getcapacitor.** { *; }
 -keep interface com.getcapacitor.** { *; }
+-keep public class * extends com.getcapacitor.Plugin
+-keep public class * extends com.getcapacitor.BridgeActivity
+-keep public class * extends org.apache.cordova.CordovaPlugin
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keepattributes *Annotation*
+-keepattributes JavascriptInterface
+-dontwarn com.getcapacitor.**
+-dontwarn org.apache.cordova.**

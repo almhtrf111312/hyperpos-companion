@@ -40,13 +40,13 @@ const variantStyles = {
 };
 
 const iconBgStyles = {
-  default: 'bg-muted/50 backdrop-blur-md dark:bg-muted/60',
-  primary: 'bg-primary/20 backdrop-blur-md dark:bg-primary/25',
-  success: 'bg-success/20 backdrop-blur-md dark:bg-success/25',
-  warning: 'bg-warning/20 backdrop-blur-md dark:bg-warning/25',
-  danger: 'bg-destructive/20 backdrop-blur-md dark:bg-destructive/25',
-  info: 'bg-info/20 backdrop-blur-md dark:bg-info/25',
-  purple: 'bg-[hsl(271,81%,56%)]/20 backdrop-blur-md dark:bg-[hsl(271,81%,56%)]/25',
+  default: 'bg-muted/70 dark:bg-muted/80',
+  primary: 'bg-primary/20 dark:bg-primary/30',
+  success: 'bg-success/20 dark:bg-success/30',
+  warning: 'bg-warning/20 dark:bg-warning/30',
+  danger: 'bg-destructive/20 dark:bg-destructive/30',
+  info: 'bg-info/20 dark:bg-info/30',
+  purple: 'bg-[hsl(271,81%,56%)]/20 dark:bg-[hsl(271,81%,56%)]/30',
 };
 
 const iconColorStyles = {
@@ -105,7 +105,7 @@ export function StatCard({ title, value, subtitle, icon, trend, variant = 'defau
   return (
     <div
       className={cn(
-        "group rounded-xl p-2.5 md:p-3 transition-all duration-300",
+        "group rounded-xl p-2.5 md:p-3 transition-[transform,box-shadow,border-color] duration-200",
         "hover:translate-y-[-2px] hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 dark:hover:shadow-lg dark:hover:shadow-primary/10",
         variantStyles[variant],
         linkTo && "cursor-pointer hover:ring-2 hover:ring-primary/50 hover:bg-card/90"

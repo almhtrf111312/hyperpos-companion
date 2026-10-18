@@ -335,7 +335,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             <button
               type="button"
               onClick={toggleTorch}
-              className={`h-11 w-11 rounded-full flex items-center justify-center border transition-colors ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/40 border-white/30 text-white backdrop-blur-md'}`}
+              className={`h-11 w-11 rounded-full flex items-center justify-center border transition-colors ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/60 border-white/30 text-white'}`}
               aria-label={torchOn ? 'إطفاء الفلاش' : 'تشغيل الفلاش'}
             >
               <Flashlight className="w-5 h-5" />
@@ -344,7 +344,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           <button
             type="button"
             onClick={handleClose}
-            className="h-11 w-11 rounded-full flex items-center justify-center bg-black/40 border border-white/30 text-white backdrop-blur-md"
+            className="h-11 w-11 rounded-full flex items-center justify-center bg-black/60 border border-white/30 text-white"
             aria-label="إغلاق الماسح"
           >
             <X className="w-6 h-6" />
@@ -379,7 +379,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             <button
               type="button"
               onClick={() => handleZoomStep('out')}
-              className="h-9 w-9 rounded-full bg-black/50 border border-white/25 text-white backdrop-blur-md flex items-center justify-center"
+              className="h-9 w-9 rounded-full bg-black/70 border border-white/25 text-white flex items-center justify-center"
               aria-label="تصغير الزووم"
             >
               <ZoomOut className="w-4 h-4" />
@@ -389,10 +389,10 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                 key={z}
                 type="button"
                 onClick={() => handleZoomPreset(z)}
-                className={`h-9 min-w-[2.5rem] px-2 rounded-full border text-xs font-bold backdrop-blur-md transition-colors
+                className={`h-9 min-w-[2.5rem] px-2 rounded-full border text-xs font-bold transition-colors
                   ${Math.abs(currentZoom - z) < 0.2
                     ? 'bg-white text-black border-white'
-                    : 'bg-black/50 border-white/25 text-white'}`}
+                    : 'bg-black/70 border-white/25 text-white'}`}
                 aria-label={`زووم ${z}x`}
               >
                 {z === 1 ? '1×' : `${z}×`}
@@ -401,7 +401,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             <button
               type="button"
               onClick={() => handleZoomStep('in')}
-              className="h-9 w-9 rounded-full bg-black/50 border border-white/25 text-white backdrop-blur-md flex items-center justify-center"
+              className="h-9 w-9 rounded-full bg-black/70 border border-white/25 text-white flex items-center justify-center"
               aria-label="تكبير الزووم"
             >
               <ZoomIn className="w-4 h-4" />

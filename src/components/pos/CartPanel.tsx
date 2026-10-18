@@ -1706,7 +1706,7 @@ export function CartPanel({
             cart.map((item, index) => (
               <div
                 key={`${item.id}-${item.unit}`}
-                className="bg-card rounded-xl px-2.5 py-1.5 border border-border/40 cart-item-enter transition-all duration-150 hover:border-primary/40 hover:bg-card/95 flex items-center gap-2 group min-h-[44px]"
+                className="bg-card rounded-xl px-2.5 py-1.5 border border-border/40 cart-item-enter transition-[border-color,background-color] duration-150 hover:border-primary/40 hover:bg-card/95 flex items-center gap-2 group min-h-[44px]"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
                 {/* زر حذف واضح ومريح */}
@@ -1714,7 +1714,7 @@ export function CartPanel({
                 <button
                   type="button"
                   onClick={() => onRemoveItem(item.id, item.unit)}
-                  className="w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center shrink-0 transition-all active:scale-90"
+                  className="w-8 h-8 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center shrink-0 transition-[transform,colors] active:scale-90"
                   title={t('pos.removeFromCart') || 'حذف من السلة'}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1765,7 +1765,7 @@ export function CartPanel({
                   <button
                     type="button"
                     onClick={() => onUpdateQuantity(item.id, -1, item.unit)}
-                    className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-all shadow-xs"
+                    className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-[transform,colors] shadow-xs"
                     title={t('pos.decreaseQty') || 'تقليل الكمية'}
                   >
                     <Minus className="w-3 h-3" />
@@ -1776,7 +1776,7 @@ export function CartPanel({
                   <button
                     type="button"
                     onClick={() => onUpdateQuantity(item.id, 1, item.unit)}
-                    className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-all shadow-xs"
+                    className="w-6 h-6 rounded-md bg-card hover:bg-muted text-foreground flex items-center justify-center active:scale-95 transition-[transform,colors] shadow-xs"
                     title={t('pos.increaseQty') || 'زيادة الكمية'}
                   >
                     <Plus className="w-3 h-3" />
@@ -2065,7 +2065,7 @@ export function CartPanel({
           <div className="flex items-center gap-1.5">
             <Button
               data-tour="cash-btn"
-              className="flex-1 h-11 bg-success hover:bg-success/90 text-sm font-bold shadow-md shadow-success/25 transition-all active:scale-95 rounded-xl"
+              className="flex-1 h-11 bg-success hover:bg-success/90 text-sm font-bold shadow-md shadow-success/25 transition-[transform,colors,box-shadow] active:scale-95 rounded-xl"
               disabled={cart.length === 0}
               onClick={handleCashSale}
             >
@@ -2076,7 +2076,7 @@ export function CartPanel({
             <Button
                 data-tour="debt-btn"
                 variant="outline"
-                className="flex-1 h-11 border-2 border-warning/70 text-warning hover:bg-warning/10 text-sm font-bold transition-all active:scale-95 rounded-xl"
+                className="flex-1 h-11 border-2 border-warning/70 text-warning hover:bg-warning/10 text-sm font-bold transition-[transform,colors] active:scale-95 rounded-xl"
                 disabled={cart.length === 0}
                 onClick={handleDebtSale}
               >

@@ -92,7 +92,7 @@ export default function Appearance() {
         </div>
       )}
       {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق بدون أي قص للنصوص أو النقاط */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 backdrop-blur-xl shadow-xs overflow-visible">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
         {[
           { id: 'theme' as AppearanceTab, label: t('appearance.themeAndColors'), icon: Palette },
           { id: 'fonts' as AppearanceTab, label: t('appearance.fonts'), icon: Type },
@@ -107,7 +107,7 @@ export default function Appearance() {
               type="button"
               onClick={() => handleTabClick(tab.id)}
               className={cn(
-                "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none min-h-[48px] overflow-visible",
+                "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 select-none min-h-[48px] overflow-visible",
                 isActive
                   ? "bg-card text-foreground shadow-sm border border-border/50 ring-1 ring-border/20"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/40"

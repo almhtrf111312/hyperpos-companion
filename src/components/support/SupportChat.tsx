@@ -311,7 +311,7 @@ export function ChatMessages({
       {/* Lightbox Modal */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[999] bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setLightboxImage(null)}
         >
           <button

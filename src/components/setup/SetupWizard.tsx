@@ -580,7 +580,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto" dir={direction}>
+    <div className="fixed inset-0 z-50 bg-background flex items-center justify-center p-2 sm:p-4 overflow-y-auto" dir={direction}>
       <div className="w-full max-w-3xl bg-card border border-border shadow-2xl rounded-2xl sm:rounded-3xl overflow-hidden my-auto flex flex-col max-h-[96vh]">
         
         {/* Header Bar */}

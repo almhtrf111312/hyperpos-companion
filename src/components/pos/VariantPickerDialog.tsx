@@ -43,7 +43,7 @@ export function VariantPickerDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl p-0">
+      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background border-border/50 shadow-2xl p-0">
         <DialogHeader className="p-5 border-b border-border/40 bg-muted/30">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
@@ -59,7 +59,7 @@ export function VariantPickerDialog({
                 onSelect(product);
                 onClose();
               }}
-              className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all text-right"
+              className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors text-right"
             >
               <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                 {product.image ? (

@@ -29,12 +29,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           toast: cn(
             "group toast w-auto min-w-[290px] max-w-[94vw] sm:max-w-[420px]",
-            "group-[.toaster]:bg-card/95 group-[.toaster]:backdrop-blur-2xl group-[.toaster]:text-card-foreground",
+            "group-[.toaster]:bg-card group-[.toaster]:text-card-foreground",
             "group-[.toaster]:border group-[.toaster]:border-border/80 dark:group-[.toaster]:border-white/10",
             "group-[.toaster]:shadow-2xl group-[.toaster]:rounded-2xl",
             "group-[.toaster]:p-3.5 sm:group-[.toaster]:p-4 group-[.toaster]:text-sm sm:group-[.toaster]:text-base",
             "[touch-action:pan-x] cursor-grab active:cursor-grabbing",
-            "transition-all duration-200 select-none",
+            "transition-[transform,opacity] duration-200 select-none",
             isRTL
               ? "group-[.toaster]:border-r-[5px] group-[.toaster]:border-l"
               : "group-[.toaster]:border-l-[5px] group-[.toaster]:border-r"

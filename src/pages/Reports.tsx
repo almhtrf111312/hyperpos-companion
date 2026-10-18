@@ -2033,7 +2033,7 @@ export default function Reports() {
     <MainLayout>
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
         {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
-        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
+        <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
           <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
         </div>
 
@@ -2297,7 +2297,7 @@ export default function Reports() {
               <div
                 key={idx}
                 className={cn(
-                  "relative overflow-hidden rounded-2xl bg-card p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[115px] transition-all duration-200 border",
+                  "relative overflow-hidden rounded-2xl bg-card p-3.5 sm:p-4 shadow-sm flex flex-col justify-between min-h-[115px] transition-[border-color,box-shadow] duration-200 border",
                   idx === 0 ? "border-2 border-primary/40 shadow-sm" : "border border-border/70 hover:border-border"
                 )}
               >
@@ -2639,7 +2639,7 @@ export default function Reports() {
                             key={item.id}
                             onClick={() => handleSelectReportFromModal(item.id, item.name)}
                             className={cn(
-                              "p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer active:scale-95 group",
+                              "p-3 rounded-2xl border transition-[transform,colors] flex items-center justify-between cursor-pointer active:scale-95 group",
                               isCurrentActive
                                 ? "bg-primary/10 border-primary ring-1 ring-primary/20 shadow-sm"
                                 : "bg-muted/30 hover:bg-muted/60 border-border/50"

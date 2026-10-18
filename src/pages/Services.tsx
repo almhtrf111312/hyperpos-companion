@@ -374,7 +374,7 @@ export default function Services() {
               key={filter.key}
               onClick={() => setSelectedFilter(filter.key)}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer",
+                "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-[colors,box-shadow] shrink-0 cursor-pointer",
                 selectedFilter === filter.key
                   ? "bg-primary text-primary-foreground shadow-2xs"
                   : "bg-muted/80 text-muted-foreground hover:bg-muted"
@@ -385,7 +385,7 @@ export default function Services() {
           ))}
         </div>
         <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5 shrink-0 transition-all cursor-pointer"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5 shrink-0 transition-[colors,box-shadow] cursor-pointer"
           onClick={() => {
             resetForm();
             setShowAddDialog(true);
@@ -1048,7 +1048,7 @@ export default function Services() {
                       type="button"
                       onClick={() => setDeliveryData({ ...deliveryData, paymentType: 'cash' })}
                       className={cn(
-                        "flex-1 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-center gap-2",
+                        "flex-1 py-3 px-4 rounded-lg border-2 transition-[colors,border-color] flex items-center justify-center gap-2",
                         deliveryData.paymentType === 'cash'
                           ? "border-success bg-success/10 text-success"
                           : "border-border bg-muted text-muted-foreground hover:border-muted-foreground"
@@ -1061,7 +1061,7 @@ export default function Services() {
                       type="button"
                       onClick={() => setDeliveryData({ ...deliveryData, paymentType: 'debt' })}
                       className={cn(
-                        "flex-1 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-center gap-2",
+                        "flex-1 py-3 px-4 rounded-lg border-2 transition-[colors,border-color] flex items-center justify-center gap-2",
                         deliveryData.paymentType === 'debt'
                           ? "border-warning bg-warning/10 text-warning"
                           : "border-border bg-muted text-muted-foreground hover:border-muted-foreground"

@@ -61,7 +61,7 @@ export function ScannedProductDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background/95 backdrop-blur-2xl border-border/50 shadow-2xl p-0">
+      <DialogContent className="sm:max-w-md overflow-hidden rounded-2xl bg-background border-border/50 shadow-2xl p-0">
         <DialogHeader className="p-5 border-b border-border/40 bg-muted/30">
           <DialogTitle className="flex items-center gap-2">
             <Package className="w-5 h-5 text-primary" />
@@ -82,7 +82,7 @@ export function ScannedProductDialog({
                 <Package className="w-10 h-10 text-muted-foreground" />
               )}
             </div>
-            <div className="flex-1 h-12 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all">
+            <div className="flex-1">
               <h3 className="font-bold text-lg text-foreground mb-1">{product.name}</h3>
               <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
               <p className="text-2xl font-bold text-primary">${product.price}</p>
@@ -105,7 +105,7 @@ export function ScannedProductDialog({
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1 h-12 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all" onClick={onClose}>
+            <Button variant="outline" className="flex-1 h-12 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-[transform,colors]" onClick={onClose}>
               <X className="w-4 h-4" />
               {t('scannedProduct.close')}
             </Button>
@@ -121,7 +121,7 @@ export function ScannedProductDialog({
               </Button>
             )}
             <Button 
-              className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg bg-gradient-primary text-primary-foreground active:scale-95 transition-all" 
+              className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg bg-gradient-primary text-primary-foreground active:scale-95 transition-[transform,box-shadow]" 
               onClick={handleAdd}
               disabled={product.quantity === 0}
             >

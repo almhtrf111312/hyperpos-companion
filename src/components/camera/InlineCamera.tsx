@@ -182,7 +182,7 @@ export function InlineCamera({
         <div className="absolute bottom-8 left-0 right-0 flex justify-center">
           <button
             onClick={handleCapture}
-            className="w-18 h-18 rounded-full border-4 border-white bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform"
+            className="w-18 h-18 rounded-full border-4 border-white bg-white/30 flex items-center justify-center active:scale-90 transition-transform"
             style={{ width: 72, height: 72 }}
           >
             <Camera className="h-8 w-8 text-white" />

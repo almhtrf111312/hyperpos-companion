@@ -157,7 +157,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
   return (
     <div className={cn("space-y-6 pb-20 pt-2 animate-fade-in", isRTL ? "text-right" : "text-left")} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* 1. Header Bar matching prototype */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card/80 backdrop-blur-md p-4 rounded-2xl border border-border/60 shadow-sm">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-4 rounded-2xl border border-border/60 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
             <IconBarChart3 className="w-6 h-6" />
@@ -183,7 +183,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
             <button
               onClick={() => setDateFilter('today')}
               className={cn(
-                "px-3 py-1.5 rounded-lg font-medium transition-all",
+                "px-3 py-1.5 rounded-lg font-medium transition-[background-color,color,box-shadow]",
                 dateFilter === 'today' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -192,7 +192,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
             <button
               onClick={() => setDateFilter('week')}
               className={cn(
-                "px-3 py-1.5 rounded-lg font-medium transition-all",
+                "px-3 py-1.5 rounded-lg font-medium transition-[background-color,color,box-shadow]",
                 dateFilter === 'week' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -201,7 +201,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
             <button
               onClick={() => setDateFilter('month')}
               className={cn(
-                "px-3 py-1.5 rounded-lg font-medium transition-all",
+                "px-3 py-1.5 rounded-lg font-medium transition-[background-color,color,box-shadow]",
                 dateFilter === 'month' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >

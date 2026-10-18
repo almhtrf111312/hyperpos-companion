@@ -643,7 +643,7 @@ export function BossAIAssistant() {
   };
 
   return (
-    <Card className="border-border/60 shadow-xl bg-card/90 backdrop-blur-md overflow-hidden flex flex-col h-[750px] max-h-[85vh]">
+    <Card className="border-border/60 shadow-xl bg-card overflow-hidden flex flex-col h-[750px] max-h-[85vh]">
       {/* Header */}
       <CardHeader className="p-4 border-b border-border/50 bg-gradient-to-r from-primary/10 via-background to-amber-500/10 flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
@@ -812,7 +812,7 @@ export function BossAIAssistant() {
       </CardContent>
 
       {/* Input & Multimodal Controls */}
-      <div className="p-3 border-t border-border/50 bg-background/95 backdrop-blur-sm space-y-2">
+      <div className="p-3 border-t border-border/50 bg-background space-y-2">
         {/* Selected Image Preview Bar */}
         {selectedImage && (
           <div className="flex items-center gap-2 bg-muted/60 p-1.5 px-2 rounded-xl border border-border/70 max-w-fit animate-in fade-in">

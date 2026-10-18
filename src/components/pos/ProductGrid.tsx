@@ -188,7 +188,7 @@ export function ProductGrid({
                   }
                 }
               }}
-              className="rtl:pr-12 ltr:pl-12 h-12 md:h-14 rounded-full bg-white dark:bg-zinc-900 border-none text-sm md:text-base shadow-none w-full focus-visible:ring-2 focus-visible:ring-primary/30 transition-all font-medium"
+              className="rtl:pr-12 ltr:pl-12 h-12 md:h-14 rounded-full bg-white dark:bg-zinc-900 border-none text-sm md:text-base shadow-none w-full focus-visible:ring-2 focus-visible:ring-primary/30 transition-[box-shadow,border-color] font-medium"
             />
           </div>
 
@@ -196,7 +196,7 @@ export function ProductGrid({
             <Button
               variant="outline"
               size="icon"
-              className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-primary hover:bg-primary/5 active:scale-95 transition-all"
+              className="h-12 w-12 md:h-14 md:w-14 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-primary hover:bg-primary/5 active:scale-95 transition-[transform,colors]"
               onClick={() => setScannerOpen(true)}
             >
               <Barcode className="w-5 h-5 md:w-6 md:h-6" />
@@ -207,7 +207,7 @@ export function ProductGrid({
           <button
             type="button"
             onClick={cycleViewMode}
-            className="flex items-center justify-center h-12 w-12 md:h-14 md:w-14 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-foreground hover:bg-black/5 active:scale-95 transition-all"
+            className="flex items-center justify-center h-12 w-12 md:h-14 md:w-14 rounded-full bg-white dark:bg-zinc-900 border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgb(0,0,0,0.2)] shrink-0 text-foreground hover:bg-black/5 active:scale-95 transition-[transform,colors]"
           >
             {viewMode === 'grid' && <LayoutGrid className="w-5 h-5" />}
             {viewMode === 'dense' && <Grid3x3 className="w-5 h-5" />}
@@ -223,7 +223,7 @@ export function ProductGrid({
               key={category + index}
               onClick={() => onCategoryChange(category)}
               className={cn(
-                "px-4 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-all duration-200 flex-shrink-0 active:scale-95",
+                "px-4 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-[transform,colors,box-shadow] duration-200 flex-shrink-0 active:scale-95",
                 selectedCategory === category
                   ? "bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/20"
                   : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 shadow-sm border border-border/60"
@@ -243,12 +243,12 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-start fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border border-border/60 flex flex-col"
+                className="pos-item text-start fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow,background-color] duration-200 border border-border/60 flex flex-col"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
                 {/* الصورة بإطار متناسق واحتواء كامل مع شارة المخزون العلوية */}
                 <div className="w-full aspect-[4/3] bg-muted/20 p-2 relative overflow-hidden shrink-0 flex items-center justify-center">
-                  <div className="absolute z-10 top-2 rtl:left-2 rtl:right-auto ltr:right-2 ltr:left-auto bg-background/80 dark:bg-black/60 backdrop-blur-md border border-border/50 text-[10px] font-bold px-2 py-0.5 rounded-lg text-foreground shadow-xs select-none pointer-events-none">
+                  <div className="absolute z-10 top-2 rtl:left-2 rtl:right-auto ltr:right-2 ltr:left-auto bg-background/95 dark:bg-black/85 border border-border/50 text-[10px] font-bold px-2 py-0.5 rounded-lg text-foreground shadow-xs select-none pointer-events-none">
                     <DualUnitDisplayCompact
                       totalPieces={product.quantity}
                       conversionFactor={product.conversionFactor || 1}
@@ -289,11 +289,11 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-start fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-all"
+                className="pos-item text-start fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-[box-shadow,border-color] duration-200"
                 style={{ animationDelay: `${index * 15}ms` }}
               >
                 <div className="w-full aspect-square bg-muted/20 p-1.5 rounded-lg overflow-hidden mb-1.5 relative flex items-center justify-center">
-                  <div className="absolute z-10 top-1.5 rtl:left-1.5 rtl:right-auto ltr:right-1.5 ltr:left-auto bg-background/80 dark:bg-black/60 backdrop-blur-md border border-border/50 text-[9px] font-bold px-1.5 py-0.5 rounded-md text-foreground shadow-xs select-none pointer-events-none">
+                  <div className="absolute z-10 top-1.5 rtl:left-1.5 rtl:right-auto ltr:right-1.5 ltr:left-auto bg-background/95 dark:bg-black/85 border border-border/50 text-[9px] font-bold px-1.5 py-0.5 rounded-md text-foreground shadow-xs select-none pointer-events-none">
                     <DualUnitDisplayCompact
                       totalPieces={product.quantity}
                       conversionFactor={product.conversionFactor || 1}
@@ -330,7 +330,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-start fade-in group flex items-center bg-white dark:bg-zinc-900 rounded-[20px] p-2 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-black/5 dark:border-white/5"
+                className="pos-item text-start fade-in group flex items-center bg-white dark:bg-zinc-900 rounded-[20px] p-2 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-[transform,box-shadow] duration-200 border border-black/5 dark:border-white/5"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex-shrink-0 overflow-hidden relative">
@@ -364,7 +364,7 @@ export function ProductGrid({
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-start fade-in group flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 border border-black/5 dark:border-white/5"
+                className="pos-item text-start fade-in group flex items-center justify-between bg-white dark:bg-zinc-900 rounded-xl p-3 shadow-sm hover:shadow-md transition-[box-shadow,border-color] duration-200 border border-black/5 dark:border-white/5"
                 style={{ animationDelay: `${index * 30}ms` }}
               >
                 <div className="flex-1 pe-2 overflow-hidden text-start">

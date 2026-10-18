@@ -1262,7 +1262,7 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 w-full h-auto p-1.5 bg-muted/60 backdrop-blur-md rounded-2xl border border-border/70 gap-1.5 shadow-sm">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 w-full h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/70 gap-1.5 shadow-sm">
             <TabsTrigger
               value="users"
               className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"

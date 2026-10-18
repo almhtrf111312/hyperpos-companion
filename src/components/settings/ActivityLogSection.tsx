@@ -146,7 +146,7 @@ export function ActivityLogSection() {
   return (
     <div className="w-full max-w-[430px] mx-auto space-y-3 text-foreground" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* 1. Header Row (Sticky Header matching mockup) */}
-      <header className="bg-white/95 dark:bg-card/95 backdrop-blur-md border border-zinc-200/90 dark:border-border/80 rounded-2xl px-3.5 py-3 space-y-2.5 shadow-xs">
+      <header className="bg-card border border-zinc-200/90 dark:border-border/80 rounded-2xl px-3.5 py-3 space-y-2.5 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div>

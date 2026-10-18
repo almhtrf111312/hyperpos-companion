@@ -460,9 +460,9 @@ export function MobileMenuTrigger({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className={cn(
         "fixed top-[calc(0.75rem+env(safe-area-inset-top))] z-40 md:hidden",
-        "w-10 h-11 bg-background/95 backdrop-blur-md",
+        "w-10 h-11 bg-background",
         "text-foreground flex items-center justify-center shadow-sm",
-        "hover:bg-muted active:scale-95 transition-all duration-200",
+        "hover:bg-muted active:scale-95 transition-[transform,colors] duration-150",
         isRTL 
           ? "right-0 left-auto rounded-l-xl border-y border-l border-border" 
           : "left-0 right-auto rounded-r-xl border-y border-r border-border"

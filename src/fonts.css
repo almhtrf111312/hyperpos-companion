@@ -1,3 +1,21 @@
+/* Noto Sans Arabic - 400 */
+@font-face {
+  font-family: 'Noto Sans Arabic';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/NotoSansArabic-Regular.ttf) format('truetype');
+}
+
+/* Noto Sans Arabic - 700 */
+@font-face {
+  font-family: 'Noto Sans Arabic';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/NotoSansArabic-Bold.ttf) format('truetype');
+}
+
 /* arabic */
 @font-face {
   font-family: 'Almarai';

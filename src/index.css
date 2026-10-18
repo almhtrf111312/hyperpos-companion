@@ -1301,7 +1301,7 @@ html.theme-transitioning *::after {
 
   /* Glass morphism effect */
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card/95 border border-border/50;
   }
 
   /* Gradient text */
@@ -1317,7 +1317,7 @@ html.theme-transitioning *::after {
 
   /* Card hover effect */
   .card-hover {
-    @apply transition-all duration-300 ease-out;
+    @apply transition-[transform,box-shadow,border-color] duration-200 ease-out;
   }
 
   .card-hover:hover {
@@ -1328,14 +1328,14 @@ html.theme-transitioning *::after {
 
   /* Interactive card (clickable) */
   .card-interactive {
-    @apply rounded-2xl border border-border/50 bg-card transition-all duration-300 cursor-pointer;
+    @apply rounded-2xl border border-border/50 bg-card transition-[transform,box-shadow,border-color] duration-200 cursor-pointer;
     @apply hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/20;
     @apply active:scale-[0.98];
   }
 
   /* POS Grid Item */
   .pos-item {
-    @apply bg-[hsl(var(--pos-item))] rounded-2xl p-4 cursor-pointer transition-all duration-200 border border-border/70 shadow-sm;
+    @apply bg-[hsl(var(--pos-item))] rounded-2xl p-4 cursor-pointer transition-[transform,box-shadow,background-color,border-color] duration-150 border border-border/70 shadow-sm;
   }
 
   .pos-item:hover {
@@ -1514,20 +1514,20 @@ html.theme-transitioning *::after {
   /* Enhanced card style */
   .enhanced-card {
     @apply rounded-2xl border border-border/30;
-    @apply shadow-lg transition-all duration-300 ease-out;
+    @apply shadow-lg transition-[transform,box-shadow] duration-200 ease-out;
     @apply hover:shadow-xl hover:-translate-y-0.5;
   }
 
   /* Enhanced button style */
   .enhanced-button {
     @apply rounded-xl font-medium;
-    @apply transition-all duration-200;
+    @apply transition-[transform,colors] duration-150;
     @apply active:scale-95;
   }
 
   /* Sidebar overlay for mobile */
   .sidebar-overlay {
-    @apply backdrop-blur-sm bg-black/40;
+    @apply bg-black/60;
   }
 
   /* Fade in up animation */

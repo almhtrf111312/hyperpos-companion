@@ -187,7 +187,7 @@ export function ProductDetailsDialog({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all border border-border/50"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-[transform,colors] border border-border/50"
               aria-label={language === 'en' ? 'Close' : 'إغلاق'}
             >
               <X className="h-4 w-4" />
@@ -217,7 +217,7 @@ export function ProductDetailsDialog({
                     type="button"
                     onClick={handleCopyBarcode}
                     title={language === 'en' ? 'Click to copy barcode' : 'انقر لنسخ الباركود'}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 text-xs font-mono font-medium active:scale-95 transition-all shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60 text-xs font-mono font-medium active:scale-95 transition-[transform,colors] shadow-2xs"
                   >
                     <Barcode className="h-3.5 w-3.5 text-primary" />
                     <span dir="ltr">{product.barcode}</span>
@@ -250,7 +250,7 @@ export function ProductDetailsDialog({
               type="button"
               onClick={() => setActiveTab('pricing')}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all",
+                "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-[colors,box-shadow]",
                 activeTab === 'pricing'
                   ? "bg-card text-primary shadow-xs border border-border/60"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
@@ -263,7 +263,7 @@ export function ProductDetailsDialog({
               type="button"
               onClick={() => setActiveTab('inventory')}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all",
+                "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-[colors,box-shadow]",
                 activeTab === 'inventory'
                   ? "bg-card text-primary shadow-xs border border-border/60"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
@@ -407,7 +407,7 @@ export function ProductDetailsDialog({
             </div>
           </div>
         ) : onAddToCart ? (
-          <div className="shrink-0 flex items-center gap-3 border-t border-border bg-card/95 backdrop-blur-sm px-5 py-3.5 pb-6">
+          <div className="shrink-0 flex items-center gap-3 border-t border-border bg-card px-5 py-3.5 pb-6">
             {/* عداد كمية أملس داخل كبسولة مستقلة */}
             <div className="flex items-center gap-1.5 rounded-2xl bg-muted/60 px-2.5 py-1.5 border border-border/70 shadow-2xs">
               <button

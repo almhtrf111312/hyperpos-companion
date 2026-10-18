@@ -62,7 +62,7 @@ export function ReportShell({
 
       {/* Export toolbar - only rendered when not hidden by parent */}
       {!hideExportToolbar && (onExportPDF || onExportExcel) && (
-        <div className="flex items-center gap-2 sticky top-0 z-10 bg-background/85 backdrop-blur py-1.5">
+        <div className="flex items-center gap-2 sticky top-0 z-10 bg-background py-1.5">
           {onExportPDF && (
             <Button variant="outline" size="sm" onClick={onExportPDF} disabled={exportDisabled} className="h-9 text-xs rounded-xl gap-1.5 flex-1 max-w-[160px]">
               <FileText className="w-4 h-4" /> {t('reports.exportPDF') || 'تصدير PDF'}

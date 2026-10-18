@@ -89,28 +89,28 @@ export function LibraryReport({ dateRange }: LibraryReportProps) {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <Card className="bg-card border-border/50">
           <CardContent className="p-4 text-center">
             <BookOpen className="w-6 h-6 text-primary mx-auto mb-2" />
             <p className="text-2xl font-bold text-foreground">{stats.totalLoans}</p>
             <p className="text-xs text-muted-foreground">إجمالي الإعارات</p>
           </CardContent>
         </Card>
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <Card className="bg-card border-border/50">
           <CardContent className="p-4 text-center">
             <Clock className="w-6 h-6 text-blue-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-foreground">{stats.activeLoans}</p>
             <p className="text-xs text-muted-foreground">إعارات نشطة</p>
           </CardContent>
         </Card>
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <Card className="bg-card border-border/50">
           <CardContent className="p-4 text-center">
             <AlertTriangle className="w-6 h-6 text-destructive mx-auto mb-2" />
             <p className="text-2xl font-bold text-foreground">{stats.overdueLoans.length}</p>
             <p className="text-xs text-muted-foreground">كتب متأخرة</p>
           </CardContent>
         </Card>
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <Card className="bg-card border-border/50">
           <CardContent className="p-4 text-center">
             <Users className="w-6 h-6 text-green-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-foreground">{stats.totalMembers}</p>
@@ -120,7 +120,7 @@ export function LibraryReport({ dateRange }: LibraryReportProps) {
       </div>
 
       {/* Member Stats */}
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+      <Card className="bg-card border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
@@ -151,7 +151,7 @@ export function LibraryReport({ dateRange }: LibraryReportProps) {
 
       {/* Overdue Books */}
       {stats.overdueLoans.length > 0 && (
-        <Card className="bg-card/80 backdrop-blur-sm border-destructive/30">
+        <Card className="bg-card border-destructive/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2 text-destructive">
               <AlertTriangle className="w-5 h-5" />
@@ -183,7 +183,7 @@ export function LibraryReport({ dateRange }: LibraryReportProps) {
       )}
 
       {/* Top Borrowed Books */}
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+      <Card className="bg-card border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
@@ -215,7 +215,7 @@ export function LibraryReport({ dateRange }: LibraryReportProps) {
       </Card>
 
       {/* Loan Summary */}
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+      <Card className="bg-card border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />

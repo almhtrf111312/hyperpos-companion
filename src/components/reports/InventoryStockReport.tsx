@@ -280,7 +280,7 @@ export function InventoryStockReport({ dateRange }: Props) {
             </div>
           </CardContent></Card>
 
-          <div className="flex gap-2 sticky bottom-0 bg-background/85 backdrop-blur py-2">
+          <div className="flex gap-2 sticky bottom-0 bg-background/95 py-2">
             <Button variant="outline" disabled={saving} onClick={() => handleSaveCount('draft')} className="flex-1 h-9 text-xs rounded-xl">
               حفظ كمسودة
             </Button>
