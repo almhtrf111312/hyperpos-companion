@@ -1,8 +1,14 @@
 {
-  "versionCode": 298,
-  "versionName": "1.0.68",
-  "lastUpdated": "2026-10-10T03:45:00.000Z",
+  "versionCode": 299,
+  "versionName": "1.0.69",
+  "lastUpdated": "2026-10-17T13:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 299,
+      "versionName": "1.0.69",
+      "date": "2026-10-17",
+      "description": "v1.0.69 - تفعيل بوت تيليغرام (@flowpos_helper_bot) لربط الحساب واستعادة كلمة المرور عبر اتصال آمن مع حماية من الطلبات المزيفة"
+    },
     {
       "versionCode": 298,
       "versionName": "1.0.68",
