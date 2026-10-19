@@ -26,7 +26,7 @@ import { getLocalizedUnit } from '@/lib/product-units';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
 import { App } from '@capacitor/app';
-// OnboardingTour mounted globally in App.tsx
+
 // POS Product type for display
 interface POSProduct {
   id: string;

@@ -532,7 +532,6 @@ export const injectGuestDemoData = async (): Promise<void> => {
   localStorage.setItem(DEMO_MODE_KEY, 'true');
   localStorage.setItem(DEMO_STARTED_AT_KEY, Date.now().toString());
   localStorage.setItem('hyperpos_setup_complete', 'true');
-  localStorage.setItem('hp_onboarding_complete', 'true');
 
   // 2. Mock demo user session & profile
   const demoUser = {

@@ -102,17 +102,6 @@ export default function HelpPage() {
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
                 <span>{isAr ? 'معالج الإعداد الأولي' : 'Setup Wizard'}</span>
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs shrink-0 self-start sm:self-auto gap-1.5"
-                onClick={() => {
-                  try { localStorage.removeItem('hp_onboarding_complete'); } catch {}
-                  window.dispatchEvent(new CustomEvent('onboarding:replay'));
-                }}
-              >
-                <span>{isAr ? 'إعادة جولة الشرح' : 'Replay tour'}</span>
-              </Button>
             </div>
           }
         />

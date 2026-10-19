@@ -392,7 +392,6 @@ export default function Login() {
     if (!isNewSignup) {
       try {
         localStorage.setItem('hyperpos_setup_complete', 'true');
-        localStorage.setItem('hp_onboarding_complete', 'true');
       } catch {}
     }
 
@@ -445,7 +444,6 @@ export default function Login() {
         if (!isNewSignup) {
           try {
             localStorage.setItem('hyperpos_setup_complete', 'true');
-            localStorage.setItem('hp_onboarding_complete', 'true');
           } catch {}
         }
 
