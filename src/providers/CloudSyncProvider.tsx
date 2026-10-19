@@ -14,6 +14,7 @@ import { useNetworkStatus, checkRealInternetAccess } from '@/hooks/use-network-s
 import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-processor';
 import { warmupAllCaches } from '@/lib/cloud/cache-warmup';
 import { isGuestDemoMode } from '@/lib/demo-data';
+import { isOperationCancelled, reconcileCancelledOperationsWithCloud } from '@/lib/cancellation-registry';
 import {
   loadUnifiedStoreSettings,
   mergeStoreSettings,
@@ -358,9 +359,22 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
 
       const pendingBefore = getQueueStatus().pendingCount + getQueueStatus().processingCount;
 
+      try {
+        await reconcileCancelledOperationsWithCloud();
+      } catch (recErr) {
+        console.warn('[CloudSyncProvider] Cancellation reconciliation error:', recErr);
+      }
+
       let processedRefund = false;
       let processedNonRefund = false;
       const result = await processQueue(async (operation) => {
+        const opKey = String(operation.data.uniqueKey || operation.data.operationId || operation.data.localId || operation.id);
+        const bInv = (operation.data?.bundle as any)?.invoiceNumber || operation.data?.invoiceNumber;
+        if (isOperationCancelled(opKey) || (bInv && isOperationCancelled(String(bInv)))) {
+          console.warn('[CloudSyncProvider] Skipping cancelled operation from processor:', opKey || bInv);
+          return true;
+        }
+
         if (operation.type === 'invoice_refund') processedRefund = true;
         else processedNonRefund = true;
         if (operation.type === 'debt_sale_bundle') {

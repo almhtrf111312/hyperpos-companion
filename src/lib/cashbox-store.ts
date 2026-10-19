@@ -447,6 +447,46 @@ export const recordRefundInShift = (
   }
 };
 
+/**
+ * عكس أثر عملية بيع محلية ملغاة من الصندوق والوردية النشطة بدقة ذرية
+ */
+export const reverseSaleFromShift = (
+  amount: number,
+  grossProfit: number = 0,
+  cogs: number = 0,
+  currency: ShiftCurrency = 'USD',
+  currencyAmount?: number
+): void => {
+  if (amount <= 0 && grossProfit <= 0 && cogs <= 0) return;
+  const roundedAmount = roundCurrency(Math.max(0, amount));
+  const roundedProfit = roundCurrency(grossProfit);
+  const roundedCogs = roundCurrency(cogs);
+  const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(Math.max(0, currencyAmount)) : roundedAmount;
+
+  const state = loadCashboxState();
+  state.currentBalance = Math.max(0, subtractCurrency(state.currentBalance, roundedAmount));
+  state.lastUpdated = new Date().toISOString();
+  saveCashboxState(state);
+
+  const shifts = loadShifts();
+  const activeIndex = shifts.findIndex(s => s.status === 'open');
+  if (activeIndex !== -1) {
+    const shift = shifts[activeIndex];
+    if (!shift.currencies) {
+      shift.currencies = initShiftCurrencies(shift.openingCash);
+    }
+    const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
+    currMap.sales = Math.max(0, subtractCurrency(currMap.sales, roundedCurrAmount));
+    shift.currencies[currency] = currMap;
+
+    shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
+    shifts[activeIndex].grossProfitTotal = Math.max(0, subtractCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
+    shifts[activeIndex].cogsTotal = Math.max(0, subtractCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs));
+    saveShifts(shifts);
+    emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
+  }
+};
+
 // Add expenses to current shift (يعمل بدون وردية الآن)
 export const addExpensesToShift = (amount: number, currency: ShiftCurrency = 'USD', currencyAmount?: number): void => {
   updateCashboxBalance(amount, 'expense', currency, currencyAmount);

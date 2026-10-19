@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { loadQueue, QueuedOperation } from '@/lib/sync-queue';
 import { discardStuckOperation, retryStuckOperation } from '@/lib/sync-recovery';
+import { getCancellationRecord } from '@/lib/cancellation-registry';
 import { getPendingStockDeductions, PendingStockDeduction } from '@/lib/indexeddb-cache';
 import { loadInvoicesCloud } from '@/lib/cloud/invoices-cloud';
 import type { Invoice } from '@/lib/cloud/invoices-cloud';
@@ -41,7 +42,7 @@ interface TrackedInvoice {
   paymentLabel: string;
   createdAt: string;
   progress: number;
-  state: 'pending' | 'syncing' | 'stuck' | 'synced';
+  state: 'pending' | 'syncing' | 'stuck' | 'synced' | 'local_cancelled' | 'refunded' | 'needs_attention';
   error?: string;
   items: TrackedItem[];
 }
@@ -53,6 +54,9 @@ const stateMeta: Record<TrackedInvoice['state'], { label: string; className: str
   syncing: { label: 'جاري الرفع', className: 'bg-primary/10 text-primary border-primary/30' },
   stuck: { label: 'عالقة', className: 'bg-destructive/10 text-destructive border-destructive/30' },
   synced: { label: 'مكتملة ومزامنة', className: 'bg-success/10 text-success border-success/30' },
+  local_cancelled: { label: 'إلغاء محلي بانتظار المطابقة', className: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
+  refunded: { label: 'استرداد مكتمل', className: 'bg-blue-500/10 text-blue-600 border-blue-500/30' },
+  needs_attention: { label: 'فشل التعويض ويحتاج معالجة', className: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 
 const itemMeta: Record<ItemState, { label: string; icon: typeof CheckCircle2; className: string }> = {
@@ -78,8 +82,12 @@ const mapQueueOperation = (
 ): TrackedInvoice => {
   const bundle = readBundle(op);
   const operationId = String(op.data?.operationId || op.data?.uniqueKey || op.data?.localId || '');
+  const cancelRec = getCancellationRecord(operationId);
   const terminal = op.errorClass === 'terminal' || op.retryCount >= op.maxRetries;
   const state: TrackedInvoice['state'] =
+    cancelRec?.status === 'local_cancelled_pending_cloud' ? 'local_cancelled' :
+    cancelRec?.status === 'needs_attention' ? 'needs_attention' :
+    cancelRec?.status === 'refunded' ? 'refunded' :
     terminal ? 'stuck' : op.status === 'processing' ? 'syncing' : 'pending';
 
   const deduction = pending.find(entry => entry.operationId === operationId);
@@ -122,7 +130,7 @@ const mapCloudInvoice = (invoice: Invoice): TrackedInvoice => ({
   paymentLabel: invoice.paymentType === 'debt' ? 'بيع مؤجل' : 'نقدي',
   createdAt: invoice.createdAt,
   progress: 100,
-  state: 'synced',
+  state: invoice.status === 'refunded' ? 'refunded' : invoice.status === 'cancelled' ? 'local_cancelled' : 'synced',
   items: (invoice.items || []).map(item => ({
     productId: String(item.id ?? ''),
     name: item.name || 'منتج',
@@ -227,14 +235,21 @@ export default function InvoiceTracking() {
   const handleDiscard = async (queueId: string) => {
     setBusyId(queueId);
     try {
-      const done = await discardStuckOperation(queueId);
-      toast[done ? 'success' : 'error'](
-        done ? 'تم إلغاء الفاتورة غير المكتملة وإرجاع حجز المخزون' : 'تعذر إلغاء الفاتورة',
-        { id: `discard-${queueId}` },
-      );
+      const res = await discardStuckOperation(queueId);
+      if (res.success) {
+        if (res.status === 'local_cancelled_pending_cloud') {
+          toast.info('تم إلغاء الفاتورة محلياً (بانتظار مطابقة السحابة عند توفر الإنترنت)', { id: `discard-${queueId}` });
+        } else if (res.status === 'refunded') {
+          toast.success('تم استرداد الفاتورة السحابية بنجاح عبر المسار المعتمد', { id: `discard-${queueId}` });
+        } else {
+          toast.success('تم إلغاء الفاتورة غير المكتملة وإرجاع المخزون والآثار المحاسبية بنجاح', { id: `discard-${queueId}` });
+        }
+      } else {
+        toast.error(res.error || 'تعذر إلغاء الفاتورة: تحتاج معالجة يدوية', { id: `discard-${queueId}` });
+      }
     } finally {
       setBusyId(null);
-      refreshQueue();
+      await refreshQueue();
     }
   };
 

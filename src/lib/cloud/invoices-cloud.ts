@@ -19,6 +19,7 @@ import { roundCurrency, addCurrency, subtractCurrency, formatMoney } from '../ut
 import { triggerAutoBackup } from '../local-auto-backup';
 import { logActivity, diffFields } from '../activity-log';
 import { resolveHistoricalCurrency } from '../currencies';
+import { isOperationCancelled } from '../cancellation-registry';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
@@ -245,6 +246,33 @@ export const markInvoiceRefundedLocally = (id: string) => {
     emitEvent(EVENTS.INVOICES_UPDATED, updated);
   } catch (err) {
     console.warn('[InvoicesCloud] markInvoiceRefundedLocally failed:', err);
+  }
+};
+
+/**
+ * تحديث حالة الفاتورة كملغاة محلياً وبث الحدث للشاشات مع إبقائها في سجل التدقيق
+ */
+export const markInvoiceCancelledLocally = (id: string, reason?: string) => {
+  try {
+    const currentList = invoicesCache || loadInvoicesFromLocalCache() || [];
+    const updated = currentList.map(inv => {
+      const match = inv.id === id || (inv.notes && inv.notes.includes(id));
+      if (!match) return inv;
+      return {
+        ...inv,
+        status: 'cancelled' as InvoiceStatus,
+        pending_sync: false,
+        sync_failed: false,
+        notes: reason ? `${inv.notes || ''} [ملغاة: ${reason}]`.trim() : inv.notes,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    invoicesCache = updated;
+    cacheTimestamp = Date.now();
+    saveInvoicesToLocalCache(updated);
+    emitEvent(EVENTS.INVOICES_UPDATED, updated);
+  } catch (err) {
+    console.warn('[InvoicesCloud] markInvoiceCancelledLocally failed:', err);
   }
 };
 
@@ -1227,6 +1255,11 @@ function mergeSyncQueueInvoices(invoices: Invoice[]): Invoice[] {
     const queueInvoices: Invoice[] = [];
     for (const op of pending) {
       if (op.type === 'invoice_create' || op.type === 'debt_sale_bundle') {
+        const opKey = String(op.data.operationId || op.data.localId || op.data.uniqueKey || op.id);
+        const bInvoiceNum = (op.data?.bundle as any)?.invoiceNumber || op.data?.invoiceNumber;
+        if (isOperationCancelled(opKey) || (bInvoiceNum && isOperationCancelled(String(bInvoiceNum)))) {
+          continue;
+        }
         const data = op.data as Record<string, any>;
         const bundle = (data?.bundle || {}) as Record<string, any>;
         const isFailed = op.status === 'failed';

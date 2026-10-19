@@ -1,4 +1,5 @@
 import { getPendingOperations } from '../sync-queue';
+import { isOperationCancelled } from '../cancellation-registry';
 // Cloud Debts Store - Supabase-backed debts management
 import {
   fetchFromSupabase,
@@ -707,6 +708,11 @@ function mergeSyncQueueDebts(debts) {
   const queueDebts = [];
   for (const op of pending) {
     if (op.type === 'debt_sale_bundle') {
+      const opKey = String(op.data.operationId || op.data.localId || op.data.uniqueKey || op.id);
+      const bInv = (op.data?.bundle as any)?.invoiceNumber || op.data?.invoiceNumber;
+      if (isOperationCancelled(opKey) || (bInv && isOperationCancelled(String(bInv)))) {
+        continue;
+      }
       const data = op.data as Record<string, any>;
       const bundle = (data?.bundle || {}) as Record<string, any>;
       const remaining = (bundle.total || 0) - (bundle.downPayment || 0);

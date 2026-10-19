@@ -9,6 +9,7 @@ import { secureSet, secureGet, secureRemove } from './secure-storage';
 import { emitEvent, EVENTS } from './events';
 import { addToHistory, updateHistoryStatus } from './sync-history';
 import { isGuestDemoMode } from './demo-data';
+import { isOperationCancelled } from './cancellation-registry';
 
 // Storage key
 const SYNC_QUEUE_KEY = 'sync_queue';
@@ -192,6 +193,23 @@ export const addToQueue = (
   data: Record<string, unknown>,
   maxRetries: number = 3
 ): QueuedOperation => {
+  const candidateOpKey = String(data.uniqueKey || data.operationId || data.localId || '');
+  const candidateInvoiceNum = (data.bundle as any)?.invoiceNumber || data.invoiceNumber;
+  if ((candidateOpKey && isOperationCancelled(candidateOpKey)) || (candidateInvoiceNum && isOperationCancelled(String(candidateInvoiceNum)))) {
+    console.warn('[SyncQueue] Blocked adding cancelled operation to queue:', candidateOpKey || candidateInvoiceNum);
+    return {
+      id: `blocked_cancelled_${Date.now()}`,
+      type,
+      timestamp: new Date().toISOString(),
+      data,
+      retryCount: 0,
+      maxRetries,
+      status: 'failed',
+      error: 'العملية مسجلة كملغاة مسبقاً',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   if (isGuestDemoMode()) {
     return {
       id: `demo_op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -325,6 +343,14 @@ export const resetOperationForRetry = (operationId: string): boolean => {
   const queue = loadQueue();
   const index = queue.findIndex(op => op.id === operationId);
   if (index === -1) return false;
+  const opCandidate = queue[index];
+  const retryOpKey = String(opCandidate.data.uniqueKey || opCandidate.data.operationId || opCandidate.data.localId || opCandidate.id);
+  const retryInvNum = (opCandidate.data?.bundle as any)?.invoiceNumber || opCandidate.data?.invoiceNumber;
+  if (isOperationCancelled(retryOpKey) || (retryInvNum && isOperationCancelled(String(retryInvNum)))) {
+    console.warn('[SyncQueue] Cannot retry cancelled operation:', operationId);
+    return false;
+  }
+
   const [op] = queue.splice(index, 1);
   op.status = 'pending';
   op.retryCount = 0;
@@ -410,6 +436,16 @@ export const processQueue = async (
     console.log(`[SyncQueue] Processing ${pending.length} operations...`);
     
     for (const operation of pending) {
+      const opKey = String(operation.data.uniqueKey || operation.data.operationId || operation.data.localId || operation.id);
+      const bInv = (operation.data?.bundle as any)?.invoiceNumber || operation.data?.invoiceNumber;
+      if (isOperationCancelled(opKey) || (bInv && isOperationCancelled(String(bInv)))) {
+        console.warn(`[SyncQueue] Skipping upload for cancelled operation: ${operation.id} (${opKey})`);
+        removeFromQueue(operation.id);
+        try { localStorage.removeItem('hyperpos_sync_pending_' + operation.id); } catch {}
+        updateHistoryStatus(operation.id, 'failed', 'تم إلغاء العملية محلياً ومنع رفعها للسحابة');
+        continue;
+      }
+
       updateOperationStatus(operation.id, 'processing');
       updateHistoryStatus(operation.id, 'syncing');
       

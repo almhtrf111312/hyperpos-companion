@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Truck,
   X,
+  XCircle,
   Check,
   MoreVertical,
   AlertTriangle,
@@ -456,7 +457,7 @@ export default function Invoices() {
 
   // مواءمة مبيعات اليوم مع فواتير اليوم الفعلية المعروضة لمنع أي تفاوت عند منتصف الليل
   const computedTodaySales = useMemo(() => {
-    const todayInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceToday(inv.createdAt));
+    const todayInvs = invoices.filter(inv => inv.status !== 'refunded' && inv.status !== 'cancelled' && isInvoiceToday(inv.createdAt));
     return todayInvs.reduce((sum, inv) => sum + (inv.total || 0), 0);
   }, [invoices]);
 
@@ -472,7 +473,7 @@ export default function Invoices() {
     let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0, allCount = 0;
 
     for (const inv of invoices) {
-      if (inv.status === 'refunded') continue;
+      if (inv.status === 'refunded' || inv.status === 'cancelled') continue;
       const total = inv.total || 0;
       all += total;
       allCount++;
@@ -513,11 +514,11 @@ export default function Invoices() {
     if (dateQuickFilter === 'year') return periodSales.year;
     if (dateQuickFilter === 'custom') {
       if (customDateMode === 'single' && dateFilter) {
-        const customInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceCustomDate(inv.createdAt, dateFilter));
+        const customInvs = invoices.filter(inv => inv.status !== 'refunded' && inv.status !== 'cancelled' && isInvoiceCustomDate(inv.createdAt, dateFilter));
         const sum = customInvs.reduce((acc, inv) => acc + (inv.total || 0), 0);
         return { total: roundCurrency(sum * statExchangeRate), count: customInvs.length };
       } else if (customDateMode === 'range' && (dateFrom || dateTo)) {
-        const customInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceInRange(inv.createdAt, dateFrom, dateTo));
+        const customInvs = invoices.filter(inv => inv.status !== 'refunded' && inv.status !== 'cancelled' && isInvoiceInRange(inv.createdAt, dateFrom, dateTo));
         const sum = customInvs.reduce((acc, inv) => acc + (inv.total || 0), 0);
         return { total: roundCurrency(sum * statExchangeRate), count: customInvs.length };
       }
@@ -657,8 +658,8 @@ export default function Invoices() {
   // Refunded invoices appear only in the "فواتير مستردة" view (full or partial refunds)
   const filteredInvoices = useMemo(() => {
     let result = showRefunded
-      ? invoices.filter(inv => inv.status === 'refunded' || !!refundMeta[inv.id])
-      : invoices.filter(inv => inv.status !== 'refunded');
+      ? invoices.filter(inv => inv.status === 'refunded' || inv.status === 'cancelled' || !!refundMeta[inv.id])
+      : invoices.filter(inv => inv.status !== 'refunded' && inv.status !== 'cancelled');
 
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
@@ -2184,6 +2185,14 @@ export default function Invoices() {
                         </span>
                       )}
 
+                      {/* شارة الإلغاء إن وجدت */}
+                      {invoice.status === 'cancelled' && (
+                        <span className="bg-destructive/15 text-destructive border border-destructive/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <XCircle className="w-2.5 h-2.5" />
+                          {'ملغاة'}
+                        </span>
+                      )}
+
                       {/* حالة فحص الفاتورة المستردة */}
                       {refundMeta[invoice.id] && (
                         <span className="text-[8.5px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border font-medium">
@@ -3488,7 +3497,7 @@ export default function Invoices() {
                       : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  {tx('invoices.refundedInvoices', 'مستردة')}
+                  {tx('invoices.refundedInvoices', 'مستردة / ملغاة')}
                 </button>
               </div>
             </div>
