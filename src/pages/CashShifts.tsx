@@ -13,6 +13,7 @@ import {
 import { EVENTS } from '@/lib/events';
 import { useActionGuard } from '@/hooks/use-action-guard';
 import { formatCurrency, formatMoney, formatDateTime } from '@/lib/utils';
+import { resolveCurrencyMeta } from '@/lib/currencies';
 import { addActivityLog } from '@/lib/activity-log';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -75,21 +76,34 @@ export default function CashShifts() {
   const [createAdjustment, setCreateAdjustment] = useState(true);
   const closeShiftGuard = useActionGuard();
 
-  // Exchange rates from settings
-  const exchangeRates = useMemo(() => {
+  // Currency metadata resolved dynamically from store settings
+  const metaUSD = useMemo(() => resolveCurrencyMeta('USD'), []);
+  const metaTRY = useMemo(() => resolveCurrencyMeta('TRY'), []);
+  const metaSYP = useMemo(() => resolveCurrencyMeta('SYP'), []);
+
+  const currencySettings = useMemo(() => {
     try {
       const raw = localStorage.getItem('hyperpos_settings_v1');
-      if (!raw) return { TRY: 32, SYP: 14500 };
-      const parsed = JSON.parse(raw);
-      const ex = parsed?.exchangeRates;
+      const parsed = raw ? JSON.parse(raw) : null;
       return {
-        TRY: Number(ex?.TRY ?? 32) || 32,
-        SYP: Number(ex?.SYP ?? 14500) || 14500,
+        enabled: {
+          USD: true,
+          TRY: parsed?.enabledCurrencies?.TRY !== false,
+          SYP: parsed?.enabledCurrencies?.SYP !== false,
+          ...(parsed?.enabledCurrencies || {}),
+        } as Record<string, boolean>,
       };
     } catch {
-      return { TRY: 32, SYP: 14500 };
+      return {
+        enabled: { USD: true, TRY: true, SYP: true } as Record<string, boolean>,
+      };
     }
   }, []);
+
+  const exchangeRates = useMemo(() => ({
+    TRY: metaTRY.rate > 0 ? metaTRY.rate : 32,
+    SYP: metaSYP.rate > 0 ? metaSYP.rate : 14500,
+  }), [metaTRY.rate, metaSYP.rate]);
 
   // Multi-currency details of active shift
   const openShiftCurrencies = useMemo(() => {
@@ -358,93 +372,48 @@ export default function CashShifts() {
                     تفصيل النقدية بالدرج حسب العملة:
                   </span>
                   <span className="text-xs text-muted-foreground font-normal">
-                    (أسعار الصرف: 1$ = {exchangeRates.TRY} TRY | 1$ = {exchangeRates.SYP} SYP)
+                    (أسعار الصرف: 1$ = {exchangeRates.TRY} {metaTRY.symbol} | 1$ = {exchangeRates.SYP} {metaSYP.symbol})
                   </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* USD */}
-                  <div className="bg-background rounded-lg p-3 border space-y-2">
-                    <div className="flex items-center justify-between font-bold text-sm">
-                      <span className="flex items-center gap-1.5 text-blue-600">
-                        <Banknote className="w-4 h-4" /> الدولار الأمريكي (USD)
-                      </span>
-                      <Badge variant="outline" className="font-mono text-xs">$</Badge>
-                    </div>
-                    <div className="text-xs space-y-1 text-muted-foreground pt-1">
-                      <div className="flex justify-between">
-                        <span>الافتتاحي:</span>
-                        <span className="font-medium text-foreground">${openShiftCurrencies.USD.opening.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>المبيعات والمقبوضات:</span>
-                        <span className="font-medium text-green-600">+${openShiftCurrencies.USD.sales.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>المصروفات:</span>
-                        <span className="font-medium text-red-600">-${openShiftCurrencies.USD.expenses.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between pt-1 border-t font-bold text-foreground text-sm">
-                        <span>المتوقع بالدرج:</span>
-                        <span className="text-primary font-mono">${openShiftCurrencies.USD.expected.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
+                  {[metaUSD, metaTRY, metaSYP].filter(m => currencySettings.enabled[m.code] !== false).map((meta) => {
+                    const code = meta.code as 'USD' | 'TRY' | 'SYP';
+                    const color = code === 'USD' ? 'text-blue-600' : code === 'TRY' ? 'text-amber-600' : 'text-emerald-600';
+                    const data = openShiftCurrencies[code] || { opening: 0, sales: 0, expenses: 0, expected: 0 };
+                    const isInt = code === 'SYP' || meta.rate >= 100;
+                    const fmt = (n: number) => isInt ? `${Math.round(n).toLocaleString()}` : `${n.toFixed(2)}`;
+                    const prefix = code === 'USD' ? meta.symbol : '';
+                    const suffix = code === 'USD' ? '' : ` ${meta.symbol}`;
 
-                  {/* TRY */}
-                  <div className="bg-background rounded-lg p-3 border space-y-2">
-                    <div className="flex items-center justify-between font-bold text-sm">
-                      <span className="flex items-center gap-1.5 text-amber-600">
-                        <Banknote className="w-4 h-4" /> الليرة التركية (TRY)
-                      </span>
-                      <Badge variant="outline" className="font-mono text-xs">₺</Badge>
-                    </div>
-                    <div className="text-xs space-y-1 text-muted-foreground pt-1">
-                      <div className="flex justify-between">
-                        <span>الافتتاحي:</span>
-                        <span className="font-medium text-foreground">₺{openShiftCurrencies.TRY.opening.toLocaleString()}</span>
+                    return (
+                      <div key={code} className="bg-background rounded-lg p-3 border space-y-2">
+                        <div className="flex items-center justify-between font-bold text-sm">
+                          <span className={`flex items-center gap-1.5 ${color}`}>
+                            <Banknote className="w-4 h-4" /> {meta.name} ({meta.code})
+                          </span>
+                          <Badge variant="outline" className="font-mono text-xs">{meta.symbol}</Badge>
+                        </div>
+                        <div className="text-xs space-y-1 text-muted-foreground pt-1">
+                          <div className="flex justify-between">
+                            <span>الافتتاحي:</span>
+                            <span className="font-medium text-foreground">{prefix}{fmt(data.opening)}{suffix}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>المبيعات والمقبوضات:</span>
+                            <span className="font-medium text-green-600">+{prefix}{fmt(data.sales)}{suffix}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>المصروفات:</span>
+                            <span className="font-medium text-red-600">-{prefix}{fmt(data.expenses)}{suffix}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t font-bold text-foreground text-sm">
+                            <span>المتوقع بالدرج:</span>
+                            <span className={`${color} font-mono`}>{prefix}{fmt(data.expected)}{suffix}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>المبيعات والمقبوضات:</span>
-                        <span className="font-medium text-green-600">+₺{openShiftCurrencies.TRY.sales.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>المصروفات:</span>
-                        <span className="font-medium text-red-600">-₺{openShiftCurrencies.TRY.expenses.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between pt-1 border-t font-bold text-foreground text-sm">
-                        <span>المتوقع بالدرج:</span>
-                        <span className="text-amber-600 font-mono">₺{openShiftCurrencies.TRY.expected.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SYP */}
-                  <div className="bg-background rounded-lg p-3 border space-y-2">
-                    <div className="flex items-center justify-between font-bold text-sm">
-                      <span className="flex items-center gap-1.5 text-emerald-600">
-                        <Banknote className="w-4 h-4" /> الليرة السورية (SYP)
-                      </span>
-                      <Badge variant="outline" className="font-mono text-xs">ل.س</Badge>
-                    </div>
-                    <div className="text-xs space-y-1 text-muted-foreground pt-1">
-                      <div className="flex justify-between">
-                        <span>الافتتاحي:</span>
-                        <span className="font-medium text-foreground">{openShiftCurrencies.SYP.opening.toLocaleString()} ل.س</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>المبيعات والمقبوضات:</span>
-                        <span className="font-medium text-green-600">+{openShiftCurrencies.SYP.sales.toLocaleString()} ل.س</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>المصروفات:</span>
-                        <span className="font-medium text-red-600">-{openShiftCurrencies.SYP.expenses.toLocaleString()} ل.س</span>
-                      </div>
-                      <div className="flex justify-between pt-1 border-t font-bold text-foreground text-sm">
-                        <span>المتوقع بالدرج:</span>
-                        <span className="text-emerald-600 font-mono">{openShiftCurrencies.SYP.expected.toLocaleString()} ل.س</span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -584,7 +553,7 @@ export default function CashShifts() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="openingTRY" className="text-xs font-semibold">
-                    الليرة التركية (₺ TRY)
+                    {metaTRY.name} ({metaTRY.symbol} TRY)
                   </Label>
                   <Input
                     id="openingTRY"
@@ -600,7 +569,7 @@ export default function CashShifts() {
 
                 <div className="space-y-1">
                   <Label htmlFor="openingSYP" className="text-xs font-semibold">
-                    الليرة السورية (ل.س SYP)
+                    {metaSYP.name} ({metaSYP.symbol} SYP)
                   </Label>
                   <Input
                     id="openingSYP"
@@ -630,7 +599,7 @@ export default function CashShifts() {
 
             <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground flex justify-between items-center">
               <span><strong>{t('cashShifts.employee')}:</strong> {userName}</span>
-              <span className="text-[11px] opacity-75">1$ = {exchangeRates.TRY} ₺ | {exchangeRates.SYP} ل.س</span>
+              <span className="text-[11px] opacity-75">1$ = {exchangeRates.TRY} {metaTRY.symbol} | {exchangeRates.SYP} {metaSYP.symbol}</span>
             </div>
           </div>
 
@@ -688,7 +657,7 @@ export default function CashShifts() {
               <div className="p-3 rounded-lg border bg-background space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
                   <Label htmlFor="closingUSD" className="font-semibold flex items-center gap-1 text-blue-600">
-                    <Banknote className="w-3.5 h-3.5" /> الدولار الأمريكي ($ USD)
+                    <Banknote className="w-3.5 h-3.5" /> {metaUSD.name} ({metaUSD.symbol} USD)
                   </Label>
                   <span className="text-muted-foreground">
                     المتوقع: <strong className="text-foreground font-mono">{formatMoney(openShiftCurrencies?.USD.expected ?? shiftStatus.expectedCash, 'USD')}</strong>
@@ -710,10 +679,10 @@ export default function CashShifts() {
               <div className="p-3 rounded-lg border bg-background space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
                   <Label htmlFor="closingTRY" className="font-semibold flex items-center gap-1 text-amber-600">
-                    <Banknote className="w-3.5 h-3.5" /> الليرة التركية (₺ TRY)
+                    <Banknote className="w-3.5 h-3.5" /> {metaTRY.name} ({metaTRY.symbol} TRY)
                   </Label>
                   <span className="text-muted-foreground">
-                    المتوقع: <strong className="text-foreground font-mono">₺{openShiftCurrencies?.TRY.expected.toLocaleString() ?? '0'}</strong>
+                    المتوقع: <strong className="text-foreground font-mono">{metaTRY.symbol}{openShiftCurrencies?.TRY.expected.toLocaleString() ?? '0'}</strong>
                   </span>
                 </div>
                 <Input
@@ -732,10 +701,10 @@ export default function CashShifts() {
               <div className="p-3 rounded-lg border bg-background space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
                   <Label htmlFor="closingSYP" className="font-semibold flex items-center gap-1 text-emerald-600">
-                    <Banknote className="w-3.5 h-3.5" /> الليرة السورية (ل.س SYP)
+                    <Banknote className="w-3.5 h-3.5" /> {metaSYP.name} ({metaSYP.symbol} SYP)
                   </Label>
                   <span className="text-muted-foreground">
-                    المتوقع: <strong className="text-foreground font-mono">{openShiftCurrencies?.SYP.expected.toLocaleString() ?? '0'} ل.س</strong>
+                    المتوقع: <strong className="text-foreground font-mono">{openShiftCurrencies?.SYP.expected.toLocaleString() ?? '0'} {metaSYP.symbol}</strong>
                   </span>
                 </div>
                 <Input

@@ -37,6 +37,7 @@ export interface CashSaleBundle {
   totalInCurrency: number;
   currency: string;
   currencySymbol: string;
+  currencyName?: string;
   exchangeRate?: number;
   profit: number;
   cogs: number;

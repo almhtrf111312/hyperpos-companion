@@ -269,3 +269,165 @@ export function convertUsdToDisplay(
   return null;
 }
 
+export interface ResolvedCurrencyMeta {
+  code: string;
+  symbol: string;
+  name: string;
+  rate: number;
+  isUsd: boolean;
+}
+
+/**
+ * المحرك المركزي الموحد لحل وتأكيد بيانات العملة (الكود، الرمز، الاسم، وسعر الصرف مقابل الدولار)
+ * يمنع منعاً باتاً إرجاع '₺' أو اسم 'ليرة تركية' إلا إذا كان الكود صراحة 'TRY'
+ */
+export function resolveCurrencyMeta(
+  currencyCode?: string,
+  customSymbol?: string,
+  customRate?: number,
+  customName?: string
+): ResolvedCurrencyMeta {
+  let settings: any = null;
+  try {
+    if (typeof window !== 'undefined') {
+      const raw = window.localStorage.getItem('hyperpos_settings_v1');
+      if (raw) settings = JSON.parse(raw);
+    }
+  } catch {}
+
+  // 1. تحديد كود العملة المستهدف
+  let code = (currencyCode || '').trim().toUpperCase();
+  if (!code || code === 'STORED' || code === 'DEFAULT') {
+    code = (settings?.primaryCurrency || settings?.currencyCode || settings?.defaultCurrency || '').trim().toUpperCase();
+    if (!code) {
+      const enabled = settings?.enabledCurrencies;
+      code = enabled?.TRY ? 'TRY' : enabled?.SYP ? 'SYP' : 'USD';
+    }
+  }
+  if (!code) code = 'USD';
+
+  const isUsd = code === 'USD';
+
+  // 2. البحث عن العملة المعيارية من القائمة المسبقة
+  const canonical = PREDEFINED_CURRENCIES.find(c => c.code === code);
+
+  // 3. تحديد الرمز بدقة ومنع الرموز الخاطئة (مثل ₺ لغير التركي أو $ لغير الدولار)
+  let symbol = '';
+  const rawSymbol = (customSymbol || '').trim();
+  const isSuspicious =
+    rawSymbol === '' ||
+    (rawSymbol === '₺' && code !== 'TRY') ||
+    (rawSymbol === '$' && code !== 'USD') ||
+    (rawSymbol === '€' && code !== 'EUR') ||
+    (rawSymbol === 'ل.س' && code !== 'SYP');
+
+  if (!isSuspicious && rawSymbol) {
+    symbol = rawSymbol;
+  } else if (settings?.currencySymbols?.[code]) {
+    const s = String(settings.currencySymbols[code]).trim();
+    if (!(s === '₺' && code !== 'TRY') && !(s === '$' && code !== 'USD')) {
+      symbol = s;
+    }
+  }
+  
+  if (!symbol) {
+    symbol = canonical ? canonical.symbol : (isUsd ? '$' : code);
+  }
+
+  // 4. تحديد الاسم بدقة
+  let name = '';
+  const rawName = (customName || '').trim();
+  const isSuspiciousName =
+    rawName === '' ||
+    (rawName.includes('تركي') && code !== 'TRY') ||
+    (rawName.includes('دولار') && code !== 'USD') ||
+    (rawName.includes('سوري') && code !== 'SYP');
+
+  if (!isSuspiciousName && rawName) {
+    name = rawName;
+  } else if (settings?.currencyNames?.[code]) {
+    const n = String(settings.currencyNames[code]).trim();
+    if (!(n.includes('تركي') && code !== 'TRY')) {
+      name = n;
+    }
+  }
+  
+  if (!name) {
+    name = canonical ? canonical.name : (isUsd ? 'دولار أمريكي' : code);
+  }
+
+  // 5. تحديد سعر الصرف مقابل الدولار
+  let rate = 1;
+  if (!isUsd) {
+    if (typeof customRate === 'number' && !isNaN(customRate) && customRate > 0) {
+      rate = customRate;
+    } else if (settings?.exchangeRates?.[code] && Number(settings.exchangeRates[code]) > 0) {
+      rate = Number(settings.exchangeRates[code]);
+    } else if (canonical?.suggestedRate) {
+      rate = canonical.suggestedRate;
+    }
+  }
+
+  return { code, symbol, name, rate, isUsd };
+}
+
+/**
+ * تنسيق المبلغ مع رمز العملة واسمها
+ */
+export function formatCurrencyWithMeta(
+  amount: number,
+  meta: { symbol: string; name?: string },
+  options?: { showName?: boolean; decimals?: number }
+): string {
+  if (typeof amount !== 'number' || isNaN(amount)) return '0.00';
+  const decimals = options?.decimals ?? 2;
+  const numStr = amount.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  if (options?.showName && meta.name) {
+    return `${numStr} ${meta.symbol} (${meta.name})`;
+  }
+  return `${numStr} ${meta.symbol}`;
+}
+
+/**
+ * عرض سعر الصرف مقابل الدولار بصيغة موحدة
+ */
+export function formatRateAgainstUsd(
+  meta: { code: string; symbol: string; name: string; rate: number }
+): string {
+  if (meta.code === 'USD' || meta.rate <= 0) return '';
+  const formattedRate = meta.rate.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  return `1 $ = ${formattedRate} ${meta.symbol} (${meta.name})`;
+}
+
+/**
+ * الحصول على بيانات العملة المعتمدة حالياً في المتجر (الكود، الرمز، الاسم، وسعر الصرف مقابل الدولار)
+ */
+export function getActiveStoreCurrency(): ResolvedCurrencyMeta {
+  return resolveCurrencyMeta();
+}
+
+/**
+ * تنسيق المبالغ المالية المخزنة داخلياً بالدولار الأمريكي وتحويلها ديناميكياً
+ * إلى عملة المتجر المعتمدة الحالية مع مراعاة دقة الكسور (بدون فواصل إذا كان الصرف >= 100)
+ */
+export function formatReportAmount(amountUsd: number): string {
+  if (typeof amountUsd !== 'number' || isNaN(amountUsd)) return '0.00';
+  const active = getActiveStoreCurrency();
+  const converted = active.isUsd ? amountUsd : amountUsd * (active.rate > 0 ? active.rate : 1);
+  const decimals = active.rate >= 100 ? 0 : 2;
+  const numStr = converted.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  const cleanSymbol = (active.symbol || '').trim();
+  if (cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') {
+    return `${cleanSymbol}${numStr}`;
+  }
+  return `${numStr}\u00A0${cleanSymbol}`;
+}
+
+

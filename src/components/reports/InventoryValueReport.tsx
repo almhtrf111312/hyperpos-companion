@@ -5,7 +5,8 @@ import { ReportShell } from './ReportShell';
 import { Card, CardContent } from '@/components/ui/card';
 import { loadProductsLocalFirst, refreshProductsFromCloud, type Product } from '@/lib/cloud/products-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatReportAmount, cn } from '@/lib/utils';
+import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { useLanguage } from '@/hooks/use-language';
 
 interface Props { dateRange: { from: string; to: string } }
@@ -58,9 +59,9 @@ export function InventoryValueReport({ dateRange }: Props) {
       ],
       rows: byCategory,
       summary: [
-        { label: 'إجمالي قيمة المخزون (تكلفة)', value: formatCurrency(stats.totalCost) },
-        { label: 'قيمة بيع متوقعة', value: formatCurrency(stats.totalSale) },
-        { label: 'الربح الكامن', value: formatCurrency(stats.potentialProfit) },
+        { label: 'إجمالي قيمة المخزون (تكلفة)', value: formatReportAmount(stats.totalCost) },
+        { label: 'قيمة بيع متوقعة', value: formatReportAmount(stats.totalSale) },
+        { label: 'الربح الكامن', value: formatReportAmount(stats.potentialProfit) },
         { label: 'عدد القطع', value: formatNumber(stats.totalUnits) },
         { label: 'عدد الأصناف', value: formatNumber(stats.skus) },
       ],
@@ -90,10 +91,11 @@ export function InventoryValueReport({ dateRange }: Props) {
       onExportExcel={() => handleExport('excel')}
       exportDisabled={loading}
     >
+      <ReportCurrencyBanner />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <KPI icon={Wallet} label="قيمة العهدة (تكلفة)" value={formatCurrency(stats.totalCost)} color="text-primary" bg="bg-primary/10" />
-        <KPI icon={TrendingUp} label="قيمة بيع متوقعة" value={formatCurrency(stats.totalSale)} color="text-emerald-600" bg="bg-emerald-500/10" />
-        <KPI icon={TrendingUp} label="الربح الكامن" value={formatCurrency(stats.potentialProfit)} color="text-amber-600" bg="bg-amber-500/10" />
+        <KPI icon={Wallet} label="قيمة العهدة (تكلفة)" value={formatReportAmount(stats.totalCost)} color="text-primary" bg="bg-primary/10" />
+        <KPI icon={TrendingUp} label="قيمة بيع متوقعة" value={formatReportAmount(stats.totalSale)} color="text-emerald-600" bg="bg-emerald-500/10" />
+        <KPI icon={TrendingUp} label="الربح الكامن" value={formatReportAmount(stats.potentialProfit)} color="text-amber-600" bg="bg-amber-500/10" />
         <KPI icon={Package} label="القطع / الأصناف" value={`${formatNumber(stats.totalUnits)} / ${formatNumber(stats.skus)}`} color="text-blue-600" bg="bg-blue-500/10" />
       </div>
 
@@ -109,7 +111,7 @@ export function InventoryValueReport({ dateRange }: Props) {
                 <Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(e) => `${e.name}`} labelLine={false}>
                   {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={(v: number) => formatReportAmount(v)} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
               </PieChart>
             </ResponsiveContainer>

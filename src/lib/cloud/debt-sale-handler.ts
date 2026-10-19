@@ -47,6 +47,7 @@ export interface DebtSaleBundle {
   totalInCurrency: number;
   currency: string;
   currencySymbol: string;
+  currencyName?: string;
   exchangeRate?: number;
   
   // Tax data

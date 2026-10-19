@@ -1,6 +1,6 @@
 import { useState, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, AlertTriangle, Clock, Package, X, CheckCheck, Trash2, CalendarX, Key, Shield, Pin, Loader2, CheckCircle, Archive } from 'lucide-react';
+import { Bell, AlertTriangle, Clock, Package, X, CheckCheck, Trash2, CalendarX, Key, Shield, Pin, Loader2, CheckCircle, Archive, Receipt, Wallet, HandCoins, PackageCheck, Cloud, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotifications, Notification } from '@/hooks/use-notifications';
 import {
@@ -20,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLanguage } from '@/hooks/use-language';
 import { useLicense } from '@/hooks/use-license';
 
-const notificationConfig: Record<Notification['type'], { icon: typeof AlertTriangle; color: string; bgColor: string }> = {
+const notificationConfig: Record<string, { icon: any; color: string; bgColor: string }> = {
   debt_overdue: { icon: AlertTriangle, color: 'text-destructive', bgColor: 'bg-destructive/10' },
   debt_due_today: { icon: Clock, color: 'text-warning', bgColor: 'bg-warning/10' },
   low_stock: { icon: Package, color: 'text-warning', bgColor: 'bg-warning/10' },
@@ -29,7 +29,25 @@ const notificationConfig: Record<Notification['type'], { icon: typeof AlertTrian
   expiring_soon: { icon: CalendarX, color: 'text-warning', bgColor: 'bg-warning/10' },
   license_status: { icon: Key, color: 'text-primary', bgColor: 'bg-primary/10' },
   license_expiring: { icon: Shield, color: 'text-warning', bgColor: 'bg-warning/10' },
+  sale: { icon: Receipt, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20' },
+  expense: { icon: Wallet, color: 'text-rose-600 dark:text-rose-400', bgColor: 'bg-rose-500/10 dark:bg-rose-500/20' },
+  debt: { icon: HandCoins, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-500/10 dark:bg-blue-500/20' },
+  inventory: { icon: PackageCheck, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-500/10 dark:bg-purple-500/20' },
+  purchase: { icon: Package, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10 dark:bg-amber-500/20' },
+  sync: { icon: Cloud, color: 'text-cyan-600 dark:text-cyan-400', bgColor: 'bg-cyan-500/10 dark:bg-cyan-500/20' },
+  system: { icon: Bell, color: 'text-primary', bgColor: 'bg-primary/10' },
 };
+
+function getNotificationVisuals(notification: Notification) {
+  const cat = notification.category;
+  if (cat && notificationConfig[cat]) {
+    return notificationConfig[cat];
+  }
+  if (notificationConfig[notification.type]) {
+    return notificationConfig[notification.type];
+  }
+  return notificationConfig.system;
+}
 
 function formatTimeAgo(date: Date, language: string): string {
   const now = new Date();
@@ -75,6 +93,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
     const navigate = useNavigate();
     const { isRTL, t, language } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
+    const [expandedNotificationId, setExpandedNotificationId] = useState<string | null>(null);
     const [showActivationDialog, setShowActivationDialog] = useState(false);
     const [activationCode, setActivationCode] = useState('');
     const [isActivating, setIsActivating] = useState(false);
@@ -218,67 +237,119 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
               ) : (
                 <div className="divide-y divide-border">
                   {notifications.map((notification) => {
-                    const config = notificationConfig[notification.type];
-                    const Icon = config.icon;
-                    
+                    const visuals = getNotificationVisuals(notification);
+                    const Icon = visuals.icon;
+                    const isExpanded = expandedNotificationId === notification.id;
+                    const hasDetails = Boolean(notification.meta?.details);
+                    const titleText = notification.meta?.operationTitle || notification.title;
+                    const syncState = notification.meta?.syncState;
+
+                    // Summary line (line 2)
+                    const summaryLine = notification.meta
+                      ? [notification.meta.partyOrItem, notification.meta.amountText].filter(Boolean).join(' • ')
+                      : notification.message;
+
                     return (
                       <div 
                         key={notification.id}
                         className={cn(
-                          "p-4 hover:bg-muted/50 transition-colors cursor-pointer relative",
+                          "p-3 hover:bg-muted/50 transition-colors cursor-pointer relative border-b border-border/40 last:border-b-0",
                           !notification.read && "bg-primary/5"
                         )}
                         role="button"
                         tabIndex={0}
-                        onClick={() => handleNotificationClick(notification)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
+                        onClick={() => {
+                          if (hasDetails) {
+                            setExpandedNotificationId(prev => prev === notification.id ? null : notification.id);
+                          } else {
                             handleNotificationClick(notification);
                           }
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            if (hasDetails) {
+                              setExpandedNotificationId(prev => prev === notification.id ? null : notification.id);
+                            } else {
+                              handleNotificationClick(notification);
+                            }
+                          }
+                        }}
                       >
-                        <div className="flex gap-3">
-                          <div className={cn("p-2 rounded-lg flex-shrink-0", config.bgColor)}>
-                            <Icon className={cn("w-5 h-5", config.color)} />
+                        <div className="flex gap-2.5 items-start">
+                          {/* 1. Category Icon */}
+                          <div className={cn("p-2 rounded-xl flex-shrink-0 mt-0.5", visuals.bgColor)}>
+                            <Icon className={cn("w-4 h-4", visuals.color)} />
                           </div>
+
+                          {/* 2. Compact 2-Line Body */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-1">
+                            {/* السطر الأول: العنوان المحاسبي + شارة المزامنة + الوقت */}
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
                                 <p className={cn(
-                                  "font-medium text-sm text-foreground",
-                                  !notification.read && "font-semibold"
+                                  "font-semibold text-xs sm:text-sm text-foreground truncate",
+                                  !notification.read && "font-bold text-primary"
                                 )}>
-                                  {notification.title}
+                                  {titleText}
                                 </p>
                                 {notification.persistent && (
-                                  <Pin className="w-3 h-3 text-muted-foreground" />
+                                  <Pin className="w-3 h-3 text-muted-foreground shrink-0" />
                                 )}
                               </div>
-                              {!notification.read && (
-                                <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
-                              )}
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                {syncState && (
+                                  <span className={cn(
+                                    "text-[9px] px-1 py-0.2 rounded font-mono font-medium",
+                                    syncState === 'synced' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : syncState === 'pending' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                    : "bg-destructive/10 text-destructive"
+                                  )}>
+                                    {syncState === 'synced' ? 'تمت' : syncState === 'pending' ? 'معلق' : 'فشل'}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                  {formatTimeAgo(notification.timestamp, language)}
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
-                              {notification.message}
-                            </p>
-                            <div className="flex items-center justify-between mt-1.5">
-                              <p className="text-xs text-muted-foreground">
-                                {formatTimeAgo(notification.timestamp, language)}
+
+                            {/* السطر الثاني: الطرف / البند • المبلغ (أو نص الإشعار الموجز) */}
+                            <div className="flex items-center justify-between gap-1 mt-0.5">
+                              <p className="text-xs text-muted-foreground truncate" dir="auto">
+                                {summaryLine}
                               </p>
                               {!notification.persistent && (
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     archiveNotification(notification.id);
                                   }}
-                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors"
+                                  className="text-[10px] text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted transition-colors shrink-0 ml-1"
+                                  title={t('notification.hide')}
                                 >
-                                  <Archive className="w-3.5 h-3.5" />
-                                  <span>{t('notification.hide')}</span>
+                                  <Archive className="w-3 h-3" />
                                 </button>
                               )}
                             </div>
+
+                            {/* القسم القابل للتوسيع: تفاصيل إضافية عند النقر */}
+                            {isExpanded && notification.meta?.details && (
+                              <div 
+                                className="text-[11px] bg-muted/50 rounded-lg p-2 mt-2 border border-border/50 text-muted-foreground leading-relaxed animate-in fade-in duration-150"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNotificationClick(notification);
+                                }}
+                              >
+                                <div>{notification.meta.details}</div>
+                                <div className="mt-1 text-[10px] text-primary hover:underline cursor-pointer font-medium">
+                                  انقر للانتقال للقسم المعني ←
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

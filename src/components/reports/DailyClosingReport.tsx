@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { FileText, Download, Calendar, DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatReportAmount } from '@/lib/utils';
+import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { Invoice } from '@/lib/cloud/invoices-cloud';
 import { Expense } from '@/lib/cloud/expenses-cloud';
 import { Debt } from '@/lib/cloud/debts-cloud';
@@ -148,6 +149,7 @@ export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateR
 
   return (
     <div className="space-y-4">
+      <ReportCurrencyBanner />
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 bg-card rounded-lg border border-border px-3 py-1.5">
           <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -171,23 +173,23 @@ export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateR
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-primary mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(data.totalRevenue)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(data.totalRevenue)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.totalRevenue') || 'إجمالي الإيرادات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <TrendingUp className="w-5 h-5 text-green-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(data.totalProfit)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(data.totalProfit)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.totalProfit') || 'إجمالي الأرباح'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <TrendingDown className="w-5 h-5 text-red-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(data.totalExpenses)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(data.totalExpenses)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.expenses') || 'المصاريف'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <Wallet className="w-5 h-5 text-emerald-500 mb-2" />
           <p className={`text-2xl font-bold ${data.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(data.netProfit)}
+            {formatReportAmount(data.netProfit)}
           </p>
           <p className="text-xs text-muted-foreground">{t('reports.netProfit') || 'صافي الربح'}</p>
         </div>
@@ -214,14 +216,14 @@ export function DailyClosingReport({ invoices, expenses, debts, isLoading, dateR
                 <span className="text-sm">{item.label}</span>
                 {item.count && <span className="text-xs text-muted-foreground">({item.count})</span>}
               </div>
-              <span className={`font-bold ${item.color}`}>{formatCurrency(item.value)}</span>
+              <span className={`font-bold ${item.color}`}>{formatReportAmount(item.value)}</span>
             </div>
           ))}
 
           <div className="flex items-center justify-between py-3 border-t-2 border-primary/20 mt-2">
             <span className="text-base font-bold">{t('reports.netProfit') || 'صافي الربح'}</span>
             <span className={`text-xl font-bold ${data.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(data.netProfit)}
+              {formatReportAmount(data.netProfit)}
             </span>
           </div>
         </div>

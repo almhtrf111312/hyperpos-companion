@@ -44,7 +44,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
-import { cn, formatNumber, formatCurrency, formatMoney } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatMoney, formatReportAmount } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
@@ -742,7 +742,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(reportData.summary.totalSales, '$'),
+            value: formatReportAmount(reportData.summary.totalSales),
             label: t('reports.totalSales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -750,7 +750,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(reportData.summary.totalProfit, '$'),
+            value: formatReportAmount(reportData.summary.totalProfit),
             label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -766,7 +766,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(reportData.summary.avgOrderValue, '$'),
+            value: formatReportAmount(reportData.summary.avgOrderValue),
             label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -778,7 +778,7 @@ export default function Reports() {
         return [
           {
             icon: TrendingUp,
-            value: formatCurrency(reportData.summary.totalProfit, '$'),
+            value: formatReportAmount(reportData.summary.totalProfit),
             label: t('reports.totalNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -794,7 +794,7 @@ export default function Reports() {
           },
           {
             icon: Banknote,
-            value: formatCurrency(reportData.summary.totalSales, '$'),
+            value: formatReportAmount(reportData.summary.totalSales),
             label: t('reports.profitGeneratingSales'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
@@ -802,7 +802,7 @@ export default function Reports() {
           },
           {
             icon: Coins,
-            value: formatCurrency(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0, '$'),
+            value: formatReportAmount(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0),
             label: t('reports.avgProfitPerInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -818,7 +818,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(costValue, '$'),
+            value: formatReportAmount(costValue),
             label: t('reports.inventoryValueAtCost'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -826,7 +826,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(saleValue, '$'),
+            value: formatReportAmount(saleValue),
             label: t('reports.expectedSalesValue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -889,7 +889,7 @@ export default function Reports() {
             label: t('reports.totalAuditQuantities'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: `${t('reports.atCostValue') || 'بالتكلفة'}: ${formatCurrency(costValue, '$')}`,
+            subtext: `${t('reports.atCostValue') || 'بالتكلفة'}: ${formatReportAmount(costValue)}`,
           },
         ];
       }
@@ -911,7 +911,7 @@ export default function Reports() {
           },
           {
             icon: Banknote,
-            value: formatCurrency(totalRev, '$'),
+            value: formatReportAmount(totalRev),
             label: t('reports.productsSalesRevenue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -945,7 +945,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(remDebt, '$'),
+            value: formatReportAmount(remDebt),
             label: t('reports.totalOutstandingDebts'),
             color: 'text-rose-600',
             bg: 'bg-rose-500/10',
@@ -953,7 +953,7 @@ export default function Reports() {
           },
           {
             icon: UserCheck,
-            value: formatCurrency(paidDebt, '$'),
+            value: formatReportAmount(paidDebt),
             label: t('reports.totalPaid'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -961,7 +961,7 @@ export default function Reports() {
           },
           {
             icon: Banknote,
-            value: formatCurrency(origDebt, '$'),
+            value: formatReportAmount(origDebt),
             label: t('reports.totalOriginalDebt'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -998,7 +998,7 @@ export default function Reports() {
           },
           {
             icon: Banknote,
-            value: formatCurrency(reportData.summary.totalSales, '$'),
+            value: formatReportAmount(reportData.summary.totalSales),
             label: t('reports.totalCustomerPurchases'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
@@ -1145,7 +1145,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(dSales, '$'),
+            value: formatReportAmount(dSales),
             label: t('reports.todaySales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1153,7 +1153,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(dProfit, '$'),
+            value: formatReportAmount(dProfit),
             label: t('reports.todayNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1169,7 +1169,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(dAvg, '$'),
+            value: formatReportAmount(dAvg),
             label: t('reports.avgDailyInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1203,7 +1203,7 @@ export default function Reports() {
             label: t('reports.topSalesCashier'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: topC ? `مبيعات: ${formatCurrency(topC[1].total, '$')}` : 'لا توجد بيانات',
+            subtext: topC ? `مبيعات: ${formatReportAmount(topC[1].total)}` : 'لا توجد بيانات',
           },
           {
             icon: ShoppingBag,
@@ -1223,7 +1223,7 @@ export default function Reports() {
           },
           {
             icon: Banknote,
-            value: formatCurrency(avgC, '$'),
+            value: formatReportAmount(avgC),
             label: t('reports.avgSalesPerCashier'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1241,7 +1241,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(mTot, '$'),
+            value: formatReportAmount(mTot),
             label: t('reports.totalMaintenanceServices'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1249,7 +1249,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(mProf, '$'),
+            value: formatReportAmount(mProf),
             label: t('reports.maintenanceNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1265,7 +1265,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(mAvg, '$'),
+            value: formatReportAmount(mAvg),
             label: t('reports.avgMaintenanceInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1278,7 +1278,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(reportData.summary.totalSales, '$'),
+            value: formatReportAmount(reportData.summary.totalSales),
             label: t('reports.totalSales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1286,7 +1286,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(reportData.summary.totalProfit, '$'),
+            value: formatReportAmount(reportData.summary.totalProfit),
             label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1302,7 +1302,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(reportData.summary.avgOrderValue, '$'),
+            value: formatReportAmount(reportData.summary.avgOrderValue),
             label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -2469,9 +2469,9 @@ export default function Reports() {
                           <h3 className="text-sm font-bold text-foreground">المبيعات اليومية</h3>
                         </div>
                         <div className="bg-muted text-foreground border border-border/70 text-xs font-bold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-sm">
-                          <span className="text-primary font-black">${formatCurrency(activeChartDay.sales).replace('$', '')}</span>
+                          <span className="text-primary font-black">{formatReportAmount(activeChartDay.sales)}</span>
                           <span className="text-muted-foreground/50">|</span>
-                          <span className="text-emerald-600 font-bold">ربح: {formatCurrency(activeChartDay.profit)}</span>
+                          <span className="text-emerald-600 font-bold">ربح: {formatReportAmount(activeChartDay.profit)}</span>
                           <span className="text-muted-foreground/50">|</span>
                           <span className="text-muted-foreground text-[11px]">{activeChartDay.orders} طلب</span>
                         </div>
@@ -2494,7 +2494,7 @@ export default function Reports() {
                               >
                                 {isSelected && day.sales > 0 && (
                                   <span className="text-[10px] font-black text-primary animate-in fade-in zoom-in-95 duration-200">
-                                    ${Math.round(day.sales)}
+                                    {formatReportAmount(Math.round(day.sales))}
                                   </span>
                                 )}
                                 <div className="w-full flex items-end justify-center h-full">
@@ -2529,7 +2529,7 @@ export default function Reports() {
                         {activeChartDay.sales > 0 && activeChartDay.date === topChartDay.date ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5" />
-                            أعلى مبيعات للأسبوع (${formatCurrency(activeChartDay.sales).replace('$', '')})
+                            أعلى مبيعات للأسبوع ({formatReportAmount(activeChartDay.sales)})
                           </span>
                         ) : (
                           <span className="text-muted-foreground">{activeChartDay.orders} طلبات مسجلة</span>

@@ -39,6 +39,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { loadDefaultCurrencyCode, loadEnabledCurrencies } from '@/hooks/use-currency';
+import { resolveCurrencyMeta } from '@/lib/currencies';
 import { EVENTS, emitEvent } from '@/lib/events';
 import {
   loadDebtsCloud,
@@ -246,20 +247,26 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     getDebtsStatsCloud().then(setStats);
   }, [debts]);
 
-  const exchangeRates = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('hyperpos_settings_v1');
-      if (!raw) return { TRY: 32, SYP: 14500 };
-      const parsed = JSON.parse(raw);
-      const ex = parsed?.exchangeRates;
-      return {
-        TRY: Number(ex?.TRY ?? 32) || 32,
-        SYP: Number(ex?.SYP ?? 14500) || 14500,
-      };
-    } catch {
-      return { TRY: 32, SYP: 14500 };
-    }
-  }, []);
+  const metaUSD = useMemo(() => resolveCurrencyMeta('USD'), []);
+  const metaTRY = useMemo(() => resolveCurrencyMeta('TRY'), []);
+  const metaSYP = useMemo(() => resolveCurrencyMeta('SYP'), []);
+
+  const exchangeRates = useMemo(() => ({
+    TRY: metaTRY.rate > 0 ? metaTRY.rate : 32,
+    SYP: metaSYP.rate > 0 ? metaSYP.rate : 14500,
+  }), [metaTRY.rate, metaSYP.rate]);
+
+  const currencySymbols = useMemo(() => ({
+    USD: metaUSD.symbol,
+    TRY: metaTRY.symbol,
+    SYP: metaSYP.symbol,
+  }), [metaUSD.symbol, metaTRY.symbol, metaSYP.symbol]);
+
+  const currencyNames = useMemo(() => ({
+    USD: metaUSD.name,
+    TRY: metaTRY.name,
+    SYP: metaSYP.name,
+  }), [metaUSD.name, metaTRY.name, metaSYP.name]);
 
   const currentRate = paymentCurrency === 'USD' ? 1 : exchangeRates[paymentCurrency];
 
@@ -842,7 +849,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                     <span className="font-black font-mono text-sm text-destructive block whitespace-nowrap">{formatCurrency(selectedDebt.remainingDebt)}</span>
                     {paymentCurrency !== 'USD' && (
                       <span className="text-[11px] text-muted-foreground block font-mono">
-                        ≈ {formatNumber(maxInCurrency)} {paymentCurrency === 'TRY' ? '₺' : 'ل.س'}
+                        ≈ {formatNumber(maxInCurrency)} {currencySettings.symbols[paymentCurrency] || paymentCurrency}
                       </span>
                     )}
                   </div>
@@ -869,8 +876,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                       )}
                     >
-                      <span className="text-xs font-bold">💵 دولار</span>
-                      <span className="text-[10px] opacity-80">(USD)</span>
+                      <span className="text-xs font-bold">💵 {currencyNames.USD}</span>
+                      <span className="text-[10px] opacity-80">({currencySymbols.USD})</span>
                     </button>
                   )}
                   {enabledCurrencies.TRY && (
@@ -889,7 +896,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                       )}
                     >
-                      <span className="text-xs font-bold">₺ تركي</span>
+                      <span className="text-xs font-bold">{currencySymbols.TRY} {currencyNames.TRY}</span>
                       <span className="text-[10px] opacity-80">(TRY)</span>
                     </button>
                   )}
@@ -909,7 +916,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                       )}
                     >
-                      <span className="text-xs font-bold">ل.س سوري</span>
+                      <span className="text-xs font-bold">{currencySymbols.SYP} {currencyNames.SYP}</span>
                       <span className="text-[10px] opacity-80">(SYP)</span>
                     </button>
                   )}
@@ -917,7 +924,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
                     <span>سعر الصرف المعتمد:</span>
-                    <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {paymentCurrency}</span>
+                    <span className="font-mono font-bold text-foreground">1 $ = {currentRate} {currencySymbols[paymentCurrency] || paymentCurrency}</span>
                   </p>
                 )}
               </div>
@@ -926,11 +933,11 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">
-                    مبلغ الدفعة ({paymentCurrency === 'USD' ? '$' : paymentCurrency === 'TRY' ? '₺' : 'ل.س'})
+                    مبلغ الدفعة ({currencySymbols[paymentCurrency] || (paymentCurrency === 'USD' ? '$' : paymentCurrency)})
                   </label>
                   {paymentCurrency !== 'USD' && amountUSD > 0 && (
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                      ≈ ${formatNumber(amountUSD)}
+                      ≈ {currencySymbols.USD}{formatNumber(amountUSD)}
                     </span>
                   )}
                 </div>

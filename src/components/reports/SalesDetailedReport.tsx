@@ -3,7 +3,8 @@ import { ShoppingCart, Receipt, TrendingUp, Users } from 'lucide-react';
 import { ReportShell } from './ReportShell';
 import { EntityPicker, PickableEntity } from './EntityPicker';
 import { Invoice } from '@/lib/cloud/invoices-cloud';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatNumber, formatReportAmount } from '@/lib/utils';
+import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { exportGenericToPDF, exportGenericToExcel } from '@/lib/reports/dataset-builder';
 import { toast } from 'sonner';
@@ -58,7 +59,7 @@ export function SalesDetailedReport({
     });
     return Array.from(m.entries())
       .sort((a, b) => b[1].total - a[1].total)
-      .map(([id, v]) => ({ id, name: v.name, subtitle: `${v.count} فاتورة • ${formatCurrency(v.total)}` }));
+      .map(([id, v]) => ({ id, name: v.name, subtitle: `${v.count} فاتورة • ${formatReportAmount(v.total)}` }));
   }, [baseFiltered]);
 
   const cashiers: PickableEntity[] = useMemo(() => {
@@ -72,7 +73,7 @@ export function SalesDetailedReport({
     });
     return Array.from(m.entries())
       .sort((a, b) => b[1].total - a[1].total)
-      .map(([id, v]) => ({ id, name: v.name, subtitle: `${v.count} فاتورة • ${formatCurrency(v.total)}` }));
+      .map(([id, v]) => ({ id, name: v.name, subtitle: `${v.count} فاتورة • ${formatReportAmount(v.total)}` }));
   }, [baseFiltered]);
 
   const invoicePicks: PickableEntity[] = useMemo(() => {
@@ -82,7 +83,7 @@ export function SalesDetailedReport({
       .map(inv => ({
         id: inv.id,
         name: `فاتورة #${inv.id}`,
-        subtitle: `${inv.customerName || 'نقدي'} • ${formatCurrency(inv.total)} • ${toLocalDateString(inv.createdAt)}`,
+        subtitle: `${inv.customerName || 'نقدي'} • ${formatReportAmount(inv.total)} • ${toLocalDateString(inv.createdAt)}`,
       }));
   }, [baseFiltered]);
 
@@ -142,9 +143,9 @@ export function SalesDetailedReport({
       totals: { discount: stats.totalDiscount, profit: stats.totalProfit, total: stats.totalSales },
       summary: [
         { label: t('reports.totalInvoices') || 'عدد الفواتير', value: stats.count },
-        { label: t('reports.totalSales') || 'إجمالي المبيعات', value: formatCurrency(stats.totalSales) },
-        { label: t('reports.totalProfit') || 'إجمالي الأرباح', value: formatCurrency(stats.totalProfit) },
-        { label: t('reports.avgInvoice') || 'متوسط الفاتورة', value: formatCurrency(stats.avg) },
+        { label: t('reports.totalSales') || 'إجمالي المبيعات', value: formatReportAmount(stats.totalSales) },
+        { label: t('reports.totalProfit') || 'إجمالي الأرباح', value: formatReportAmount(stats.totalProfit) },
+        { label: t('reports.avgInvoice') || 'متوسط الفاتورة', value: formatReportAmount(stats.avg) },
       ],
       fileName: `sales_detailed_${dateRange.from}_${dateRange.to}.${kind === 'pdf' ? 'pdf' : 'xlsx'}`,
     };
@@ -196,23 +197,25 @@ export function SalesDetailedReport({
         </div>
       }
     >
+      <ReportCurrencyBanner />
+
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Kpi icon={<Receipt className="w-4 h-4" />} label="الفواتير" value={formatNumber(stats.count)} color="text-blue-500" />
-        <Kpi icon={<TrendingUp className="w-4 h-4" />} label="المبيعات" value={formatCurrency(stats.totalSales)} color="text-emerald-500" />
-        <Kpi icon={<TrendingUp className="w-4 h-4" />} label="الأرباح" value={formatCurrency(stats.totalProfit)} color="text-green-500" />
-        <Kpi icon={<Users className="w-4 h-4" />} label="متوسط الفاتورة" value={formatCurrency(stats.avg)} color="text-violet-500" />
+        <Kpi icon={<TrendingUp className="w-4 h-4" />} label="المبيعات" value={formatReportAmount(stats.totalSales)} color="text-emerald-500" />
+        <Kpi icon={<TrendingUp className="w-4 h-4" />} label="الأرباح" value={formatReportAmount(stats.totalProfit)} color="text-green-500" />
+        <Kpi icon={<Users className="w-4 h-4" />} label="متوسط الفاتورة" value={formatReportAmount(stats.avg)} color="text-violet-500" />
       </div>
 
       {/* Cash vs Debt */}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-border/40 bg-card p-3">
           <p className="text-[11px] text-muted-foreground">نقدي</p>
-          <p className="text-sm font-bold text-emerald-600">{formatCurrency(stats.cashTotal)}</p>
+          <p className="text-sm font-bold text-emerald-600">{formatReportAmount(stats.cashTotal)}</p>
         </div>
         <div className="rounded-xl border border-border/40 bg-card p-3">
           <p className="text-[11px] text-muted-foreground">آجل</p>
-          <p className="text-sm font-bold text-amber-600">{formatCurrency(stats.debtTotal)}</p>
+          <p className="text-sm font-bold text-amber-600">{formatReportAmount(stats.debtTotal)}</p>
         </div>
       </div>
 
@@ -249,16 +252,16 @@ export function SalesDetailedReport({
                       <span className={`px-1.5 py-0.5 rounded text-[10px] ${r.payment === 'نقدي' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'}`}>{r.payment}</span>
                     </td>
                     <td className="p-2 text-center">{r.items}</td>
-                    <td className="p-2 text-center text-green-600">{formatCurrency(r.profit)}</td>
-                    <td className="p-2 text-center font-bold">{formatCurrency(r.total)}</td>
+                    <td className="p-2 text-center text-green-600">{formatReportAmount(r.profit)}</td>
+                    <td className="p-2 text-center font-bold">{formatReportAmount(r.total)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-muted/30 font-bold">
                 <tr>
                   <td className="p-2" colSpan={6}>الإجمالي ({stats.count} فاتورة)</td>
-                  <td className="p-2 text-center text-green-600">{formatCurrency(stats.totalProfit)}</td>
-                  <td className="p-2 text-center">{formatCurrency(stats.totalSales)}</td>
+                  <td className="p-2 text-center text-green-600">{formatReportAmount(stats.totalProfit)}</td>
+                  <td className="p-2 text-center">{formatReportAmount(stats.totalSales)}</td>
                 </tr>
               </tfoot>
             </table>

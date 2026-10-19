@@ -31,6 +31,7 @@ export interface AtomicSaleBundle {
   total: number;
   currency: string;
   currencySymbol?: string;
+  currencyName?: string;
   exchangeRate?: number;
   profit: number;
   warehouseId?: string;

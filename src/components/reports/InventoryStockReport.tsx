@@ -9,7 +9,8 @@ import { loadProductsLocalFirst, refreshProductsFromCloud, type Product } from '
 import { loadWarehousesCloud, type Warehouse } from '@/lib/cloud/warehouses-cloud';
 import { saveStockCount, listStockCounts, type StockCount } from '@/lib/cloud/stock-counts-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatReportAmount, cn } from '@/lib/utils';
+import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -166,6 +167,8 @@ export function InventoryStockReport({ dateRange }: Props) {
         </div>
       }
     >
+      <ReportCurrencyBanner />
+
       {/* Accounting Guide Banner */}
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs leading-relaxed text-foreground flex items-start gap-2.5 mb-3">
         <div className="p-1 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
@@ -186,7 +189,7 @@ export function InventoryStockReport({ dateRange }: Props) {
               <ClipboardCheck className="w-4 h-4" /> بدء جرد فعلي
             </Button>
             <div className="text-[11px] text-muted-foreground self-center">
-              إجمالي الأصناف: {formatNumber(filtered.length)} • إجمالي القيمة: {formatCurrency(filtered.reduce((s, p) => s + (p.quantity || 0) * (p.costPrice || 0), 0))}
+              إجمالي الأصناف: {formatNumber(filtered.length)} • إجمالي القيمة: {formatReportAmount(filtered.reduce((s, p) => s + (p.quantity || 0) * (p.costPrice || 0), 0))}
             </div>
           </div>
 
@@ -202,7 +205,7 @@ export function InventoryStockReport({ dateRange }: Props) {
                     <p className={cn('text-xs font-bold', (p.quantity || 0) <= (p.minStockLevel || 0) ? 'text-red-600' : 'text-foreground')}>
                       {formatNumber(p.quantity || 0)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">{formatCurrency((p.quantity || 0) * (p.costPrice || 0))}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatReportAmount((p.quantity || 0) * (p.costPrice || 0))}</p>
                   </div>
                 </div>
               ))}
@@ -220,7 +223,7 @@ export function InventoryStockReport({ dateRange }: Props) {
                   <div key={h.id} className="flex items-center justify-between text-[11px] py-1 border-b border-border/30 last:border-0">
                     <span>{new Date(h.created_at).toLocaleDateString('en-GB')} • {h.items_count} صنف</span>
                     <span className={cn('font-semibold', h.total_variance_value >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                      {h.total_variance_value >= 0 ? '+' : ''}{formatCurrency(h.total_variance_value)}
+                      {h.total_variance_value >= 0 ? '+' : ''}{formatReportAmount(h.total_variance_value)}
                     </span>
                   </div>
                 ))}
@@ -239,7 +242,7 @@ export function InventoryStockReport({ dateRange }: Props) {
             </div>
             <div className={cn('flex items-center gap-2 text-xs rounded-lg p-2', totalVarianceValue < 0 ? 'bg-red-500/10 text-red-700' : totalVarianceValue > 0 ? 'bg-emerald-500/10 text-emerald-700' : 'bg-muted/50 text-muted-foreground')}>
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>إجمالي قيمة الفروقات: <strong>{formatCurrency(totalVarianceValue)}</strong></span>
+              <span>إجمالي قيمة الفروقات: <strong>{formatReportAmount(totalVarianceValue)}</strong></span>
             </div>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="ملاحظات الجرد (اختياري)" className="h-16 text-xs" />
           </CardContent></Card>

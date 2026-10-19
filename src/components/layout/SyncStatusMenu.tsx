@@ -297,9 +297,15 @@ export function SyncStatusMenu() {
                   {getItemStatusIcon(item.status)}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatTime(item.timestamp)}
-                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>{formatTime(item.timestamp)}</span>
+                      {item.meta?.partyOrItem && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate max-w-[12rem]">{item.meta.partyOrItem}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                   <Badge
                     variant={item.status === 'failed' ? 'destructive' : item.status === 'synced' ? 'secondary' : 'outline'}

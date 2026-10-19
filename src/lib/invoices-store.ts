@@ -37,6 +37,11 @@ export interface Invoice {
   debtRemainingInCurrency?: number;
   currency: string;
   currencySymbol: string;
+  currency_symbol?: string;
+  currencyName?: string;
+  currency_name?: string;
+  exchangeRate?: number;
+  exchange_rate?: number;
   paymentType: PaymentType;
   status: InvoiceStatus;
   // For maintenance invoices

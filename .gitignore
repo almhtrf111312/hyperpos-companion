@@ -44,3 +44,6 @@ record_mobile_tour.mjs
 recordings/
 scratch/
 supabase/.temp/
+/reports/
+/test_runner/
+test_plan_extracted.md

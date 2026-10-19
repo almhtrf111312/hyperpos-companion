@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { getDisplayCurrency, getCurrencySymbolByCode } from "./currencies";
+import { getDisplayCurrency, getCurrencySymbolByCode, getActiveStoreCurrency, formatReportAmount } from "./currencies";
+export { getActiveStoreCurrency, formatReportAmount };
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -58,7 +59,7 @@ export function formatNumber(num: number, decimals: number = 3): string {
 export function formatCurrency(amount: number, symbol?: string, decimals: number = 2): string {
   let effectiveSymbol = symbol;
   if (!effectiveSymbol) {
-    effectiveSymbol = getDisplayCurrency().symbol;
+    effectiveSymbol = getActiveStoreCurrency().symbol;
   }
 
   const formatter = new Intl.NumberFormat('en-US', {
@@ -80,7 +81,7 @@ export function formatCurrency(amount: number, symbol?: string, decimals: number
 
 // Format money with correct symbol from currencyCode or default display currency
 export function formatMoney(amount: number, currencyCode?: string, decimals: number = 2): string {
-  const sym = currencyCode ? getCurrencySymbolByCode(currencyCode) : getDisplayCurrency().symbol;
+  const sym = currencyCode ? getCurrencySymbolByCode(currencyCode) : getActiveStoreCurrency().symbol;
   return formatCurrency(amount, sym, decimals);
 }
 

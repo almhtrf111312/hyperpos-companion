@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ReportShell } from './ReportShell';
 import { listStockDiscrepancies, type StockDiscrepancy } from '@/lib/cloud/stock-discrepancies-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { cn, formatCurrency, formatNumber } from '@/lib/utils';
+import { cn, formatCurrency, formatNumber, formatReportAmount } from '@/lib/utils';
+import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -75,7 +76,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
     summary: [
       { label: 'منتجات بفروقات', value: mismatches.length },
       { label: 'فرق الوحدات', value: totalUnits },
-      { label: 'قيمة الفروقات', value: formatCurrency(totalValue) },
+      { label: 'قيمة الفروقات', value: formatReportAmount(totalValue) },
     ],
   };
 
@@ -89,6 +90,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
       exportDisabled={loading}
       hideExportToolbar={true}
     >
+      <ReportCurrencyBanner />
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading} className="h-9 gap-1.5">
           <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} /> تحديث
@@ -98,7 +100,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         <Card><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">منتجات بفروقات</p><p className="mt-1 text-lg font-bold text-destructive">{formatNumber(mismatches.length)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">فرق الوحدات</p><p className="mt-1 text-lg font-bold">{formatNumber(totalUnits)}</p></CardContent></Card>
-        <Card className="col-span-2 md:col-span-1"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">قيمة الفروقات</p><p className="mt-1 text-lg font-bold text-destructive">{formatCurrency(totalValue)}</p></CardContent></Card>
+        <Card className="col-span-2 md:col-span-1"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">قيمة الفروقات</p><p className="mt-1 text-lg font-bold text-destructive">{formatReportAmount(totalValue)}</p></CardContent></Card>
       </div>
 
       <Card><CardContent className="p-0">
@@ -122,7 +124,7 @@ export function StockDiscrepancyReport({ search, warehouseId }: Props) {
                   <div className="grid grid-cols-3 gap-2 mt-2 text-[10px]">
                     <span className="text-muted-foreground">المتوقع: <b className="text-foreground">{formatNumber(row.expected_quantity)}</b></span>
                     <span className="text-muted-foreground">الفعلي: <b className="text-foreground">{formatNumber(row.actual_quantity)}</b></span>
-                    <span className="text-muted-foreground">القيمة: <b className="text-foreground">{formatCurrency(Math.abs(row.variance_value))}</b></span>
+                    <span className="text-muted-foreground">القيمة: <b className="text-foreground">{formatReportAmount(Math.abs(row.variance_value))}</b></span>
                   </div>
                 </div>
               </div>

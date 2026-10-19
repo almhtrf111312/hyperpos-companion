@@ -5,9 +5,21 @@ import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { sendLocalNotification } from '@/lib/native-notifications';
 import { formatMoney } from '@/lib/utils';
 
+export type NotificationCategory = 'sale' | 'expense' | 'debt' | 'inventory' | 'purchase' | 'sync' | 'system';
+
+export interface NotificationMeta {
+  operationTitle?: string;
+  amountText?: string;
+  partyOrItem?: string;
+  syncState?: 'synced' | 'pending' | 'failed';
+  details?: string;
+}
+
 export interface Notification {
   id: string;
-  type: 'debt_overdue' | 'debt_due_today' | 'low_stock' | 'out_of_stock' | 'expired' | 'expiring_soon' | 'license_status' | 'license_expiring';
+  type: 'debt_overdue' | 'debt_due_today' | 'low_stock' | 'out_of_stock' | 'expired' | 'expiring_soon' | 'license_status' | 'license_expiring' | 'sale' | 'expense' | 'debt' | 'inventory' | 'purchase' | 'sync' | 'system';
+  category?: NotificationCategory;
+  meta?: NotificationMeta;
   title: string;
   message: string;
   timestamp: Date;
