@@ -9,7 +9,7 @@ import { loadProductsLocalFirst, refreshProductsFromCloud, type Product } from '
 import { loadWarehousesCloud, type Warehouse } from '@/lib/cloud/warehouses-cloud';
 import { saveStockCount, listStockCounts, type StockCount } from '@/lib/cloud/stock-counts-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { formatCurrency, formatNumber, formatReportAmount, cn } from '@/lib/utils';
+import { formatNumber, formatReportAmount, cn } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';

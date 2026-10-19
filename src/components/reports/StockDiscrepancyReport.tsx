@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ReportShell } from './ReportShell';
 import { listStockDiscrepancies, type StockDiscrepancy } from '@/lib/cloud/stock-discrepancies-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { cn, formatCurrency, formatNumber, formatReportAmount } from '@/lib/utils';
+import { cn, formatNumber, formatReportAmount } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/use-language';

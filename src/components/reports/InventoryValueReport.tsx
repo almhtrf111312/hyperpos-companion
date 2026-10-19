@@ -5,7 +5,7 @@ import { ReportShell } from './ReportShell';
 import { Card, CardContent } from '@/components/ui/card';
 import { loadProductsLocalFirst, refreshProductsFromCloud, type Product } from '@/lib/cloud/products-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { formatCurrency, formatNumber, formatReportAmount, cn } from '@/lib/utils';
+import { formatNumber, formatReportAmount, cn } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { useLanguage } from '@/hooks/use-language';
 

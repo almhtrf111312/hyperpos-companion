@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { FileText, Download, Calendar, DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatReportAmount } from '@/lib/utils';
+import { formatReportAmount } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { Invoice } from '@/lib/cloud/invoices-cloud';
 import { Expense } from '@/lib/cloud/expenses-cloud';
