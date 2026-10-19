@@ -6,17 +6,31 @@ import { cn } from "@/lib/utils";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+export function getSavedToastDuration(): number {
+  if (typeof window === 'undefined') return 2600;
+  try {
+    const saved = localStorage.getItem('hyperpos_toast_duration');
+    if (saved) {
+      const val = Number(saved);
+      if (!isNaN(val) && val >= 500 && val <= 10000) return val;
+    }
+  } catch {}
+  return 2600;
+}
+
 /**
  * Standardized Flow POS Pro Toast Component
- * - Mobile (<768px): top-center with safe area offset.
+ * - Mobile (<768px): top-center with safe area offset (58px).
  * - iPad / PC (>=768px): bottom-right (bottom-left in RTL).
- * - Success: 2.6s (2-3s standard).
- * - Error: Stays until dismissed by user.
+ * - Success / Info: user configured duration (default 2.6s).
+ * - Warning: 6s minimum.
+ * - Error: Stays until dismissed by user with close button.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
   const { isRTL } = useLanguage();
   const isMobile = useIsMobile();
+  const defaultDuration = getSavedToastDuration();
 
   const position = isMobile
     ? "top-center"
@@ -29,7 +43,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       position={position}
-      duration={2600}
+      duration={defaultDuration}
       visibleToasts={3}
       closeButton={false}
       swipeDirections={isMobile ? ['left', 'right', 'top'] : ['left', 'right', 'bottom']}
@@ -41,7 +55,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         '--front-toast-width': 'auto'
       } as React.CSSProperties}
       toastOptions={{
-        duration: 2600,
+        duration: defaultDuration,
         classNames: {
           toast: cn(
             "group toast w-auto min-w-[21rem] max-w-[94vw] sm:max-w-[30rem]",
@@ -73,7 +87,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
 /**
  * Standardized toast API wrapper:
- * - toast.success: auto-dismisses after 2.6s
+ * - toast.success: auto-dismisses after hyperpos_toast_duration (default 2.6s)
+ * - toast.info: auto-dismisses after hyperpos_toast_duration
+ * - toast.warning: persists at least 6s with close button
  * - toast.error: persists until dismissed by the user with close button
  */
 export const toast = Object.assign(
@@ -86,9 +102,20 @@ export const toast = Object.assign(
         closeButton: true,
         ...data,
       }),
+    warning: (message: any, data?: any) =>
+      sonnerToast.warning(message, {
+        duration: 6000,
+        closeButton: true,
+        ...data,
+      }),
+    info: (message: any, data?: any) =>
+      sonnerToast.info(message, {
+        duration: getSavedToastDuration(),
+        ...data,
+      }),
     success: (message: any, data?: any) =>
       sonnerToast.success(message, {
-        duration: 2600,
+        duration: getSavedToastDuration(),
         ...data,
       }),
   }

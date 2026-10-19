@@ -2,10 +2,12 @@ import { toast } from 'sonner';
 import { showSmartToast } from '@/hooks/use-smart-toast';
 
 /**
- * Unified toast notification utility linked to Smart Dynamic Island Notifications
+ * Unified toast notification utility linked to Flow POS Pro notifications system
  * 
- * ✅ Includes throttling to prevent repeated notifications
- * ✅ Automatically displays the new Smart Dynamic Island UI for all app actions
+ * ✅ Standardized Sonner toast implementation across the app
+ * ✅ Retains SmartToast exclusively for completed sale invoices
+ * ✅ Prevents message stacking using deterministic message IDs
+ * ✅ Throttles rapid identical messages
  */
 
 // Throttle map to prevent repeated notifications
@@ -25,16 +27,16 @@ const getThrottleKey = (type: string, message: string): string => {
 const shouldShowToast = (key: string): boolean => {
   const now = Date.now();
   
-  // ✅ Aggressive throttling - block if same message appeared very recently
+  // Aggressive throttling - block if same message appeared very recently
   const recentTime = recentMessages.get(key);
   if (recentTime && now - recentTime < AGGRESSIVE_THROTTLE_MS) {
-    return false; // Blocked by aggressive throttle
+    return false;
   }
   
-  // ✅ Normal throttling
+  // Normal throttling
   const lastTime = lastToastTime.get(key);
   if (lastTime && now - lastTime < THROTTLE_MS) {
-    return false; // Blocked by normal throttle
+    return false;
   }
   
   lastToastTime.set(key, now);
@@ -59,7 +61,20 @@ setInterval(() => {
   }
 }, 30000);
 
+export function getSavedToastDuration(): number {
+  if (typeof window === 'undefined') return 2600;
+  try {
+    const saved = localStorage.getItem('hyperpos_toast_duration');
+    if (saved) {
+      const val = Number(saved);
+      if (!isNaN(val) && val >= 500 && val <= 10000) return val;
+    }
+  } catch {}
+  return 2600;
+}
+
 export interface ToastOptions {
+  id?: string | number;
   description?: string;
   persistent?: boolean;
   operation?: string;
@@ -76,6 +91,7 @@ export interface ToastOptions {
     onClick: () => void;
   };
   duration?: number;
+  isInvoice?: boolean;
 }
 
 function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
@@ -99,17 +115,52 @@ function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
   };
 }
 
+function formatHelperDescription(options?: ToastOptions): string | undefined {
+  if (!options) return undefined;
+  if (options.description) return options.description;
+  const parts: string[] = [];
+  if (options.itemName) parts.push(options.itemName);
+  if (options.itemCount && options.itemCount > 1) parts.push(`${options.itemCount} قطع`);
+  if (options.price) parts.push(`${options.price}`);
+  return parts.length > 0 ? parts.join(' • ') : undefined;
+}
+
 export const showToast = {
   success: (message: string, optionsOrDesc?: string | ToastOptions) => {
     const key = getThrottleKey('success', message);
     if (!shouldShowToast(key)) return;
     
-    const parsed = parseToastArgs(optionsOrDesc);
-    showSmartToast({
-      title: message,
-      type: 'success',
-      time: 'الآن',
-      ...parsed,
+    const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
+    const isInvoiceSale = isObj && Boolean(optionsOrDesc.invoiceNumber || optionsOrDesc.isInvoice);
+
+    // 🌟 الكرت الكبير مخصص حصراً لاكتمال فاتورة البيع
+    if (isInvoiceSale) {
+      const parsed = parseToastArgs(optionsOrDesc);
+      showSmartToast({
+        title: message,
+        type: 'success',
+        time: 'الآن',
+        ...parsed,
+      });
+      return;
+    }
+
+    // 🔔 كل ما عدا ذلك يُعرض عبر Sonner
+    const desc = typeof optionsOrDesc === 'string'
+      ? optionsOrDesc
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+
+    const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
+    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
+
+    toast.success(message, {
+      id: toastId,
+      description: desc || undefined,
+      duration,
+      action: isObj && optionsOrDesc.primaryAction ? {
+        label: optionsOrDesc.primaryAction.label,
+        onClick: optionsOrDesc.primaryAction.onClick,
+      } : undefined,
     });
   },
     
@@ -117,14 +168,27 @@ export const showToast = {
     const key = getThrottleKey('error', message);
     if (!shouldShowToast(key)) return;
     
-    const parsed = parseToastArgs(optionsOrDesc);
-    const persistent = typeof optionsOrDesc === 'object' && optionsOrDesc?.persistent;
-    showSmartToast({
-      title: message,
-      type: 'error',
-      time: 'الآن',
-      duration: parsed.duration || (persistent ? 10000 : 5000),
-      ...parsed,
+    const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
+    const desc = typeof optionsOrDesc === 'string'
+      ? optionsOrDesc
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+
+    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
+    // الأخطاء: إما مستمرة حتى الإغلاق اليدوي بالزر (Default) أو مدة 6 ثوانٍ على الأقل
+    const isPersistent = !isObj || optionsOrDesc.persistent !== false;
+    const duration = (isObj && optionsOrDesc.duration)
+      ? Math.max(optionsOrDesc.duration, 6000)
+      : (isPersistent ? Infinity : 6000);
+
+    toast.error(message, {
+      id: toastId,
+      description: desc || undefined,
+      duration,
+      closeButton: true,
+      action: isObj && optionsOrDesc.primaryAction ? {
+        label: optionsOrDesc.primaryAction.label,
+        onClick: optionsOrDesc.primaryAction.onClick,
+      } : undefined,
     });
   },
     
@@ -132,12 +196,23 @@ export const showToast = {
     const key = getThrottleKey('warning', message);
     if (!shouldShowToast(key)) return;
     
-    const parsed = parseToastArgs(optionsOrDesc);
-    showSmartToast({
-      title: message,
-      type: 'warning',
-      time: 'الآن',
-      ...parsed,
+    const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
+    const desc = typeof optionsOrDesc === 'string'
+      ? optionsOrDesc
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+
+    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
+    const duration = (isObj && optionsOrDesc.duration) ? Math.max(optionsOrDesc.duration, 6000) : 6000;
+
+    toast.warning(message, {
+      id: toastId,
+      description: desc || undefined,
+      duration,
+      closeButton: true,
+      action: isObj && optionsOrDesc.primaryAction ? {
+        label: optionsOrDesc.primaryAction.label,
+        onClick: optionsOrDesc.primaryAction.onClick,
+      } : undefined,
     });
   },
     
@@ -145,54 +220,22 @@ export const showToast = {
     const key = getThrottleKey('info', message);
     if (!shouldShowToast(key)) return;
     
-    const parsed = parseToastArgs(optionsOrDesc);
-    showSmartToast({
-      title: message,
-      type: 'info',
-      time: 'الآن',
-      ...parsed,
+    const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
+    const desc = typeof optionsOrDesc === 'string'
+      ? optionsOrDesc
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+
+    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
+    const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
+
+    toast.info(message, {
+      id: toastId,
+      description: desc || undefined,
+      duration,
+      action: isObj && optionsOrDesc.primaryAction ? {
+        label: optionsOrDesc.primaryAction.label,
+        onClick: optionsOrDesc.primaryAction.onClick,
+      } : undefined,
     });
   },
 };
-
-// Global interceptor for any direct toast.* calls throughout the codebase
-if (typeof window !== 'undefined' && !(window as unknown as { __smart_toast_intercepted?: boolean }).__smart_toast_intercepted) {
-  (window as unknown as { __smart_toast_intercepted?: boolean }).__smart_toast_intercepted = true;
-
-  const origSuccess = toast.success;
-  const origError = toast.error;
-  const origWarning = toast.warning;
-  const origInfo = toast.info;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  toast.success = ((message: any, data?: any) => {
-    if (typeof message === 'string') {
-      showToast.success(message, typeof data === 'object' ? data : undefined);
-    }
-    return origSuccess(message, data);
-  }) as typeof toast.success;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  toast.error = ((message: any, data?: any) => {
-    if (typeof message === 'string') {
-      showToast.error(message, typeof data === 'object' ? data : undefined);
-    }
-    return origError(message, data);
-  }) as typeof toast.error;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  toast.warning = ((message: any, data?: any) => {
-    if (typeof message === 'string') {
-      showToast.warning(message, typeof data === 'object' ? data : undefined);
-    }
-    return origWarning(message, data);
-  }) as typeof toast.warning;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  toast.info = ((message: any, data?: any) => {
-    if (typeof message === 'string') {
-      showToast.info(message, typeof data === 'object' ? data : undefined);
-    }
-    return origInfo(message, data);
-  }) as typeof toast.info;
-}

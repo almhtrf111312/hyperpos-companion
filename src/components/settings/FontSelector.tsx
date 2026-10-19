@@ -22,13 +22,13 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
     try {
       const res = await saveUnifiedStoreSettings({ appFont: fontId });
       if (res.status === 'synced') {
-        showToast.success(isRTL ? `تم اعتماد خط: ${fontName} (تمت المزامنة سحابياً)` : `Font changed & synced: ${fontName}`);
+        showToast.success(isRTL ? `تم اعتماد خط: ${fontName} (تمت المزامنة سحابياً)` : `Font changed & synced: ${fontName}`, { id: 'font-change', duration: 1500 });
       } else {
-        showToast.info(isRTL ? `تم اعتماد خط: ${fontName} (محفوظ محلياً - بانتظار المزامنة)` : `Font changed locally (queued): ${fontName}`);
+        showToast.info(isRTL ? `تم اعتماد خط: ${fontName} (محفوظ محلياً - بانتظار المزامنة)` : `Font changed locally (queued): ${fontName}`, { id: 'font-change', duration: 1500 });
       }
     } catch (e) {
       console.warn('Sync appFont error:', e);
-      showToast.success(isRTL ? `تم اعتماد خط: ${fontName}` : `Font changed to: ${fontName}`);
+      showToast.success(isRTL ? `تم اعتماد خط: ${fontName}` : `Font changed to: ${fontName}`, { id: 'font-change', duration: 1500 });
     }
   };
 

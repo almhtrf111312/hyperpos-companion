@@ -823,7 +823,6 @@ export default function POS() {
             return;
           }
           setSearchQuery(barcode);
-          showToast.success(t('pos.productFound').replace('{name}', availableMatches[0].name) || `Found: ${availableMatches[0].name}`);
           return;
         }
         setVariantMatches(availableMatches);
@@ -845,7 +844,6 @@ export default function POS() {
         return;
       }
       setSearchQuery(barcode);
-      showToast.success(t('pos.productFound').replace('{name}', matches[0].name) || `Found: ${matches[0].name}`);
       return;
     }
 
@@ -882,7 +880,7 @@ export default function POS() {
           return;
         }
         setSearchQuery(barcode);
-        showToast.success(t('pos.productFound').replace('{name}', cloudProduct.name) || `Found: ${cloudProduct.name}`);
+        return;
       } else {
         setSearchQuery(barcode);
         showToast.info(`${t('pos.barcode')}: ${barcode}`, t('pos.barcodeNotFound'));
@@ -1071,12 +1069,12 @@ export default function POS() {
     onClearCart: () => {
       if (cart.length > 0) {
         clearCart();
-        showToast.success(t('pos.cartCleared'));
+        showToast.success(t('pos.cartCleared'), { id: 'pos-cart-cleared', duration: 1500 });
       }
     },
     onToggleMode: () => {
       setActiveMode(prev => prev === 'products' ? 'maintenance' : 'products');
-      showToast.info(activeMode === 'products' ? t('pos.switchedToMaintenance') : t('pos.switchedToProducts'));
+      showToast.info(activeMode === 'products' ? t('pos.switchedToMaintenance') : t('pos.switchedToProducts'), { id: 'pos-toggle-mode', duration: 1500 });
     },
     enabled: !isMobile,
   });

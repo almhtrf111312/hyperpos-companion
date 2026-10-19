@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { getDueExpenses, executeAutoPayRecurringExpenses } from '@/lib/recurring-expenses-store';
-import { showSmartToast } from '@/hooks/use-smart-toast';
+import { toast } from 'sonner';
 import { formatNumber } from '@/lib/utils';
 
 export function useDueExpensesChecker() {
@@ -10,12 +10,10 @@ export function useDueExpensesChecker() {
         // 1. تنفيذ الدفع التلقائي للمصاريف المجدولة مع ضمان عدم التكرار (Idempotency)
         const autoPaidCount = await executeAutoPayRecurringExpenses();
         if (autoPaidCount > 0) {
-          showSmartToast({
-            title: 'دفع تلقائي لمصروف دوري',
-            subtitle: `تم خصم وسداد ${autoPaidCount} مصروف دوري مستحق تلقائياً من الصندوق`,
-            type: 'info',
-            time: 'الآن',
-            duration: 4500
+          toast.info('دفع تلقائي لمصروف دوري', {
+            id: 'auto-pay-due-expenses',
+            description: `تم خصم وسداد ${autoPaidCount} مصروف دوري مستحق تلقائياً من الصندوق`,
+            duration: 4500,
           });
         }
 
@@ -23,18 +21,16 @@ export function useDueExpensesChecker() {
         const manualDue = getDueExpenses().filter(e => !e.autoPay);
         if (manualDue.length > 0) {
           const totalAmount = manualDue.reduce((sum, e) => sum + e.amount, 0);
-          showSmartToast({
-            title: `تنبيه: يوجد ${manualDue.length} مصروف مستحق السداد اليوم`,
-            subtitle: `إجمالي المستحق: $${formatNumber(totalAmount, 2)} - اضغط للمراجعة والسداد`,
-            type: 'warning',
-            time: 'الآن',
+          toast.warning(`تنبيه: يوجد ${manualDue.length} مصروف مستحق السداد اليوم`, {
+            id: 'manual-due-expenses-alert',
+            description: `إجمالي المستحق: $${formatNumber(totalAmount, 2)} - اضغط للمراجعة والسداد`,
             duration: 6000,
-            primaryAction: {
+            action: {
               label: 'مراجعة وسداد',
               onClick: () => {
                 window.location.hash = '#/expenses';
-              }
-            }
+              },
+            },
           });
         }
       } catch (err) {
