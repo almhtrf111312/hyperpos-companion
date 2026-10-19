@@ -251,6 +251,23 @@ export function isInvoiceCustomDate(createdAt?: string | null, targetDate?: stri
   return false;
 }
 
+/**
+ * فحص مطابقة تاريخ الفاتورة ضمن نطاق زمني (من تاريخ إلى تاريخ)
+ */
+export function isInvoiceInRange(createdAt?: string | null, from?: string, to?: string): boolean {
+  if (!createdAt) return false;
+  if (!from && !to) return true;
+  try {
+    const invDate = getLocalDateString(new Date(createdAt));
+    if (from && invDate < from) return false;
+    if (to && invDate > to) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
 export default function Invoices() {
   const { t, language, isRTL } = useLanguage();
 
@@ -273,7 +290,11 @@ export default function Invoices() {
   const [filterType, setFilterType] = useState<'all' | InvoiceType | 'shipping'>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt' | 'card'>('all');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
-  const [showDetailedStats, setShowDetailedStats] = useState(false);
+  const [showDetailedStats, setShowDetailedStats] = useState(true);
+
+  const [customDateMode, setCustomDateMode] = useState<'single' | 'range'>('single');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const todayStr = useMemo(() => getLocalDateString(), []);
   const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilter>('today');
@@ -491,13 +512,19 @@ export default function Invoices() {
     if (dateQuickFilter === 'week') return periodSales.week;
     if (dateQuickFilter === 'month') return periodSales.month;
     if (dateQuickFilter === 'year') return periodSales.year;
-    if (dateQuickFilter === 'custom' && dateFilter) {
-      const customInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceCustomDate(inv.createdAt, dateFilter));
-      const sum = customInvs.reduce((acc, inv) => acc + (inv.total || 0), 0);
-      return { total: roundCurrency(sum * statExchangeRate), count: customInvs.length };
+    if (dateQuickFilter === 'custom') {
+      if (customDateMode === 'single' && dateFilter) {
+        const customInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceCustomDate(inv.createdAt, dateFilter));
+        const sum = customInvs.reduce((acc, inv) => acc + (inv.total || 0), 0);
+        return { total: roundCurrency(sum * statExchangeRate), count: customInvs.length };
+      } else if (customDateMode === 'range' && (dateFrom || dateTo)) {
+        const customInvs = invoices.filter(inv => inv.status !== 'refunded' && isInvoiceInRange(inv.createdAt, dateFrom, dateTo));
+        const sum = customInvs.reduce((acc, inv) => acc + (inv.total || 0), 0);
+        return { total: roundCurrency(sum * statExchangeRate), count: customInvs.length };
+      }
     }
     return periodSales.all;
-  }, [dateQuickFilter, dateFilter, periodSales, invoices, statExchangeRate]);
+  }, [dateQuickFilter, dateFilter, customDateMode, dateFrom, dateTo, periodSales, invoices, statExchangeRate]);
 
   const currentPeriodTitle = useMemo(() => {
     switch (dateQuickFilter) {
@@ -505,10 +532,14 @@ export default function Invoices() {
       case 'week': return tx('reports.thisWeek', 'هذا الأسبوع');
       case 'month': return tx('reports.thisMonth', 'هذا الشهر');
       case 'year': return tx('reports.thisYear', 'هذا العام');
-      case 'custom': return dateFilter || tx('common.customDate', 'تاريخ مخصص');
+      case 'custom':
+        if (customDateMode === 'range' && (dateFrom || dateTo)) {
+          return `${dateFrom || '...'} → ${dateTo || '...'}`;
+        }
+        return dateFilter || tx('common.customDate', 'تاريخ مخصص');
       default: return tx('invoices.allInvoices', 'كل الفترات');
     }
-  }, [dateQuickFilter, dateFilter, tx]);
+  }, [dateQuickFilter, dateFilter, customDateMode, dateFrom, dateTo, tx]);
 
   const handleSetPeriod = (period: 'today' | 'week' | 'month' | 'year' | 'all') => {
     setDateQuickFilter(period);
@@ -527,17 +558,23 @@ export default function Invoices() {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (dateQuickFilter !== 'all') count++;
-    if (dateQuickFilter === 'custom' && dateFilter) count++;
+    if (dateQuickFilter === 'custom') {
+      if (customDateMode === 'single' && dateFilter) count++;
+      if (customDateMode === 'range' && (dateFrom || dateTo)) count++;
+    }
     if (filterPayment !== 'all') count++;
     if (filterType !== 'all') count++;
     if (displayCurrencyFilter !== 'stored') count++;
     if (showRefunded) count++;
     return count;
-  }, [dateQuickFilter, dateFilter, filterPayment, filterType, displayCurrencyFilter, showRefunded]);
+  }, [dateQuickFilter, dateFilter, customDateMode, dateFrom, dateTo, filterPayment, filterType, displayCurrencyFilter, showRefunded]);
 
   const resetAllFilters = () => {
     setDateQuickFilter('all');
     setDateFilter('');
+    setCustomDateMode('single');
+    setDateFrom('');
+    setDateTo('');
     setFilterPayment('all');
     setFilterType('all');
     setDisplayCurrencyFilter('stored');
@@ -659,12 +696,16 @@ export default function Invoices() {
       result = result.filter(inv => isInvoiceThisMonth(inv.createdAt));
     } else if (dateQuickFilter === 'year') {
       result = result.filter(inv => isInvoiceThisYear(inv.createdAt));
-    } else if (dateQuickFilter === 'custom' && dateFilter) {
-      result = result.filter(inv => isInvoiceCustomDate(inv.createdAt, dateFilter));
+    } else if (dateQuickFilter === 'custom') {
+      if (customDateMode === 'single' && dateFilter) {
+        result = result.filter(inv => isInvoiceCustomDate(inv.createdAt, dateFilter));
+      } else if (customDateMode === 'range' && (dateFrom || dateTo)) {
+        result = result.filter(inv => isInvoiceInRange(inv.createdAt, dateFrom, dateTo));
+      }
     }
 
     return result;
-  }, [invoices, debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, showRefunded, refundMeta]);
+  }, [invoices, debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, customDateMode, dateFrom, dateTo, showRefunded, refundMeta]);
 
   // KPI Card Filter Handlers
   const handleKpiTotal = () => {
@@ -3199,7 +3240,7 @@ export default function Invoices() {
           </div>
 
           {/* Scrollable Filter Controls */}
-          <div className="p-4 space-y-4 overflow-y-auto text-xs font-bold flex-1">
+          <div className="p-4 space-y-4 overflow-y-auto overflow-x-hidden w-full max-w-full box-border text-xs font-bold flex-1">
             {/* 1. Time Period */}
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
@@ -3233,41 +3274,125 @@ export default function Invoices() {
                 })}
               </div>
 
-              {/* Custom Date Picker in Sheet */}
-              <div className="mt-2.5 bg-muted/30 p-2.5 rounded-xl border border-border/70 flex items-center justify-between text-[11px]">
-                <span className="text-muted-foreground font-bold">{tx('common.customDate', 'تاريخ مخصص:')}</span>
-                <div className="flex items-center gap-1 w-44">
-                  <DatePicker
-                    value={dateFilter}
-                    onChange={(val) => {
-                      setDateFilter(val);
-                      if (val) {
-                        setDateQuickFilter('custom');
-                        setActiveKpi(null);
-                      } else {
-                        setDateQuickFilter('all');
-                        setActiveKpi('total');
-                      }
-                    }}
-                    placeholder={tx('common.allDates', 'كل التواريخ')}
-                    className="h-8 px-2 text-[11px] bg-card border-border rounded-xl"
-                    highlightedDates={salesInvoiceDates}
-                  />
-                  {dateFilter && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
+              {/* Custom Date / Range Selector in Sheet */}
+              <div className="mt-2.5 bg-muted/30 p-2.5 rounded-xl border border-border/70 space-y-2 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-bold">{tx('common.customDate', 'تاريخ مخصص:')}</span>
+                  <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border/60">
+                    <button
+                      type="button"
                       onClick={() => {
-                        setDateFilter('');
-                        setDateQuickFilter('all');
-                        setActiveKpi('total');
+                        setCustomDateMode('single');
+                        if (dateFilter) {
+                          setDateQuickFilter('custom');
+                          setActiveKpi(null);
+                        }
                       }}
+                      className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                        customDateMode === 'single'
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
+                      {tx('invoices.singleDate', 'يوم محدد')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomDateMode('range');
+                        if (dateFrom || dateTo) {
+                          setDateQuickFilter('custom');
+                          setActiveKpi(null);
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                        customDateMode === 'range'
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {tx('invoices.dateRange', 'من تاريخ إلى تاريخ')}
+                    </button>
+                  </div>
                 </div>
+
+                {customDateMode === 'single' ? (
+                  <div className="flex items-center gap-1 w-full">
+                    <DatePicker
+                      value={dateFilter}
+                      onChange={(val) => {
+                        setDateFilter(val);
+                        if (val) {
+                          setDateQuickFilter('custom');
+                          setActiveKpi(null);
+                        } else {
+                          setDateQuickFilter('all');
+                          setActiveKpi('total');
+                        }
+                      }}
+                      placeholder={tx('common.allDates', 'كل التواريخ')}
+                      className="h-8 px-2 text-[11px] bg-card border-border rounded-xl flex-1"
+                      highlightedDates={salesInvoiceDates}
+                    />
+                    {dateFilter && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => {
+                          setDateFilter('');
+                          setDateQuickFilter('all');
+                          setActiveKpi('total');
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5 w-full">
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground block">{tx('common.from', 'من:')}</span>
+                      <DatePicker
+                        value={dateFrom}
+                        onChange={(val) => {
+                          setDateFrom(val);
+                          if (val || dateTo) {
+                            setDateQuickFilter('custom');
+                            setActiveKpi(null);
+                          } else {
+                            setDateQuickFilter('all');
+                            setActiveKpi('total');
+                          }
+                        }}
+                        placeholder={tx('common.fromDate', 'من تاريخ')}
+                        className="h-8 px-2 text-[11px] bg-card border-border rounded-xl w-full"
+                        highlightedDates={salesInvoiceDates}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground block">{tx('common.to', 'إلى:')}</span>
+                      <DatePicker
+                        value={dateTo}
+                        onChange={(val) => {
+                          setDateTo(val);
+                          if (val || dateFrom) {
+                            setDateQuickFilter('custom');
+                            setActiveKpi(null);
+                          } else {
+                            setDateQuickFilter('all');
+                            setActiveKpi('total');
+                          }
+                        }}
+                        placeholder={tx('common.toDate', 'إلى تاريخ')}
+                        className="h-8 px-2 text-[11px] bg-card border-border rounded-xl w-full"
+                        highlightedDates={salesInvoiceDates}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -3277,12 +3402,11 @@ export default function Invoices() {
                 <CreditCard className="w-3.5 h-3.5 text-primary" />
                 <span>{tx('invoices.paymentMethod', 'طريقة الدفع:')}</span>
               </label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {[
                   { id: 'all' as const, label: tx('common.all', 'الكل') },
                   { id: 'cash' as const, label: tx('invoices.cash', 'نقداً') },
                   { id: 'debt' as const, label: tx('invoices.credit', 'دين') },
-                  { id: 'card' as const, label: tx('invoices.network', 'شبكة') },
                 ].map((pm) => {
                   const isSelected = filterPayment === pm.id;
                   return (
@@ -3310,12 +3434,11 @@ export default function Invoices() {
                 <FileText className="w-3.5 h-3.5 text-primary" />
                 <span>{tx('invoices.invoiceType', 'نوع الفاتورة:')}</span>
               </label>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {[
                   { id: 'all' as const, label: tx('common.all', 'الكل') },
                   { id: 'sale' as const, label: tx('invoices.sales', 'بيع') },
                   { id: 'maintenance' as const, label: tx('invoices.maintenance', 'صيانة') },
-                  { id: 'shipping' as const, label: tx('invoices.shipping', 'شحن') },
                 ].map((it) => {
                   const isSelected = filterType === it.id;
                   return (
@@ -3371,67 +3494,53 @@ export default function Invoices() {
               </div>
             </div>
 
-            {/* 4. Display Currency */}
+            {/* 5. Display Currency */}
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-primary" />
                 <span>{tx('invoices.displayCurrency', 'عملة العرض في القائمة:')}</span>
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                <button
+                <Button
                   type="button"
+                  variant={displayCurrencyFilter === 'stored' ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setDisplayCurrencyFilter('stored')}
                   className={cn(
-                    "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                    "h-9 text-xs font-bold rounded-xl transition-all",
                     displayCurrencyFilter === 'stored'
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "border-border/60 hover:bg-muted text-muted-foreground"
                   )}
                 >
                   {tx('invoices.asInInvoice', 'العملة الأصلية')}
-                </button>
-                {enabledCurrencies.TRY && (
-                  <button
-                    type="button"
-                    onClick={() => setDisplayCurrencyFilter('TRY')}
-                    className={cn(
-                      "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
-                      displayCurrencyFilter === 'TRY'
-                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                        : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {currencySymbols?.TRY || '₺'} TRY
-                  </button>
-                )}
-                {enabledCurrencies.SYP && (
-                  <button
-                    type="button"
-                    onClick={() => setDisplayCurrencyFilter('SYP')}
-                    className={cn(
-                      "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
-                      displayCurrencyFilter === 'SYP'
-                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                        : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {currencySymbols?.SYP || 'ل.س'} SYP
-                  </button>
-                )}
-                {enabledCurrencies.USD !== false && (
-                  <button
-                    type="button"
-                    onClick={() => setDisplayCurrencyFilter('USD')}
-                    className={cn(
-                      "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer",
-                      displayCurrencyFilter === 'USD'
-                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                        : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                  >
-                    $ USD
-                  </button>
-                )}
+                </Button>
+
+                {Object.entries(enabledCurrencies).map(([code, isEnabled]) => {
+                  if (!isEnabled) return null;
+                  const currCode = code as 'USD' | 'TRY' | 'SYP';
+                  const sym = currencySymbols?.[currCode] || getCurrencySymbolByCode(currCode);
+                  const name = currencyNames?.[currCode] || (currCode === 'USD' ? 'دولار' : currCode === 'TRY' ? 'ليرة تركية' : 'ليرة سورية');
+                  const isSelected = displayCurrencyFilter === currCode;
+                  return (
+                    <Button
+                      key={currCode}
+                      type="button"
+                      variant={isSelected ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setDisplayCurrencyFilter(currCode)}
+                      className={cn(
+                        "h-9 text-xs font-bold rounded-xl transition-all",
+                        isSelected
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "border-border/60 hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <span>{name}</span>
+                      <span className="opacity-80 text-[10px] mr-1">({sym})</span>
+                    </Button>
+                  );
+                })}
               </div>
             </div>
 

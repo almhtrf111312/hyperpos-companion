@@ -102,7 +102,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { getLocalizedUnit as localizeProductUnit } from '@/lib/product-units';
 import { useCamera } from '@/hooks/use-camera';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
-import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
 import { getSignedImageUrl } from '@/lib/image-upload';
@@ -159,7 +158,7 @@ export default function Products() {
   const [isSaving, setIsSaving] = useState(false);
   const deleteGuard = useActionGuard();
   const [selectedCategory, setSelectedCategory] = useState(t('products.all'));
-  const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock'>('all');
   const [unitFilter, setUnitFilter] = useState<'all' | 'multi_unit' | 'single_unit'>('all');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -196,7 +195,6 @@ export default function Products() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [showPurchaseInvoiceDialog, setShowPurchaseInvoiceDialog] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [imagePreviewBase64, setImagePreviewBase64] = useState<string>('');
@@ -540,7 +538,7 @@ export default function Products() {
   // تتبع ما إذا كانت أي نافذة تفاعلية مفتوحة لمنع مقاطعة المستخدم أثناء العمل
   const isAnyProductModalOpenRef = useRef(false);
   isAnyProductModalOpenRef.current = Boolean(
-    showAddDialog || showEditDialog || showDeleteDialog || showRestockDialog || showPurchaseInvoiceDialog || showHardDeleteDialog
+    showAddDialog || showEditDialog || showDeleteDialog || showRestockDialog || showHardDeleteDialog
   );
   const pendingProductRefreshRef = useRef(false);
 
@@ -579,13 +577,13 @@ export default function Products() {
 
   // تنفيذ أي تحديث مؤجل عند إغلاق النوافذ المنبثقة
   useEffect(() => {
-    const isAnyOpen = showAddDialog || showEditDialog || showDeleteDialog || showRestockDialog || showPurchaseInvoiceDialog || showHardDeleteDialog;
+    const isAnyOpen = showAddDialog || showEditDialog || showDeleteDialog || showRestockDialog || showHardDeleteDialog;
     if (!isAnyOpen && pendingProductRefreshRef.current) {
       pendingProductRefreshRef.current = false;
       loadData(true);
       loadArchivedData(true);
     }
-  }, [showAddDialog, showEditDialog, showDeleteDialog, showRestockDialog, showPurchaseInvoiceDialog, showHardDeleteDialog, loadData, loadArchivedData]);
+  }, [showAddDialog, showEditDialog, showDeleteDialog, showRestockDialog, showHardDeleteDialog, loadData, loadArchivedData]);
 
   // Auto-open add dialog from URL params
   // ✅ يُنفَّذ مرة واحدة فقط لكل طلب فتح، حتى لا يُمسح ما يكتبه المستخدم عند تحديث الفئات
@@ -838,18 +836,17 @@ export default function Products() {
     return products.filter(product => {
       if (product.archived) return false;
 
-      // Status filtering (Total, In Stock, Low Stock, Out of Stock)
+      // استبعاد المنتجات المنتهية تماماً من قسم النشطة (تذهب حصراً للأرشيف)
+      if (!noInventory && product.quantity <= 0) return false;
+
+      // تصفية حسب حالة التوفر المتبقية (متوفر / منخفض)
       if (!noInventory) {
-        if (statusFilter === 'out_of_stock') {
-          if (product.quantity > 0) return false;
-        } else if (statusFilter === 'in_stock') {
-          if (product.quantity <= 0) return false;
-          if (product.status && product.status !== 'in_stock') return false;
+        if (statusFilter === 'in_stock') {
+          if (product.quantity <= (product.minStock || 5)) return false;
         } else if (statusFilter === 'low_stock') {
-          if (product.quantity <= 0) return false;
-          if (product.status !== 'low_stock') return false;
+          const minStock = product.minStock || 5;
+          if (product.quantity > minStock) return false;
         }
-        // statusFilter === 'all': Displays all active products regardless of inventory
       } else {
         if (statusFilter !== 'all' && product.status !== statusFilter) return false;
       }
@@ -866,13 +863,13 @@ export default function Products() {
   }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, t]);
 
   const activeProductsCount = useMemo(() => {
-    return products.filter(p => !p.archived).length;
-  }, [products]);
+    return products.filter(p => !p.archived && (noInventory || p.quantity > 0)).length;
+  }, [products, noInventory]);
 
   const stats = {
     total: activeProductsCount,
-    inStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.status === 'in_stock').length,
-    lowStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.status === 'low_stock').length,
+    inStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && (noInventory ? p.status === 'in_stock' : p.quantity > (p.minStock || 5))).length,
+    lowStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && (noInventory ? p.status === 'low_stock' : p.quantity <= (p.minStock || 5))).length,
     outOfStock: products.filter(p => !p.archived && p.quantity <= 0).length,
     multiUnit: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.conversionFactor && p.conversionFactor > 1).length,
   };
@@ -1466,19 +1463,6 @@ export default function Products() {
             <span>{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
-          {/* 3. فاتورة شراء */}
-          {!noInventory && (
-            <button
-              type="button"
-              onClick={() => setShowPurchaseInvoiceDialog(true)}
-              className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer w-auto flex-shrink-0"
-              title={t('products.purchaseInvoice') || 'فاتورة شراء'}
-            >
-              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              <span>{t('products.purchaseInvoice') || 'فاتورة شراء'}</span>
-            </button>
-          )}
-
           {/* 4. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
           <button
             type="button"
@@ -1580,7 +1564,7 @@ export default function Products() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-1.5 md:gap-3">
+            <div className="grid grid-cols-3 gap-1.5 md:gap-3">
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
@@ -1627,22 +1611,6 @@ export default function Products() {
                 <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
                   <span className="text-xs sm:text-base font-bold text-foreground leading-none">{stats.lowStock}</span>
                   <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.low')}</span>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('out_of_stock')}
-                className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-destructive/40",
-                  statusFilter === 'out_of_stock' ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
-                )}
-              >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
-                </div>
-                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
-                  <span className="text-xs sm:text-base font-bold text-foreground leading-none">{stats.outOfStock}</span>
-                  <span className="text-[9px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5 sm:mt-0">{t('products.outOfStock')}</span>
                 </div>
               </button>
             </div>
@@ -3633,13 +3601,6 @@ export default function Products() {
           onClose={() => setShowCategoryManager(false)}
           onCategoriesChange={reloadCategories}
           usedCategories={usedCategories}
-        />
-
-        {/* Purchase Invoice Dialog */}
-        <PurchaseInvoiceDialog
-          open={showPurchaseInvoiceDialog}
-          onOpenChange={setShowPurchaseInvoiceDialog}
-          onSuccess={loadData}
         />
 
         {/* Quick Restock Dialog */}
