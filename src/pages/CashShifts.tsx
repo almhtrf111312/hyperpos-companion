@@ -12,7 +12,7 @@ import {
 } from '@/lib/cashbox-store';
 import { EVENTS } from '@/lib/events';
 import { useActionGuard } from '@/hooks/use-action-guard';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatMoney, formatDateTime } from '@/lib/utils';
 import { addActivityLog } from '@/lib/activity-log';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -44,7 +44,6 @@ import {
   TrendingUp,
   TrendingDown,
   Clock,
-  DollarSign,
   AlertTriangle,
   CheckCircle2,
   ArrowDownRight,
@@ -190,7 +189,7 @@ export default function CashShifts() {
       TRY: tryAmt,
       SYP: sypAmt,
     });
-    addActivityLog('shift_opened', userId, userName, `${t('cashShifts.startShift')} - $${totalOpeningUSD} (USD: $${usd}, TRY: ₺${tryAmt}, SYP: ل.س${sypAmt})`);
+    addActivityLog('shift_opened', userId, userName, `${t('cashShifts.startShift')} - ${formatMoney(totalOpeningUSD, 'USD')} (USD: ${formatMoney(usd, 'USD')}, TRY: ${formatMoney(tryAmt, 'TRY')}, SYP: ${formatMoney(sypAmt, 'SYP')})`);
     toast.success(t('cashShifts.shiftOpened'));
 
     setShowStartDialog(false);
@@ -255,10 +254,10 @@ export default function CashShifts() {
         const discrepancyText = discrepancy === 0
           ? t('cashShifts.noDiscrepancy')
           : discrepancy > 0
-            ? `${t('cashShifts.surplus')} $${discrepancy.toFixed(2)}`
-            : `${t('cashShifts.shortage')} $${Math.abs(discrepancy).toFixed(2)}`;
+            ? `${t('cashShifts.surplus')} ${formatMoney(discrepancy, 'USD')}`
+            : `${t('cashShifts.shortage')} ${formatMoney(Math.abs(discrepancy), 'USD')}`;
 
-        addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText} (USD: $${usd}, TRY: ₺${tryAmt}, SYP: ل.س${sypAmt})`);
+        addActivityLog('shift_closed', userId, userName, `${t('cashShifts.closeShift')} - ${discrepancyText} (USD: ${formatMoney(usd, 'USD')}, TRY: ${formatMoney(tryAmt, 'TRY')}, SYP: ${formatMoney(sypAmt, 'SYP')})`);
         toast.success(t('cashShifts.shiftClosed'), { description: discrepancyText });
       }
     } catch (err) {
@@ -343,7 +342,7 @@ export default function CashShifts() {
               </div>
               <div className="bg-background rounded-lg p-4 border border-primary">
                 <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                  <DollarSign className="h-4 w-4 text-primary" />
+                  <Banknote className="h-4 w-4 text-primary" />
                   {t('cashShifts.expectedCash')}
                 </div>
                 <div className="text-xl font-bold text-primary">{formatCurrency(shiftStatus.expectedCash, '$')}</div>
@@ -367,7 +366,7 @@ export default function CashShifts() {
                   <div className="bg-background rounded-lg p-3 border space-y-2">
                     <div className="flex items-center justify-between font-bold text-sm">
                       <span className="flex items-center gap-1.5 text-blue-600">
-                        <DollarSign className="w-4 h-4" /> الدولار الأمريكي (USD)
+                        <Banknote className="w-4 h-4" /> الدولار الأمريكي (USD)
                       </span>
                       <Badge variant="outline" className="font-mono text-xs">$</Badge>
                     </div>
@@ -689,10 +688,10 @@ export default function CashShifts() {
               <div className="p-3 rounded-lg border bg-background space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
                   <Label htmlFor="closingUSD" className="font-semibold flex items-center gap-1 text-blue-600">
-                    <DollarSign className="w-3.5 h-3.5" /> الدولار الأمريكي ($ USD)
+                    <Banknote className="w-3.5 h-3.5" /> الدولار الأمريكي ($ USD)
                   </Label>
                   <span className="text-muted-foreground">
-                    المتوقع: <strong className="text-foreground font-mono">${openShiftCurrencies?.USD.expected.toFixed(2) ?? shiftStatus.expectedCash.toFixed(2)}</strong>
+                    المتوقع: <strong className="text-foreground font-mono">{formatMoney(openShiftCurrencies?.USD.expected ?? shiftStatus.expectedCash, 'USD')}</strong>
                   </span>
                 </div>
                 <Input

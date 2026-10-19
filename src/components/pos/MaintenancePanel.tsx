@@ -3,7 +3,6 @@ import {
   Wrench,
   User,
   Phone,
-  DollarSign,
   Calculator,
   Banknote,
   CreditCard,
@@ -23,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { cn, formatNumber, formatCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatMoney } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -272,7 +271,7 @@ export function MaintenancePanel({
           'maintenance',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة $${formatNumber(servicePrice)} للعميل ${effectiveName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
+          `خدمة صيانة ${paymentType === 'cash' ? 'نقدي' : 'بالدين'} بقيمة ${formatMoney(servicePrice)} للعميل ${effectiveName} - نوع الخدمة: ${getServiceLabel() || 'غير محدد'} - نوع الجهاز: ${getProductLabel() || 'غير محدد'}`,
           {
             invoiceId: invoice.id,
             total: servicePrice,
@@ -291,7 +290,7 @@ export function MaintenancePanel({
             'debt_created',
             user.id,
             profile?.full_name || user.email || 'مستخدم',
-            `تم إنشاء دين صيانة للعميل ${effectiveName} بقيمة $${formatNumber(servicePrice)}`,
+            `تم إنشاء دين صيانة للعميل ${effectiveName} بقيمة ${formatMoney(servicePrice)}`,
             { invoiceId: invoice.id, amount: servicePrice, customerName: effectiveName }
           );
         }
@@ -450,7 +449,7 @@ ${footer}`;
                       placeholder={t('maintenance.customerName')}
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm"
+                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm"
                     />
                   </div>
                 </div>
@@ -466,7 +465,7 @@ ${footer}`;
                       placeholder="+963 xxx xxx xxx"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ''))}
-                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm text-left"
+                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm text-left"
                     />
                   </div>
                 </div>
@@ -480,7 +479,7 @@ ${footer}`;
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('maintenance.serviceType')}</label>
                     <Select value={serviceType} onValueChange={setServiceType}>
-                      <SelectTrigger className="h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm">
+                      <SelectTrigger className="h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm">
                         <SelectValue placeholder={t('maintenance.select')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -496,7 +495,7 @@ ${footer}`;
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">{t('maintenance.deviceType')}</label>
                     <Select value={productType} onValueChange={setProductType}>
-                      <SelectTrigger className="h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm">
+                      <SelectTrigger className="h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm">
                         <SelectValue placeholder={t('maintenance.select')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -519,7 +518,7 @@ ${footer}`;
                     placeholder="تفاصيل إضافية عن الخدمة..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm min-h-20 resize-none p-3"
+                    className="bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm min-h-20 resize-none p-3"
                   />
                 </div>
               </div>
@@ -533,13 +532,13 @@ ${footer}`;
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">سعر الخدمة (دولار)</label>
                   <div className="relative">
-                    <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Banknote className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       type="number"
                       placeholder="0"
                       value={servicePrice || ''}
                       onChange={(e) => setServicePrice(Number(e.target.value))}
-                      className="pr-10 h-12 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm text-lg font-bold"
+                      className="pr-10 h-12 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm text-lg font-bold"
                     />
                   </div>
                 </div>
@@ -553,7 +552,7 @@ ${footer}`;
                       placeholder="0"
                       value={partsCost || ''}
                       onChange={(e) => setPartsCost(Number(e.target.value))}
-                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-all shadow-sm"
+                      className="pr-10 h-11 bg-background/90 border border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl transition-colors shadow-sm"
                     />
                   </div>
                 </div>
@@ -569,7 +568,7 @@ ${footer}`;
                       "text-lg font-bold",
                       profit >= 0 ? "text-green-500" : "text-red-500"
                     )}>
-                      ${formatNumber(profit)}
+                      {formatMoney(profit)}
                     </span>
                   </div>
                 </div>
@@ -669,7 +668,7 @@ ${footer}`;
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowCashDialog(false)} className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95" disabled={isSaving}>
+            <Button variant="outline" onClick={() => setShowCashDialog(false)} className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-[colors,transform] active:scale-95" disabled={isSaving}>
               {t('common.cancel')}
             </Button>
             <Button
@@ -712,11 +711,11 @@ ${footer}`;
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('maintenance.debtAmount')}</span>
-              <span className="font-bold text-orange-500">${formatNumber(servicePrice)}</span>
+              <span className="font-bold text-orange-500">{formatMoney(servicePrice)}</span>
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowDebtDialog(false)} className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95" disabled={isSaving}>
+            <Button variant="outline" onClick={() => setShowDebtDialog(false)} className="flex-1 h-12 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-[colors,transform] active:scale-95" disabled={isSaving}>
               {t('common.cancel')}
             </Button>
             <Button

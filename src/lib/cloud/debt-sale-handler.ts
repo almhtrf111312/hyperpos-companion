@@ -175,7 +175,7 @@ export async function processDebtSaleWithOfflineSupport(
       // ✅ أرقام الخادم هي المعتمدة (التكلفة من جدول المنتجات، الضريبة خارج الربح)
       const revenue = Math.round((sale.total - sale.taxAmount) * 100) / 100;
       addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue, localId);
-      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue }).catch(() => {});
+      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue, currency: 'USD' }).catch(() => {});
     }
     
     // Step 7: Distribute to partners - ✅ استخدام Cloud API

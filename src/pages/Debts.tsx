@@ -5,7 +5,7 @@ import {
   Plus,
   Phone,
   Calendar,
-  DollarSign,
+  Banknote,
   AlertTriangle,
   Clock,
   CheckCircle,
@@ -18,7 +18,7 @@ import {
   Trash2,
   MoreVertical
 } from 'lucide-react';
-import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -116,7 +116,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
   const statusConfig = {
     due: { label: t('debts.statusDue'), icon: Clock, color: 'badge-info' },
-    partially_paid: { label: t('debts.statusPartiallyPaid'), icon: DollarSign, color: 'badge-warning' },
+    partially_paid: { label: t('debts.statusPartiallyPaid'), icon: Banknote, color: 'badge-warning' },
     overdue: { label: t('debts.statusOverdue'), icon: AlertTriangle, color: 'badge-danger' },
     fully_paid: { label: t('debts.statusFullyPaid'), icon: CheckCircle, color: 'badge-success' },
   };
@@ -412,8 +412,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       // Log activity
       if (user) {
         const currDesc = paymentCurrency !== 'USD'
-          ? `${paymentAmountInput} ${paymentCurrency} (ظٹط¹ط§ط¯ظ„ $${formatNumber(finalPaymentUSD)} ط¨ط³ط¹ط± طµط±ظپ ${currentRate})`
-          : `$${formatNumber(finalPaymentUSD)}`;
+          ? `${paymentAmountInput} ${paymentCurrency} (يعادل ${formatMoney(finalPaymentUSD, 'USD')} بسعر صرف ${currentRate})`
+          : formatMoney(finalPaymentUSD, paymentCurrency);
         addActivityLog(
           'debt_paid',
           user.id,
@@ -512,7 +512,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       {!embedded && (
         <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
           <Button
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-all cursor-pointer"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-xs text-xs gap-1.5 transition-colors cursor-pointer"
             onClick={() => handleAddDebtDialogChange(true)}
           >
             <Plus className="w-4 h-4" />
@@ -559,7 +559,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               key={filter.key}
               onClick={() => setSelectedFilter(filter.key)}
               className={cn(
-                "px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-all text-[11px] shrink-0 shadow-xs border",
+                "px-2.5 py-1 rounded-xl font-bold whitespace-nowrap transition-colors text-[11px] shrink-0 shadow-xs border",
                 selectedFilter === filter.key
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card border-border text-muted-foreground hover:text-foreground"
@@ -592,7 +592,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               <div
                 key={debt.id}
                 onClick={() => openViewDialog(debt)}
-                className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+                className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-[border-color,transform] cursor-pointer select-none"
               >
                 {/* Top-Left Options Dropdown */}
                 <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
@@ -606,7 +606,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       {debt.remainingDebt > 0 && (
                         <DropdownMenuItem onClick={() => openPaymentDialog(debt)} className="justify-between cursor-pointer">
                           <span>تسديد دفعة</span>
-                          <DollarSign className="w-4 h-4 text-emerald-600" />
+                          <Banknote className="w-4 h-4 text-emerald-600" />
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem onClick={() => openViewDialog(debt)} className="justify-between cursor-pointer">
@@ -690,7 +690,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   </div>
                   <div className="h-1 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      className="h-full bg-primary rounded-full transition-[width] duration-300"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -764,7 +764,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
             <div>
               <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('debts.amount')} ($) *</label>
               <div className="relative">
-                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Banknote className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -816,7 +816,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <DollarSign className="w-4 h-4" />
+                  <Banknote className="w-4 h-4" />
                 </div>
                 <span>{t('debts.recordPayment')}</span>
               </DialogTitle>
@@ -862,7 +862,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'USD'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -882,7 +882,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'TRY'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -902,7 +902,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'SYP'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -1112,7 +1112,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                   openPaymentDialog(selectedDebt);
                 }}
               >
-                <DollarSign className="w-3.5 h-3.5" />
+                <Banknote className="w-3.5 h-3.5" />
                 {t('debts.recordPayment')}
               </Button>
             )}

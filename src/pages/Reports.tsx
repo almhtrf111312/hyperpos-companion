@@ -5,7 +5,6 @@ import {
   BarChart3,
   BookOpen,
   TrendingUp,
-  DollarSign,
   ShoppingCart,
   Users,
   UsersRound,
@@ -45,7 +44,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
-import { cn, formatNumber, formatCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatMoney } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/use-theme';
@@ -742,8 +741,8 @@ export default function Reports() {
       case 'sales':
         return [
           {
-            icon: DollarSign,
-            value: formatCurrency(reportData.summary.totalSales),
+            icon: Banknote,
+            value: formatCurrency(reportData.summary.totalSales, '$'),
             label: t('reports.totalSales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -751,7 +750,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(reportData.summary.totalProfit),
+            value: formatCurrency(reportData.summary.totalProfit, '$'),
             label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -767,7 +766,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(reportData.summary.avgOrderValue),
+            value: formatCurrency(reportData.summary.avgOrderValue, '$'),
             label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -779,7 +778,7 @@ export default function Reports() {
         return [
           {
             icon: TrendingUp,
-            value: formatCurrency(reportData.summary.totalProfit),
+            value: formatCurrency(reportData.summary.totalProfit, '$'),
             label: t('reports.totalNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -794,8 +793,8 @@ export default function Reports() {
             subtext: t('reports.overallProfitRate') || 'معدل الربحية العام',
           },
           {
-            icon: DollarSign,
-            value: formatCurrency(reportData.summary.totalSales),
+            icon: Banknote,
+            value: formatCurrency(reportData.summary.totalSales, '$'),
             label: t('reports.profitGeneratingSales'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
@@ -803,7 +802,7 @@ export default function Reports() {
           },
           {
             icon: Coins,
-            value: formatCurrency(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0),
+            value: formatCurrency(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0, '$'),
             label: t('reports.avgProfitPerInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -818,8 +817,8 @@ export default function Reports() {
         const totalQty = prods.reduce((s, p) => s + (p.quantity || 0), 0);
         return [
           {
-            icon: DollarSign,
-            value: formatCurrency(costValue),
+            icon: Banknote,
+            value: formatCurrency(costValue, '$'),
             label: t('reports.inventoryValueAtCost'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -827,7 +826,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(saleValue),
+            value: formatCurrency(saleValue, '$'),
             label: t('reports.expectedSalesValue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -890,7 +889,7 @@ export default function Reports() {
             label: t('reports.totalAuditQuantities'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
-            subtext: `${t('reports.atCostValue') || 'بالتكلفة'}: ${formatCurrency(costValue)}`,
+            subtext: `${t('reports.atCostValue') || 'بالتكلفة'}: ${formatCurrency(costValue, '$')}`,
           },
         ];
       }
@@ -911,8 +910,8 @@ export default function Reports() {
             subtext: t('reports.salesMovementInPeriod') || 'حركة المبيعات بالفترة',
           },
           {
-            icon: DollarSign,
-            value: formatCurrency(totalRev),
+            icon: Banknote,
+            value: formatCurrency(totalRev, '$'),
             label: t('reports.productsSalesRevenue'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -946,7 +945,7 @@ export default function Reports() {
         return [
           {
             icon: Banknote,
-            value: formatCurrency(remDebt),
+            value: formatCurrency(remDebt, '$'),
             label: t('reports.totalOutstandingDebts'),
             color: 'text-rose-600',
             bg: 'bg-rose-500/10',
@@ -954,15 +953,15 @@ export default function Reports() {
           },
           {
             icon: UserCheck,
-            value: formatCurrency(paidDebt),
+            value: formatCurrency(paidDebt, '$'),
             label: t('reports.totalPaid'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
             subtext: t('reports.collectedPayments') || 'دفعات تم تحصيلها',
           },
           {
-            icon: DollarSign,
-            value: formatCurrency(origDebt),
+            icon: Banknote,
+            value: formatCurrency(origDebt, '$'),
             label: t('reports.totalOriginalDebt'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -998,8 +997,8 @@ export default function Reports() {
             subtext: t('reports.orderedInPeriod') || 'أجروا طلبات خلال الفترة',
           },
           {
-            icon: DollarSign,
-            value: formatCurrency(reportData.summary.totalSales),
+            icon: Banknote,
+            value: formatCurrency(reportData.summary.totalSales, '$'),
             label: t('reports.totalCustomerPurchases'),
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
@@ -1145,8 +1144,8 @@ export default function Reports() {
         const dAvg = dOrders > 0 ? dSales / dOrders : 0;
         return [
           {
-            icon: DollarSign,
-            value: formatCurrency(dSales),
+            icon: Banknote,
+            value: formatCurrency(dSales, '$'),
             label: t('reports.todaySales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1154,7 +1153,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(dProfit),
+            value: formatCurrency(dProfit, '$'),
             label: t('reports.todayNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1170,7 +1169,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(dAvg),
+            value: formatCurrency(dAvg, '$'),
             label: t('reports.avgDailyInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1204,7 +1203,7 @@ export default function Reports() {
             label: t('reports.topSalesCashier'),
             color: 'text-primary',
             bg: 'bg-primary/10',
-            subtext: topC ? `مبيعات: ${formatCurrency(topC[1].total)}` : 'لا توجد بيانات',
+            subtext: topC ? `مبيعات: ${formatCurrency(topC[1].total, '$')}` : 'لا توجد بيانات',
           },
           {
             icon: ShoppingBag,
@@ -1223,8 +1222,8 @@ export default function Reports() {
             subtext: 'باشروا البيع بالفترة',
           },
           {
-            icon: DollarSign,
-            value: formatCurrency(avgC),
+            icon: Banknote,
+            value: formatCurrency(avgC, '$'),
             label: t('reports.avgSalesPerCashier'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1241,8 +1240,8 @@ export default function Reports() {
         const mAvg = mCount > 0 ? mTot / mCount : 0;
         return [
           {
-            icon: DollarSign,
-            value: formatCurrency(mTot),
+            icon: Banknote,
+            value: formatCurrency(mTot, '$'),
             label: t('reports.totalMaintenanceServices'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1250,7 +1249,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(mProf),
+            value: formatCurrency(mProf, '$'),
             label: t('reports.maintenanceNetProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1266,7 +1265,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(mAvg),
+            value: formatCurrency(mAvg, '$'),
             label: t('reports.avgMaintenanceInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1278,8 +1277,8 @@ export default function Reports() {
       default:
         return [
           {
-            icon: DollarSign,
-            value: formatCurrency(reportData.summary.totalSales),
+            icon: Banknote,
+            value: formatCurrency(reportData.summary.totalSales, '$'),
             label: t('reports.totalSales'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1287,7 +1286,7 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatCurrency(reportData.summary.totalProfit),
+            value: formatCurrency(reportData.summary.totalProfit, '$'),
             label: t('reports.netProfit'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1303,7 +1302,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(reportData.summary.avgOrderValue),
+            value: formatCurrency(reportData.summary.avgOrderValue, '$'),
             label: t('reports.avgOrderValue'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1921,9 +1920,9 @@ export default function Reports() {
       const dist = exp.distributions.find(d => d.partnerName === partnerName);
       return sum + (dist?.amount || 0);
     }, 0);
-    const report = `📊 تقرير المصاريف - ${partnerName}\n📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n\n💰 إجمالي المصاريف المشتركة: $${formatNumber(partnerTotal)}\n\n📋 التفاصيل:\n${partnerExpenses.map(exp => {
+    const report = `📊 تقرير المصاريف - ${partnerName}\n📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n\n💰 إجمالي المصاريف المشتركة: ${formatMoney(partnerTotal, 'USD')}\n\n📋 التفاصيل:\n${partnerExpenses.map(exp => {
       const dist = exp.distributions.find(d => d.partnerName === partnerName);
-      return `• ${exp.date} - ${exp.typeLabel}: $${formatNumber(dist?.amount || 0)}`;
+      return `• ${exp.date} - ${exp.typeLabel}: ${formatMoney(dist?.amount || 0, 'USD')}`;
     }).join('\n')}\n\n---\nتم إنشاء التقرير بواسطة HyperPOS`;
     window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     toast.success(t('reports.shareWhatsapp'));
@@ -2046,7 +2045,7 @@ export default function Reports() {
               setViewTab('summary');
             }}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
               activeReport === 'sales'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
@@ -2062,7 +2061,7 @@ export default function Reports() {
               setActiveReport('inventory');
             }}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
               activeReport === 'inventory'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
@@ -2078,7 +2077,7 @@ export default function Reports() {
               setActiveReport('debts');
             }}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
               activeReport === 'debts'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
@@ -2094,7 +2093,7 @@ export default function Reports() {
               setActiveReport('expenses');
             }}
             className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border active:scale-95 w-full",
+              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
               activeReport === 'expenses'
                 ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-card border-border/70 hover:bg-muted text-foreground"
@@ -2107,7 +2106,7 @@ export default function Reports() {
           <button
             type="button"
             onClick={() => setIsAllReportsModalOpen(true)}
-            className="col-span-2 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-all border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm active:scale-95 w-full"
+            className="col-span-2 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm active:scale-95 w-full"
           >
             <span>{t('common.more') || (isRTL ? '+ المزيد' : '+ More')}</span>
           </button>
@@ -2121,7 +2120,7 @@ export default function Reports() {
               type="button"
               onClick={() => handleDatePreset('today')}
               className={cn(
-                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-colors select-none text-xs",
                 datePreset === 'today' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -2131,7 +2130,7 @@ export default function Reports() {
               type="button"
               onClick={() => handleDatePreset('yesterday')}
               className={cn(
-                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-colors select-none text-xs",
                 datePreset === 'yesterday' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -2141,7 +2140,7 @@ export default function Reports() {
               type="button"
               onClick={() => handleDatePreset('week')}
               className={cn(
-                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-colors select-none text-xs",
                 datePreset === 'week' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -2151,7 +2150,7 @@ export default function Reports() {
               type="button"
               onClick={() => handleDatePreset('month')}
               className={cn(
-                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-colors select-none text-xs",
                 datePreset === 'month' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -2161,7 +2160,7 @@ export default function Reports() {
               type="button"
               onClick={() => handleDatePreset('custom')}
               className={cn(
-                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-all select-none text-xs",
+                "flex-1 py-1.5 px-2 text-center rounded-xl font-medium transition-colors select-none text-xs",
                 datePreset === 'custom' ? "bg-primary text-primary-foreground font-bold shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -2178,7 +2177,7 @@ export default function Reports() {
                 value={filters.search}
                 onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 placeholder={t('reports.searchPlaceholder') || (isRTL ? 'بحث بالمنتج أو الرقم...' : 'Search product or number...')}
-                className="w-full h-10 pr-9 pl-3 text-xs bg-background border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/70 transition-all"
+                className="w-full h-10 pr-9 pl-3 text-xs bg-background border border-border/80 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/70 transition-colors"
               />
             </div>
 
@@ -2187,7 +2186,7 @@ export default function Reports() {
               size="icon"
               onClick={() => setShowFilterDrawer(v => !v)}
               className={cn(
-                "h-10 w-10 rounded-xl border-border/80 shrink-0 shadow-sm transition-all",
+                "h-10 w-10 rounded-xl border-border/80 shrink-0 shadow-sm transition-colors",
                 showFilterDrawer && "border-primary bg-primary/10 text-primary"
               )}
               title={t('reports.extraFilter')}
@@ -2199,7 +2198,7 @@ export default function Reports() {
               variant="outline"
               onClick={handleExportExcel}
               disabled={isLoading}
-              className="h-10 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shrink-0 shadow-sm transition-all active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
+              className="h-10 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shrink-0 shadow-sm transition-[colors,transform] active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
               title="Excel"
             >
               <FileSpreadsheet className="w-4 h-4" />
@@ -2210,7 +2209,7 @@ export default function Reports() {
               variant="outline"
               onClick={handleExportPDF}
               disabled={isLoading}
-              className="h-10 px-3 rounded-xl border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 shrink-0 shadow-sm transition-all active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
+              className="h-10 px-3 rounded-xl border-rose-300 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 shrink-0 shadow-sm transition-[colors,transform] active:scale-95 flex items-center gap-1.5 text-[11px] font-bold"
               title="PDF"
             >
               <FileText className="w-4 h-4" />
@@ -2289,6 +2288,15 @@ export default function Reports() {
           </div>
         )}
 
+        {/* USD Currency Notice Banner */}
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-muted/40 border border-border/50 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Banknote className="w-3.5 h-3.5 text-primary" />
+            <span>جميع الأرقام المالية بالدولار الأمريكي ($ USD)</span>
+          </span>
+          <span className="text-[10px] opacity-75">المعايير المعتمدة في التقارير</span>
+        </div>
+
         {/* Dynamic Executive Metrics Cards Grid - adapts to activeReport */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
           {summaryCards.map((card, idx) => {
@@ -2338,7 +2346,7 @@ export default function Reports() {
               handleSwitchView('summary');
             }}
             className={cn(
-              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-all text-center select-none shadow-sm whitespace-normal",
+              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-colors text-center select-none shadow-sm whitespace-normal",
               activeReport === 'sales' && viewTab === 'summary'
                 ? "bg-primary text-primary-foreground border-primary shadow-md"
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
@@ -2353,7 +2361,7 @@ export default function Reports() {
               handleSwitchView('detailed');
             }}
             className={cn(
-              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-all text-center select-none shadow-sm whitespace-normal",
+              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-colors text-center select-none shadow-sm whitespace-normal",
               activeReport === 'sales' && viewTab === 'detailed'
                 ? "bg-primary text-primary-foreground border-primary shadow-md"
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
@@ -2368,7 +2376,7 @@ export default function Reports() {
               handleSwitchView('comprehensive');
             }}
             className={cn(
-              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-all text-center select-none shadow-sm whitespace-normal",
+              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-colors text-center select-none shadow-sm whitespace-normal",
               activeReport === 'sales' && viewTab === 'comprehensive'
                 ? "bg-primary text-primary-foreground border-primary shadow-md"
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
@@ -2492,7 +2500,7 @@ export default function Reports() {
                                 <div className="w-full flex items-end justify-center h-full">
                                   <div 
                                     className={cn(
-                                      "w-6 sm:w-9 rounded-t-xl transition-all duration-300",
+                                      "w-6 sm:w-9 rounded-t-xl transition-[height] duration-300",
                                       isSelected
                                         ? "bg-primary shadow-md shadow-primary/30"
                                         : day.sales > 0
@@ -2815,7 +2823,7 @@ export default function Reports() {
                   type="button"
                   onClick={() => setStockViewMode('audit')}
                   className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
+                    "px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 select-none",
                     stockViewMode === 'audit' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -2826,7 +2834,7 @@ export default function Reports() {
                   type="button"
                   onClick={() => setStockViewMode('discrepancy')}
                   className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 select-none",
+                    "px-3 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 select-none",
                     stockViewMode === 'discrepancy' ? "bg-background text-foreground shadow-sm font-bold" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -2944,7 +2952,7 @@ export default function Reports() {
                           <div key={idx} className="flex items-center gap-4">
                             <span className="text-sm font-medium w-32 truncate">{cat.categoryName}</span>
                             <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                              <div className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-all duration-500" style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }} />
+                              <div className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-[width] duration-500" style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }} />
                             </div>
                             <div className="text-left w-28">
                               <p className="text-sm font-semibold">{formatCurrency(cat.amount)}</p>
@@ -3017,7 +3025,7 @@ export default function Reports() {
                               <div key={idx} className="flex items-center gap-3">
                                 <span className="text-xs text-muted-foreground w-20">{day.date}</span>
                                 <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
-                                  <div className="h-full bg-green-500/70 rounded transition-all duration-500" style={{ width: `${(day.amount / maxDayProfit) * 100}%` }} />
+                                  <div className="h-full bg-green-500/70 rounded transition-[width] duration-500" style={{ width: `${(day.amount / maxDayProfit) * 100}%` }} />
                                 </div>
                                 <span className="text-xs font-semibold w-20 text-left">{formatCurrency(day.amount)}</span>
                               </div>
@@ -3059,7 +3067,7 @@ export default function Reports() {
                         <div key={idx} className="flex items-center gap-4">
                           <span className="text-sm font-medium w-28 truncate">{type.type}</span>
                           <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                            <div className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-all duration-500" style={{ width: `${(type.amount / maxAmount) * 100}%` }} />
+                            <div className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-[width] duration-500" style={{ width: `${(type.amount / maxAmount) * 100}%` }} />
                           </div>
                           <div className="text-left w-28">
                             <p className="text-sm font-semibold">{formatCurrency(type.amount)}</p>
@@ -3092,7 +3100,7 @@ export default function Reports() {
                           </div>
                         </div>
                         <div className="h-2 bg-background rounded-full overflow-hidden">
-                          <div className="h-full bg-destructive/70 rounded-full transition-all duration-500" style={{ width: `${partner.percentage}%` }} />
+                          <div className="h-full bg-destructive/70 rounded-full transition-[width] duration-500" style={{ width: `${partner.percentage}%` }} />
                         </div>
                       </div>
                     ))}
@@ -3109,7 +3117,7 @@ export default function Reports() {
                           <div key={idx} className="flex items-center gap-4">
                             <span className="text-sm text-muted-foreground w-24">{day.date}</span>
                             <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                              <div className="h-full bg-destructive/60 rounded-lg transition-all duration-500" style={{ width: `${(day.amount / maxDaily) * 100}%` }} />
+                              <div className="h-full bg-destructive/60 rounded-lg transition-[width] duration-500" style={{ width: `${(day.amount / maxDaily) * 100}%` }} />
                             </div>
                             <span className="text-sm font-semibold w-24 text-left">{formatCurrency(day.amount)}</span>
                           </div>

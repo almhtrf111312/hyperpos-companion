@@ -216,3 +216,56 @@ export function resolveHistoricalCurrency(
   return { code, symbol, rate };
 }
 
+/**
+ * الحصول على العملة الافتراضية للعرض ورمزها من مصدر الإعدادات الموحد
+ */
+export function getDisplayCurrency(): { code: string; symbol: string } {
+  try {
+    if (typeof window !== 'undefined') {
+      const raw = window.localStorage.getItem('hyperpos_settings_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const primary = (parsed.primaryCurrency || parsed.currencyCode || parsed.defaultCurrency || '').trim().toUpperCase();
+        const enabled = parsed.enabledCurrencies;
+
+        let activeCode = primary;
+        if (enabled && activeCode && enabled[activeCode] === false) {
+          activeCode = enabled.TRY ? 'TRY' : enabled.SYP ? 'SYP' : enabled.USD !== false ? 'USD' : '';
+        }
+        if (!activeCode) {
+          activeCode = enabled?.TRY ? 'TRY' : enabled?.SYP ? 'SYP' : 'USD';
+        }
+
+        const syms = parsed.currencySymbols;
+        const symbol =
+          (syms && syms[activeCode] && typeof syms[activeCode] === 'string' && syms[activeCode].trim())
+            ? syms[activeCode].trim()
+            : (parsed.currencySymbol && typeof parsed.currencySymbol === 'string' && parsed.currencySymbol.trim())
+            ? parsed.currencySymbol.trim()
+            : getCurrencySymbolByCode(activeCode, activeCode);
+
+        return { code: activeCode, symbol };
+      }
+    }
+  } catch {}
+
+  return { code: 'USD', symbol: getCurrencySymbolByCode('USD', '$') };
+}
+
+/**
+ * تحويل مبلغ بالدولار إلى عملة العرض بسعر الصرف المحدد، أو null إذا لم يتوفر السعر التاريخي
+ */
+export function convertUsdToDisplay(
+  amountUsd: number,
+  displayCurrency: string,
+  rateAtDate?: number | null
+): number | null {
+  if (typeof amountUsd !== 'number' || isNaN(amountUsd)) return null;
+  const upper = (displayCurrency || '').trim().toUpperCase();
+  if (upper === 'USD') return amountUsd;
+  if (rateAtDate && typeof rateAtDate === 'number' && !isNaN(rateAtDate) && rateAtDate > 0) {
+    return amountUsd * rateAtDate;
+  }
+  return null;
+}
+

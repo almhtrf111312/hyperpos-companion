@@ -7,11 +7,11 @@ import {
   ArrowRight,
   Package,
   Hash,
-  DollarSign,
+  Banknote,
   CheckCircle2
 } from 'lucide-react';
 import { PurchaseInvoice, PurchaseInvoiceItem } from '@/lib/cloud/purchase-invoices-cloud';
-import { cn } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 
 interface PurchaseReconciliationProps {
   invoice: PurchaseInvoice;
@@ -102,17 +102,17 @@ export function PurchaseReconciliation({
         {/* Grand Total */}
         <div className="grid grid-cols-4 gap-2 items-center p-2 bg-primary/10 rounded-lg text-xs font-medium">
           <div className="flex items-center gap-1">
-            <DollarSign className="w-3 h-3" />
+            <Banknote className="w-3 h-3" />
             الإجمالي
           </div>
-          <div className="text-center">${invoice.expected_grand_total.toFixed(2)}</div>
-          <div className="text-center">${invoice.actual_grand_total.toFixed(2)}</div>
+          <div className="text-center">{formatMoney(invoice.expected_grand_total)}</div>
+          <div className="text-center">{formatMoney(invoice.actual_grand_total)}</div>
           <div className={cn(
             "text-center",
             Math.abs(totalDiff) < 0.01 ? "" : totalDiff > 0 ? "text-success" : "text-destructive"
           )}>
             {totalMatch ? <Check className="w-4 h-4 mx-auto text-success" /> :
-              <span>{totalDiff > 0 ? `+$${totalDiff.toFixed(2)}` : `-$${Math.abs(totalDiff).toFixed(2)}`}</span>}
+              <span>{totalDiff > 0 ? `+${formatMoney(totalDiff)}` : `-${formatMoney(Math.abs(totalDiff))}`}</span>}
           </div>
         </div>
 

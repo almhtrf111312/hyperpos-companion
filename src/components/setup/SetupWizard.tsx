@@ -610,7 +610,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                 <button
                   type="button"
                   onClick={() => onComplete()}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/70 text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/70 text-xs font-semibold transition-[colors,transform] active:scale-95 cursor-pointer"
                   title="إغلاق المعاينة دون حفظ أي تعديلات"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -639,7 +639,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
             {/* Linear Progress Bar */}
             <div className="h-1.5 w-full bg-muted/60 rounded-full overflow-hidden p-0.5">
               <div
-                className="h-full bg-primary rounded-full transition-all duration-300 ease-out shadow-sm shadow-primary/25"
+                className="h-full bg-primary rounded-full transition-[width] duration-300 ease-out shadow-sm shadow-primary/25"
                 style={{ width: `${(step / totalSteps) * 100}%` }}
               />
             </div>
@@ -666,7 +666,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     if (isAccessible) setStep(s.num);
                   }}
                   className={cn(
-                    "shrink-0 min-w-fit sm:min-w-0 sm:w-full flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-3 sm:px-2 rounded-xl border text-center transition-all duration-200 select-none",
+                    "shrink-0 min-w-fit sm:min-w-0 sm:w-full flex items-center justify-center gap-1.5 sm:gap-2 py-2 px-3 sm:px-2 rounded-xl border text-center transition-colors duration-200 select-none",
                     !isAccessible && "opacity-40 cursor-not-allowed pointer-events-none border-border/40 bg-muted/20 text-muted-foreground/50",
                     isActive && "border-primary bg-primary text-primary-foreground font-bold shadow-md shadow-primary/25 scale-[1.01] cursor-pointer ring-2 ring-primary/20",
                     isPast && "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 font-semibold cursor-pointer",
@@ -676,7 +676,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                 >
                   {/* Step status badge */}
                   <div className={cn(
-                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black transition-all",
+                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black transition-colors",
                     isActive && "bg-primary-foreground/20 text-primary-foreground",
                     isPast && "bg-primary text-primary-foreground",
                     isAccessible && !isActive && !isPast && "bg-muted-foreground/20 text-foreground",
@@ -745,7 +745,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                         type="button"
                         onClick={() => setStoreType(st.id)}
                         className={cn(
-                          "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                          "flex flex-col items-start p-3 rounded-xl border text-right transition-colors cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/30"
                             : "border-border/60 bg-card hover:bg-muted/40 hover:border-border"
@@ -850,7 +850,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
               </div>
 
               {/* بطاقة توليد التصنيفات النموذجية تلقائياً حسب نوع النشاط */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-all">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/70 bg-card hover:bg-muted/30 transition-colors">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <Boxes className="w-4 h-4 text-primary shrink-0" />
@@ -914,7 +914,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                           if (curr.code === sec2Code) setSec2Enabled(true);
                         }}
                         className={cn(
-                          "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all relative cursor-pointer",
+                          "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-colors relative cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
                             : "border-border/60 bg-card hover:bg-muted/40"
@@ -1194,7 +1194,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                       type="button"
                       onClick={() => setPaperSize('80mm')}
                       className={cn(
-                        "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                        "flex flex-col items-start p-3 rounded-xl border text-right transition-colors cursor-pointer",
                         paperSize === '80mm'
                           ? "border-primary bg-primary/10 shadow-xs"
                           : "border-border/60 bg-background hover:bg-muted/40"
@@ -1213,7 +1213,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                       type="button"
                       onClick={() => setPaperSize('57mm')}
                       className={cn(
-                        "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                        "flex flex-col items-start p-3 rounded-xl border text-right transition-colors cursor-pointer",
                         paperSize === '57mm'
                           ? "border-primary bg-primary/10 shadow-xs"
                           : "border-border/60 bg-background hover:bg-muted/40"
@@ -1265,7 +1265,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     type="button"
                     onClick={() => setBarcodeDevice('camera')}
                     className={cn(
-                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                      "flex flex-col items-start p-3 rounded-xl border text-right transition-colors cursor-pointer",
                       barcodeDevice === 'camera'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-card hover:bg-muted/40"
@@ -1290,7 +1290,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     type="button"
                     onClick={() => setBarcodeDevice('scanner')}
                     className={cn(
-                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                      "flex flex-col items-start p-3 rounded-xl border text-right transition-colors cursor-pointer",
                       barcodeDevice === 'scanner'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-card hover:bg-muted/40"
@@ -1315,7 +1315,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     type="button"
                     onClick={() => setBarcodeDevice('manual')}
                     className={cn(
-                      "flex flex-col items-start p-3 rounded-xl border text-right transition-all cursor-pointer",
+                      "flex flex-col items-start p-3 rounded-xl border text-right transition-colors cursor-pointer",
                       barcodeDevice === 'manual'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-card hover:bg-muted/40"
@@ -1359,7 +1359,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                   type="button"
                   onClick={() => setHasPartners('no')}
                   className={cn(
-                    "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer",
+                    "flex items-center justify-between p-3.5 rounded-xl border-2 transition-colors cursor-pointer",
                     hasPartners === 'no'
                       ? "border-primary bg-primary/10 shadow-xs"
                       : "border-border/60 bg-muted/30 hover:bg-muted/50"
@@ -1373,7 +1373,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                   type="button"
                   onClick={() => setHasPartners('yes')}
                   className={cn(
-                    "flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer",
+                    "flex items-center justify-between p-3.5 rounded-xl border-2 transition-colors cursor-pointer",
                     hasPartners === 'yes'
                       ? "border-primary bg-primary/10 shadow-xs"
                       : "border-border/60 bg-muted/30 hover:bg-muted/50"
@@ -1508,7 +1508,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                           setStoredAppFont(f.id);
                         }}
                         className={cn(
-                          "py-2.5 px-3 rounded-xl border text-right transition-all flex items-center justify-between cursor-pointer",
+                          "py-2.5 px-3 rounded-xl border text-right transition-colors flex items-center justify-between cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
                             : "border-border/60 bg-card hover:bg-muted/40"
@@ -1549,7 +1549,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                           setStoredUIScale(scale.id);
                         }}
                         className={cn(
-                          "py-2 px-1 rounded-xl border text-center transition-all cursor-pointer",
+                          "py-2 px-1 rounded-xl border text-center transition-[colors,transform] cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary text-primary-foreground font-bold shadow-xs scale-[1.02]"
                             : "border-border/60 bg-card text-foreground hover:bg-muted/40"
@@ -1573,7 +1573,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     type="button"
                     onClick={() => setThemeMode('light')}
                     className={cn(
-                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all cursor-pointer",
+                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-colors cursor-pointer",
                       themeMode === 'light'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-muted/40 hover:bg-muted/70"
@@ -1593,7 +1593,7 @@ export function SetupWizard({ onComplete, isPreview }: SetupWizardProps) {
                     type="button"
                     onClick={() => setThemeMode('dark')}
                     className={cn(
-                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-all cursor-pointer",
+                      "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border-2 transition-colors cursor-pointer",
                       themeMode === 'dark'
                         ? "border-primary bg-primary/10 shadow-xs"
                         : "border-border/60 bg-muted/40 hover:bg-muted/70"

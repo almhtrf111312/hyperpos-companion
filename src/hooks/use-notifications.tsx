@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { loadProductsCloud, getStatus } from '@/lib/cloud/products-cloud';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { sendLocalNotification } from '@/lib/native-notifications';
+import { formatMoney } from '@/lib/utils';
 
 export interface Notification {
   id: string;
@@ -273,14 +274,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             alertsCount++;
             addNotification({
               type: 'debt_overdue', title: 'دين متأخر',
-              message: `الدين المستحق من ${debt.customerName} بقيمة $${debt.remainingDebt} متأخر عن موعد السداد`,
+              message: `الدين المستحق من ${debt.customerName} بقيمة ${formatMoney(debt.remainingDebt)} متأخر عن موعد السداد`,
               data: { customerId: debt.id, customerName: debt.customerName, amount: debt.remainingDebt },
             }, true);
           } else if (diffDays === 0) {
             alertsCount++;
             addNotification({
               type: 'debt_due_today', title: 'دين مستحق اليوم',
-              message: `الدين المستحق من ${debt.customerName} بقيمة $${debt.remainingDebt} يستحق اليوم`,
+              message: `الدين المستحق من ${debt.customerName} بقيمة ${formatMoney(debt.remainingDebt)} يستحق اليوم`,
               data: { customerId: debt.id, customerName: debt.customerName, amount: debt.remainingDebt },
             }, true);
           }

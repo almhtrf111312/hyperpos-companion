@@ -81,29 +81,15 @@ jobs:
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
           KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
 
-          # Verify if KEYSTORE_PASS can unlock the existing keystore, otherwise use original password
+          # Verify if KEYSTORE_PASS can unlock the existing keystore, otherwise use fallback password (by owner decision)
           if [ -f "android/app/flowpos-release.keystore" ]; then
             if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
               KEYSTORE_PASS="flowpos123"
               KEY_PASS="flowpos123"
             fi
           else
-            if [ -z "$KEYSTORE_PASS" ]; then
-              KEYSTORE_PASS="flowpos123"
-            fi
-            if [ -z "$KEY_PASS" ]; then
-              KEY_PASS="flowpos123"
-            fi
-            echo "Keystore not found, generating fallback release keystore..."
-            keytool -genkeypair -v \
-              -keystore android/app/flowpos-release.keystore \
-              -alias flowpos \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass "$KEYSTORE_PASS" \
-              -keypass "$KEY_PASS" \
-              -dname "CN=FlowPOS Pro, OU=POS Department, O=FlowPOS, L=Dubai, ST=Dubai, C=AE"
+            echo "::error::Release keystore file android/app/flowpos-release.keystore is missing from repository. Build aborted to protect signing key integrity."
+            exit 1
           fi
 
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"

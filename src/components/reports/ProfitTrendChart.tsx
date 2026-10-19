@@ -173,7 +173,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
                 axisLine={false}
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(value) => `$${value}`}
+                tickFormatter={(value) => formatCurrency(Number(value), undefined, 0)}
               />
               <ChartTooltip
                 content={

@@ -378,14 +378,14 @@ export default function Customers() {
             <TabsList className="bg-transparent p-0 h-auto gap-1">
               <TabsTrigger
                 value="customers"
-                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
+                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
               >
                 <User className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabCustomers' as any) || 'العملاء'}</span>
               </TabsTrigger>
               <TabsTrigger
                 value="debts"
-                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
+                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
               >
                 <CreditCard className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabDebts' as any) || 'الديون'}</span>
@@ -398,7 +398,7 @@ export default function Customers() {
           {/* Add Customer Action directly under Customers tab */}
           <div className="flex items-center justify-between gap-2">
             <Button
-              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-all cursor-pointer"
+              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-[colors,transform] cursor-pointer"
               onClick={() => {
                 setFormData({ name: '', phone: '', email: '', address: '' });
                 setShowAddDialog(true);
@@ -458,7 +458,7 @@ export default function Customers() {
                 <div
                   key={customer.id}
                   onClick={() => openViewDialog(customer)}
-                  className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+                  className="bg-card rounded-2xl p-3 border border-border shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-[border-color,transform] cursor-pointer select-none"
                 >
                   {/* Top-Left Options Menu */}
                   <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
@@ -555,7 +555,7 @@ export default function Customers() {
           {/* Add Cash Debt Action directly under Debts tab */}
           <div className="flex items-center justify-between gap-2">
             <Button
-              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-all cursor-pointer"
+              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-[colors,transform] cursor-pointer"
               onClick={() => setShowEmbeddedAddDebt(true)}
             >
               <Plus className="w-4 h-4" />

@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatMoney } from '@/lib/utils';
 import { shareReport } from '@/lib/native-share';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -224,15 +224,15 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
   const handleShareWhatsApp = async () => {
     let report = `📊 تقرير أرباح الشركاء المفصل\n`;
     report += `📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n\n`;
-    report += `💰 الإجمالي: $${formatNumber(summary.totalProfit)}\n`;
-    report += `✅ مؤكد: $${formatNumber(summary.confirmedProfit)}\n`;
-    report += `⏳ معلق: $${formatNumber(summary.pendingProfit)}\n\n`;
+    report += `💰 الإجمالي: ${formatMoney(summary.totalProfit)}\n`;
+    report += `✅ مؤكد: ${formatMoney(summary.confirmedProfit)}\n`;
+    report += `⏳ معلق: ${formatMoney(summary.pendingProfit)}\n\n`;
 
     report += `📋 التفاصيل:\n`;
     aggregatedData.forEach(partner => {
-      report += `\n👤 ${partner.partnerName}: $${formatNumber(partner.totalProfit)}\n`;
+      report += `\n👤 ${partner.partnerName}: ${formatMoney(partner.totalProfit)}\n`;
       Object.entries(partner.byCategory).forEach(([cat, data]) => {
-        report += `   • ${cat}: $${formatNumber(data.amount)} (${data.count} عملية)\n`;
+        report += `   • ${cat}: ${formatMoney(data.amount)} (${data.count} عملية)\n`;
       });
     });
 
@@ -308,7 +308,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('reports.totalProfit') || 'إجمالي الأرباح'}</p>
-          <p className="text-xl font-bold text-foreground">${formatNumber(summary.totalProfit)}</p>
+          <p className="text-xl font-bold text-foreground">{formatMoney(summary.totalProfit)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('reports.ordersCount') || 'عدد العمليات'}</p>
@@ -316,11 +316,11 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('invoices.confirmed') || 'أرباح مؤكدة'}</p>
-          <p className="text-xl font-bold text-success">${formatNumber(summary.confirmedProfit)}</p>
+          <p className="text-xl font-bold text-success">{formatMoney(summary.confirmedProfit)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('debts.pending') || 'أرباح معلقة'}</p>
-          <p className="text-xl font-bold text-warning">${formatNumber(summary.pendingProfit)}</p>
+          <p className="text-xl font-bold text-warning">{formatMoney(summary.pendingProfit)}</p>
         </div>
       </div>
 
@@ -358,7 +358,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-left">
-                      <p className="text-lg font-bold text-success">${formatNumber(partner.totalProfit)}</p>
+                      <p className="text-lg font-bold text-success">{formatMoney(partner.totalProfit)}</p>
                     </div>
                     {expandedPartners.has(partner.partnerId) ?
                       <ChevronUp className="w-5 h-5 text-muted-foreground" /> :
@@ -384,7 +384,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                               </span>
                             </div>
                             <p className="text-lg font-bold text-primary mt-1">
-                              ${formatNumber(data.amount)}
+                              {formatMoney(data.amount)}
                             </p>
                           </div>
                         ))}
@@ -455,7 +455,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                         {row.category}
                       </span>
                     </TableCell>
-                    <TableCell className="font-semibold">${formatNumber(row.amount)}</TableCell>
+                    <TableCell className="font-semibold">{formatMoney(row.amount)}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${row.status === 'confirmed'
                           ? 'bg-success/10 text-success'

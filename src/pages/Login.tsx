@@ -558,7 +558,7 @@ export default function Login() {
             variant="outline"
             onClick={handleStartDemo}
             disabled={isLoading}
-            className="w-full h-11 border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary font-medium flex items-center justify-center gap-2 transition-all"
+            className="w-full h-11 border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary font-medium flex items-center justify-center gap-2 transition-colors"
           >
             <Sparkles className="w-4 h-4 text-primary" />
             تجربة التطبيق بدون حساب (Demo Mode)
@@ -677,7 +677,7 @@ export default function Login() {
                 setTgNotLinkedError(false);
               }}
               className={cn(
-                "flex-1 rounded-xl py-2 px-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
+                "flex-1 rounded-xl py-2 px-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer",
                 recoveryMethod === 'telegram'
                   ? "bg-sky-500 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -690,7 +690,7 @@ export default function Login() {
               type="button"
               onClick={() => setRecoveryMethod('email')}
               className={cn(
-                "flex-1 rounded-xl py-2 px-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
+                "flex-1 rounded-xl py-2 px-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer",
                 recoveryMethod === 'email'
                   ? "bg-gradient-primary text-primary-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -748,7 +748,7 @@ export default function Login() {
                           href={tgBotLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-xs transition-all shadow-sm"
+                          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold text-xs transition-colors shadow-sm"
                         >
                           <Send className="w-3.5 h-3.5" />
                           <span>فتح بوت تيليغرام الآن للربط</span>
@@ -761,7 +761,7 @@ export default function Login() {
                     type="button"
                     onClick={handleRequestTelegramOtp}
                     disabled={isTgLoading || !tgIdentifier.trim()}
-                    className="w-full h-11 rounded-xl font-bold bg-sky-500 hover:bg-sky-600 active:scale-98 text-white shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="w-full h-11 rounded-xl font-bold bg-sky-500 hover:bg-sky-600 active:scale-98 text-white shadow-md flex items-center justify-center gap-2 transition-[colors,transform] cursor-pointer"
                   >
                     {isTgLoading ? (
                       <>
@@ -930,7 +930,7 @@ export default function Login() {
                     type="button"
                     onClick={handleVerifyAndResetPassword}
                     disabled={isTgLoading || tgCode.length !== 6 || !isPasswordValid || tgNewPassword !== tgConfirmPassword}
-                    className="w-full h-11 rounded-xl font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="w-full h-11 rounded-xl font-bold bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground shadow-md flex items-center justify-center gap-2 transition-[colors,transform] cursor-pointer"
                   >
                     {isTgLoading ? (
                       <>
@@ -987,7 +987,7 @@ export default function Login() {
                       <button
                         key={ch.key}
                         onClick={() => window.open(ch.openUrl(contactLinks[ch.key]!), '_blank')}
-                        className={`${ch.color} ${ch.hoverColor} text-white rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-200 hover:shadow-lg active:scale-95`}
+                        className={`${ch.color} ${ch.hoverColor} text-white rounded-xl px-4 py-3 flex items-center gap-3 transition-[colors,transform] duration-200 hover:shadow-lg active:scale-95`}
                       >
                         <span className="text-xl">{ch.icon}</span>
                         <span className="font-medium text-sm">{t(ch.labelKey as any)}</span>

@@ -20,7 +20,7 @@ import {
   X,
   Layers,
   Calendar,
-  DollarSign,
+  Banknote,
   AlertCircle,
   Search,
   Barcode
@@ -37,7 +37,7 @@ import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { addProductCloud, updateProductCloud } from '@/lib/cloud/products-cloud';
 import { isNoInventoryMode } from '@/lib/store-type-config';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, formatMoney } from '@/lib/utils';
 import { addWithdrawalFromShift } from '@/lib/cashbox-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
@@ -445,7 +445,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             'expense',
             user.id,
             user.email || 'كاشير',
-            `شراء سريع نقداً من الصندوق (${productName.trim()}): $${formatNumber(totalCost)}`,
+            `شراء سريع نقداً من الصندوق (${productName.trim()}): ${formatMoney(totalCost)}`,
             { totalCost, productName: productName.trim(), type: 'quick_purchase' }
           );
         }

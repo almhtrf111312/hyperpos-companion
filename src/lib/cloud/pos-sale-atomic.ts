@@ -8,6 +8,7 @@ type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
 
 export interface AtomicSaleBundle {
+  customerId?: string;
   customerName: string;
   customerPhone?: string;
   items: Array<{

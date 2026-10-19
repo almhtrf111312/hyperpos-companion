@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getDisplayCurrency, getCurrencySymbolByCode } from "./currencies";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -57,15 +58,7 @@ export function formatNumber(num: number, decimals: number = 3): string {
 export function formatCurrency(amount: number, symbol?: string, decimals: number = 2): string {
   let effectiveSymbol = symbol;
   if (!effectiveSymbol) {
-    try {
-      const s = typeof window !== 'undefined' ? localStorage.getItem('hyperpos_settings_v1') : null;
-      if (s) {
-        const parsed = JSON.parse(s);
-        const activeCode = parsed.currencyCode || parsed.defaultCurrency || 'USD';
-        effectiveSymbol = parsed.currencySymbol || parsed.currencySymbols?.[activeCode] || parsed.currencySymbols?.USD || '$';
-      }
-    } catch {}
-    if (!effectiveSymbol) effectiveSymbol = '$';
+    effectiveSymbol = getDisplayCurrency().symbol;
   }
 
   const formatter = new Intl.NumberFormat('en-US', {
@@ -83,6 +76,12 @@ export function formatCurrency(amount: number, symbol?: string, decimals: number
 
   // كافة الرموز الأخرى (العملات العربية مثل ل.ل، د.أ، د.ك، ل.س أو ₺ أو أي كود/رمز) توضع بعد الرقم بفاصل غير منكسر
   return `${formatted}\u00A0${cleanSymbol}`;
+}
+
+// Format money with correct symbol from currencyCode or default display currency
+export function formatMoney(amount: number, currencyCode?: string, decimals: number = 2): string {
+  const sym = currencyCode ? getCurrencySymbolByCode(currencyCode) : getDisplayCurrency().symbol;
+  return formatCurrency(amount, sym, decimals);
 }
 
 // Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)

@@ -15,7 +15,7 @@ type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { isGuestDemoMode } from '../demo-data';
-import { roundCurrency, addCurrency, subtractCurrency } from '../utils';
+import { roundCurrency, addCurrency, subtractCurrency, formatMoney } from '../utils';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { logActivity, diffFields } from '../activity-log';
 import { resolveHistoricalCurrency } from '../currencies';
@@ -719,7 +719,7 @@ const buildInvoiceSnapshot = (invoice: Invoice) => ({
 });
 
 const logInvoiceDeleted = (invoice: Invoice) => {
-  logActivity('invoice_deleted', `حذف فاتورة: ${invoice.id} بقيمة $${roundCurrency(invoice.total)}`, {
+  logActivity('invoice_deleted', `حذف فاتورة: ${invoice.id} بقيمة ${formatMoney(roundCurrency(invoice.total))}`, {
     entityType: 'invoice',
     entityId: invoice.id,
     entityName: invoice.customerName,

@@ -1265,21 +1265,21 @@ export default function BossPanel() {
           <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 w-full h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/70 gap-1.5 shadow-sm">
             <TabsTrigger
               value="users"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <Users className="w-4 h-4 shrink-0" />
               <span className="leading-tight">المستخدمين</span>
             </TabsTrigger>
             <TabsTrigger
               value="codes"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <Key className="w-4 h-4 shrink-0" />
               <span className="leading-tight">الأكواد</span>
             </TabsTrigger>
             <TabsTrigger
               value="issues"
-              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span className="leading-tight">التراخيص</span>
@@ -1291,21 +1291,21 @@ export default function BossPanel() {
             </TabsTrigger>
             <TabsTrigger
               value="contact"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <MessageCircle className="w-4 h-4 shrink-0" />
               <span className="leading-tight">التواصل</span>
             </TabsTrigger>
             <TabsTrigger
               value="system"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <Wrench className="w-4 h-4 shrink-0" />
               <span className="leading-tight">النظام</span>
             </TabsTrigger>
             <TabsTrigger
               value="radar"
-              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <Terminal className="w-4 h-4 shrink-0" />
               <span className="leading-tight">رادار الأخطاء</span>
@@ -1317,7 +1317,7 @@ export default function BossPanel() {
             </TabsTrigger>
             <TabsTrigger
               value="ai-assistant"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
             >
               <Sparkles className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
               <span className="leading-tight">المساعد الذكي</span>
@@ -1438,7 +1438,7 @@ export default function BossPanel() {
                       const isBossUser = owner.role === 'boss';
 
                       return (
-                        <div key={owner.user_id} className={`relative p-3.5 md:p-4 rounded-2xl space-y-2.5 md:space-y-3 border border-border/60 transition-all ${
+                        <div key={owner.user_id} className={`relative p-3.5 md:p-4 rounded-2xl space-y-2.5 md:space-y-3 border border-border/60 transition-colors ${
                           isBossUser ? 'border-s-4 border-s-amber-500 bg-amber-500/5 dark:bg-amber-500/[0.03]' :
                           owner.license_revoked ? 'border-s-4 border-s-destructive bg-destructive/5' :
                           !isLicenseValid ? 'border-s-4 border-s-destructive bg-destructive/5' :

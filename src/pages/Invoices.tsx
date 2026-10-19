@@ -10,7 +10,6 @@ import {
   Send,
   Filter,
   Calendar,
-  DollarSign,
   Banknote,
   CreditCard,
   Wrench,
@@ -74,7 +73,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
-import { cn, formatNumber, formatCurrency, formatDateTime, roundCurrency } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -1197,7 +1196,7 @@ export default function Invoices() {
     await updateInvoiceCloud(invoice.id, { status: 'paid', debtPaid: invoice.total, debtRemaining: 0 });
     if (paidAmount > 0) {
       processDebtPayment(paidAmount);
-      logActivity('debt_paid', `تسديد كامل لفاتورة ${invoice.id} بقيمة $${paidAmount} - ${invoice.customerName}`, {
+      logActivity('debt_paid', `تسديد كامل لفاتورة ${invoice.id} بقيمة ${formatMoney(paidAmount)} - ${invoice.customerName}`, {
         invoiceId: invoice.id,
         customerName: invoice.customerName,
         amount: paidAmount,
@@ -1338,8 +1337,8 @@ export default function Invoices() {
       // تسجيل في سجل النشاطات
       if (user) {
         const currDesc = paymentCurrency !== 'USD'
-          ? `${paymentAmountInput} ${paymentCurrency} (يعادل $${formatNumber(finalPaymentUSD)} بسعر صرف ${currentRate})`
-          : `$${formatNumber(finalPaymentUSD)}`;
+          ? `${paymentAmountInput} ${paymentCurrency} (يعادل ${formatMoney(finalPaymentUSD, 'USD')} بسعر صرف ${currentRate})`
+          : formatMoney(finalPaymentUSD, paymentCurrency);
         addActivityLog(
           'debt_paid',
           user.id,
@@ -1776,7 +1775,7 @@ export default function Invoices() {
             type="button"
             onClick={() => setActiveMainTab('sales')}
             className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               activeMainTab === 'sales'
                 ? "bg-gradient-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -1789,7 +1788,7 @@ export default function Invoices() {
             type="button"
             onClick={() => setActiveMainTab('purchases')}
             className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               activeMainTab === 'purchases'
                 ? "bg-gradient-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -1832,7 +1831,7 @@ export default function Invoices() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="px-2.5 py-1.5 rounded-xl bg-background border border-border text-[11px] font-bold text-foreground hover:bg-muted flex items-center gap-1 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-xl bg-background border border-border text-[11px] font-bold text-foreground hover:bg-muted flex items-center gap-1 active:scale-95 transition-[colors,transform] shadow-2xs cursor-pointer"
                     >
                       <span>{tx('common.more', 'المزيد')}</span>
                       <ChevronDown className="w-3 h-3 text-muted-foreground" />
@@ -1874,7 +1873,7 @@ export default function Invoices() {
                   type="button"
                   onClick={() => setShowDetailedStats(prev => !prev)}
                   title={showDetailedStats ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
-                  className="p-1.5 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground active:scale-90 transition-all cursor-pointer"
+                  className="p-1.5 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground active:scale-90 transition-[colors,transform] cursor-pointer"
                 >
                   {showDetailedStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
@@ -1888,7 +1887,7 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiTotal}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'total'
                       ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
@@ -1901,7 +1900,7 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiDebt}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'debt'
                       ? "bg-orange-500/10 border-orange-500 ring-2 ring-orange-500/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-orange-500/40 shadow-xs"
@@ -1914,7 +1913,7 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiToday}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'today'
                       ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-emerald-500/40 shadow-xs"
@@ -1929,7 +1928,7 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiProfit}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-all select-none hover:shadow-xs cursor-pointer",
+                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'profit'
                       ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
@@ -1971,7 +1970,7 @@ export default function Invoices() {
               onClick={() => setIsFilterSheetOpen(true)}
               variant="outline"
               className={cn(
-                "h-10 px-3.5 rounded-2xl flex items-center gap-1.5 text-xs font-black transition-all shrink-0 border shadow-2xs active:scale-95 cursor-pointer",
+                "h-10 px-3.5 rounded-2xl flex items-center gap-1.5 text-xs font-black transition-[colors,transform] shrink-0 border shadow-2xs active:scale-95 cursor-pointer",
                 activeFiltersCount > 0
                   ? "bg-primary/10 border-primary text-primary hover:bg-primary/15"
                   : "bg-card border-border hover:bg-muted/60 text-foreground"
@@ -2100,7 +2099,7 @@ export default function Invoices() {
                   <div
                     key={invoice.id}
                     onClick={() => handleView(invoice)}
-                    className="invoice-card bg-card text-card-foreground rounded-xl p-3 border border-border/80 shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer select-none"
+                    className="invoice-card bg-card text-card-foreground rounded-xl p-3 border border-border/80 shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-[colors,transform] cursor-pointer select-none"
                   >
                     {/* زر الخيارات ثلاثي النقاط - أعلى اليسار */}
                     <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
@@ -2124,7 +2123,7 @@ export default function Invoices() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handlePayDebt(invoice)} className="justify-between cursor-pointer">
                                 <span>{t('invoices.payInstallment')}</span>
-                                <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                                <Banknote className="w-3.5 h-3.5 text-muted-foreground" />
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleMarkPaid(invoice)} className="justify-between cursor-pointer">
                                 <span>{t('invoices.markAsPaid')}</span>
@@ -2284,7 +2283,7 @@ export default function Invoices() {
                         <button
                           type="button"
                           onClick={() => handleView(invoice)}
-                          className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-border/60"
+                          className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer border border-border/60"
                           title={tx('common.view', 'عرض التفاصيل')}
                         >
                           <Eye className="w-3.5 h-3.5 text-primary" />
@@ -2295,7 +2294,7 @@ export default function Invoices() {
                         <button
                           type="button"
                           onClick={() => handleShare(invoice)}
-                          className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-border/60"
+                          className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer border border-border/60"
                           title={tx('common.share', 'مشاركة الفاتورة')}
                         >
                           <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -2307,7 +2306,7 @@ export default function Invoices() {
                           <button
                             type="button"
                             onClick={() => handlePayDebt(invoice)}
-                            className="h-7 px-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-black flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-emerald-500/30 shadow-2xs"
+                            className="h-7 px-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-black flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer border border-emerald-500/30 shadow-2xs"
                             title={tx('invoices.payInstallment', 'تسديد دفعة')}
                           >
                             <Banknote className="w-3.5 h-3.5" />
@@ -2321,7 +2320,7 @@ export default function Invoices() {
                         <button
                           type="button"
                           onClick={() => handleRefund(invoice)}
-                          className="h-7 px-2 rounded-lg text-destructive/80 hover:text-destructive hover:bg-destructive/10 text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                          className="h-7 px-2 rounded-lg text-destructive/80 hover:text-destructive hover:bg-destructive/10 text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer"
                           title={tx('invoices.refundInvoice', 'استرداد')}
                         >
                           <Undo2 className="w-3 h-3" />
@@ -2572,7 +2571,7 @@ export default function Invoices() {
 
               <div className="pt-3 flex items-center gap-2">
                 <Button
-                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2.5 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all cursor-pointer"
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2.5 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-98 transition-[colors,transform] cursor-pointer"
                   onClick={() => handlePrint(selectedInvoice)}
                 >
                   <Printer className="w-4 h-4" />
@@ -2580,7 +2579,7 @@ export default function Invoices() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="px-4 py-2.5 h-auto rounded-2xl flex items-center justify-center gap-2 border-border font-bold active:scale-98 transition-all cursor-pointer"
+                  className="px-4 py-2.5 h-auto rounded-2xl flex items-center justify-center gap-2 border-border font-bold active:scale-98 transition-[colors,transform] cursor-pointer"
                   onClick={() => {
                     setShowViewDialog(false);
                     handleShare(selectedInvoice);
@@ -2597,7 +2596,7 @@ export default function Invoices() {
       </Dialog>
 
       {/* Share Bottom Sheet */}
-      <Dialog open={showShareSheet} onOpenChange={setShowShareSheet}>
+      <Dialog open={showShareSheet} onOpenChange={showShareSheet => setShowShareSheet(showShareSheet)}>
         <DialogContent className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 max-w-md mx-auto rounded-t-3xl rounded-b-none border-t border-border bg-card text-card-foreground p-0 max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden shadow-2xl laser-sheet-content">
           {/* Laser Lead Line */}
           <div className="laser-lead-line h-[2.5px] w-full" />
@@ -2653,7 +2652,7 @@ export default function Invoices() {
                 {/* Share Actions */}
                 <div className="space-y-2 pt-1">
                   <Button
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-[colors,transform]"
                     disabled={isGeneratingShare}
                     onClick={() => executeShareInvoice(invoiceToShare, 'image')}
                   >
@@ -3011,7 +3010,7 @@ export default function Invoices() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-success" />
+              <Banknote className="w-5 h-5 text-success" />
               {t('debts.recordPayment') || 'تسجيل دفعة'}
             </DialogTitle>
             <DialogDescription>
@@ -3055,7 +3054,7 @@ export default function Invoices() {
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "min-h-[4.3rem] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
                         isSubmittingPayment && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'USD'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -3075,7 +3074,7 @@ export default function Invoices() {
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "min-h-[4.3rem] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
                         isSubmittingPayment && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'TRY'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -3095,7 +3094,7 @@ export default function Invoices() {
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "min-h-[4.3rem] p-2 rounded-lg border transition-all flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                        "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
                         isSubmittingPayment && "opacity-50 cursor-not-allowed",
                         paymentCurrency === 'SYP'
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
@@ -3262,7 +3261,7 @@ export default function Invoices() {
                       type="button"
                       onClick={() => handleSetPeriod(p.id)}
                       className={cn(
-                        "py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                        "py-2 rounded-xl text-xs font-bold transition-colors border cursor-pointer",
                         isSelected
                           ? "bg-primary text-primary-foreground border-primary shadow-xs"
                           : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -3289,7 +3288,7 @@ export default function Invoices() {
                         }
                       }}
                       className={cn(
-                        "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                        "px-2 py-0.5 rounded text-[10px] font-bold transition-colors",
                         customDateMode === 'single'
                           ? "bg-primary text-primary-foreground shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
@@ -3307,7 +3306,7 @@ export default function Invoices() {
                         }
                       }}
                       className={cn(
-                        "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                        "px-2 py-0.5 rounded text-[10px] font-bold transition-colors",
                         customDateMode === 'range'
                           ? "bg-primary text-primary-foreground shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
@@ -3415,7 +3414,7 @@ export default function Invoices() {
                       type="button"
                       onClick={() => setFilterPayment(pm.id)}
                       className={cn(
-                        "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer text-center",
+                        "py-2 px-1 rounded-xl text-xs font-bold transition-colors border cursor-pointer text-center",
                         isSelected
                           ? "bg-primary text-primary-foreground border-primary shadow-xs"
                           : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -3447,7 +3446,7 @@ export default function Invoices() {
                       type="button"
                       onClick={() => setFilterType(it.id as any)}
                       className={cn(
-                        "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer text-center",
+                        "py-2 px-1 rounded-xl text-xs font-bold transition-colors border cursor-pointer text-center",
                         isSelected
                           ? "bg-primary text-primary-foreground border-primary shadow-xs"
                           : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -3471,7 +3470,7 @@ export default function Invoices() {
                   type="button"
                   onClick={() => setShowRefunded(false)}
                   className={cn(
-                    "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer text-center",
+                    "py-2 px-1 rounded-xl text-xs font-bold transition-colors border cursor-pointer text-center",
                     !showRefunded
                       ? "bg-primary text-primary-foreground border-primary shadow-xs"
                       : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -3483,7 +3482,7 @@ export default function Invoices() {
                   type="button"
                   onClick={() => setShowRefunded(true)}
                   className={cn(
-                    "py-2 px-1 rounded-xl text-xs font-bold transition-all border cursor-pointer text-center",
+                    "py-2 px-1 rounded-xl text-xs font-bold transition-colors border cursor-pointer text-center",
                     showRefunded
                       ? "bg-destructive text-destructive-foreground border-destructive shadow-xs"
                       : "bg-muted/40 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -3497,7 +3496,7 @@ export default function Invoices() {
             {/* 5. Display Currency */}
             <div>
               <label className="text-foreground text-xs block mb-2 font-black flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-primary" />
+                <Banknote className="w-3.5 h-3.5 text-primary" />
                 <span>{tx('invoices.displayCurrency', 'عملة العرض في القائمة:')}</span>
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -3507,7 +3506,7 @@ export default function Invoices() {
                   size="sm"
                   onClick={() => setDisplayCurrencyFilter('stored')}
                   className={cn(
-                    "h-9 text-xs font-bold rounded-xl transition-all",
+                    "h-9 text-xs font-bold rounded-xl transition-colors",
                     displayCurrencyFilter === 'stored'
                       ? "bg-primary text-primary-foreground shadow-xs"
                       : "border-border/60 hover:bg-muted text-muted-foreground"
@@ -3530,7 +3529,7 @@ export default function Invoices() {
                       size="sm"
                       onClick={() => setDisplayCurrencyFilter(currCode)}
                       className={cn(
-                        "h-9 text-xs font-bold rounded-xl transition-all",
+                        "h-9 text-xs font-bold rounded-xl transition-colors",
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-xs"
                           : "border-border/60 hover:bg-muted text-muted-foreground"

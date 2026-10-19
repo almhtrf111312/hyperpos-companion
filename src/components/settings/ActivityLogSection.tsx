@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { loadActivityLogs, clearActivityLogs, ActivityLog, ActivityType, activityTypeLabels } from '@/lib/activity-log';
-import { cn } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -424,7 +424,7 @@ function ActivityCard({ log, isAr, isRTL, timeText, isExpanded, onToggle }: Acti
     badgeLabel = isAr ? 'إنشاء دين / فاتورة آجل' : 'Credit Sale';
     badgeClass = 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/50 dark:text-purple-200 dark:border-purple-800/60';
     const amountVal = Number(details.total || details.debtRemaining || details.amount || 0);
-    leftAmount = `$${amountVal.toFixed(2)}`;
+    leftAmount = formatMoney(amountVal);
     leftStatus = isAr ? 'ذمة معلقة' : 'Pending Debt';
     leftClass = 'text-rose-600 dark:text-rose-400';
   } else if (isCash) {
@@ -433,7 +433,7 @@ function ActivityCard({ log, isAr, isRTL, timeText, isExpanded, onToggle }: Acti
     badgeLabel = isAr ? 'عملية بيع نقدي' : 'Cash Sale';
     badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:border-emerald-800/60';
     const amountVal = Number(details.total || details.amount || 0);
-    leftAmount = `$${amountVal.toFixed(2)}`;
+    leftAmount = formatMoney(amountVal);
     leftStatus = isAr ? 'مسدد نقداً ✓' : 'Paid in Cash ✓';
     leftClass = 'text-emerald-700 dark:text-emerald-400';
   } else if (isDebtPay) {
@@ -442,7 +442,7 @@ function ActivityCard({ log, isAr, isRTL, timeText, isExpanded, onToggle }: Acti
     badgeLabel = isAr ? 'تسديد دين' : 'Debt Payment';
     badgeClass = 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-200 dark:border-blue-800/60';
     const amountVal = Number(details.amount || details.total || 0);
-    leftAmount = `$${amountVal.toFixed(2)}`;
+    leftAmount = formatMoney(amountVal);
     leftStatus = isAr ? 'تم القبض ✓' : 'Collected ✓';
     leftClass = 'text-blue-700 dark:text-blue-400';
   } else if (isRefund) {
@@ -452,7 +452,7 @@ function ActivityCard({ log, isAr, isRTL, timeText, isExpanded, onToggle }: Acti
     badgeClass = 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:border-rose-800/60';
     const refundVal = Number(details.refund_amount || details.refundAmount || details.amount || details.total || 0);
     if (refundVal > 0) {
-      leftAmount = `$${refundVal.toFixed(2)}`;
+      leftAmount = formatMoney(refundVal);
       leftStatus = isAr ? 'مسترد من الصندوق' : 'Refunded';
       leftClass = 'text-rose-600 dark:text-rose-400';
     }
@@ -593,13 +593,13 @@ function PriceComparisonTable({ changes, isAr }: { changes: Record<string, unkno
             <span>{isAr ? 'رأس المال (الشراء)' : 'Cost Price'}</span>
           </div>
           <div className="font-mono text-zinc-500 line-through numeric-tabular">
-            {oldCost !== null ? `$${oldCost.toFixed(2)}` : '—'}
+            {oldCost !== null ? formatMoney(oldCost) : '—'}
           </div>
           <div className="font-mono font-bold text-zinc-900 dark:text-foreground numeric-tabular flex items-center justify-center gap-1 text-emerald-700 dark:text-emerald-400">
-            <span>${newCost.toFixed(2)}</span>
+            <span>{formatMoney(newCost)}</span>
             {costDiff !== 0 && (
               <span className="text-[10px] text-zinc-400 font-normal">
-                ({costDiff > 0 ? `+$${costDiff.toFixed(2)}` : `-$${Math.abs(costDiff).toFixed(2)}`})
+                ({costDiff > 0 ? `+${formatMoney(costDiff)}` : `-${formatMoney(Math.abs(costDiff))}`})
               </span>
             )}
           </div>
@@ -612,13 +612,13 @@ function PriceComparisonTable({ changes, isAr }: { changes: Record<string, unkno
             <span>{isAr ? 'سعر البيع (المعتمد)' : 'Sale Price'}</span>
           </div>
           <div className="font-mono text-zinc-500 line-through numeric-tabular">
-            {oldSale !== null ? `$${oldSale.toFixed(2)}` : '—'}
+            {oldSale !== null ? formatMoney(oldSale) : '—'}
           </div>
           <div className="font-mono font-black text-blue-700 dark:text-blue-400 numeric-tabular flex items-center justify-center gap-1">
-            <span>${newSale.toFixed(2)}</span>
+            <span>{formatMoney(newSale)}</span>
             {saleDiff !== 0 && (
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                ({saleDiff > 0 ? `+$${saleDiff.toFixed(2)} ↗` : `-$${Math.abs(saleDiff).toFixed(2)} ↘`})
+                ({saleDiff > 0 ? `+${formatMoney(saleDiff)} ↗` : `-${formatMoney(Math.abs(saleDiff))} ↘`})
               </span>
             )}
           </div>
@@ -631,10 +631,10 @@ function PriceComparisonTable({ changes, isAr }: { changes: Record<string, unkno
             <span>{isAr ? 'هامش الربح المتوقع' : 'Expected Margin'}</span>
           </div>
           <div className="font-mono text-zinc-500 numeric-tabular">
-            {oldCost !== null && oldSale !== null ? `$${oldProfit.toFixed(2)} (${oldMargin.toFixed(0)}%)` : '—'}
+            {oldCost !== null && oldSale !== null ? `${formatMoney(oldProfit)} (${oldMargin.toFixed(0)}%)` : '—'}
           </div>
           <div className="font-mono font-bold text-emerald-700 dark:text-emerald-400 numeric-tabular">
-            ${newProfit.toFixed(2)} ({newMargin.toFixed(1)}%)
+            {formatMoney(newProfit)} ({newMargin.toFixed(1)}%)
           </div>
         </div>
       </div>
@@ -851,7 +851,7 @@ function GenericDetailsBox({ details, isAr }: { details: Record<string, unknown>
             </span>
             <span className="font-bold text-zinc-800 dark:text-foreground break-all">
               {typeof val === 'number' && (key.toLowerCase().includes('price') || key.toLowerCase().includes('total') || key.toLowerCase().includes('amount'))
-                ? `$${val.toFixed(2)}`
+                ? formatMoney(val)
                 : String(val)}
             </span>
           </div>

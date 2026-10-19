@@ -67,7 +67,7 @@ export async function processCashSaleBundleFromQueue(
     if (!sale.alreadyProcessed) {
       const revenue = Math.round((sale.total - sale.taxAmount) * 100) / 100;
       addGrossProfit(sale.invoiceNumber, sale.profit, sale.cogs, revenue, operationId);
-      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue }).catch(() => {});
+      addGrossProfitCloud({ invoiceId: sale.invoiceNumber, grossProfit: sale.profit, cogs: sale.cogs, revenue, currency: 'USD' }).catch(() => {});
 
       // 4. Distribute profit to partners in background (non-blocking)
       const categoryProfits = Object.entries(bundle.profitsByCategory)

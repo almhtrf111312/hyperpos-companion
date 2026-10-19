@@ -8,7 +8,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Share as CapacitorShare } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { formatNumber, formatCurrency } from './utils';
+import { formatNumber, formatCurrency, formatMoney } from './utils';
 import { isGuestDemoMode } from './demo-data';
 import {
   InvoiceCanvasData,
@@ -280,7 +280,7 @@ ${type !== 'maintenance' ? '🛒 المواد:' : '🔧 الخدمة:'}
 ${itemsList}
 
 ────────────────
-${items.length > 1 ? `📊 المجموع الفرعي: ${formatCurrency(subtotal, currencySymbol)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: -${formatCurrency(discount, currencySymbol)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${formatCurrency(data.taxAmount, currencySymbol)}\n` : ''}💰 الإجمالي: ${formatCurrency(total, currencySymbol)}${data.currency && data.currency !== 'USD' && data.totalUSD ? ` (المعادل: $${formatNumber(data.totalUSD, 2)})` : ''}
+${items.length > 1 ? `📊 المجموع الفرعي: ${formatCurrency(subtotal, currencySymbol)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: -${formatCurrency(discount, currencySymbol)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${formatCurrency(data.taxAmount, currencySymbol)}\n` : ''}💰 الإجمالي: ${formatCurrency(total, currencySymbol)}${data.currency && data.currency !== 'USD' && data.totalUSD ? ` (المعادل: ${formatMoney(data.totalUSD, 'USD', 2)})` : ''}
 💳 طريقة الدفع: ${paymentLabel}
 ${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPayment > 0)) ? (downPayment && downPayment > 0 ? `💵 المدفوع نقداً: ${formatCurrency(downPayment, currencySymbol)}\n📋 المتبقي كدين: ${formatCurrency(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : (total - downPayment), currencySymbol)}\n` : `📋 مستحق كدين: ${formatCurrency(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : total, currencySymbol)}\n`) : ''}
 

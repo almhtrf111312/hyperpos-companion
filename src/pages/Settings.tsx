@@ -1991,7 +1991,7 @@ export default function Settings() {
                         }
                       }}
                       className={cn(
-                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-colors cursor-pointer",
                         enabledCurrencies.USD === false && "opacity-60 border-dashed border-border/60 bg-muted/10",
                         primaryCurrency === 'USD'
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
@@ -2048,7 +2048,7 @@ export default function Settings() {
                         }
                       }}
                       className={cn(
-                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-colors cursor-pointer",
                         !enabledCurrencies.TRY && "opacity-60 border-dashed border-border/60 bg-muted/10",
                         primaryCurrency === 'TRY'
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
@@ -2164,7 +2164,7 @@ export default function Settings() {
                         }
                       }}
                       className={cn(
-                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all cursor-pointer",
+                        "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-colors cursor-pointer",
                         !enabledCurrencies.SYP && "opacity-60 border-dashed border-border/60 bg-muted/10",
                         primaryCurrency === 'SYP'
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
@@ -3191,7 +3191,7 @@ export default function Settings() {
                   type="button"
                   onClick={() => handleSwitchLayoutMode('smart')}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold cursor-pointer",
+                    "px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 font-bold cursor-pointer",
                     layoutMode === 'smart'
                       ? "bg-primary text-primary-foreground shadow-2xs"
                       : "text-muted-foreground hover:text-foreground"
@@ -3205,7 +3205,7 @@ export default function Settings() {
                   type="button"
                   onClick={() => handleSwitchLayoutMode('classic')}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold cursor-pointer",
+                    "px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 font-bold cursor-pointer",
                     layoutMode === 'classic'
                       ? "bg-primary text-primary-foreground shadow-2xs"
                       : "text-muted-foreground hover:text-foreground"
@@ -3953,7 +3953,7 @@ export default function Settings() {
       {/* Floating Action Buttons (FAB) موحد ومطابق للمظهر */}
       <div
         className={cn(
-          "fixed bottom-6 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out",
+          "fixed bottom-6 z-50 flex items-center gap-3 transition-[opacity,transform] duration-300 ease-in-out",
           isRTL ? "left-6" : "right-6",
           (hasUnsavedChanges || isSaveSuccess)
             ? "scale-100 opacity-100"
@@ -3965,7 +3965,7 @@ export default function Settings() {
           onClick={handleSaveSettings}
           disabled={isSavingSettings}
           className={cn(
-            "w-14 h-14 rounded-full shadow-2xl p-0 transition-all duration-200",
+            "w-14 h-14 rounded-full shadow-2xl p-0 transition-[transform,colors] duration-200",
             isSaveSuccess
               ? (lastSaveStatus === 'synced' ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-amber-600 text-white hover:bg-amber-700")
               : "bg-primary text-primary-foreground hover:scale-105 active:scale-95"

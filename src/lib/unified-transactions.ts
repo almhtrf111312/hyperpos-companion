@@ -22,7 +22,7 @@ import { deductStockBatch, checkStockAvailability } from './products-store';
 import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
-import { roundCurrency, addCurrency, formatNumber } from './utils';
+import { roundCurrency, addCurrency, formatNumber, formatMoney } from './utils';
 import { addGrossProfit, addOperatingExpense, removeOperatingExpense } from './profits-store';
 import { withLock, LOCK_RESOURCES } from './transaction-lock';
 import { addToQueue } from './sync-queue';
@@ -106,7 +106,7 @@ export const processCashSale = async (
         'sale',
         userId,
         userName,
-        `عملية بيع نقدي: $${formatNumber(total)} | ربح: $${formatNumber(grossProfit)}`,
+        `عملية بيع نقدي: ${formatMoney(total)} | ربح: ${formatMoney(grossProfit)}`,
         { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'cash' }
       );
     }
@@ -194,7 +194,7 @@ export const processDebtSale = async (
         'sale',
         userId,
         userName,
-        `عملية بيع بالدين: $${formatNumber(total)} | ربح: $${formatNumber(grossProfit)}`,
+        `عملية بيع بالدين: ${formatMoney(total)} | ربح: ${formatMoney(grossProfit)}`,
         { total, grossProfit, cogs: totalCOGS, itemsCount: items.length, type: 'debt' }
       );
     }
@@ -234,7 +234,7 @@ export const processDebtPayment = (
     // Step 2: تسجيل النشاط (نوع debt_payment محدد بدلاً من deposit عام)
     if (userId && userName) {
       const methodLabel = method === 'cash' ? 'نقداً (كاش)' : 'تحويل بنكي / إلكتروني';
-      const currText = currencyAmount ? `${formatNumber(currencyAmount)} ${currency} ($${formatNumber(amount)})` : `$${formatNumber(amount)}`;
+      const currText = currencyAmount ? `${formatMoney(currencyAmount, currency)} (${formatMoney(amount, 'USD')})` : formatMoney(amount, currency);
       addActivityLog(
         'debt_payment',
         userId,
@@ -283,7 +283,7 @@ export const processCashDeposit = (
         'capital_added',
         userId,
         userName,
-        `إيداع ${kind === 'capital' ? 'رأس مال' : kind === 'purchase_cover' ? 'تغطية شراء' : 'إيراد'}: $${formatNumber(amount)}`,
+        `إيداع ${kind === 'capital' ? 'رأس مال' : kind === 'purchase_cover' ? 'تغطية شراء' : 'إيراد'}: ${formatMoney(amount)}`,
         { amount, kind, notes, type: 'deposit' }
       );
     }
@@ -324,7 +324,7 @@ export const processExpense = (
         'expense',
         userId,
         userName,
-        `مصروف تشغيلي (${expenseType}): $${formatNumber(amount)}`,
+        `مصروف تشغيلي (${expenseType}): ${formatMoney(amount)}`,
         { amount, expenseType, type: 'expense' }
       );
     }
@@ -369,7 +369,7 @@ export const reverseExpenseTransaction = (
       'expense_refund',
       'system',
       'كاشير',
-      `استرداد مصروف تشغيلي (${targetType}): +$${formatNumber(targetAmount)}`,
+      `استرداد مصروف تشغيلي (${targetType}): +${formatMoney(targetAmount, targetCurrency)}`,
       { expenseId: targetId, amount: targetAmount, type: 'refund', currency: targetCurrency }
     );
 

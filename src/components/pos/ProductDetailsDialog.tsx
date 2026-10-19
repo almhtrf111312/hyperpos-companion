@@ -8,14 +8,14 @@ import {
   X,
   Copy,
   Check,
-  DollarSign,
+  Banknote,
   AlertTriangle,
 } from 'lucide-react';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { ProductImage } from '@/components/products/ProductImage';
 import { loadAllWarehouseStocksLocalFirst } from '@/lib/cloud/warehouses-cloud';
-import { cn } from '@/lib/utils';
+import { cn, formatMoney } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { getLocalizedUnit } from '@/lib/product-units';
 
@@ -256,7 +256,7 @@ export function ProductDetailsDialog({
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
               )}
             >
-              <DollarSign className="w-3.5 h-3.5" />
+              <Banknote className="w-3.5 h-3.5" />
               <span>{language === 'en' ? 'Pricing' : 'الأسعار'}</span>
             </button>
             <button
@@ -284,7 +284,7 @@ export function ProductDetailsDialog({
               <div className="rounded-2xl bg-card p-3.5 border border-border/70 shadow-2xs flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                    <DollarSign className="w-4 h-4" />
+                    <Banknote className="w-4 h-4" />
                   </div>
                   <div>
                     <span className="text-xs font-bold text-foreground block">{language === 'en' ? 'Base Retail Price' : 'سعر المبيع الأساسي'}</span>
@@ -292,7 +292,7 @@ export function ProductDetailsDialog({
                   </div>
                 </div>
                 <span className="text-base font-black text-primary font-mono">
-                  ${salePrice.toFixed(2)}
+                  {formatMoney(salePrice)}
                 </span>
               </div>
 
@@ -308,7 +308,7 @@ export function ProductDetailsDialog({
                   </div>
                 </div>
                 <span className="text-sm md:text-base font-bold text-foreground font-mono">
-                  {hasWholesale ? `$${wholesalePrice!.toFixed(2)}` : (language === 'en' ? 'None' : 'لا يوجد')}
+                  {hasWholesale ? formatMoney(wholesalePrice!) : (language === 'en' ? 'None' : 'لا يوجد')}
                 </span>
               </div>
             </div>

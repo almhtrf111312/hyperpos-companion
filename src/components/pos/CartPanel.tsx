@@ -15,14 +15,13 @@ import {
   UserPlus,
   Check,
   Search,
-  DollarSign,
   Package,
   Repeat
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn, formatNumber, formatCurrency, roundCurrency, addCurrency, clampNumber } from '@/lib/utils';
+import { cn, formatNumber, formatCurrency, formatMoney, roundCurrency, addCurrency, clampNumber } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -127,7 +126,7 @@ function EditablePrice({ value, onChange, className }: { value: number; classNam
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
       className={cn(
-        "flex rounded-xl border border-border bg-muted/30 text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all duration-200",
+        "flex rounded-xl border border-border bg-muted/30 text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-colors duration-200",
         className
       )}
       dir="ltr"
@@ -851,7 +850,7 @@ export function CartPanel({
           'sale',
           user.id,
           profile?.full_name || user.email || 'مستخدم',
-          `عملية بيع نقدي بقيمة $${formatNumber(totalSnapshot)} - المنتجات: ${itemsDescription}`,
+          `عملية بيع نقدي بقيمة ${formatMoney(totalSnapshot)} - المنتجات: ${itemsDescription}`,
           { total: totalSnapshot, itemsCount: cartSnapshot.length, customerName: customerNameSnapshot || 'عميل نقدي' }
         );
       }
@@ -1206,8 +1205,8 @@ export function CartPanel({
           user.id,
           profile?.full_name || user.email || 'مستخدم',
           downPaymentSnapshot > 0
-            ? `عملية بيع مركب بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} (نقدي: $${formatNumber(downPaymentSnapshot)} + دين: $${formatNumber(debtRemainingSnapshot)}) - المنتجات: ${itemsDescription}`
-            : `عملية بيع مؤجل بقيمة $${formatNumber(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
+            ? `عملية بيع مركب بقيمة ${formatMoney(totalSnapshot)} للعميل ${customerNameSnapshot} (نقدي: ${formatMoney(downPaymentSnapshot)} + دين: ${formatMoney(debtRemainingSnapshot)}) - المنتجات: ${itemsDescription}`
+            : `عملية بيع مؤجل بقيمة ${formatMoney(totalSnapshot)} للعميل ${customerNameSnapshot} - المنتجات: ${itemsDescription}`,
           { 
             total: totalSnapshot, 
             itemsCount: cartSnapshot.length, 
@@ -1222,8 +1221,8 @@ export function CartPanel({
           user.id,
           profile?.full_name || user.email || 'مستخدم',
           downPaymentSnapshot > 0
-            ? `تم إنشاء دين للعميل ${customerNameSnapshot} بقيمة $${formatNumber(debtRemainingSnapshot)} بعد دفعة أولى $${formatNumber(downPaymentSnapshot)}`
-            : `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة $${formatNumber(totalSnapshot)}`,
+            ? `تم إنشاء دين للعميل ${customerNameSnapshot} بقيمة ${formatMoney(debtRemainingSnapshot)} بعد دفعة أولى ${formatMoney(downPaymentSnapshot)}`
+            : `تم إنشاء دين جديد للعميل ${customerNameSnapshot} بقيمة ${formatMoney(totalSnapshot)}`,
           { amount: debtRemainingSnapshot, downPayment: downPaymentSnapshot, customerName: customerNameSnapshot }
         );
 
@@ -1588,7 +1587,7 @@ export function CartPanel({
                   if (!wholesaleMode) setReceivedAmount(0);
                 }}
                 className={cn(
-                  "text-xs font-bold px-2 py-1 rounded-lg transition-all inline-flex items-center gap-1 shrink-0",
+                  "text-xs font-bold px-2 py-1 rounded-lg transition-colors inline-flex items-center gap-1 shrink-0",
                   wholesaleMode
                     ? "bg-orange-500 text-white shadow-md"
                     : "bg-muted text-foreground hover:bg-muted/80"
@@ -1633,7 +1632,7 @@ export function CartPanel({
                   type="button"
                   onClick={() => onSwitchCart?.(hc.id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 border",
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-colors shrink-0 border",
                     hc.id === activeCartId
                       ? "bg-primary text-primary-foreground border-primary shadow-xs scale-105"
                       : "bg-muted/50 text-muted-foreground border-border/50 hover:text-foreground"
@@ -1665,7 +1664,7 @@ export function CartPanel({
                 <button
                   type="button"
                   onClick={onAddNewCart}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-dashed border-border/70 transition-all shrink-0"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-dashed border-border/70 transition-colors shrink-0"
                   title={t('pos.newCart') || 'إضافة سلة جديدة'}
                 >
                   <Plus className="w-3 h-3" />
@@ -1856,7 +1855,7 @@ export function CartPanel({
                   key={currency.code}
                   onClick={() => onCurrencyChange(currency)}
                   className={cn(
-                    "flex-1 py-1.5 min-h-9 rounded-md text-[11px] font-bold transition-all flex items-center justify-center leading-none",
+                    "flex-1 py-1.5 min-h-9 rounded-md text-[11px] font-bold transition-colors flex items-center justify-center leading-none",
                     selectedCurrency.code === currency.code
                       ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
                       : "text-muted-foreground hover:text-foreground"
@@ -1888,7 +1887,7 @@ export function CartPanel({
               {settingsDiscountPercentEnabled && (
                 <label
                   className={cn(
-                    "group box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+                    "group box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-colors cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'percent' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1921,7 +1920,7 @@ export function CartPanel({
               {settingsDiscountFixedEnabled && (
                 <label
                   className={cn(
-                    "group box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+                    "group box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-colors cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
                     discountType === 'fixed' && discount > 0
                       ? "bg-primary/5 border-primary/40"
                       : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -1956,7 +1955,7 @@ export function CartPanel({
           {/* Row 3: Received Amount */}
           <div className="space-y-1">
             <div className={cn(
-              "box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-all cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
+              "box-border flex h-10 min-w-0 w-full items-center gap-1.5 overflow-hidden rounded-lg border px-2 transition-colors cursor-text focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary",
               receivedAmount > 0
                 ? "bg-primary/5 border-primary/40"
                 : "bg-muted/40 border-border/40 hover:border-border/60"
@@ -2025,7 +2024,7 @@ export function CartPanel({
                       <button
                         type="button"
                         onClick={handleApplySurplusAsProfit}
-                        className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-all flex items-center gap-1"
+                        className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
                         title={t('pos.setExtraProfit') || 'تعديل سعر الصنف واعتماد الزيادة كربح'}
                       >
                         <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+{usdSymbol}{formatNumber(roundCurrency(receivedUSD - total))})</span>

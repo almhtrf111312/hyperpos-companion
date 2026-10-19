@@ -53,7 +53,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
         {isRTL ? '👁️ معاينة مباشرة' : '👁️ Live Preview'}
       </h3>
       <div
-        className="rounded-xl border-2 border-border overflow-hidden shadow-lg transition-all duration-500"
+        className="rounded-xl border-2 border-border overflow-hidden shadow-lg transition-colors duration-500"
         style={{ backgroundColor: bg, direction: isRTL ? 'rtl' : 'ltr' }}
       >
         <div className="flex h-[15.7rem]">
@@ -102,7 +102,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
               ].map((stat, i) => (
                 <div
                   key={i}
-                  className="rounded-lg p-2 transition-all duration-500"
+                  className="rounded-lg p-2 transition-colors duration-500"
                   style={{
                     backgroundColor: cardBg,
                     border: `1px solid ${borderColor}`,
@@ -113,7 +113,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
                   <div className="text-xs font-bold transition-colors duration-500" style={{ color: fg }}>{stat.value}</div>
                   <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: mutedBg }}>
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className="h-full rounded-full transition-[width] duration-500"
                       style={{
                         background: `linear-gradient(90deg, ${primary}, ${accent})`,
                         width: `${60 + i * 15}%`,
@@ -126,7 +126,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
 
             {/* Mini Table */}
             <div
-              className="rounded-lg overflow-hidden transition-all duration-500"
+              className="rounded-lg overflow-hidden transition-colors duration-500"
               style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, ...(blur && !isDark ? glassStyle : {}) }}
             >
               {[0, 1, 2].map(row => (
@@ -157,7 +157,7 @@ export function ThemeLivePreview({ mode, color, blur, transparency }: ThemeLiveP
             {/* Bottom button */}
             <div className="flex justify-end">
               <div
-                className="h-6 rounded-md px-3 flex items-center transition-all duration-500"
+                className="h-6 rounded-md px-3 flex items-center transition-colors duration-500"
                 style={{
                   background: `linear-gradient(135deg, ${primary}, ${accent})`,
                   color: 'white',

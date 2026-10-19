@@ -27,7 +27,7 @@ import {
   RotateCcw,
   RefreshCw
 } from 'lucide-react';
-import { cn, toWesternNumerals, formatNumber } from '@/lib/utils';
+import { cn, toWesternNumerals, formatNumber, formatMoney } from '@/lib/utils';
 import { useCurrency } from '@/hooks/use-currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +117,7 @@ export default function Products() {
       <>
         {formatNumber(localVal, decimals)} {currencySymbol}{' '}
         {enabledCurrencies.USD !== false && (
-          <span className="text-[0.8em] opacity-60 ml-1">(${formatNumber(val, 2)})</span>
+          <span className="text-[0.8em] opacity-60 ml-1">({formatMoney(val, 'USD', 2)})</span>
         )}
       </>
     );
@@ -125,11 +125,11 @@ export default function Products() {
   
   const formatPriceRaw = (usdPrice: number) => {
     const val = usdPrice || 0;
-    if (currencyCode === 'USD') return `$${formatNumber(val, 2)}`;
+    if (currencyCode === 'USD') return formatMoney(val, 'USD', 2);
     const localVal = val * exchangeRate;
     const decimals = currencyCode === 'SYP' ? 0 : 2;
     return enabledCurrencies.USD !== false
-      ? `${formatNumber(localVal, decimals)} ${currencySymbol} ($${formatNumber(val, 2)})`
+      ? `${formatNumber(localVal, decimals)} ${currencySymbol} (${formatMoney(val, 'USD', 2)})`
       : `${formatNumber(localVal, decimals)} ${currencySymbol}`;
   };
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1443,7 +1443,7 @@ export default function Products() {
             type="button"
             onClick={() => setMainTab('products')}
             className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               mainTab === 'products'
                 ? "bg-gradient-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -1457,7 +1457,7 @@ export default function Products() {
           <button
             type="button"
             onClick={() => setShowCategoryManager(true)}
-            className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer w-auto flex-shrink-0"
+            className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer w-auto flex-shrink-0"
           >
             <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
             <span>{t('products.categories') || 'التصنيفات'}</span>
@@ -1471,7 +1471,7 @@ export default function Products() {
               loadArchivedData();
             }}
             className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all duration-200 select-none cursor-pointer w-auto flex-shrink-0",
+              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
               mainTab === 'archive'
                 ? "!bg-red-600 !text-white shadow-xs shadow-red-600/30"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -1502,7 +1502,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-red-500/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-red-500/40",
                   archiveFilter === 'all' ? "border-red-500 bg-red-500/10 ring-1 ring-red-500/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1518,7 +1518,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('out_of_stock')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-destructive/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-destructive/40",
                   archiveFilter === 'out_of_stock' ? "border-destructive bg-destructive/10 ring-1 ring-destructive/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1534,7 +1534,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('manual_archived')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-warning/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-warning/40",
                   archiveFilter === 'manual_archived' ? "border-warning bg-warning/10 ring-1 ring-warning/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1550,7 +1550,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('ready_to_restore')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-emerald-500/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-emerald-500/40",
                   archiveFilter === 'ready_to_restore' ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1569,7 +1569,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setStatusFilter('all')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-primary/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-primary/40",
                   statusFilter === 'all' ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1585,7 +1585,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setStatusFilter('in_stock')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-success/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-success/40",
                   statusFilter === 'in_stock' ? "border-success bg-success/10 ring-1 ring-success/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1601,7 +1601,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setStatusFilter('low_stock')}
                 className={cn(
-                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-all select-none text-start cursor-pointer hover:border-warning/40",
+                  "flex items-center gap-1.5 sm:gap-2.5 p-1.5 sm:p-2.5 rounded-xl border bg-card/90 transition-colors select-none text-start cursor-pointer hover:border-warning/40",
                   statusFilter === 'low_stock' ? "border-warning bg-warning/10 ring-1 ring-warning/30 shadow-2xs" : "border-border/60 hover:bg-muted/40"
                 )}
               >
@@ -1693,7 +1693,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setArchiveFilter('all')}
                 className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0",
                   archiveFilter === 'all'
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1714,7 +1714,7 @@ export default function Products() {
                   key={category}
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
-                    "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0",
+                    "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0",
                     selectedCategory === category
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1729,7 +1729,7 @@ export default function Products() {
               <button
                 onClick={() => setUnitFilter(unitFilter === 'multi_unit' ? 'all' : 'multi_unit')}
                 className={cn(
-                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-1.5",
+                  "px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 flex items-center gap-1.5",
                   unitFilter === 'multi_unit'
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1954,7 +1954,7 @@ export default function Products() {
                 return (
                   <div
                     key={product.id}
-                    className="bg-card rounded-xl px-2.5 py-1.5 border border-border shadow-2xs hover:border-border/80 transition-all text-xs space-y-1 fade-in"
+                    className="bg-card rounded-xl px-2.5 py-1.5 border border-border shadow-2xs hover:border-border/80 transition-colors text-xs space-y-1 fade-in"
                     style={{ animationDelay: `${index * 10}ms` }}
                   >
                     {/* Line 1: Full Product Name + Action Buttons on Left */}
@@ -1973,7 +1973,7 @@ export default function Products() {
                           <button
                             type="button"
                             onClick={() => openEditDialog(product)}
-                            className="w-6 h-6 rounded-md bg-muted text-foreground/75 border border-border/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all flex items-center justify-center shadow-2xs"
+                            className="w-6 h-6 rounded-md bg-muted text-foreground/75 border border-border/70 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-[colors,transform] flex items-center justify-center shadow-2xs"
                             title={t('common.edit') || 'تعديل'}
                           >
                             <Edit className="w-3 h-3 text-foreground/75" />
@@ -1981,7 +1981,7 @@ export default function Products() {
                           <button
                             type="button"
                             onClick={() => openDeleteDialog(product)}
-                            className="w-6 h-6 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-all flex items-center justify-center shadow-2xs"
+                            className="w-6 h-6 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-[colors,transform] flex items-center justify-center shadow-2xs"
                             title={t('common.delete') || 'حذف'}
                           >
                             <Trash2 className="w-3 h-3 text-rose-600 dark:text-rose-400" />
@@ -2063,7 +2063,7 @@ export default function Products() {
                 return (
                   <div
                     key={product.id}
-                    className="bg-card rounded-2xl p-2.5 border border-border shadow-2xs hover:border-border/80 transition-all fade-in"
+                    className="bg-card rounded-2xl p-2.5 border border-border shadow-2xs hover:border-border/80 transition-colors fade-in"
                     style={{ animationDelay: `${index * 15}ms` }}
                   >
                     <div className="flex items-center justify-between gap-2.5">
@@ -2169,7 +2169,7 @@ export default function Products() {
                           <button
                             type="button"
                             onClick={() => openEditDialog(product)}
-                            className="size-7 sm:size-8 rounded-lg bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
+                            className="size-7 sm:size-8 rounded-lg bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-[colors,transform] shadow-2xs flex items-center justify-center border border-border/80"
                             title={t('common.edit') || 'تعديل'}
                           >
                             <Edit className="w-3.5 h-3.5 text-foreground/80" />
@@ -2177,7 +2177,7 @@ export default function Products() {
                           <button
                             type="button"
                             onClick={() => openDeleteDialog(product)}
-                            className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-rose-500/20"
+                            className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-[colors,transform] shadow-2xs flex items-center justify-center border border-rose-500/20"
                             title={t('common.delete') || 'حذف'}
                           >
                             <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
@@ -2193,7 +2193,7 @@ export default function Products() {
               return (
                 <div
                   key={product.id}
-                  className="bg-card rounded-2xl p-3 border border-border shadow-2xs relative hover:border-border/80 transition-all fade-in"
+                  className="bg-card rounded-2xl p-3 border border-border shadow-2xs relative hover:border-border/80 transition-colors fade-in"
                   style={{ animationDelay: `${index * 20}ms` }}
                 >
                   {/* Main Body: Right Info, Center Square Image, Left Stacked Actions */}
@@ -2323,7 +2323,7 @@ export default function Products() {
                         <button
                           type="button"
                           onClick={() => openEditDialog(product)}
-                          className="w-8 h-8 rounded-xl bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-border/80"
+                          className="w-8 h-8 rounded-xl bg-muted text-foreground/80 hover:bg-muted/80 hover:text-foreground active:scale-90 transition-[colors,transform] shadow-2xs flex items-center justify-center border border-border/80"
                           title={t('common.edit') || 'تعديل'}
                         >
                           <Edit className="w-4 h-4 text-foreground/80" />
@@ -2331,7 +2331,7 @@ export default function Products() {
                         <button
                           type="button"
                           onClick={() => openDeleteDialog(product)}
-                          className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all shadow-2xs flex items-center justify-center border border-rose-500/20"
+                          className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-[colors,transform] shadow-2xs flex items-center justify-center border border-rose-500/20"
                           title={t('common.delete') || 'حذف'}
                         >
                           <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
@@ -2394,7 +2394,7 @@ export default function Products() {
                       )}>
                         <span className="text-[9px] font-bold block">{profit >= 0 ? (t('products.profit') || "الربح") : (t('products.loss') || "الخسارة")}</span>
                         <span className="text-xs font-black font-mono">
-                          {profit > 0 ? `+$${formatNumber(profit, 2)}` : profit < 0 ? `-$${formatNumber(Math.abs(profit), 2)}` : `$0.00`}
+                          {profit > 0 ? `+${formatMoney(profit, undefined, 2)}` : profit < 0 ? `-${formatMoney(Math.abs(profit), undefined, 2)}` : formatMoney(0, undefined, 2)}
                         </span>
                       </div>
                     </div>
@@ -2706,7 +2706,7 @@ export default function Products() {
                               setFormData(prev => ({ ...prev, size: updated.join(', ') }));
                             }}
                             className={cn(
-                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-all",
+                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
                               formData.size?.split(',').map(x => x.trim()).includes(s)
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-muted text-muted-foreground border-border hover:border-primary/50"
@@ -2740,7 +2740,7 @@ export default function Products() {
                               setFormData(prev => ({ ...prev, color: updated.join(', ') }));
                             }}
                             className={cn(
-                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-all",
+                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-colors",
                               formData.color?.split(',').map(x => x.trim()).includes(c.name)
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-muted text-muted-foreground border-border hover:border-primary/50"
@@ -2934,7 +2934,7 @@ export default function Products() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-all cursor-pointer shadow-xs"
+                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
                   onClick={() => {
                     setShowAddDialog(false);
                     setImagePreviewBase64('');
@@ -2945,7 +2945,7 @@ export default function Products() {
                 </Button>
                 <Button
                   type="button"
-                  className="flex-1 h-12 rounded-2xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-all cursor-pointer"
+                  className="flex-1 h-12 rounded-2xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-colors cursor-pointer"
                   onClick={handleAddProduct}
                 >
                   <Save className="w-4 h-4 ml-2" />
@@ -3228,7 +3228,7 @@ export default function Products() {
                               setFormData(prev => ({ ...prev, size: updated.join(', ') }));
                             }}
                             className={cn(
-                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-all",
+                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
                               formData.size?.split(',').map(x => x.trim()).includes(s)
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-muted text-muted-foreground border-border hover:border-primary/50"
@@ -3262,7 +3262,7 @@ export default function Products() {
                               setFormData(prev => ({ ...prev, color: updated.join(', ') }));
                             }}
                             className={cn(
-                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-all",
+                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-colors",
                               formData.color?.split(',').map(x => x.trim()).includes(c.name)
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-muted text-muted-foreground border-border hover:border-primary/50"
@@ -3457,7 +3457,7 @@ export default function Products() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-all cursor-pointer shadow-xs"
+                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
                   onClick={() => {
                     setShowEditDialog(false);
                     setImagePreviewBase64('');
@@ -3469,7 +3469,7 @@ export default function Products() {
                 <Button
                   type="button"
                   className={cn(
-                    "flex-1 h-12 rounded-2xl text-sm font-black shadow-md transition-all cursor-pointer",
+                    "flex-1 h-12 rounded-2xl text-sm font-black shadow-md transition-colors cursor-pointer",
                     selectedProduct?.archived
                       ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
                       : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
@@ -3744,7 +3744,7 @@ export default function Products() {
         {canAddProducts && (
           <div
             className={cn(
-              "fixed z-40 transition-all duration-300 ease-out pointer-events-none",
+              "fixed z-40 transition-[opacity,transform] duration-300 ease-out pointer-events-none",
               "bottom-20 md:bottom-8",
               isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
               isFabVisible

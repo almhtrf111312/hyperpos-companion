@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { getDueExpenses, executeAutoPayRecurringExpenses } from '@/lib/recurring-expenses-store';
 import { toast } from 'sonner';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatMoney } from '@/lib/utils';
 
 export function useDueExpensesChecker() {
   useEffect(() => {
@@ -23,7 +23,7 @@ export function useDueExpensesChecker() {
           const totalAmount = manualDue.reduce((sum, e) => sum + e.amount, 0);
           toast.warning(`تنبيه: يوجد ${manualDue.length} مصروف مستحق السداد اليوم`, {
             id: 'manual-due-expenses-alert',
-            description: `إجمالي المستحق: $${formatNumber(totalAmount, 2)} - اضغط للمراجعة والسداد`,
+            description: `إجمالي المستحق: ${formatMoney(totalAmount, undefined, 2)} - اضغط للمراجعة والسداد`,
             duration: 6000,
             action: {
               label: 'مراجعة وسداد',
