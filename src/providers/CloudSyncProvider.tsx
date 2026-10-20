@@ -391,15 +391,15 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         }
         if (operation.type === 'invoice_refund') {
           const { refundInvoiceCloud } = await import('@/lib/cloud/invoices-cloud');
-          const invoiceNumber = (operation.data as { invoiceNumber: string }).invoiceNumber;
-          const res = await refundInvoiceCloud(invoiceNumber, 'offline-sync');
+          const { invoiceNumber, condition } = (operation.data as { invoiceNumber: string; condition?: 'good' | 'damaged' });
+          const res = await refundInvoiceCloud(invoiceNumber, 'offline-sync', condition || 'good');
           // An already-refunded invoice is an idempotent success; a real failure retries.
           return res === true || (typeof res === 'object' && (res.success || res.alreadyRefunded === true));
         }
         if (operation.type === 'invoice_refund_partial') {
           const { refundInvoicePartialCloud } = await import('@/lib/cloud/invoices-cloud');
-          const { invoiceNumber, itemsToRefund, operationId } = operation.data as { invoiceNumber: string; itemsToRefund: any[]; operationId?: string };
-          const res = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund, operationId || `legacy-${operation.id}`);
+          const { invoiceNumber, itemsToRefund, operationId, condition } = operation.data as { invoiceNumber: string; itemsToRefund: any[]; operationId?: string; condition?: 'good' | 'damaged' };
+          const res = await refundInvoicePartialCloud(invoiceNumber, itemsToRefund, operationId || `legacy-${operation.id}`, condition || 'good');
           if (!res.success) throw new Error(res.error || 'فشل الاسترداد الجزئي');
           return true;
         }

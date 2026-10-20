@@ -268,6 +268,14 @@ export function isInvoiceInRange(createdAt?: string | null, from?: string, to?: 
 }
 
 
+/**
+ * فحص ما إذا كانت الفاتورة مستردة (يدعم الحالة المباشرة status='refunded' أو الحماية المزدوجة status='cancelled' مع وسم الاسترداد)
+ */
+export function isInvoiceRefunded(inv?: { status?: string; notes?: string | null } | null): boolean {
+  if (!inv) return false;
+  return inv.status === 'refunded' || (typeof inv.notes === 'string' && inv.notes.includes('[مستردة بالكامل - REFUNDED]'));
+}
+
 export default function Invoices() {
   const { t, language, isRTL } = useLanguage();
 
@@ -759,7 +767,7 @@ export default function Invoices() {
 
   const handleRefund = (invoice: Invoice) => {
     // ✅ منع الاسترداد المزدوج من الواجهة
-    if (invoice.status === 'refunded') {
+    if (isInvoiceRefunded(invoice)) {
       toast.warning(
         language === 'en'
           ? 'This invoice is already refunded'
@@ -940,7 +948,7 @@ export default function Invoices() {
           updateCustomerStatsCloud(invoice.customerId!).catch(() => {});
         });
       }
-      addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel }, `invoice-refund:${invoiceLabel}`);
+      addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel, condition: refundCondition }, `invoice-refund:${invoiceLabel}`);
       toast.info(`تم استرداد ${invoiceLabel} محلياً`, {
         id: toastId,
         description: `المبلغ: ${formatCurrency(invoiceTotal, invoiceCurrencySymbol, refundFin.decimals)} — سيُرفع الاسترداد تلقائياً عند عودة الإنترنت`,
@@ -950,9 +958,9 @@ export default function Invoices() {
     }
 
     // ✅ Online path: dialog is already closed, but the guard remains held until completion.
-    toast.loading(`جاري استرداد ${invoiceLabel}...`, { id: toastId });
+    toast.loading(t('refundingInvoice') ? `${t('refundingInvoice')} (${invoiceLabel})...` : `جاري استرداد ${invoiceLabel}...`, { id: toastId });
     try {
-        const result = await refundInvoiceCloud(invoiceLabel, 'online');
+        const result = await refundInvoiceCloud(invoiceLabel, 'online', refundCondition);
         if (typeof result === 'object' && (result as any).unsyncedRefund) {
           markInvoiceRefundedLocally(invoiceLabel);
           setInvoices(prev => prev.map(inv =>
@@ -981,7 +989,7 @@ export default function Invoices() {
         const ok = result && (result === true || (result as RefundResult).success);
         if (!ok) {
           const reason = typeof result === 'object' ? (result as RefundResult).error : undefined;
-          toast.error(`فشل في استرداد ${invoiceLabel}`, {
+          toast.error(t('invoiceRefundFailed') ? `${t('invoiceRefundFailed')} (${invoiceLabel})` : `فشل في استرداد ${invoiceLabel}`, {
             id: toastId,
             description: reason || 'لم يطرأ أي تغيير على الفاتورة أو المخزون',
             duration: 5000,
@@ -1031,7 +1039,7 @@ export default function Invoices() {
             lines.push(`💰 يُرجع نقداً للعميل ومن الوردية: ${formatCurrency(r.cashToRefund, refundedCurrency)}`);
           }
         }
-        toast.success(`✅ تم استرداد ${invoiceLabel}`, {
+        toast.success(t('invoiceRefundSuccess') ? `${t('invoiceRefundSuccess')} (${invoiceLabel})` : `✅ تم استرداد ${invoiceLabel}`, {
           id: toastId,
           description: lines.join(' • '),
           duration: 4500,
@@ -1114,7 +1122,7 @@ export default function Invoices() {
 
       addToQueueIfNotExists(
         'invoice_refund_partial',
-        { invoiceNumber: invoiceLabel, itemsToRefund, operationId },
+        { invoiceNumber: invoiceLabel, itemsToRefund, operationId, condition: refundCondition },
         `invoice-refund-partial:${operationId}`
       );
 
@@ -1138,7 +1146,7 @@ export default function Invoices() {
 
     toast.loading(`جاري الاسترداد الجزئي للفاتورة ${invoiceLabel}...`, { id: toastId });
     try {
-      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund, operationId);
+      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund, operationId, refundCondition);
       if (!result.success) {
         toast.error(`فشل الاسترداد الجزئي: ${result.error}`, { id: toastId, duration: 5000 });
         return;
@@ -1250,7 +1258,7 @@ export default function Invoices() {
 
   // فتح نافذة تسديد الدفعة مباشرة داخل صفحة الفواتير
   const handlePayDebt = async (invoice: Invoice) => {
-    if (invoice.status === 'refunded') {
+    if (isInvoiceRefunded(invoice)) {
       toast.warning('⚠️ هذا الدين مرتبط بفاتورة مستردة. لا يمكن تسديد هذا الدين.');
       return;
     }
@@ -2156,7 +2164,7 @@ export default function Invoices() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          {invoice.status !== 'refunded' && (
+                          {!isInvoiceRefunded(invoice) && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleRefund(invoice)} className="justify-between text-destructive cursor-pointer">
@@ -2202,7 +2210,7 @@ export default function Invoices() {
                       )}
 
                       {/* شارة الاسترداد إن وجدت */}
-                      {invoice.status === 'refunded' && (
+                      {isInvoiceRefunded(invoice) && (
                         <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                           <Undo2 className="w-2.5 h-2.5" />
                           {t('invoices.refunded') || 'مستردة'}
@@ -2210,7 +2218,7 @@ export default function Invoices() {
                       )}
 
                       {/* شارة الإلغاء إن وجدت */}
-                      {invoice.status === 'cancelled' && (
+                      {invoice.status === 'cancelled' && !isInvoiceRefunded(invoice) && (
                         <span className="bg-destructive/15 text-destructive border border-destructive/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                           <XCircle className="w-2.5 h-2.5" />
                           {'ملغاة'}
@@ -2349,7 +2357,7 @@ export default function Invoices() {
                       </div>
 
                       {/* 4. زر الاسترداد (يظهر إذا لم تكن الفاتورة مستردة) */}
-                      {invoice.status !== 'refunded' && (
+                      {!isInvoiceRefunded(invoice) && (
                         <button
                           type="button"
                           onClick={() => handleRefund(invoice)}
@@ -3583,7 +3591,7 @@ export default function Invoices() {
                   {tx('invoices.refundedInvoices', 'إظهار الفواتير المستردة')}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-semibold">
-                  تضمين {invoices.filter(i => i.status === 'refunded').length} فاتورة مستردة في القائمة
+                  تضمين {invoices.filter(i => isInvoiceRefunded(i)).length} فاتورة مستردة في القائمة
                 </span>
               </div>
               <button
