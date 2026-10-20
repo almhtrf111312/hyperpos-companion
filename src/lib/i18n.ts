@@ -23,9 +23,6 @@ export const translations = {
     "syncInvoiceCancelledLocally": "تم إلغاء فاتورة مبيعات محلياً",
     "refundedUnsyncedInvoiceSuccess": "تم استرداد الفاتورة محلياً وإلغاء مزامنتها المعلقة بنجاح",
     "syncTimeoutVpnWarning": "تعذر الوصول للخادم (تحقق من اتصال الإنترنت أو الـ VPN)، تم حفظ العملية محلياً",
-    "refundingInvoice": "جاري استرداد الفاتورة...",
-    "invoiceRefundSuccess": "تم استرداد الفاتورة بنجاح",
-    "invoiceRefundFailed": "فشل في استرداد الفاتورة",
     "cashShifts.cashier": "الكاشير",
     "common.options": "خيارات",
     "common.retry": "إعادة المحاولة",
@@ -2639,9 +2636,6 @@ export const translations = {
   en: {
     "syncInvoiceCancelledLocally": "Sales invoice cancelled locally",
     "refundedUnsyncedInvoiceSuccess": "Invoice refunded locally and pending sync cancelled successfully",
-    "refundingInvoice": "Refunding invoice...",
-    "invoiceRefundSuccess": "Invoice refunded successfully",
-    "invoiceRefundFailed": "Failed to refund invoice",
     "syncTimeoutVpnWarning": "Server unreachable (check internet or VPN), operation saved locally",
 
     'dashboard.unifiedTitle': 'Unified Reports & KPI Dashboard',
@@ -5177,9 +5171,6 @@ export const translations = {
   tr: {
     "syncInvoiceCancelledLocally": "Satış faturası yerel olarak iptal edildi",
     "refundedUnsyncedInvoiceSuccess": "Fatura yerel olarak iade edildi ve bekleyen senkronizasyon iptal edildi",
-    "refundingInvoice": "Fatura iade ediliyor...",
-    "invoiceRefundSuccess": "Fatura başarıyla iade edildi",
-    "invoiceRefundFailed": "Fatura iadesi başarısız oldu",
     "syncTimeoutVpnWarning": "Sunucuya ulaşılamıyor (internet veya VPN kontrol edin), işlem yerel olarak kaydedildi",
 
     'dashboard.unifiedTitle': 'Birleşik Raporlar ve KPI Paneli',
