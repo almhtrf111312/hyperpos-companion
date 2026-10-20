@@ -183,9 +183,16 @@ export function resolveHistoricalCurrency(
     return { code: 'USD', symbol, rate: 1 };
   }
 
-  // 1. استنتاج العملة التاريخية من سعر الصرف أو الكود
-  const inferred = inferCurrencyFromExchangeRate(rate, rawCurrency);
-  const code = inferred?.code || (rawCurrency && rawCurrency !== 'USD' ? rawCurrency : (fallbackSettings?.currencyCode !== 'USD' ? fallbackSettings?.currencyCode || 'TRY' : 'TRY'));
+  // 1. العملة المحفوظة في الفاتورة هي المرجع؛ التخمين من سعر الصرف فقط للفواتير القديمة بلا كود
+  let code: string;
+  if (rawCurrency && rawCurrency !== 'USD') {
+    code = rawCurrency;
+  } else {
+    const active = (fallbackSettings?.currencyCode || '').toUpperCase();
+    code = (active && active !== 'USD')
+      ? active
+      : (inferCurrencyFromExchangeRate(rate, rawCurrency)?.code || 'USD');
+  }
 
   // 2. التحقق من صحة الرمز وتجميده
   let symbol: string;

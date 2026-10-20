@@ -175,7 +175,7 @@ export const showToast = {
 
     const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
     // الأخطاء: إما مستمرة حتى الإغلاق اليدوي بالزر (Default) أو مدة 6 ثوانٍ على الأقل
-    const isPersistent = !isObj || optionsOrDesc.persistent !== false;
+    const isPersistent = isObj && (optionsOrDesc as any).persistent === true;
     const duration = (isObj && optionsOrDesc.duration)
       ? Math.max(optionsOrDesc.duration, 6000)
       : (isPersistent ? Infinity : 6000);
