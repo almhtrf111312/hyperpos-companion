@@ -22,7 +22,7 @@ export interface SyncHistoryItem {
   type: string;
   label: string; // Human-readable label
   timestamp: string;
-  status: 'pending' | 'syncing' | 'synced' | 'failed';
+  status: 'pending' | 'syncing' | 'synced' | 'failed' | 'cancelled';
   error?: string;
   category?: SyncCategory;
   meta?: SyncHistoryMeta;
@@ -46,9 +46,12 @@ const TYPE_LABELS: Record<string, string> = {
 /**
  * ترجمة العمليات والمزامنات إلى لغة محاسبية دقيقة وتفادي إظهار أسماء الجداول
  */
+export type SyncHistoryStatus = 'pending' | 'syncing' | 'synced' | 'failed' | 'cancelled';
+
 export function formatAccountingSyncLabel(
   type: string,
-  rawLabelOrPayload?: any
+  rawLabelOrPayload?: any,
+  status: SyncHistoryStatus = 'pending'
 ): { title: string; subtitle?: string; category: SyncCategory } {
   const t = (type || '').toLowerCase();
   
@@ -62,8 +65,14 @@ export function formatAccountingSyncLabel(
       amount = rawLabelOrPayload.amountText || (rawLabelOrPayload.totalInCurrency ? `${rawLabelOrPayload.totalInCurrency}` : '');
     }
     const shortId = invNum ? `#${String(invNum).replace(/^inv[-_]?/i, '')}` : '';
+    let prefix = 'فاتورة مبيعات';
+    if (status === 'synced') prefix = 'تمت مزامنة فاتورة مبيعات';
+    else if (status === 'cancelled') prefix = 'تم إلغاء فاتورة مبيعات (محلياً)';
+    else if (status === 'syncing') prefix = 'جاري مزامنة فاتورة مبيعات';
+    else if (status === 'failed') prefix = 'تعذر رفع فاتورة مبيعات';
+
     return {
-      title: `تمت مزامنة فاتورة مبيعات ${shortId}`.trim(),
+      title: `${prefix} ${shortId}`.trim(),
       subtitle: [customer ? `الزبون: ${customer}` : '', amount ? `المبلغ: ${amount}` : ''].filter(Boolean).join(' • '),
       category: 'sale'
     };
@@ -179,6 +188,8 @@ export const updateHistoryStatus = (
   if (item) {
     item.status = status;
     if (error) item.error = error;
+    const accounting = formatAccountingSyncLabel(item.type, item.meta || item.label, status);
+    item.label = accounting.title;
     saveHistory(history);
   }
 };

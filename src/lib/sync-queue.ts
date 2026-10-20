@@ -117,6 +117,40 @@ export interface SyncQueueStatus {
 let isProcessing = false;
 let lastSyncTime: string | null = null;
 
+// ============= Active Controllers for In-Flight Sync Operations =============
+const activeSyncControllers = new Map<string, AbortController>();
+
+export const getActiveSyncController = (operationId: string): AbortController | undefined => {
+  return activeSyncControllers.get(operationId);
+};
+
+export const abortSyncOperation = (operationId: string, reason?: string): boolean => {
+  const controller = activeSyncControllers.get(operationId);
+  if (controller) {
+    try {
+      controller.abort(reason || 'Sync operation aborted');
+    } catch {}
+    activeSyncControllers.delete(operationId);
+    return true;
+  }
+  return false;
+};
+
+/**
+ * البحث عن عملية بيع معلقة في الطابور برقم الفاتورة أو معرف العملية
+ */
+export const findQueuedSaleOperation = (invoiceNumberOrId: string): QueuedOperation | undefined => {
+  if (!invoiceNumberOrId) return undefined;
+  const cleanKey = String(invoiceNumberOrId).trim();
+  const queue = loadQueue();
+  return queue.find(op => {
+    if (op.type !== 'invoice_create' && op.type !== 'debt_sale_bundle') return false;
+    const opKey = String(op.data.uniqueKey || op.data.operationId || op.data.localId || op.id);
+    const bInv = String((op.data?.bundle as any)?.invoiceNumber || op.data?.invoiceNumber || '');
+    return opKey === cleanKey || bInv === cleanKey || op.id === cleanKey;
+  });
+};
+
 // ============= Core Functions =============
 
 /**
@@ -448,10 +482,36 @@ export const processQueue = async (
 
       updateOperationStatus(operation.id, 'processing');
       updateHistoryStatus(operation.id, 'syncing');
-      
+
+      // ربط كل عملية جارية بـ AbortController ومهلة زمنية صارمة (10 ثوانٍ) لمنع التعليق مع الـ VPN
+      const syncController = new AbortController();
+      activeSyncControllers.set(operation.id, syncController);
+      let isTimeout = false;
+      const timeoutTimer = setTimeout(() => {
+        isTimeout = true;
+        try { syncController.abort('SYNC_TIMEOUT_VPN'); } catch {}
+      }, 10000);
+
       try {
-        const success = await processor(operation);
-        
+        const success = await Promise.race([
+          processor(operation),
+          new Promise<boolean>((_, reject) => {
+            syncController.signal.addEventListener('abort', () => {
+              reject(new Error(syncController.signal.reason || 'SYNC_TIMEOUT_VPN'));
+            });
+          })
+        ]);
+        clearTimeout(timeoutTimer);
+
+        // التحقق من أن العملية لم تُسجل كملغاة محلياً أثناء فترة الانتظار
+        if (isOperationCancelled(opKey) || (bInv && isOperationCancelled(String(bInv)))) {
+          console.warn(`[SyncQueue] Operation ${operation.id} was cancelled during upload, discarding cloud result`);
+          removeFromQueue(operation.id);
+          try { localStorage.removeItem('hyperpos_sync_pending_' + operation.id); } catch {}
+          updateHistoryStatus(operation.id, 'cancelled', 'تم إلغاء فاتورة مبيعات محلياً');
+          continue;
+        }
+
         if (success) {
           removeFromQueue(operation.id);
           updateHistoryStatus(operation.id, 'synced');
@@ -469,6 +529,30 @@ export const processQueue = async (
           }
         }
       } catch (error) {
+        clearTimeout(timeoutTimer);
+        const errorMsg = String(error instanceof Error ? error.message : error);
+
+        // معالجة مهلة الـ VPN (Hung Socket): إعادة العملية لحالة الانتظار فوراً بدلاً من تعليقها
+        if (isTimeout || errorMsg.includes('SYNC_TIMEOUT_VPN')) {
+          console.warn(`[SyncQueue] Operation ${operation.id} timed out (VPN phantom connection). Reverting to pending.`);
+          updateOperationStatus(operation.id, 'pending', 'تعذر الوصول للخادم (تحقق من اتصال الإنترنت أو الـ VPN)، تم حفظ العملية محلياً');
+          updateHistoryStatus(operation.id, 'pending', 'تعذر الوصول للخادم (تحقق من اتصال الإنترنت أو الـ VPN)، تم حفظ العملية محلياً');
+          failed++;
+          if (operation.id === targetOperationId) {
+            targetSuccess = false;
+          }
+          break; // إيقاف فحص بقية الطابور مؤقتاً لتجنب إهدار وقت المستخدم عند انقطاع الإنترنت الفعلي خلف الـ VPN
+        }
+
+        // إذا تم إجهاض العملية يدوياً من قائمة العمليات العالقة
+        if (syncController.signal.aborted || isOperationCancelled(opKey) || (bInv && isOperationCancelled(String(bInv)))) {
+          console.warn(`[SyncQueue] Operation ${operation.id} was aborted / cancelled:`, opKey);
+          removeFromQueue(operation.id);
+          try { localStorage.removeItem('hyperpos_sync_pending_' + operation.id); } catch {}
+          updateHistoryStatus(operation.id, 'cancelled', 'تم إلغاء فاتورة مبيعات محلياً');
+          continue;
+        }
+
         const errorMessage = extractErrorMessage(error);
         const terminal = isTerminalSyncError(errorMessage);
         if (terminal) {
@@ -496,6 +580,9 @@ export const processQueue = async (
           targetSuccess = false;
         }
         console.error(`[SyncQueue] Failed operation ${operation.id} (${operation.type}):`, errorMessage);
+      } finally {
+        clearTimeout(timeoutTimer);
+        activeSyncControllers.delete(operation.id);
       }
     }
     

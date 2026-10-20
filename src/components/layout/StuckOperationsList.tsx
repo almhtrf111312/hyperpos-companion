@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { EVENTS } from '@/lib/events';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
+import { abortSyncOperation } from '@/lib/sync-queue';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import {
   getStuckOperations,
@@ -60,6 +62,7 @@ export function StuckOperationsList() {
   const cloudContext = useContext(CloudSyncContext);
   const syncNow = cloudContext?.syncNow;
   const isCloudSyncing = cloudContext?.isSyncing ?? false;
+  const { t } = useLanguage();
 
   const refresh = useCallback(() => setOperations(getStuckOperations()), []);
 
@@ -77,10 +80,13 @@ export function StuckOperationsList() {
   const handleDiscard = async (op: StuckOperation) => {
     setBusyId(op.id);
     try {
+      // إجهاض طلب الرفع الجاري في الخلفية فوراً دون انتظار استجابة الخادم
+      abortSyncOperation(op.id);
+      if (op.operationId) abortSyncOperation(op.operationId);
       const res = await discardStuckOperation(op.id);
       if (res.success) {
         if (res.status === 'local_cancelled_pending_cloud') {
-          toast.info('تم إلغاء البيع محلياً (بانتظار مطابقة السحابة عند توفر الإنترنت)', {
+          toast.info(t('syncInvoiceCancelledLocally') || 'تم إلغاء البيع محلياً (بانتظار مطابقة السحابة عند توفر الإنترنت)', {
             id: `discard-${op.id}`,
           });
         } else if (res.status === 'refunded') {
@@ -88,7 +94,7 @@ export function StuckOperationsList() {
             id: `discard-${op.id}`,
           });
         } else {
-          toast.success('تم إلغاء العملية وعكس كافة الآثار المحاسبية والمخزنية بنجاح', {
+          toast.success(t('syncInvoiceCancelledLocally') || 'تم إلغاء العملية وعكس كافة الآثار المحاسبية والمخزنية بنجاح', {
             id: `discard-${op.id}`,
           });
         }

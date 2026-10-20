@@ -803,6 +803,7 @@ export const deleteInvoiceCloud = async (id: string): Promise<boolean> => {
 export interface RefundResult {
   success: boolean;
   alreadyRefunded?: boolean;
+  unsyncedRefund?: boolean;
   error?: string;
   restoredItemsCount: number;
   restoredUnitsCount: number;
@@ -900,6 +901,34 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   const targetDebtPaid = targetInvoice ? (Number(targetInvoice.debtPaid) || 0) : 0;
   const isTargetCash = targetInvoice ? targetInvoice.paymentType === 'cash' : false;
   const isTargetDebt = targetInvoice ? targetInvoice.paymentType === 'debt' : false;
+
+  // فحص اعتراضي مسبق: إذا كانت الفاتورة لا تزال معلقة بطابور المزامنة (Offline / Unsynced Sale)
+  const { findQueuedSaleOperation, abortSyncOperation } = await import('@/lib/sync-queue');
+  const queuedSale = findQueuedSaleOperation(id);
+  if (queuedSale) {
+    console.log('[refundInvoiceCloud] Intercepted refund for unsynced queued invoice:', id);
+    abortSyncOperation(queuedSale.id, 'Refunded before sync');
+    const { discardStuckOperation } = await import('@/lib/sync-recovery');
+    await discardStuckOperation(queuedSale.id);
+    markInvoiceRefundedLocally(id);
+    const { updateHistoryStatus } = await import('@/lib/sync-history');
+    updateHistoryStatus(queuedSale.id, 'cancelled', 'refundedUnsyncedInvoiceSuccess');
+    return {
+      success: true,
+      alreadyRefunded: false,
+      unsyncedRefund: true,
+      restoredItemsCount: targetInvoice?.items?.length || 1,
+      restoredUnitsCount: targetInvoice?.items?.reduce((s, it) => s + (it.quantity || 1), 0) || 1,
+      deletedDebtAmount: targetInvoice?.debtRemaining || 0,
+      customerBalanceBefore: 0,
+      customerBalanceAfter: 0,
+      customerName: targetInvoice?.customerName || '',
+      invoiceTotal: targetInvoice?.total || 0,
+      invoiceCurrency: targetInvoice?.currency || 'USD',
+      debtPaidAmount: targetDebtPaid,
+      cashToRefund: isTargetCash ? (targetInvoice?.total || 0) : targetDebtPaid,
+    };
+  }
 
   // Stock, debt, customer totals, and invoice status are committed in one locked
   // database transaction. Only the first caller can receive success=true.

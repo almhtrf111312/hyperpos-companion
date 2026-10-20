@@ -911,6 +911,24 @@ export default function Invoices() {
     setShowRefundDialog(false);
     setInvoiceToRefund(null);
 
+    // 0. فحص مسبق: هل الفاتورة لا تزال في طابور المزامنة ولم تُرفع للسحابة بعد؟
+    const { findQueuedSaleOperation, abortSyncOperation } = await import('@/lib/sync-queue');
+    const queuedSale = findQueuedSaleOperation(invoiceLabel);
+    if (queuedSale) {
+      abortSyncOperation(queuedSale.id, 'Refunded before sync');
+      const { discardStuckOperation } = await import('@/lib/sync-recovery');
+      await discardStuckOperation(queuedSale.id);
+      markInvoiceRefundedLocally(invoiceLabel);
+      setInvoices(prev => prev.map(inv =>
+        inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+      ));
+      toast.success(t('refundedUnsyncedInvoiceSuccess') || 'تم استرداد الفاتورة محلياً وإلغاء مزامنتها المعلقة بنجاح', {
+        id: toastId,
+        duration: 4000,
+      });
+      return;
+    }
+
     // ✅ Offline path: update local state immediately and queue
     if (!isOnline) {
       markInvoiceRefundedLocally(invoiceLabel);
@@ -935,6 +953,18 @@ export default function Invoices() {
     toast.loading(`جاري استرداد ${invoiceLabel}...`, { id: toastId });
     try {
         const result = await refundInvoiceCloud(invoiceLabel, 'online');
+        if (typeof result === 'object' && (result as any).unsyncedRefund) {
+          markInvoiceRefundedLocally(invoiceLabel);
+          setInvoices(prev => prev.map(inv =>
+            inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+          ));
+          toast.success(t('refundedUnsyncedInvoiceSuccess') || 'تم استرداد الفاتورة محلياً وإلغاء مزامنتها المعلقة بنجاح', {
+            id: toastId,
+            duration: 4000,
+          });
+          return;
+        }
+
         if (typeof result === 'object' && result.alreadyRefunded) {
           markInvoiceRefundedLocally(invoiceLabel);
           setInvoices(prev => prev.map(inv =>
