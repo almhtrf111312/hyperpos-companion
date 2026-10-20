@@ -9,6 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { Share as CapacitorShare } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { formatNumber, formatCurrency, formatMoney } from './utils';
+import { resolveInvoiceCurrencySymbol } from './currencies';
 import { isGuestDemoMode } from './demo-data';
 import {
   InvoiceCanvasData,
@@ -244,13 +245,15 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
     subtotal,
     discount,
     total,
-    currencySymbol,
+    currencySymbol: rawCurrencySymbol,
     paymentType,
     downPayment,
     debtRemaining,
     serviceDescription,
     type,
   } = data;
+
+  const currencySymbol = resolveInvoiceCurrencySymbol(data.currency, rawCurrencySymbol);
 
   const itemsList = type !== 'maintenance'
     ? items.map(item =>

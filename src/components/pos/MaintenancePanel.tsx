@@ -42,7 +42,7 @@ import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';
 import { addExpenseCloud } from '@/lib/cloud/expenses-cloud';
-import { getCurrencySymbolByCode } from '@/lib/currencies';
+import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/currencies';
 import { loadCustomersCloud } from '@/lib/cloud/customers-cloud';
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
@@ -96,15 +96,10 @@ export function MaintenancePanel({
   const profit = servicePrice - partsCost;
   const servicePriceInCurrency = servicePrice * selectedCurrency.rate;
 
-  const effectiveCurrencySymbol = (() => {
-    if (selectedCurrency.code === 'USD') {
-      return (selectedCurrency.symbol && selectedCurrency.symbol.trim()) || '$';
-    }
-    if (selectedCurrency.symbol && selectedCurrency.symbol.trim() && selectedCurrency.symbol.trim() !== '$') {
-      return selectedCurrency.symbol.trim();
-    }
-    return getCurrencySymbolByCode(selectedCurrency.code);
-  })();
+  const effectiveCurrencySymbol = resolveInvoiceCurrencySymbol(
+    selectedCurrency.code,
+    selectedCurrency.symbol
+  );
 
   const serviceTypes = [
     { value: 'repair', label: t('maintenance.serviceTypes.repair') },
@@ -218,6 +213,7 @@ export function MaintenancePanel({
         totalInCurrency: servicePriceInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: effectiveCurrencySymbol,
+        currencyName: selectedCurrency.name,
         exchangeRate: selectedCurrency.rate || 1,
         paymentType,
         status: paymentType === 'cash' ? 'paid' : 'pending',

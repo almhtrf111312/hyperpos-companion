@@ -1,5 +1,6 @@
 // Enhanced Share Utility - Uses Web Share API with rich text formatting
 import { formatNumber } from './utils';
+import { resolveInvoiceCurrencySymbol } from './currencies';
 
 export interface ShareInvoiceData {
   id: string;
@@ -37,11 +38,13 @@ export const generateInvoiceShareText = (data: ShareInvoiceData): string => {
     subtotal,
     discount,
     total,
-    currencySymbol,
+    currencySymbol: rawCurrencySymbol,
     paymentType,
     serviceDescription,
     type,
   } = data;
+
+  const currencySymbol = resolveInvoiceCurrencySymbol((data as any).currency, rawCurrencySymbol);
 
   const itemsList = type === 'sale'
     ? items.map(item =>

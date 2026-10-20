@@ -58,7 +58,7 @@ import { addUniqueOperation } from '@/lib/sync-queue';
 import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
-import { getCurrencySymbolByCode } from '@/lib/currencies';
+import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/currencies';
 
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
@@ -634,25 +634,10 @@ export function CartPanel({
       : `sale_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     // دقة تحديد رمز العملة الفعلي لضمان عدم تسرب $ إذا كانت العملة غير الدولار
-    const effectiveCurrencySymbol = (() => {
-      if (selectedCurrency.code === 'USD') {
-        return (selectedCurrency.symbol && selectedCurrency.symbol.trim()) || '$';
-      }
-      if (selectedCurrency.symbol && selectedCurrency.symbol.trim() && selectedCurrency.symbol.trim() !== '$') {
-        return selectedCurrency.symbol.trim();
-      }
-      try {
-        const rawSettings = localStorage.getItem('hyperpos_settings_v1');
-        if (rawSettings) {
-          const parsed = JSON.parse(rawSettings);
-          const sym = parsed?.currencySymbols?.[selectedCurrency.code];
-          if (sym && typeof sym === 'string' && sym.trim() && sym.trim() !== '$') {
-            return sym.trim();
-          }
-        }
-      } catch { /* ignore */ }
-      return getCurrencySymbolByCode(selectedCurrency.code);
-    })();
+    const effectiveCurrencySymbol = resolveInvoiceCurrencySymbol(
+      selectedCurrency.code,
+      selectedCurrency.symbol
+    );
 
     // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     const invoiceNumber = getNextInvoiceNumber();
@@ -789,6 +774,7 @@ export function CartPanel({
         totalInCurrency: roundCurrency(totalSnapshot * activeRate),
         currency: selectedCurrency.code,
         currencySymbol: effectiveCurrencySymbol,
+        currencyName: selectedCurrency.name,
         exchangeRate: activeRate,
         profit: discountedProfit,
         partsCost: totalCOGS,
@@ -831,6 +817,7 @@ export function CartPanel({
 
           currency: selectedCurrency.code,
           currencySymbol: effectiveCurrencySymbol,
+          currencyName: selectedCurrency.name,
           exchangeRate: activeRate,
           profit: discountedProfit,
           cogs: totalCOGS,
@@ -1103,6 +1090,7 @@ export function CartPanel({
         totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: effectiveCurrencySymbol,
+        currencyName: selectedCurrency.name,
         exchangeRate: selectedCurrency.rate || activeRate || 1,
         profit: discountedProfit,
         cogs: totalCOGS,
@@ -1154,6 +1142,7 @@ export function CartPanel({
         totalInCurrency,
         currency: selectedCurrency.code,
         currencySymbol: effectiveCurrencySymbol,
+        currencyName: selectedCurrency.name,
         exchangeRate: selectedCurrency.rate || activeRate || 1,
         profit: discountedProfit,
         partsCost: totalCOGS,

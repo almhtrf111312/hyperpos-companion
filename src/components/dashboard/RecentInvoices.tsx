@@ -95,7 +95,7 @@ export function RecentInvoices() {
       subtotal: invoice.subtotalInCurrency ?? (invoice.subtotal * convRate),
       discount: invoice.discount * convRate,
       total: invoice.totalInCurrency ?? (invoice.total * convRate),
-      currencySymbol: invoice.currencySymbol,
+      currencySymbol: resolveInvoiceCurrencySymbol(invoice.currency, invoice.currencySymbol),
       currency: invoice.currency,
       exchangeRate: rate,
       totalUSD: invoice.total,
@@ -212,7 +212,7 @@ export function RecentInvoices() {
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-semibold text-foreground">
-                          {invoice.currencySymbol}{formatNumber(invoice.totalInCurrency)}
+                          {resolveInvoiceCurrencySymbol(invoice.currency, invoice.currencySymbol)}{formatNumber(invoice.totalInCurrency)}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -373,7 +373,7 @@ export function RecentInvoices() {
                         <p className="font-medium">{item.name}</p>
                         <p className="text-sm text-muted-foreground">الكمية: {item.quantity}</p>
                       </div>
-                      <span className="font-semibold">{selectedInvoice.currencySymbol}{item.total}</span>
+                      <span className="font-semibold">{resolveInvoiceCurrencySymbol(selectedInvoice.currency, selectedInvoice.currencySymbol)}{item.total}</span>
                     </div>
                   ))}
                 </div>
@@ -383,12 +383,12 @@ export function RecentInvoices() {
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between items-center text-sm text-muted-foreground mb-2">
                     <span>الخصم:</span>
-                    <span>{selectedInvoice.currencySymbol}{selectedInvoice.discount}</span>
+                    <span>{resolveInvoiceCurrencySymbol(selectedInvoice.currency, selectedInvoice.currencySymbol)}{selectedInvoice.discount}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>المجموع:</span>
-                  <span className="text-primary">{selectedInvoice.currencySymbol}{formatNumber(selectedInvoice.totalInCurrency)}</span>
+                  <span className="text-primary">{resolveInvoiceCurrencySymbol(selectedInvoice.currency, selectedInvoice.currencySymbol)}{formatNumber(selectedInvoice.totalInCurrency)}</span>
                 </div>
               </div>
 

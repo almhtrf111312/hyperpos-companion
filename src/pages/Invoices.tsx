@@ -78,7 +78,7 @@ import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime, roundCur
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
 import { useDebounce } from '@/hooks/use-debounce';
-import { getCurrencySymbolByCode, resolveHistoricalCurrency, PREDEFINED_CURRENCIES } from '@/lib/currencies';
+import { getCurrencySymbolByCode, resolveHistoricalCurrency, resolveInvoiceCurrencySymbol, resolveInvoiceCurrencyName, PREDEFINED_CURRENCIES } from '@/lib/currencies';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
@@ -382,13 +382,7 @@ export default function Invoices() {
         symbol = currencySymbols?.USD || '$';
       } else {
         rate = (exchangeRates[code] && exchangeRates[code] > 0) ? exchangeRates[code] : 1;
-        symbol = currencySymbols?.[code] || getCurrencySymbolByCode(code);
-        if ((!symbol || symbol === '$') && currencyCode === code && currencySymbol && currencySymbol !== '$') {
-          symbol = currencySymbol;
-        }
-        if (!symbol || symbol === '$') {
-          symbol = code;
-        }
+        symbol = resolveInvoiceCurrencySymbol(code, currencySymbols?.[code]);
       }
     } else {
       // 'stored': استخدام العملة وسعر الصرف والرمز التاريخي المجمد للفاتورة لمنع تشوهها بأي تغيير لاحق
@@ -399,7 +393,7 @@ export default function Invoices() {
       });
       code = resolved.code;
       rate = resolved.rate;
-      symbol = resolved.symbol;
+      symbol = resolveInvoiceCurrencySymbol(inv.currency || code, inv.currencySymbol || resolved.symbol);
     }
 
     const decimals = rate >= 100 ? 0 : 2;
@@ -2373,8 +2367,8 @@ export default function Invoices() {
               ? selectedInvoice.exchangeRate
               : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 1);
 
-            const c1Symbol = selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY || '₺') : (currencySymbols?.TRY || '₺');
-            const c2Symbol = selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP || 'ل.س') : (currencySymbols?.SYP || 'ل.س');
+            const c1Symbol = resolveInvoiceCurrencySymbol('TRY', selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY) : currencySymbols?.TRY);
+            const c2Symbol = resolveInvoiceCurrencySymbol('SYP', selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP) : currencySymbols?.SYP);
 
             const totalUsdStr = formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2);
             const totalC1Str = formatCurrency(baseInvTotal * c1Rate, c1Symbol, c1Rate >= 100 ? 0 : 2);
@@ -2428,7 +2422,7 @@ export default function Invoices() {
                 <div>
                   <span className="text-muted-foreground">{t('invoices.currency') || 'عملة الفاتورة'}:</span>
                   <p className="font-semibold flex items-center gap-1.5 flex-wrap">
-                    <span>{currencyNames?.[selectedFinancials.code] || (selectedFinancials.code === 'TRY' ? c1Name : selectedFinancials.code === 'SYP' ? c2Name : (selectedFinancials.code === 'USD' ? (currencyNames?.USD || 'دولار أمريكي') : (PREDEFINED_CURRENCIES.find(c => c.code === selectedFinancials.code)?.name || selectedFinancials.code)))}</span>
+                    <span>{currencyNames?.[selectedFinancials.code] || resolveInvoiceCurrencyName(selectedFinancials.code, selectedInvoice.currencyName)}</span>
                     {selectedFinancials.code !== 'USD' && (
                       <span className="text-xs text-muted-foreground font-normal">
                         (1{currencySymbols?.USD || '$'} = {formatNumber(selectedFinancials.rate)} {selectedFinancials.symbol}) | المعادل: {currencySymbols?.USD || '$'}{formatNumber(baseInvTotal, baseInvTotal % 1 === 0 ? 0 : 2)}
@@ -3043,7 +3037,7 @@ export default function Invoices() {
                     <span className="font-bold text-destructive block">{formatCurrency(selectedDebtForPayment.remainingDebt)}</span>
                     {paymentCurrency !== 'USD' && (
                       <span className="text-xs text-muted-foreground block font-mono">
-                        ≈ {formatNumber(maxInCurrency)} {currencySymbols?.[paymentCurrency] || (paymentCurrency === 'TRY' ? '₺' : 'ل.س')}
+                        ≈ {formatNumber(maxInCurrency)} {resolveInvoiceCurrencySymbol(paymentCurrency, currencySymbols?.[paymentCurrency])}
                       </span>
                     )}
                   </div>
@@ -3127,7 +3121,7 @@ export default function Invoices() {
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-sm font-medium">
-                    {t('invoices.paymentAmount')} ({paymentCurrency === 'USD' ? '$' : (currencySymbols?.[paymentCurrency] || (paymentCurrency === 'TRY' ? '₺' : 'ل.س'))})
+                    {t('invoices.paymentAmount')} ({paymentCurrency === 'USD' ? '$' : (resolveInvoiceCurrencySymbol(paymentCurrency, currencySymbols?.[paymentCurrency]))})
                   </label>
                   {paymentCurrency !== 'USD' && amountUSD > 0 && (
                     <span className="text-xs font-bold text-success font-mono">
@@ -3527,8 +3521,8 @@ export default function Invoices() {
                 {Object.entries(enabledCurrencies).map(([code, isEnabled]) => {
                   if (!isEnabled) return null;
                   const currCode = code as 'USD' | 'TRY' | 'SYP';
-                  const sym = currencySymbols?.[currCode] || getCurrencySymbolByCode(currCode);
-                  const name = currencyNames?.[currCode] || (currCode === 'USD' ? 'دولار' : currCode === 'TRY' ? 'ليرة تركية' : 'ليرة سورية');
+                  const sym = resolveInvoiceCurrencySymbol(currCode, currencySymbols?.[currCode]);
+                  const name = currencyNames?.[currCode] || resolveInvoiceCurrencyName(currCode);
                   const isSelected = displayCurrencyFilter === currCode;
                   return (
                     <Button

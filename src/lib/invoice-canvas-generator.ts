@@ -8,6 +8,7 @@
 import { formatNumber } from './utils';
 import { isGuestDemoMode } from './demo-data';
 import { getStoreSettings, getPrintSettings } from './print-utils';
+import { resolveInvoiceCurrencySymbol } from './currencies';
 
 export interface InvoiceCanvasItem {
   name: string;
@@ -187,24 +188,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
 
   const rawSymbol = (data.currencySymbol || '').trim();
   const rawCurrency = (data.currency || '').toUpperCase();
-  const hasRate = typeof data.exchangeRate === 'number' && data.exchangeRate > 0;
-  const isForeign = (rawCurrency !== '' && rawCurrency !== 'USD') || (hasRate && data.exchangeRate! > 1);
-
-  let effectiveSymbol = rawSymbol;
-  if (isForeign) {
-    if (!effectiveSymbol || effectiveSymbol === '$') {
-      try {
-        const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
-        const code = (rawCurrency && rawCurrency !== 'USD') ? rawCurrency : (fullSettings.currencyCode || 'TRY');
-        const symbols = fullSettings.currencySymbols || {};
-        effectiveSymbol = symbols[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
-      } catch {
-        effectiveSymbol = rawCurrency || '₺';
-      }
-    }
-  } else {
-    if (!effectiveSymbol) effectiveSymbol = '$';
-  }
+  const effectiveSymbol = resolveInvoiceCurrencySymbol(rawCurrency, rawSymbol);
 
   const storeName = data.storeName || storeSettings.name || 'FlowPOS Pro';
   const storePhone = data.storePhone || storeSettings.phone || '';
@@ -648,8 +632,8 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       const tryRate = Number(rates.TRY || 34);
 
       const invSymbol = effectiveSymbol;
-      const invCurrency = (data.currency || (invSymbol === '₺' ? 'TRY' : (invSymbol === 'ل.س' ? 'SYP' : (invSymbol === '$' ? 'USD' : invSymbol)))).toUpperCase();
-      const invRate = Number(data.exchangeRate) || (invCurrency === 'TRY' ? tryRate : (invCurrency === 'SYP' ? sypRate : 1));
+      const invCurrency = (data.currency || (invSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
+      const invRate = Number(data.exchangeRate) || (rates[invCurrency] ? Number(rates[invCurrency]) : (invCurrency === 'TRY' ? tryRate : (invCurrency === 'SYP' ? sypRate : 1)));
       
       // 1. حساب المعادل بالدولار الأساسي أولاً
       let baseUSD = Number((data as any).totalUSD);
@@ -675,7 +659,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
         const rate = Number(rates[upperCode] || (upperCode === 'TRY' ? tryRate : (upperCode === 'SYP' ? sypRate : 0)));
         if (rate > 0) {
           const cName = names[upperCode] || upperCode;
-          const cSymbol = symbols[upperCode] || upperCode;
+          const cSymbol = resolveInvoiceCurrencySymbol(upperCode, symbols[upperCode]);
           const cDecimals = rate >= 100 ? 0 : 2;
           parts.push(`${cName}: ${formatCanvasPrice(baseUSD * rate, cSymbol, cDecimals)}`);
         }
@@ -763,18 +747,10 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   const footerNote = data.footerNote || printSettings.footer || 'نرجو التواصل لتسوية المبلغ المطلوب. شاكرين تعاونكم معنا 🙏';
 
   const rawDebtSymbol = (data.currencySymbol || '').trim();
-  let effectiveDebtSymbol = rawDebtSymbol;
-  if (!effectiveDebtSymbol || effectiveDebtSymbol === '$') {
-    try {
-      const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
-      const code = fullSettings.currencyCode || 'USD';
-      if (code !== 'USD') {
-        const symbols = fullSettings.currencySymbols || {};
-        effectiveDebtSymbol = symbols[code] || (code === 'TRY' ? '₺' : (code === 'SYP' ? 'ل.س' : code));
-      }
-    } catch {}
-  }
-  if (!effectiveDebtSymbol) effectiveDebtSymbol = '$';
+  const effectiveDebtSymbol = resolveInvoiceCurrencySymbol(
+    (data as any).currency || (data as any).currencyCode,
+    rawDebtSymbol
+  );
 
   const LOGICAL_WIDTH = 720;
   const HEADER_HEIGHT = 135;

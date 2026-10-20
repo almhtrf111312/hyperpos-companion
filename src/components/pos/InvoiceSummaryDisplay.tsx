@@ -53,43 +53,7 @@ export function InvoiceSummaryDisplay({
       {/* Discount */}
       {discountAmount > 0 && (
         <div className="flex justify-between text-success">
-          <span>{t('pos.discount')}{discountType === 'percent' ? ` (${discount}%)` : ''}</span>
-          <span>-{usdSymbol}{formatNumber(discountAmount)}</span>
-        </div>
-      )}
-
-      {/* Separator */}
-      <hr className="border-border" />
-
-      {/* Total in USD */}
-      <div className="flex justify-between font-bold text-base">
-        <span>{t('pos.total')} (USD)</span>
-        <span className="text-primary">{usdSymbol}{formatNumber(total)}</span>
-      </div>
-
-      {/* Total in Local Currency (if not USD) */}
-      {currencyCode !== 'USD' && exchangeRate !== 1 && (
-        <div className="flex justify-between text-blue-600 dark:text-blue-400">
-          <span>{t('pos.total')} ({currencyCode})</span>
-          <span>{currencySymbol}{formatNumber(totalInCurrency)}</span>
-        </div>
-      )}
-
-      {/* Exchange Rate Info */}
-      {currencyCode !== 'USD' && exchangeRate !== 1 && (
-        <div className="text-xs text-muted-foreground text-center">
-          سعر الصرف: 1 USD = {exchangeRate} {currencyCode}
-        </div>
-      )}
-
-      {/* Debt Payment Details */}
-      {isDebt && (
-        <>
-          <hr className="border-border" />
-
-          {paidAmount > 0 && (
-            <div className="flex justify-between text-success">
-              <span>المبلغ المدفوع</span>
+              <span>{t('invoices.paidCash') || t('debts.paidAmount') || 'المدفوع نقداً'}</span>
               <span>
                 {currencySymbol}{formatNumber(paidAmount)}
                 {currencyCode !== 'USD' && (
@@ -102,7 +66,7 @@ export function InvoiceSummaryDisplay({
           )}
 
           <div className="flex justify-between text-destructive font-bold">
-            <span>المتبقي (دين)</span>
+            <span>{t('invoices.debtRemaining') || 'المتبقي (دين)'}</span>
             <span>{usdSymbol}{formatNumber(remainingDebt)}</span>
           </div>
         </>
@@ -113,7 +77,7 @@ export function InvoiceSummaryDisplay({
         <>
           <hr className="border-border" />
           <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-            <span>الربح المتوقع</span>
+            <span>{t('invoices.netProfit') || 'صافي الربح'}</span>
             <span>{usdSymbol}{formatNumber(profit)}</span>
           </div>
         </>

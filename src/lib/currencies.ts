@@ -212,15 +212,153 @@ export function resolveHistoricalCurrency(
 
   if (!isSuspiciousSymbol && rawSymbol !== '') {
     symbol = rawSymbol;
-  } else if (canonical && canonical !== '$') {
-    symbol = canonical;
   } else if (fallbackSettings?.currencySymbols?.[code]) {
     symbol = fallbackSettings.currencySymbols[code];
   } else {
-    symbol = code;
+    symbol = resolveInvoiceCurrencySymbol(code, rawSymbol);
   }
 
   return { code, symbol, rate };
+}
+
+/**
+ * دالة موحدة وذكية لجلب رمز العملة للفاتورة
+ * تقرأ رمز العملة المحفوظ في الفاتورة أولاً، ثم إعدادات المتجر المخصصة، ثم القائمة الافتراضية،
+ * لمنع ظهور 'TL' أو '₺' أو '$' بدلاً من العملة المخصصة التي حددها المستخدم.
+ */
+export function resolveInvoiceCurrencySymbol(
+  currencyCode?: string,
+  savedSymbol?: string
+): string {
+  const upperCode = (currencyCode || '').trim().toUpperCase();
+
+  // 1. إذا كان الكود دولار أمريكي
+  if (upperCode === 'USD') {
+    return '$';
+  }
+
+  // 2. فحص إعدادات المتجر والعملات المخصصة المحفوظة في localStorage
+  let customSymbolFromSettings: string | undefined;
+  try {
+    if (typeof window !== 'undefined') {
+      const possibleKeys = ['hyperpos_settings_v1', 'store_settings', 'hyperpos_settings', 'custom_currencies', 'currency_settings'];
+      for (const key of possibleKeys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+
+        // أ) فحص جدول currencySymbols المعرف في الإعدادات
+        if (parsed.currencySymbols && typeof parsed.currencySymbols === 'object') {
+          const sym = parsed.currencySymbols[upperCode];
+          if (typeof sym === 'string' && sym.trim() !== '') {
+            customSymbolFromSettings = sym.trim();
+            break;
+          }
+        }
+
+        // ب) فحص الحقول المخصصة المباشرة
+        if (parsed.customCurrencySymbol && (upperCode === parsed.customCurrencyCode || upperCode === 'TRY' || upperCode === 'CUSTOM')) {
+          customSymbolFromSettings = parsed.customCurrencySymbol.trim();
+          break;
+        }
+
+        // ج) فحص primaryCurrency إذا كان الرمز مخصصاً
+        if (parsed.currencySymbol && (upperCode === parsed.currencyCode || upperCode === parsed.primaryCurrency)) {
+          customSymbolFromSettings = parsed.currencySymbol.trim();
+          break;
+        }
+
+        // د) مصفوفة العملات المعدلة
+        if (Array.isArray(parsed.currencies)) {
+          const matched = parsed.currencies.find((c) => c.code === upperCode);
+          if (matched && matched.symbol && typeof matched.symbol === 'string' && matched.symbol.trim() !== '') {
+            customSymbolFromSettings = matched.symbol.trim();
+            break;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to parse custom currency settings:', err);
+  }
+
+  // إذا تم العثور على رمز مخصص في الإعدادات، وكان كود العملة TRY ولكن المستخدم غير رمزها إلى رمز مخصص
+  if (customSymbolFromSettings && customSymbolFromSettings !== '') {
+    if (upperCode === 'TRY' && customSymbolFromSettings !== '₺' && customSymbolFromSettings !== 'TL') {
+      return customSymbolFromSettings;
+    }
+    if (!savedSymbol || savedSymbol.trim() === '' || savedSymbol.trim() === '$' || savedSymbol.trim() === 'TL') {
+      return customSymbolFromSettings;
+    }
+  }
+
+  // 3. إذا كان الرمز محفوظاً مسبقاً داخل الفاتورة نفسها وصالحاً
+  if (savedSymbol && typeof savedSymbol === 'string') {
+    const trimmed = savedSymbol.trim();
+    const isSuspicious = trimmed === '' || (trimmed === '$' && upperCode !== '' && upperCode !== 'USD');
+    if (!isSuspicious) {
+      if ((trimmed === 'TL' || trimmed === '₺') && customSymbolFromSettings && customSymbolFromSettings !== '₺' && customSymbolFromSettings !== 'TL') {
+        return customSymbolFromSettings;
+      }
+      if (trimmed === 'TL') {
+        return customSymbolFromSettings || '₺';
+      }
+      return trimmed;
+    }
+  }
+
+  // 4. إذا وجدنا رمز في الإعدادات
+  if (customSymbolFromSettings) {
+    return customSymbolFromSettings;
+  }
+
+  // 5. البحث في مصفوفة العملات المعيارية
+  const canonical = PREDEFINED_CURRENCIES.find(c => c.code === upperCode);
+  if (canonical && canonical.symbol) {
+    return canonical.symbol;
+  }
+
+  // 6. حالات احتياطية
+  if (upperCode === 'SYP') return 'ل.س';
+  if (upperCode === 'TRY') return '₺';
+
+  // 7. بدلاً من إرجاع 'TL' بشكل خاطئ، إرجاع كود العملة نفسه
+  return upperCode || '$';
+}
+
+/**
+ * دالة موحدة لجلب اسم العملة للفاتورة
+ */
+export function resolveInvoiceCurrencyName(
+  currencyCode?: string,
+  savedName?: string
+): string {
+  const upperCode = (currencyCode || '').trim().toUpperCase();
+  if (upperCode === 'USD') return 'دولار أمريكي';
+
+  if (savedName && typeof savedName === 'string' && savedName.trim() !== '') {
+    return savedName.trim();
+  }
+
+  try {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('hyperpos_settings_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const name = parsed?.currencyNames?.[upperCode];
+        if (name && typeof name === 'string' && name.trim() !== '') {
+          return name.trim();
+        }
+      }
+    }
+  } catch {}
+
+  const canonical = PREDEFINED_CURRENCIES.find(c => c.code === upperCode);
+  if (canonical && canonical.name) return canonical.name;
+
+  if (upperCode === 'SYP') return 'ليرة سورية';
+  if (upperCode === 'TRY') return 'ليرة تركية';
+  return upperCode;
 }
 
 /**
