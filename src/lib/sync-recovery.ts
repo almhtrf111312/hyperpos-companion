@@ -12,7 +12,7 @@
  * - عدم إعلان النجاح إذا فشل أي جزء من التعويض
  */
 
-import { loadQueue, removeFromQueue, resetOperationForRetry, QueuedOperation, abortSyncOperation } from './sync-queue';
+import { loadQueue, removeFromQueue, resetOperationForRetry, QueuedOperation } from './sync-queue';
 import { emitEvent, EVENTS } from './events';
 import { updateHistoryStatus } from './sync-history';
 import {
@@ -292,13 +292,9 @@ export const discardStuckOperation = async (operationQueueId: string): Promise<D
     console.warn('[SyncRecovery] Operation is currently syncing, waiting briefly for lock resolution:', operationId);
   }
 
-  // 0. إجهاض أي طلب رفع جاري عبر الشبكة فوراً دون انتظار
-  abortSyncOperation(operationQueueId);
-  if (operationId) abortSyncOperation(operationId);
-
   inFlightCancellations.add(operationId);
 
-  // تجهيز أو تحميل سجل الإلغاء وحفظه فوراً لمنع أي نتيجة سحابية متأخرة
+  // تجهيز أو تحميل سجل الإلغاء لضمان الأمان الذري عند التكرار (Idempotency)
   const existingRecord = getCancellationRecord(operationId);
   const record: CancelledOperationRecord = existingRecord || {
     operationId,
@@ -435,7 +431,7 @@ export const discardStuckOperation = async (operationQueueId: string): Promise<D
       localStorage.removeItem('hyperpos_sync_pending_' + operation.id);
     } catch {}
 
-    updateHistoryStatus(operation.id, 'cancelled', 'syncInvoiceCancelledLocally');
+    updateHistoryStatus(operation.id, 'failed', 'تم إلغاء البيع وعكس آثاره المحاسبية بنجاح');
 
     // 8. فحص حالة السحابة لتحديد الحالة النهائية بدقة
     let finalStatus: CancelledOpStatus = 'local_cancelled_pending_cloud';

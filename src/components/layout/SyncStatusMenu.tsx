@@ -139,18 +139,15 @@ export function SyncStatusMenu() {
         return <RefreshCw className="h-3.5 w-3.5 text-primary animate-spin" />;
       case 'failed':
         return <AlertTriangle className="h-3.5 w-3.5 text-destructive" />;
-      case 'cancelled':
-        return <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
 
   const getItemStatusLabel = (itemStatus: SyncHistoryItem['status']) => {
-    const labels: Record<string, string> = {
+    const labels = {
       synced: t('sync.synced'),
       pending: t('sync.pending'),
       syncing: t('sync.syncing'),
       failed: t('sync.error'),
-      cancelled: t('syncInvoiceCancelledLocally') || 'ملغاة محلياً',
     };
     return labels[itemStatus];
   };
@@ -311,7 +308,7 @@ export function SyncStatusMenu() {
                     </div>
                   </div>
                   <Badge
-                    variant={item.status === 'failed' ? 'destructive' : item.status === 'synced' ? 'secondary' : item.status === 'cancelled' ? 'muted' as any : 'outline'}
+                    variant={item.status === 'failed' ? 'destructive' : item.status === 'synced' ? 'secondary' : 'outline'}
                     className="text-[10px] px-1.5 py-0"
                   >
                     {getItemStatusLabel(item.status)}

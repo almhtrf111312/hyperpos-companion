@@ -32,8 +32,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
   const isMobile = useIsMobile();
   const defaultDuration = getSavedToastDuration();
 
-  // توحيد موقع ظهور جميع الإشعارات في أعلى الشاشة بالمنتصف
-  const position = "top-center";
+  const position = isMobile
+    ? "top-center"
+    : isRTL
+    ? "bottom-left"
+    : "bottom-right";
 
   return (
     <Sonner
@@ -41,11 +44,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       position={position}
       duration={defaultDuration}
-      visibleToasts={2}
+      visibleToasts={3}
       closeButton={false}
-      swipeDirections={['left', 'right', 'top']}
-      offset={isMobile ? 52 : 20}
-      mobileOffset={52}
+      swipeDirections={isMobile ? ['left', 'right', 'top'] : ['left', 'right', 'bottom']}
+      offset={isMobile ? 58 : 24}
+      mobileOffset={58}
       dir={isRTL ? "rtl" : "ltr"}
       style={{
         '--width': 'auto',
@@ -58,7 +61,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group toast w-auto min-w-[21rem] max-w-[94vw] sm:max-w-[30rem]",
             "group-[.toaster]:bg-card group-[.toaster]:text-card-foreground",
             "group-[.toaster]:border group-[.toaster]:border-border/80 dark:group-[.toaster]:border-white/10",
-            "group-[.toaster]:shadow-xl group-[.toaster]:rounded-2xl",
+            "group-[.toaster]:shadow-2xl group-[.toaster]:rounded-2xl",
             "group-[.toaster]:p-3.5 sm:group-[.toaster]:p-4 group-[.toaster]:text-sm sm:group-[.toaster]:text-base",
             "[touch-action:pan-x] cursor-grab active:cursor-grabbing",
             "transition-[transform,opacity] duration-200 select-none",
