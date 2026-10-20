@@ -420,9 +420,19 @@ export function getActiveStoreCurrency(): ResolvedCurrencyMeta {
  * تنسيق المبالغ المالية المخزنة داخلياً بالدولار الأمريكي وتحويلها ديناميكياً
  * إلى عملة المتجر المعتمدة الحالية مع مراعاة دقة الكسور (بدون فواصل إذا كان الصرف >= 100)
  */
+export const REPORT_CURRENCY_KEY = 'hyperpos_report_currency';
+/** عملة التقارير: الدولار أو العملة الافتراضية للمتجر (اختيار المستخدم) */
+export function getReportCurrency(): ResolvedCurrencyMeta {
+  try {
+    const pick = typeof window !== 'undefined' ? window.localStorage.getItem(REPORT_CURRENCY_KEY) : null;
+    if (pick === 'USD') return resolveCurrencyMeta('USD');
+  } catch {}
+  return getActiveStoreCurrency();
+}
+
 export function formatReportAmount(amountUsd: number): string {
   if (typeof amountUsd !== 'number' || isNaN(amountUsd)) return '0.00';
-  const active = getActiveStoreCurrency();
+  const active = getReportCurrency();
   const converted = active.isUsd ? amountUsd : amountUsd * (active.rate > 0 ? active.rate : 1);
   const decimals = active.rate >= 100 ? 0 : 2;
   const numStr = converted.toLocaleString('en-US', {
