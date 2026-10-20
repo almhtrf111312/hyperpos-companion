@@ -950,9 +950,9 @@ export default function Invoices() {
     }
 
     // ✅ Online path: dialog is already closed, but the guard remains held until completion.
-    toast.loading(`جاري استرداد ${invoiceLabel}...`, { id: toastId });
+    toast.loading(`${t('refundingInvoice') || 'جاري استرداد الفاتورة...'} (${invoiceLabel})`, { id: toastId });
     try {
-        const result = await refundInvoiceCloud(invoiceLabel, 'online');
+        const result = await refundInvoiceCloud(invoiceLabel, 'online', refundCondition);
         if (typeof result === 'object' && (result as any).unsyncedRefund) {
           markInvoiceRefundedLocally(invoiceLabel);
           setInvoices(prev => prev.map(inv =>
@@ -981,7 +981,7 @@ export default function Invoices() {
         const ok = result && (result === true || (result as RefundResult).success);
         if (!ok) {
           const reason = typeof result === 'object' ? (result as RefundResult).error : undefined;
-          toast.error(`فشل في استرداد ${invoiceLabel}`, {
+          toast.error(`${t('invoiceRefundFailed') || 'فشل في استرداد الفاتورة'} (${invoiceLabel})`, {
             id: toastId,
             description: reason || 'لم يطرأ أي تغيير على الفاتورة أو المخزون',
             duration: 5000,
@@ -1031,7 +1031,7 @@ export default function Invoices() {
             lines.push(`💰 يُرجع نقداً للعميل ومن الوردية: ${formatCurrency(r.cashToRefund, refundedCurrency)}`);
           }
         }
-        toast.success(`✅ تم استرداد ${invoiceLabel}`, {
+        toast.success(`✅ ${t('invoiceRefundSuccess') || 'تم استرداد الفاتورة بنجاح'} (${invoiceLabel})`, {
           id: toastId,
           description: lines.join(' • '),
           duration: 4500,
@@ -1136,9 +1136,9 @@ export default function Invoices() {
       return;
     }
 
-    toast.loading(`جاري الاسترداد الجزئي للفاتورة ${invoiceLabel}...`, { id: toastId });
+    toast.loading(`${t('refundingInvoice') || 'جاري الاسترداد الجزئي للفاتورة...'} (${invoiceLabel})`, { id: toastId });
     try {
-      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund, operationId);
+      const result = await refundInvoicePartialCloud(invoiceLabel, itemsToRefund, operationId, refundCondition);
       if (!result.success) {
         toast.error(`فشل الاسترداد الجزئي: ${result.error}`, { id: toastId, duration: 5000 });
         return;
@@ -1171,7 +1171,9 @@ export default function Invoices() {
       }
       lines.push(`📦 أُعيدت ${formatNumber(result.restoredUnitsCount)} قطعة`);
 
-      toast.success(result.isFullyRefunded ? `✅ تم استرداد كامل الفاتورة ${invoiceLabel}` : `✅ تم الاسترداد الجزئي للفاتورة ${invoiceLabel}`, {
+      toast.success(result.isFullyRefunded
+        ? `✅ ${t('invoiceRefundSuccess') || 'تم استرداد كامل الفاتورة'} (${invoiceLabel})`
+        : `✅ ${t('invoices.confirmPartialRefund') || 'تم الاسترداد الجزئي للفاتورة'} (${invoiceLabel})`, {
         id: toastId,
         description: lines.join(' • '),
         duration: 5000,
@@ -1204,7 +1206,7 @@ export default function Invoices() {
       });
     } catch (err) {
       console.error('[confirmPartialRefund] error:', err);
-      toast.error(`فشل الاسترداد الجزئي للفاتورة ${invoiceLabel}`, { id: toastId, duration: 4000 });
+      toast.error(`${t('invoiceRefundFailed') || 'فشل الاسترداد الجزئي للفاتورة'} (${invoiceLabel})`, { id: toastId, duration: 4000 });
       const invoicesData = await loadInvoicesCloud();
       setInvoices(invoicesData);
     }

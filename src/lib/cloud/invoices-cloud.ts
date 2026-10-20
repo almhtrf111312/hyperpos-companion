@@ -838,7 +838,478 @@ const failedRefund = (error: string): RefundResult => ({
 const refundInFlight = new Set<string>();
 
 // Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
-export const refundInvoiceCloud = async (id: string, source: 'online' | 'offline-sync' = 'online'): Promise<RefundResult | boolean> => {
+
+export interface DirectCloudRefundParams {
+  invoiceId: string;
+  userId: string;
+  isFullRefund: boolean;
+  condition: 'good' | 'damaged' | 'سليم' | 'معيب';
+  returnedItems: Array<{
+    id?: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
+    costPrice?: number;
+    total?: number;
+    warehouseId?: string;
+  }>;
+  refundAmount: number;
+  refundProfit: number;
+  targetInvoice?: Invoice | null;
+}
+
+/**
+ * ✅ المسار السحابي المباشر والذكي (Direct Cloud Fallback)
+ * يتم تنفيذه تلقائياً في حال فشل دالة الـ RPC السحابية بسبب column reference "invoice_id" is ambiguous أو غيرها
+ */
+export async function executeDirectCloudRefund(params: DirectCloudRefundParams): Promise<RefundResult | PartialRefundResult> {
+  const { invoiceId, userId, isFullRefund, condition, returnedItems, refundAmount, refundProfit, targetInvoice } = params;
+  const isDamaged = condition === 'damaged' || condition === 'معيب';
+
+  console.info(`[executeDirectCloudRefund] Starting direct cloud refund for ${invoiceId} (full=${isFullRefund}, condition=${condition})`);
+
+  // 1. جلب بيانات الفاتورة من Supabase
+  let invoiceData: any = null;
+  try {
+    const { data: invRows, error: fetchInvErr } = await sb
+      .from('invoices')
+      .select('*')
+      .or(`id.eq.${invoiceId},invoice_number.eq.${invoiceId}`)
+      .limit(1);
+
+    if (!fetchInvErr && invRows && invRows.length > 0) {
+      invoiceData = invRows[0];
+    }
+  } catch (err) {
+    console.warn('[executeDirectCloudRefund] Could not fetch invoice from remote DB:', err);
+  }
+
+  // إذا كانت الفاتورة مستردة بالفعل
+  if (invoiceData?.status === 'refunded') {
+    if (isFullRefund) {
+      return {
+        success: false,
+        alreadyRefunded: true,
+        restoredItemsCount: 0,
+        restoredUnitsCount: 0,
+        deletedDebtAmount: 0,
+        customerBalanceBefore: 0,
+        customerBalanceAfter: 0,
+        customerName: invoiceData.customer_name || targetInvoice?.customerName || '',
+        invoiceTotal: Number(invoiceData.total) || Number(targetInvoice?.total) || 0,
+        invoiceCurrency: invoiceData.currency || targetInvoice?.currency || 'USD',
+        debtPaidAmount: 0,
+        cashToRefund: 0,
+      };
+    }
+  }
+
+  // 2. معالجة المخزون (سليم) أو التوالف (معيب)
+  let restoredItemsCount = 0;
+  let restoredUnitsCount = 0;
+  const itemsToProcess = returnedItems.filter(it => it.productId && it.quantity > 0);
+
+  for (const item of itemsToProcess) {
+    const qty = Number(item.quantity) || 0;
+    if (qty <= 0) continue;
+    restoredItemsCount++;
+    restoredUnitsCount += qty;
+
+    if (!isDamaged) {
+      // البضاعة سليمة -> إرجاع الكمية لجدول products أو warehouse_stock
+      const whId = item.warehouseId || invoiceData?.warehouse_id || targetInvoice?.warehouseId;
+      if (whId) {
+        try {
+          const { data: ws } = await sb
+            .from('warehouse_stock')
+            .select('id, quantity')
+            .eq('warehouse_id', whId)
+            .eq('product_id', item.productId)
+            .maybeSingle();
+
+          if (ws) {
+            await sb
+              .from('warehouse_stock')
+              .update({ quantity: (Number(ws.quantity) || 0) + qty, last_updated: new Date().toISOString() })
+              .eq('id', ws.id);
+          } else {
+            const { data: prod } = await sb
+              .from('products')
+              .select('id, quantity')
+              .eq('id', item.productId)
+              .maybeSingle();
+            if (prod) {
+              await sb
+                .from('products')
+                .update({ quantity: (Number(prod.quantity) || 0) + qty, updated_at: new Date().toISOString() })
+                .eq('id', item.productId);
+            }
+          }
+        } catch (wsErr) {
+          console.warn('[executeDirectCloudRefund] warehouse_stock update error:', wsErr);
+        }
+      } else {
+        try {
+          const { data: prod } = await sb
+            .from('products')
+            .select('id, quantity')
+            .eq('id', item.productId)
+            .maybeSingle();
+          if (prod) {
+            await sb
+              .from('products')
+              .update({ quantity: (Number(prod.quantity) || 0) + qty, updated_at: new Date().toISOString() })
+              .eq('id', item.productId);
+          }
+        } catch (pErr) {
+          console.warn('[executeDirectCloudRefund] product quantity restore error:', pErr);
+        }
+      }
+    } else {
+      // البضاعة معيبة -> تسجيلها في جدول التوالف stock_damages إن وجد
+      try {
+        await sb.from('stock_damages').insert({
+          user_id: userId,
+          product_id: item.productId,
+          product_name: item.productName || null,
+          warehouse_id: item.warehouseId || invoiceData?.warehouse_id || targetInvoice?.warehouseId || null,
+          quantity: qty,
+          unit_cost: Number(item.costPrice) || 0,
+          cost_value: (Number(item.costPrice) || 0) * qty,
+          reason: `استرداد معيب من فاتورة #${invoiceData?.invoice_number || invoiceId}`,
+          source: 'refund',
+          source_ref: invoiceData?.invoice_number || invoiceId,
+          damaged_at: new Date().toISOString(),
+        });
+      } catch (damErr) {
+        console.warn('[executeDirectCloudRefund] stock_damages insert failed:', damErr);
+      }
+    }
+  }
+
+  // 3. تحديث الفاتورة والبيانات المالية
+  const isDebtInvoice = (invoiceData?.payment_type === 'debt' || targetInvoice?.paymentType === 'debt');
+  const debtPaid = Number(invoiceData?.debt_paid ?? targetInvoice?.debtPaid ?? 0);
+  const invOldTotal = Number(invoiceData?.total ?? targetInvoice?.total ?? refundAmount);
+  const invOldDebt = Number(invoiceData?.debt_remaining ?? targetInvoice?.debtRemaining ?? 0);
+
+  if (isFullRefund) {
+    // A) استرداد كلي
+    const invIdToUpdate = invoiceData?.id || invoiceId;
+    try {
+      const { error: updErr } = await sb
+        .from('invoices')
+        .update({
+          status: 'refunded',
+          notes: (invoiceData?.notes ? invoiceData.notes + '\n' : '') + `Direct cloud refund (${isDamaged ? 'معيب' : 'سليم'}) at ${new Date().toISOString()}`,
+          updated_at: new Date().toISOString(),
+        })
+        .or(`id.eq.${invIdToUpdate},invoice_number.eq.${invoiceId}`);
+
+      if (updErr && updErr.message?.includes('Refund status can only be changed')) {
+        await sb
+          .from('invoices')
+          .update({
+            status: 'cancelled',
+            notes: (invoiceData?.notes ? invoiceData.notes + '\n' : '') + `[REFUNDED DIRECT] at ${new Date().toISOString()}`,
+            updated_at: new Date().toISOString(),
+          })
+          .or(`id.eq.${invIdToUpdate},invoice_number.eq.${invoiceId}`);
+      }
+    } catch (e) {
+      console.warn('[executeDirectCloudRefund] invoice update error:', e);
+    }
+
+    // عكس الربح في profit_records و profits
+    try {
+      await sb.from('profit_records')
+        .update({ is_reversed: true, reversed_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .or(`invoice_id.eq.${invoiceData?.invoice_number || invoiceId},invoice_id.eq.${invoiceData?.id || invoiceId}`);
+    } catch { /* ignore */ }
+    try {
+      await sb.from('profits').delete()
+        .or(`invoice_id.eq.${invoiceData?.invoice_number || invoiceId},invoice_id.eq.${invoiceData?.id || invoiceId}`);
+    } catch { /* ignore */ }
+
+    // حذف أو تصفير الدين
+    let deletedDebtAmount = 0;
+    if (isDebtInvoice) {
+      try {
+        const { data: dRows } = await sb.from('debts').select('id, remaining_debt')
+          .eq('user_id', userId)
+          .or(`invoice_id.eq.${invoiceData?.invoice_number || invoiceId},invoice_id.eq.${invoiceData?.id || invoiceId}`);
+        if (dRows && dRows.length > 0) {
+          deletedDebtAmount = dRows.reduce((sum, d) => sum + (Number(d.remaining_debt) || 0), 0);
+          await sb.from('debts').delete()
+            .eq('user_id', userId)
+            .or(`invoice_id.eq.${invoiceData?.invoice_number || invoiceId},invoice_id.eq.${invoiceData?.id || invoiceId}`);
+        }
+      } catch (e) {
+        console.warn('[executeDirectCloudRefund] error deleting debts:', e);
+      }
+    }
+
+    // استرجاع النقدية من الوردية والصندوق
+    const isCash = (invoiceData?.payment_type === 'cash' || targetInvoice?.paymentType === 'cash');
+    const cashToRefund = isCash ? invOldTotal : debtPaid;
+
+    if (cashToRefund > 0) {
+      try {
+        const { recordRefundInShift } = await import('../cashbox-store');
+        recordRefundInShift(
+          cashToRefund,
+          Number(invoiceData?.profit ?? targetInvoice?.profit ?? 0),
+          Math.max(0, invOldTotal - Number(invoiceData?.profit ?? targetInvoice?.profit ?? 0)),
+          invoiceData?.invoice_number || invoiceId
+        );
+      } catch (shiftErr) {
+        console.warn('[executeDirectCloudRefund] Failed to record in shift:', shiftErr);
+      }
+
+      try {
+        await sb.from('cashbox_transactions').insert({
+          user_id: userId,
+          type: 'expense',
+          category: 'refund',
+          amount: cashToRefund,
+          description: `استرداد فاتورة #${invoiceData?.invoice_number || invoiceId}`,
+          reference_id: invoiceData?.id || invoiceId,
+        });
+      } catch { /* ignore */ }
+    }
+
+    // تحديث إحصائيات العميل
+    const resolvedCustId = invoiceData?.customer_id || targetInvoice?.customerId;
+    if (resolvedCustId) {
+      try {
+        const { updateCustomerStatsCloud } = await import('./customers-cloud');
+        await updateCustomerStatsCloud(resolvedCustId);
+      } catch (e) {
+        console.warn('[executeDirectCloudRefund] customer stats update error:', e);
+      }
+    }
+
+    // تحديث الكاش المحلي
+    if (!isDamaged && itemsToProcess.length > 0) {
+      try {
+        const { updateProductsQuantitiesInCache } = await import('./products-cloud');
+        updateProductsQuantitiesInCache(itemsToProcess.map(it => ({
+          productId: it.productId,
+          deltaQuantity: it.quantity,
+        })));
+      } catch { /* ignore */ }
+    }
+
+    markInvoiceRefundedLocally(invoiceId);
+    invalidateInvoicesCache();
+    try {
+      const { invalidateProductsCache, refreshProductsFromCloud } = await import('./products-cloud');
+      invalidateProductsCache();
+      refreshProductsFromCloud().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      const { invalidateDebtsCache } = await import('./debts-cloud');
+      invalidateDebtsCache();
+    } catch { /* ignore */ }
+
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+
+    return {
+      success: true,
+      restoredItemsCount,
+      restoredUnitsCount,
+      deletedDebtAmount: isDebtInvoice ? (deletedDebtAmount || invOldDebt) : 0,
+      customerBalanceBefore: 0,
+      customerBalanceAfter: 0,
+      customerName: invoiceData?.customer_name || targetInvoice?.customerName || '',
+      invoiceTotal: invOldTotal,
+      invoiceCurrency: invoiceData?.currency || targetInvoice?.currency || 'USD',
+      debtPaidAmount: debtPaid,
+      cashToRefund,
+    };
+  } else {
+    // B) استرداد جزئي
+    for (const it of returnedItems) {
+      if (it.id) {
+        try {
+          const { data: existingItem } = await sb
+            .from('invoice_items')
+            .select('id, quantity, unit_price, price')
+            .eq('id', it.id)
+            .maybeSingle();
+
+          if (existingItem) {
+            const curQ = Number(existingItem.quantity) || 0;
+            const newQ = Math.max(0, curQ - Number(it.quantity));
+            const uPrice = Number(existingItem.unit_price ?? existingItem.price ?? it.price ?? 0);
+            if (newQ <= 0) {
+              await sb.from('invoice_items').delete().eq('id', existingItem.id);
+            } else {
+              await sb.from('invoice_items').update({
+                quantity: newQ,
+                amount_original: Math.round(newQ * uPrice * 100) / 100,
+                amount_usd: Math.round(newQ * uPrice * 100) / 100,
+                total: Math.round(newQ * uPrice * 100) / 100,
+              }).eq('id', existingItem.id);
+            }
+          }
+        } catch (itErr) {
+          console.warn('[executeDirectCloudRefund] invoice_items update error:', itErr);
+        }
+      }
+    }
+
+    const newTotal = Math.max(0, invOldTotal - refundAmount);
+    const newProfit = Math.max(0, Number(invoiceData?.profit ?? targetInvoice?.profit ?? 0) - refundProfit);
+    const isDebt = (invoiceData?.payment_type === 'debt' || targetInvoice?.paymentType === 'debt');
+    const debtReduced = isDebt ? Math.min(refundAmount, invOldDebt) : 0;
+    const newDebtRemaining = isDebt ? Math.max(0, invOldDebt - debtReduced) : 0;
+    const isFullyRefunded = newTotal <= 0;
+    const cashToRefund = isDebt ? Math.max(0, refundAmount - debtReduced) : refundAmount;
+
+    try {
+      const invIdToUpdate = invoiceData?.id || invoiceId;
+      await sb.from('invoices').update({
+        total: newTotal,
+        subtotal: Math.max(0, Number(invoiceData?.subtotal || newTotal) - refundAmount),
+        profit: newProfit,
+        debt_remaining: newDebtRemaining,
+        status: isFullyRefunded ? 'refunded' : (isDebt && newDebtRemaining <= 0 ? 'paid' : invoiceData?.status),
+        notes: (invoiceData?.notes ? invoiceData.notes + '\n' : '') + `Partial refund ${refundAmount} (${isDamaged ? 'معيب' : 'سليم'}) at ${new Date().toISOString()}`,
+        updated_at: new Date().toISOString(),
+      }).or(`id.eq.${invIdToUpdate},invoice_number.eq.${invoiceId}`);
+    } catch (updInvErr) {
+      console.warn('[executeDirectCloudRefund] invoice totals update error:', updInvErr);
+    }
+
+    // تحديث أرباح profit_records
+    try {
+      const { data: pr } = await sb.from('profit_records').select('*')
+        .eq('user_id', userId)
+        .or(`invoice_id.eq.${invoiceData?.invoice_number || invoiceId},invoice_id.eq.${invoiceData?.id || invoiceId}`)
+        .maybeSingle();
+      if (pr) {
+        await sb.from('profit_records').update({
+          gross_profit: Math.max(0, Number(pr.gross_profit || 0) - refundProfit),
+          revenue: Math.max(0, Number(pr.revenue || 0) - refundAmount),
+        }).eq('id', pr.id);
+      }
+    } catch { /* ignore */ }
+
+    // تحديث الديون
+    if (debtReduced > 0) {
+      try {
+        const { data: dRows } = await sb.from('debts').select('*')
+          .eq('user_id', userId)
+          .or(`invoice_id.eq.${invoiceData?.invoice_number || invoiceId},invoice_id.eq.${invoiceData?.id || invoiceId}`);
+        if (dRows && dRows.length > 0) {
+          for (const d of dRows) {
+            const curTot = Number(d.total_debt ?? d.total_amount ?? 0);
+            const curRem = Number(d.remaining_debt ?? d.remaining_amount ?? 0);
+            const nTot = Math.max(0, curTot - debtReduced);
+            const nRem = Math.max(0, curRem - debtReduced);
+            await sb.from('debts').update({
+              total_debt: nTot,
+              remaining_debt: nRem,
+              status: nRem <= 0 ? 'fully_paid' : 'partially_paid',
+              updated_at: new Date().toISOString(),
+            }).eq('id', d.id);
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    if (cashToRefund > 0) {
+      try {
+        const { recordRefundInShift } = await import('../cashbox-store');
+        recordRefundInShift(
+          cashToRefund,
+          refundProfit,
+          Math.max(0, refundAmount - refundProfit),
+          invoiceData?.invoice_number || invoiceId
+        );
+      } catch (shiftErr) {
+        console.warn('[executeDirectCloudRefund] Partial shift record error:', shiftErr);
+      }
+    }
+
+    const resolvedCustId = invoiceData?.customer_id || targetInvoice?.customerId;
+    if (resolvedCustId) {
+      try {
+        const { updateCustomerStatsCloud } = await import('./customers-cloud');
+        await updateCustomerStatsCloud(resolvedCustId);
+      } catch { /* ignore */ }
+    }
+
+    if (!isDamaged && itemsToProcess.length > 0) {
+      try {
+        const { updateProductsQuantitiesInCache } = await import('./products-cloud');
+        updateProductsQuantitiesInCache(itemsToProcess.map(it => ({
+          productId: it.productId,
+          deltaQuantity: it.quantity,
+        })));
+      } catch { /* ignore */ }
+    }
+
+    if (isFullyRefunded) {
+      markInvoiceRefundedLocally(invoiceId);
+    } else {
+      try {
+        const currentList = invoicesCache || loadInvoicesFromLocalCache() || [];
+        const updated = currentList.map(inv =>
+          inv.id === invoiceId ? {
+            ...inv,
+            total: newTotal,
+            subtotal: Math.max(0, (inv.subtotal || newTotal) - refundAmount),
+            profit: newProfit,
+            debtRemaining: newDebtRemaining,
+            updatedAt: new Date().toISOString(),
+          } : inv
+        );
+        invoicesCache = updated;
+        saveInvoicesToLocalCache(updated);
+      } catch { /* ignore */ }
+    }
+
+    invalidateInvoicesCache();
+    try {
+      const { invalidateProductsCache, refreshProductsFromCloud } = await import('./products-cloud');
+      invalidateProductsCache();
+      refreshProductsFromCloud().catch(() => {});
+    } catch { /* ignore */ }
+    try {
+      const { invalidateDebtsCache } = await import('./debts-cloud');
+      invalidateDebtsCache();
+    } catch { /* ignore */ }
+
+    emitEvent(EVENTS.INVOICES_UPDATED, null);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    emitEvent(EVENTS.DEBTS_UPDATED, null);
+    emitEvent(EVENTS.CUSTOMERS_UPDATED, null);
+
+    return {
+      success: true,
+      refundedAmount: refundAmount,
+      cashToRefund,
+      debtReduced,
+      restoredItemsCount,
+      restoredUnitsCount,
+      isFullyRefunded,
+      newInvoiceTotal: newTotal,
+    };
+  }
+}
+
+export const refundInvoiceCloud = async (
+  id: string,
+  source: 'online' | 'offline-sync' = 'online',
+  condition: 'good' | 'damaged' = 'good'
+): Promise<RefundResult | boolean> => {
   // ✅ Client-side mutex - reject duplicate concurrent calls immediately
   if (refundInFlight.has(id)) {
     console.warn('[refundInvoiceCloud] Refund already in-flight for:', id);
@@ -846,13 +1317,17 @@ export const refundInvoiceCloud = async (id: string, source: 'online' | 'offline
   }
   refundInFlight.add(id);
   try {
-    return await refundInvoiceCloudImpl(id, source);
+    return await refundInvoiceCloudImpl(id, source, condition);
   } finally {
     refundInFlight.delete(id);
   }
 };
 
-const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sync'): Promise<RefundResult | boolean> => {
+const refundInvoiceCloudImpl = async (
+  id: string,
+  source: 'online' | 'offline-sync',
+  condition: 'good' | 'damaged' = 'good'
+): Promise<RefundResult | boolean> => {
   if (isGuestDemoMode()) {
     const invoices = loadInvoicesFromLocalCache() || invoicesCache || [];
     const targetInvoice = invoices.find(inv => inv.id === id);
@@ -932,35 +1407,69 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
 
   // Stock, debt, customer totals, and invoice status are committed in one locked
   // database transaction. Only the first caller can receive success=true.
-  const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id, _source: source });
-  if (error) {
-    console.error('[refundInvoiceCloud] Atomic refund failed:', error);
-    return failedRefund(error.message || 'فشل تنفيذ الاسترداد على الخادم');
+  let atomic: any = null;
+  let rpcFailed = false;
+  let rpcErrorMsg = '';
+
+  try {
+    const { data, error } = await supabase.rpc('refund_invoice_atomic', { _invoice_number: id, _source: source });
+    if (error) {
+      console.warn('[refundInvoiceCloud] Atomic refund RPC error (will activate direct cloud fallback):', error.message || error);
+      rpcFailed = true;
+      rpcErrorMsg = error.message;
+    } else {
+      atomic = data?.[0];
+      if (!atomic) {
+        rpcFailed = true;
+      } else if (atomic.already_refunded) {
+        return {
+          success: false,
+          alreadyRefunded: true,
+          restoredItemsCount: 0,
+          restoredUnitsCount: 0,
+          deletedDebtAmount: 0,
+          customerBalanceBefore: 0,
+          customerBalanceAfter: 0,
+          customerName: atomic.customer_name,
+          invoiceTotal: Number(atomic.invoice_total) || 0,
+          invoiceCurrency: atomic.invoice_currency,
+          debtPaidAmount: 0,
+          cashToRefund: 0,
+        };
+      } else if (!atomic.success) {
+        rpcFailed = true;
+      }
+    }
+  } catch (rpcEx: any) {
+    console.warn('[refundInvoiceCloud] Atomic refund RPC threw exception (activating fallback):', rpcEx);
+    rpcFailed = true;
+    rpcErrorMsg = rpcEx?.message || '';
   }
 
-  const atomic = data?.[0];
-  if (!atomic) return failedRefund('لم يرد الخادم بأي نتيجة للاسترداد');
+  // ✅ المسار البديل المباشر (Direct Cloud Fallback) في حال فشل الـ RPC
+  if (rpcFailed) {
+    console.info(`[refundInvoiceCloud] Activating Direct Cloud Fallback for invoice ${id}... (RPC error: ${rpcErrorMsg})`);
+    const returnedItems = (targetInvoice?.items || []).map(it => ({
+      id: it.id,
+      productId: it.productId || it.id,
+      productName: it.name,
+      quantity: Number(it.quantity) || 1,
+      price: Number(it.price) || 0,
+      costPrice: Number(it.costPrice) || 0,
+      total: Number(it.total) || 0,
+      warehouseId: targetInvoice?.warehouseId,
+    }));
 
-
-  if (atomic.already_refunded) {
-    return {
-      success: false,
-      alreadyRefunded: true,
-      restoredItemsCount: 0,
-      restoredUnitsCount: 0,
-      deletedDebtAmount: 0,
-      customerBalanceBefore: 0,
-      customerBalanceAfter: 0,
-      customerName: atomic.customer_name,
-      invoiceTotal: Number(atomic.invoice_total) || 0,
-      invoiceCurrency: atomic.invoice_currency,
-      debtPaidAmount: 0,
-      cashToRefund: 0,
-    };
-  }
-
-  if (!atomic.success) {
-    return failedRefund('تعذّر إتمام الاسترداد — لم يتم العثور على الفاتورة أو رفض الخادم العملية');
+    return (await executeDirectCloudRefund({
+      invoiceId: id,
+      userId,
+      isFullRefund: true,
+      condition,
+      returnedItems,
+      refundAmount: Number(targetInvoice?.total) || 0,
+      refundProfit: Number(targetInvoice?.profit) || 0,
+      targetInvoice,
+    })) as RefundResult;
   }
 
   // تحديث فوري لكميات المنتجات في الكاش المحلي (ذاكرة و IndexedDB ومستودع) بعد التحقق من نجاح الاسترداد
@@ -1077,6 +1586,7 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
 };
 
 export interface PartialRefundItem {
+  id?: string;
   productId?: string;
   productName: string;
   quantityToRefund?: number;
@@ -1106,7 +1616,8 @@ export interface PartialRefundResult {
 export const refundInvoicePartialCloud = async (
   invoiceNumber: string,
   itemsToRefund: PartialRefundItem[],
-  operationId?: string
+  operationId?: string,
+  condition: 'good' | 'damaged' = 'good'
 ): Promise<PartialRefundResult> => {
   const fail = (error: string): PartialRefundResult => ({ success: false, error, refundedAmount: 0, cashToRefund: 0, debtReduced: 0, restoredItemsCount: 0, restoredUnitsCount: 0, isFullyRefunded: false, newInvoiceTotal: 0 });
 
@@ -1121,14 +1632,76 @@ export const refundInvoicePartialCloud = async (
 
   const opId = operationId || (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `pr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
-  const { data, error } = await sb.rpc('refund_invoice_partial_atomic', {
-    _invoice_number: invoiceNumber,
-    _items: items,
-    _operation_id: opId,
-  });
-  if (error) return fail(error.message || 'فشل الاسترداد الجزئي');
+  let rpcData: any = null;
+  let rpcFailed = false;
+  let rpcErrorMsg = '';
 
-  const r = (data || {}) as Record<string, unknown>;
+  try {
+    const { data, error } = await sb.rpc('refund_invoice_partial_atomic', {
+      _invoice_number: invoiceNumber,
+      _items: items,
+      _operation_id: opId,
+    });
+    if (error) {
+      console.warn('[refundInvoicePartialCloud] Atomic partial RPC failed (activating direct cloud fallback):', error.message || error);
+      rpcFailed = true;
+      rpcErrorMsg = error.message;
+    } else {
+      rpcData = data;
+    }
+  } catch (rpcEx: any) {
+    console.warn('[refundInvoicePartialCloud] Atomic partial RPC threw exception (activating direct cloud fallback):', rpcEx);
+    rpcFailed = true;
+    rpcErrorMsg = rpcEx?.message || '';
+  }
+
+  // ✅ المسار السحابي المباشر للاسترداد الجزئي في حال فشل الـ RPC
+  if (rpcFailed) {
+    console.info(`[refundInvoicePartialCloud] Activating Direct Cloud Fallback for ${invoiceNumber}... (RPC error: ${rpcErrorMsg})`);
+    let userId = getCurrentUserId();
+    if (!userId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id || null;
+      if (userId) setCurrentUserId(userId);
+    }
+    const loadedInv = (invoicesCache || loadInvoicesFromLocalCache() || []).find(i => i.id === invoiceNumber);
+    let totalRefundAmount = 0;
+    let totalRefundProfit = 0;
+
+    const returnedItems = itemsToRefund.map(it => {
+      const qty = Number(it.quantityToRefund ?? it.quantity) || 0;
+      const price = Number(it.unitPrice) || 0;
+      const cost = Number(it.costPrice) || 0;
+      const profit = (price - cost) * qty;
+      totalRefundAmount += price * qty;
+      totalRefundProfit += profit;
+      return {
+        id: it.id,
+        productId: it.productId || it.id || '',
+        productName: it.productName,
+        quantity: qty,
+        price,
+        costPrice: cost,
+        total: price * qty,
+        warehouseId: it.warehouseId || loadedInv?.warehouseId,
+      };
+    });
+
+    const fallbackRes = await executeDirectCloudRefund({
+      invoiceId: invoiceNumber,
+      userId: userId || '',
+      isFullRefund: false,
+      condition,
+      returnedItems,
+      refundAmount: totalRefundAmount,
+      refundProfit: totalRefundProfit,
+      targetInvoice: loadedInv,
+    });
+
+    return fallbackRes as PartialRefundResult;
+  }
+
+  const r = (rpcData || {}) as Record<string, unknown>;
   const refundedAmount = Number(r.refunded_amount) || 0;
   const cashToRefund = Number(r.cash_to_refund) || 0;
   const debtReduced = Number(r.debt_reduced) || 0;

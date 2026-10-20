@@ -10,7 +10,7 @@ const INVOICES_STORAGE_KEY = 'hyperpos_invoices_v1';
 
 export type InvoiceType = 'sale' | 'maintenance';
 export type PaymentType = 'cash' | 'debt';
-export type InvoiceStatus = 'paid' | 'pending' | 'cancelled';
+export type InvoiceStatus = 'paid' | 'pending' | 'cancelled' | 'refunded';
 
 export interface InvoiceItem {
   id: string;
@@ -220,5 +220,23 @@ export const markInvoicePaidWithDebtSync = (invoiceId: string): boolean => {
     }
   }
   
+  return true;
+};
+
+// تحديد الفاتورة كمستردة مع تصفير الدين وعكس الأرباح
+export const markInvoiceRefunded = (invoiceId: string): boolean => {
+  const invoice = getInvoiceById(invoiceId);
+  if (!invoice) return false;
+  
+  updateInvoice(invoiceId, { 
+    status: 'refunded', 
+    debtRemaining: 0
+  });
+  
+  if (invoice.paymentType === 'debt') {
+    deleteDebtByInvoiceId(invoiceId);
+  }
+  
+  revertProfitDistribution(invoiceId);
   return true;
 };
