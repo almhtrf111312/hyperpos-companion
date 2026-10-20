@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.0.70",
+    "date": "2026-10-19",
+    "changes": [
+      "v1.0.70 - إصلاح العملات: الفاتورة تُعرض دائماً بعملتها المحفوظة وقت البيع، إلغاء تحويل العملات المخصصة تلقائياً إلى الليرة التركية، اختيار عملة التقارير، واختفاء التحذيرات تلقائياً"
+    ]
+  },
+  {
     "type": "feature",
     "ar": "v1.0.69 - تفعيل بوت تيليغرام (@flowpos_helper_bot) لربط الحساب واستعادة كلمة المرور عبر اتصال آمن.",
     "en": "v1.0.69 - Telegram bot (@flowpos_helper_bot) enabled for account linking and password recovery over a secure connection."
