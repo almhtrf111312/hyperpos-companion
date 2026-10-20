@@ -849,7 +849,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                     <span className="font-black font-mono text-sm text-destructive block whitespace-nowrap">{formatCurrency(selectedDebt.remainingDebt)}</span>
                     {paymentCurrency !== 'USD' && (
                       <span className="text-[11px] text-muted-foreground block font-mono">
-                        ≈ {formatNumber(maxInCurrency)} {currencySettings.symbols[paymentCurrency] || paymentCurrency}
+                        ≈ {formatNumber(maxInCurrency)} {currencySymbols[paymentCurrency as keyof typeof currencySymbols] || paymentCurrency}
                       </span>
                     )}
                   </div>

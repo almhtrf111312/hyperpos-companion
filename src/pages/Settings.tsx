@@ -683,7 +683,7 @@ export default function Settings() {
           setStoreSettings(merged.storeSettings);
           setTaxEnabled(merged.taxEnabled);
           setTaxRate(merged.taxRate);
-          setNotificationSettings(merged.notificationSettings as typeof notificationSettings);
+          setNotificationSettings(merged.notificationSettings as unknown as typeof notificationSettings);
           setPrintSettings(merged.printSettings as typeof printSettings);
           setExchangeRates({
             TRY: String(merged.exchangeRates.TRY),
@@ -746,7 +746,7 @@ export default function Settings() {
               TRY: merged.currencySymbols.TRY || '₺',
               SYP: merged.currencySymbols.SYP || 'ل.س',
             },
-            notificationSettings: { ...(merged.notificationSettings as typeof notificationSettings) },
+            notificationSettings: { ...(merged.notificationSettings as unknown as typeof notificationSettings) },
             printSettings: { ...(merged.printSettings as typeof printSettings) },
             backupSettings: {
               autoBackup: Boolean(merged.backupSettings.autoBackup),
@@ -1127,7 +1127,7 @@ export default function Settings() {
         hideMaintenanceSection,
         trackCapital,
         initialCapital,
-        notificationSettings,
+        notificationSettings: notificationSettings as unknown as Record<string, unknown>,
         printSettings,
         backupSettings,
         productFieldsConfig: existingProductFields,

@@ -842,9 +842,9 @@ export default function Products() {
       // تصفية حسب حالة التوفر المتبقية (متوفر / منخفض)
       if (!noInventory) {
         if (statusFilter === 'in_stock') {
-          if (product.quantity <= (product.minStock || 5)) return false;
+          if (product.quantity <= (product.minStockLevel || 5)) return false;
         } else if (statusFilter === 'low_stock') {
-          const minStock = product.minStock || 5;
+          const minStock = product.minStockLevel || 5;
           if (product.quantity > minStock) return false;
         }
       } else {
@@ -868,8 +868,8 @@ export default function Products() {
 
   const stats = {
     total: activeProductsCount,
-    inStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && (noInventory ? p.status === 'in_stock' : p.quantity > (p.minStock || 5))).length,
-    lowStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && (noInventory ? p.status === 'low_stock' : p.quantity <= (p.minStock || 5))).length,
+    inStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && (noInventory ? p.status === 'in_stock' : p.quantity > (p.minStockLevel || 5))).length,
+    lowStock: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && (noInventory ? p.status === 'low_stock' : p.quantity <= (p.minStockLevel || 5))).length,
     outOfStock: products.filter(p => !p.archived && p.quantity <= 0).length,
     multiUnit: products.filter(p => !p.archived && (noInventory || p.quantity > 0) && p.conversionFactor && p.conversionFactor > 1).length,
   };

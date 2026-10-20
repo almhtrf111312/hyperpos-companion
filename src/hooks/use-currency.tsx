@@ -74,18 +74,6 @@ export const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
     if (!raw) return 'USD';
     const parsed = JSON.parse(raw);
     const primary = (parsed?.primaryCurrency as 'USD' | 'TRY' | 'SYP') || 'USD';
-    const enabled = parsed?.enabledCurrencies;
-    // If primary currency is disabled, fallback to first enabled currency
-    if (enabled && enabled[primary] === false) {
-      if (enabled.TRY) return 'TRY';
-      if (enabled.SYP) return 'SYP';
-      if (enabled.USD !== false) return 'USD';
-    }
-    // If primary is USD but USD is disabled in settings, fallback to enabled local currency
-    if (primary === 'USD' && enabled && enabled.USD === false) {
-      if (enabled.TRY) return 'TRY';
-      if (enabled.SYP) return 'SYP';
-    }
     return primary;
   } catch {
     return 'USD';

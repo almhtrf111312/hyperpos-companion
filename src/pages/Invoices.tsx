@@ -381,7 +381,7 @@ export default function Invoices() {
         rate = 1;
         symbol = currencySymbols?.USD || '$';
       } else {
-        rate = (exchangeRates[code] && exchangeRates[code] > 0) ? exchangeRates[code] : (code === 'TRY' ? 34 : (code === 'SYP' ? 14500 : 1));
+        rate = (exchangeRates[code] && exchangeRates[code] > 0) ? exchangeRates[code] : 1;
         symbol = currencySymbols?.[code] || getCurrencySymbolByCode(code);
         if ((!symbol || symbol === '$') && currencyCode === code && currencySymbol && currencySymbol !== '$') {
           symbol = currencySymbol;
@@ -425,11 +425,11 @@ export default function Invoices() {
     const invUpper = (inv.currency || 'USD').toUpperCase();
     const tryRate = (invUpper === 'TRY' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 0)
       ? inv.exchangeRate
-      : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 34);
+      : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 1);
 
     const sypRate = (invUpper === 'SYP' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 0)
       ? inv.exchangeRate
-      : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 14500);
+      : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 1);
 
     return {
       code,
@@ -451,7 +451,7 @@ export default function Invoices() {
     ? 1
     : ((exchangeRates[statCurrencyCode] && exchangeRates[statCurrencyCode] > 0)
         ? exchangeRates[statCurrencyCode]
-        : (statCurrencyCode === 'TRY' ? 34 : (statCurrencyCode === 'SYP' ? 14500 : 1)));
+        : 1);
   const statCurrencySymbol = statCurrencyCode === 'USD' ? (currencySymbols?.USD || '$') : (currencySymbols?.[statCurrencyCode] || getCurrencySymbolByCode(statCurrencyCode));
   const statDecimals = statExchangeRate >= 100 ? 0 : 2;
 
@@ -2368,10 +2368,10 @@ export default function Invoices() {
             const c2Name = currencyNames?.SYP || 'ليرة سورية';
             const c1Rate = (selectedInvoice.currency === 'TRY' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
               ? selectedInvoice.exchangeRate
-              : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 34);
+              : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 1);
             const c2Rate = (selectedInvoice.currency === 'SYP' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
               ? selectedInvoice.exchangeRate
-              : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 14500);
+              : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 1);
 
             const c1Symbol = selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY || '₺') : (currencySymbols?.TRY || '₺');
             const c2Symbol = selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP || 'ل.س') : (currencySymbols?.SYP || 'ل.س');

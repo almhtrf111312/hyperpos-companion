@@ -183,9 +183,16 @@ export function resolveHistoricalCurrency(
     return { code: 'USD', symbol, rate: 1 };
   }
 
-  // 1. استنتاج العملة التاريخية من سعر الصرف أو الكود
-  const inferred = inferCurrencyFromExchangeRate(rate, rawCurrency);
-  const code = inferred?.code || (rawCurrency && rawCurrency !== 'USD' ? rawCurrency : (fallbackSettings?.currencyCode !== 'USD' ? fallbackSettings?.currencyCode || 'TRY' : 'TRY'));
+  // 1. العملة المحفوظة في الفاتورة هي المرجع؛ التخمين من سعر الصرف فقط للفواتير القديمة بلا كود
+  let code: string;
+  if (rawCurrency && rawCurrency !== 'USD') {
+    code = rawCurrency;
+  } else {
+    const active = (fallbackSettings?.currencyCode || '').toUpperCase();
+    code = (active && active !== 'USD')
+      ? active
+      : (inferCurrencyFromExchangeRate(rate, rawCurrency)?.code || 'USD');
+  }
 
   // 2. التحقق من صحة الرمز وتجميده
   let symbol: string;
@@ -230,10 +237,10 @@ export function getDisplayCurrency(): { code: string; symbol: string } {
 
         let activeCode = primary;
         if (enabled && activeCode && enabled[activeCode] === false) {
-          activeCode = enabled.TRY ? 'TRY' : enabled.SYP ? 'SYP' : enabled.USD !== false ? 'USD' : '';
+          activeCode = primary;
         }
         if (!activeCode) {
-          activeCode = enabled?.TRY ? 'TRY' : enabled?.SYP ? 'SYP' : 'USD';
+          activeCode = 'USD';
         }
 
         const syms = parsed.currencySymbols;
@@ -301,7 +308,7 @@ export function resolveCurrencyMeta(
     code = (settings?.primaryCurrency || settings?.currencyCode || settings?.defaultCurrency || '').trim().toUpperCase();
     if (!code) {
       const enabled = settings?.enabledCurrencies;
-      code = enabled?.TRY ? 'TRY' : enabled?.SYP ? 'SYP' : 'USD';
+      code = 'USD';
     }
   }
   if (!code) code = 'USD';
@@ -413,9 +420,19 @@ export function getActiveStoreCurrency(): ResolvedCurrencyMeta {
  * تنسيق المبالغ المالية المخزنة داخلياً بالدولار الأمريكي وتحويلها ديناميكياً
  * إلى عملة المتجر المعتمدة الحالية مع مراعاة دقة الكسور (بدون فواصل إذا كان الصرف >= 100)
  */
+export const REPORT_CURRENCY_KEY = 'hyperpos_report_currency';
+/** عملة التقارير: الدولار أو العملة الافتراضية للمتجر (اختيار المستخدم) */
+export function getReportCurrency(): ResolvedCurrencyMeta {
+  try {
+    const pick = typeof window !== 'undefined' ? window.localStorage.getItem(REPORT_CURRENCY_KEY) : null;
+    if (pick === 'USD') return resolveCurrencyMeta('USD');
+  } catch {}
+  return getActiveStoreCurrency();
+}
+
 export function formatReportAmount(amountUsd: number): string {
   if (typeof amountUsd !== 'number' || isNaN(amountUsd)) return '0.00';
-  const active = getActiveStoreCurrency();
+  const active = getReportCurrency();
   const converted = active.isUsd ? amountUsd : amountUsd * (active.rate > 0 ? active.rate : 1);
   const decimals = active.rate >= 100 ? 0 : 2;
   const numStr = converted.toLocaleString('en-US', {
