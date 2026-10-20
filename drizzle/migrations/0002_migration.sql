@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.activate_code_strict(text, uuid, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.activate_code_strict(text, uuid, text, text) TO service_role;

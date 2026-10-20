@@ -127,7 +127,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Email updated successfully for user ${userIdToUpdate} to ${newEmail}`);
+    console.log(`Email updated successfully for user ${userIdToUpdate}`);
 
     return new Response(
       JSON.stringify({ 
