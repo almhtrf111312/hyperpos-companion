@@ -151,11 +151,7 @@ serve(async (req) => {
       // Case B: User shared contact
       if (message.contact) {
         const contact = message.contact;
-        console.log(`[TelegramAuth] Contact received from chat ${chatId}:`, {
-          contactUserId: contact.user_id,
-          fromId: fromId,
-          phone: contact.phone_number,
-        });
+        console.log(`[TelegramAuth] Contact received from chat ${chatId}`);
 
         // 1. CRITICAL SECURITY CHECK: contact.user_id must equal message.from.id
         if (contact.user_id && fromId && contact.user_id !== fromId) {
@@ -191,7 +187,7 @@ serve(async (req) => {
         );
 
         if (matchedProfile) {
-          console.log(`[TelegramAuth] Match found for user ${matchedProfile.user_id} (${matchedProfile.full_name})`);
+          console.log(`[TelegramAuth] Match found for user ${matchedProfile.user_id}`);
           const chatIdStr = chatId.toString();
 
           // Save telegram_chat_id in profiles
@@ -221,7 +217,7 @@ serve(async (req) => {
             { remove_keyboard: true }
           );
         } else {
-          console.log(`[TelegramAuth] No profile matched for phone: ${rawPhone}`);
+          console.log(`[TelegramAuth] No profile matched for shared contact`);
           await sendTelegramMessage(
             botToken,
             chatId,
@@ -357,7 +353,7 @@ serve(async (req) => {
       }
 
       // Generate 6-digit OTP code
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpCode = (100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000)).toString();
       const codeHash = await sha256(otpCode);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
