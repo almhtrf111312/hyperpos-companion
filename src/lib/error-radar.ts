@@ -382,6 +382,10 @@ async function sendErrorLogToServer(log: QueuedErrorRadarLog): Promise<SendResul
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // Server only accepts reports from signed-in users; keep queued until sign-in
+      return { success: false, serverConfirmed: false, error: 'Not signed in' };
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error, status } = await (supabase as any)
