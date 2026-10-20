@@ -473,6 +473,10 @@ export default function BossPanel() {
       toast.error('يرجى إدخال كود التفعيل');
       return;
     }
+    if (newCode.code.replace(/[^A-Za-z0-9]/g, '').length < 12) {
+      toast.error('كود التفعيل ضعيف: يجب أن يحتوي 12 حرفاً/رقماً على الأقل. استخدم زر التوليد العشوائي.');
+      return;
+    }
 
     const assignedOwner = newCode.assigned_user_id
       ? owners.find(o => o.user_id === newCode.assigned_user_id)
