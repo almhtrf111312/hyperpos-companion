@@ -237,10 +237,10 @@ export function getDisplayCurrency(): { code: string; symbol: string } {
 
         let activeCode = primary;
         if (enabled && activeCode && enabled[activeCode] === false) {
-          activeCode = enabled.TRY ? 'TRY' : enabled.SYP ? 'SYP' : enabled.USD !== false ? 'USD' : '';
+          activeCode = primary;
         }
         if (!activeCode) {
-          activeCode = enabled?.TRY ? 'TRY' : enabled?.SYP ? 'SYP' : 'USD';
+          activeCode = 'USD';
         }
 
         const syms = parsed.currencySymbols;
@@ -308,7 +308,7 @@ export function resolveCurrencyMeta(
     code = (settings?.primaryCurrency || settings?.currencyCode || settings?.defaultCurrency || '').trim().toUpperCase();
     if (!code) {
       const enabled = settings?.enabledCurrencies;
-      code = enabled?.TRY ? 'TRY' : enabled?.SYP ? 'SYP' : 'USD';
+      code = 'USD';
     }
   }
   if (!code) code = 'USD';
