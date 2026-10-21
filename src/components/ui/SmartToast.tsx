@@ -20,7 +20,7 @@ function getAudioContext(): AudioContext | null {
   }
 }
 
-function playDropSound() {
+function playSoftChime() {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -28,33 +28,14 @@ function playDropSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(320, now);
-    osc.frequency.exponentialRampToValueAtTime(740, now + 0.08);
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.exponentialRampToValueAtTime(587.33, now + 0.08);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.09);
-  } catch {}
-}
-
-function playBurstSound() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(280, now);
-    osc.frequency.exponentialRampToValueAtTime(110, now + 0.12);
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.14);
+    osc.stop(now + 0.1);
   } catch {}
 }
 
@@ -66,18 +47,18 @@ function playDismissSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(450, now);
-    osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.frequency.setValueAtTime(360, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.07);
+    gain.gain.setValueAtTime(0.03, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.11);
+    osc.stop(now + 0.08);
   } catch {}
 }
 
-// قراءة مدة بقاء الإشعار المضبوطة من الإعدادات (الافتراضي 2 ثانية، أو بين 0.5 و 3 ثواني)
+// قراءة مدة بقاء الإشعار المضبوطة من الإعدادات (الافتراضي 3 ثوانٍ)
 function getDefaultToastDuration(): number {
   try {
     const saved = localStorage.getItem('hyperpos_toast_duration');
@@ -86,7 +67,7 @@ function getDefaultToastDuration(): number {
       if (!isNaN(val) && val >= 500 && val <= 5000) return val;
     }
   } catch {}
-  return 2000;
+  return 3000;
 }
 
 // =========================================================================
@@ -230,10 +211,9 @@ export function SmartToast() {
   const [dismissDirection, setDismissDirection] = useState<'up' | 'left' | 'right' | null>(null);
   const [dragState, setDragState] = useState<{ x: number; y: number; rotate: number; opacity: number } | null>(null);
 
-  // مراحل حركة الجزيرة التفاعلية
-  const [animPhase, setAnimPhase] = useState<'dropping' | 'bursting' | 'expanded' | 'retracting' | 'dismissed'>('dismissed');
-  const [shockwaveKey, setShockwaveKey] = useState<number | null>(null);
-  const [resolvedDuration, setResolvedDuration] = useState<number>(2000);
+  // مراحل حركة البطاقة: ظهور مستقر ناعم أو انكماش خروج
+  const [animPhase, setAnimPhase] = useState<'expanded' | 'retracting' | 'dismissed'>('dismissed');
+  const [resolvedDuration, setResolvedDuration] = useState<number>(3000);
 
   const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number; time: number; pointerId: number } | null>(null);
@@ -254,11 +234,10 @@ export function SmartToast() {
     setTimeout(() => {
       hideSmartToast();
       setDismissDirection(null);
-      setShockwaveKey(null);
-    }, 280);
+    }, 250);
   }, []);
 
-  // انكماش الإشعار وصعوده لتبتلعه الجزيرة تلقائياً
+  // انكماش الإشعار وصعوده تلقائياً
   const retractNotification = useCallback(() => {
     if (autoDismissTimerRef.current) {
       clearTimeout(autoDismissTimerRef.current);
@@ -273,8 +252,7 @@ export function SmartToast() {
       setIsPaused(false);
       setDismissDirection(null);
       setDragState(null);
-      setShockwaveKey(null);
-    }, 280);
+    }, 250);
   }, []);
 
   // ضبط مؤقت الإغلاق التلقائي
@@ -287,7 +265,7 @@ export function SmartToast() {
     }, duration);
   }, [retractNotification]);
 
-  // دورة حياة الإشعار عند وصول رسالة جديدة
+  // دورة حياة الإشعار عند وصول رسالة جديدة - ظهور ناعم ومستقر فوراً دون انفجار أو ارتداد
   useEffect(() => {
     if (!toast) {
       setAnimPhase('dismissed');
@@ -303,26 +281,12 @@ export function SmartToast() {
     setDismissDirection(null);
     setDragState(null);
 
-    // 1. مرحلة السقوط الكروي من الجزيرة (Droplet Drop)
-    setAnimPhase('dropping');
-    playDropSound();
-
-    // 2. لحظة الارتطام والانفجار وموجات الصدمة الجانبية (Burst & Shockwaves)
-    const tImpact = setTimeout(() => {
-      setShockwaveKey(Date.now());
-      playBurstSound();
-      setAnimPhase('bursting');
-    }, 110);
-
-    // 3. التمدد السائل المستقر وبدء شريط المؤقت (Fluid Expand)
-    const tExpand = setTimeout(() => {
-      setAnimPhase('expanded');
-      resetAutoDismiss(duration);
-    }, 360);
+    // ظهور مستقر وأنيق للبطاقة مع نغمة خفيفة ناعمة
+    setAnimPhase('expanded');
+    playSoftChime();
+    resetAutoDismiss(duration);
 
     return () => {
-      clearTimeout(tImpact);
-      clearTimeout(tExpand);
       if (autoDismissTimerRef.current) {
         clearTimeout(autoDismissTimerRef.current);
       }
@@ -348,11 +312,6 @@ export function SmartToast() {
     if ((e.target as HTMLElement).closest('button')) return;
 
     isDraggingRef.current = true;
-    setIsPaused(true);
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
-
     pointerStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -360,7 +319,14 @@ export function SmartToast() {
       pointerId: e.pointerId,
     };
 
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setIsPaused(true);
+    if (autoDismissTimerRef.current) {
+      clearTimeout(autoDismissTimerRef.current);
+    }
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -369,34 +335,35 @@ export function SmartToast() {
     const deltaX = e.clientX - pointerStartRef.current.x;
     const deltaY = e.clientY - pointerStartRef.current.y;
 
-    const clampedDeltaY = deltaY > 30 ? deltaY * 0.25 : deltaY;
-    const rotation = deltaX * 0.08;
-    const distance = Math.hypot(deltaX, clampedDeltaY);
-    const opacity = Math.max(0.25, 1 - distance / 260);
+    const rot = Math.max(-12, Math.min(12, deltaX * 0.08));
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const op = Math.max(0.4, 1 - distance / 260);
 
     setDragState({
       x: deltaX,
-      y: clampedDeltaY,
-      rotate: rotation,
-      opacity,
+      y: deltaY < 0 ? deltaY : deltaY * 0.35,
+      rotate: rot,
+      opacity: op,
     });
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current || !pointerStartRef.current) return;
+
     isDraggingRef.current = false;
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
 
     try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {}
 
-    const deltaX = e.clientX - pointerStartRef.current.x;
-    const deltaY = e.clientY - pointerStartRef.current.y;
-    const elapsedTime = Math.max(Date.now() - pointerStartRef.current.time, 1);
-    const velocityX = deltaX / elapsedTime;
-    const velocityY = deltaY / elapsedTime;
+    const deltaX = e.clientX - start.x;
+    const deltaY = e.clientY - start.y;
+    const deltaTime = Math.max(1, Date.now() - start.time);
 
-    pointerStartRef.current = null;
+    const velocityX = deltaX / deltaTime;
+    const velocityY = deltaY / deltaTime;
 
     // 1. سحب للأعلى
     if (deltaY < -35 || velocityY < -0.35) {
@@ -445,7 +412,6 @@ export function SmartToast() {
           text: 'text-primary',
           dot: 'bg-primary',
           bar: 'bg-primary',
-          shockColor: 'hsl(var(--primary))',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -459,7 +425,6 @@ export function SmartToast() {
           text: 'text-emerald-500 dark:text-emerald-400',
           dot: 'bg-emerald-500',
           bar: 'bg-emerald-500',
-          shockColor: 'var(--emerald-500)',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -473,7 +438,6 @@ export function SmartToast() {
           text: 'text-amber-500 dark:text-amber-400',
           dot: 'bg-amber-500',
           bar: 'bg-amber-500',
-          shockColor: '#f59e0b',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -487,7 +451,6 @@ export function SmartToast() {
           text: 'text-rose-500 dark:text-rose-400',
           dot: 'bg-rose-500',
           bar: 'bg-rose-500',
-          shockColor: '#f43f5e',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -501,7 +464,6 @@ export function SmartToast() {
           text: 'text-sky-500 dark:text-sky-400',
           dot: 'bg-sky-500',
           bar: 'bg-sky-500',
-          shockColor: '#0ea5e9',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
@@ -515,7 +477,6 @@ export function SmartToast() {
           text: 'text-purple-500 dark:text-purple-400',
           dot: 'bg-purple-500',
           bar: 'bg-purple-500',
-          shockColor: '#a855f7',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -529,7 +490,6 @@ export function SmartToast() {
           text: 'text-indigo-500 dark:text-indigo-400',
           dot: 'bg-indigo-500',
           bar: 'bg-indigo-500',
-          shockColor: '#6366f1',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -543,7 +503,6 @@ export function SmartToast() {
           text: 'text-primary',
           dot: 'bg-primary',
           bar: 'bg-primary',
-          shockColor: 'hsl(var(--primary))',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -555,32 +514,21 @@ export function SmartToast() {
 
   const config = getCategoryConfig();
 
-  // حساب التحول الفيزيائي حسب مرحلة حركة الجزيرة
-  let transform = 'translate(0px, 0px) rotate(0deg) scale(1)';
+  // تحول فيزيائي ناعم ومستقر تماماً
+  let transform = 'translate(0px, 0px) scale(1)';
   let opacity = 1;
-  let cardClass = 'w-full max-w-[29rem] rounded-[26px]';
-  let contentOpacity = 1;
+  const cardClass = 'w-full max-w-[29rem] rounded-[24px]';
 
-  if (animPhase === 'dropping') {
-    transform = 'translate(0px, -6px) scale(0.65, 1.35)';
-    cardClass = 'w-11 h-11 rounded-full';
-    contentOpacity = 0;
-  } else if (animPhase === 'bursting') {
-    transform = 'translate(0px, 0px) scale(1)';
-    cardClass = 'w-full max-w-[29rem] rounded-[26px]';
-    contentOpacity = 0.8;
-  } else if (animPhase === 'retracting') {
-    transform = 'translate(0px, -45px) scale(0.32, 1.25)';
-    cardClass = 'w-9 h-9 rounded-full';
+  if (animPhase === 'retracting') {
+    transform = 'translateY(-16px) scale(0.97)';
     opacity = 0;
-    contentOpacity = 0;
   } else if (!isVisible) {
     if (dismissDirection === 'right') {
-      transform = 'translateX(120vw) rotate(14deg)';
+      transform = 'translateX(100vw) rotate(6deg)';
     } else if (dismissDirection === 'left') {
-      transform = 'translateX(-120vw) rotate(-14deg)';
+      transform = 'translateX(-100vw) rotate(-6deg)';
     } else {
-      transform = 'translateY(-140px) scale(0.92)';
+      transform = 'translateY(-24px) scale(0.96)';
     }
     opacity = 0;
   } else if (dragState) {
@@ -592,50 +540,15 @@ export function SmartToast() {
 
   return (
     <div className="fixed top-5 inset-x-0 px-3 z-[100] flex justify-center pointer-events-none">
-      {/* موجات الصدمة العريضة الجانبية (Lateral Shockwaves & Edge Flares) */}
-      {shockwaveKey && (
-        <div className="absolute top-4 pointer-events-none flex items-center justify-center -z-10 w-full overflow-visible">
-          <div
-            key={`sw1-${shockwaveKey}`}
-            className="shockwave-ring w-12 h-12"
-            style={{
-              borderColor: config.shockColor,
-              boxShadow: `0 0 28px ${config.shockColor}`,
-            }}
-          />
-          <div
-            key={`sw2-${shockwaveKey}`}
-            className="shockwave-ring w-12 h-12"
-            style={{
-              borderColor: 'var(--app-white)',
-              boxShadow: `0 0 20px ${config.shockColor}`,
-              animationDelay: '0.05s',
-              animationDuration: '0.52s',
-            }}
-          />
-          <div
-            key={`fl-${shockwaveKey}`}
-            className="edge-flare left-1"
-            style={{ backgroundColor: config.shockColor }}
-          />
-          <div
-            key={`fr-${shockwaveKey}`}
-            className="edge-flare right-1"
-            style={{ backgroundColor: config.shockColor }}
-          />
-        </div>
-      )}
-
-      {/* بطاقة الإشعار الذكية المنبثقة من الجزيرة (تتوافق 100% مع الشفافية والسمة) */}
+      {/* بطاقة الإشعار الذكية الأنيقة (تتوافق 100% مع الشفافية والسمة) */}
       <div
         className={cn(
           "smart-toast-card pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none touch-none",
           cardClass,
-          animPhase === 'dropping' && "transition-[transform,width,height,border-radius] duration-120 ease-out",
-          animPhase === 'bursting' && "transition-all duration-360 [transition-timing-function:cubic-bezier(0.34,1.45,0.64,1)]",
-          animPhase === 'retracting' && "dynamic-island-retract",
-          isDismissing && "notification-dismissing",
-          (!isDismissing && animPhase === 'expanded') && "notification-spring",
+          "transition-all duration-250 ease-out",
+          animPhase === 'expanded' && isVisible && "opacity-100 translate-y-0 scale-100",
+          animPhase === 'retracting' && "opacity-0 -translate-y-4 scale-96 pointer-events-none",
+          isDismissing && "opacity-0 scale-96 pointer-events-none",
           dragState && !isDismissing && "dragging"
         )}
         style={{
@@ -654,11 +567,8 @@ export function SmartToast() {
           <div className="w-8 h-1 rounded-full bg-foreground/20"></div>
         </div>
 
-        {/* محتوى الإشعار المباشر مع كامل التفاصيل دون زر فتح */}
-        <div
-          className="px-3.5 pb-2.5 pt-0.5 space-y-2 transition-opacity duration-200 ease-out"
-          style={{ opacity: contentOpacity }}
-        >
+        {/* محتوى الإشعار المباشر مع كامل التفاصيل */}
+        <div className="px-3.5 pb-2.5 pt-0.5 space-y-2">
           {/* سطر الرأس: أيقونة العملية + اسم العملية + مؤشر التجميد + زر الإغلاق */}
           <div className="flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -715,7 +625,7 @@ export function SmartToast() {
             </button>
           </div>
 
-          {/* كتلة تفاصيل العملية المباشرة - معروضة كلياً وفورياً */}
+          {/* كتلة تفاصيل العملية المباشرة */}
           <div className="p-2.5 rounded-2xl bg-foreground/[0.03] dark:bg-white/[0.04] border border-border/40 space-y-1.5 text-xs">
             {/* سطر رقم الفاتورة الصريح إذا وُجد */}
             {details.invoiceNumber && (
@@ -795,18 +705,40 @@ export function SmartToast() {
               </div>
             )}
 
-            {/* زر الإجراء الأساسي إن وُجد */}
-            {toast.primaryAction && (
-              <button
-                type="button"
-                onClick={() => {
-                  toast.primaryAction?.onClick();
-                  dismissNotification('up');
-                }}
-                className="w-full mt-1 py-1.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition active:scale-95 shadow-sm"
-              >
-                {toast.primaryAction.label}
-              </button>
+            {/* أزرار الإجراءات المتكاملة (طباعة / مشاركة) بتنسيق راقٍ متناسق */}
+            {(toast.primaryAction || toast.secondaryAction) && (
+              <div className="flex items-center gap-2 pt-1.5">
+                {toast.primaryAction && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.primaryAction?.onClick();
+                      dismissNotification('up');
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition active:scale-95 shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span>{toast.primaryAction.label}</span>
+                  </button>
+                )}
+                {toast.secondaryAction && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.secondaryAction?.onClick();
+                      dismissNotification('up');
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-muted/80 hover:bg-muted text-foreground font-bold text-xs transition active:scale-95 border border-border/60 flex items-center justify-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    <span>{toast.secondaryAction.label}</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

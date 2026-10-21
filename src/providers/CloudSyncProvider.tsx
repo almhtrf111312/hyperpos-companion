@@ -417,7 +417,7 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
       if (pendingBefore > 0 && !forceDirect && !targetOperationId) {
         const refundOnly = processedRefund && !processedNonRefund;
         if (result.failed === 0 && result.processed > 0) {
-          if (!refundOnly) {
+          if (!refundOnly && pendingBefore >= 2) {
             showToast.success(
               'اكتملت المزامنة',
               `تمت مزامنة ${result.processed} عملية بنجاح`

@@ -859,6 +859,26 @@ export function CartPanel({
       const formattedTotal = `${effectiveCurrencySymbol}${formatNumber(receivedAmount || (totalSnapshot * activeRate), 2)}`;
 
       // ✅ إشعار نهائي موحد وحيد لعملية البيع يوضح رقم الفاتورة والإجمالي بدقة
+      const cashSaleSnapshot = {
+        cart: [...cartSnapshot],
+        customerName: customerNameSnapshot || 'عميل نقدي',
+        totalInCurrency: receivedAmount || (totalSnapshot * activeRate),
+        subtotal,
+        discount,
+        discountAmount: effectiveDiscountAmount,
+        discountType,
+        selectedCurrency: {
+          ...selectedCurrency,
+          symbol: effectiveCurrencySymbol,
+        },
+        taxAmount,
+        effectiveTaxRate,
+        paymentType: 'cash' as const,
+        downPayment: 0,
+        debtRemaining: 0,
+        invoiceNumber,
+      };
+
       showToast.success('فاتورة مكتملة', {
         operation: 'فاتورة مكتملة',
         invoiceNumber,
@@ -867,6 +887,15 @@ export function CartPanel({
         itemCount: totalPieces,
         price: formattedTotal,
         currency: effectiveCurrencySymbol,
+        primaryAction: {
+          label: t('pos.print') || 'طباعة',
+          onClick: () => handlePrint(cashSaleSnapshot),
+        },
+        secondaryAction: {
+          label: t('pos.share') || 'مشاركة',
+          onClick: () => handleWhatsApp(cashSaleSnapshot),
+        },
+        duration: 4000,
       });
 
       startSync('جاري رفع الفاتورة للسحابة...', false);
@@ -1230,6 +1259,23 @@ export function CartPanel({
       const debtDecimals = (selectedCurrency?.rate && selectedCurrency.rate >= 100) ? 0 : 2;
       const formattedDebtPrice = `${selectedCurrency.symbol}${formatNumber(totalDebtSale * (selectedCurrency.rate || 1), debtDecimals)}`;
 
+      const debtSaleSnapshot = {
+        cart: [...cartSnapshot],
+        customerName: customerNameSnapshot,
+        totalInCurrency: roundCurrency(totalDebtSale * (selectedCurrency.rate || 1)),
+        subtotal,
+        discount,
+        discountAmount: effectiveDiscountAmount,
+        discountType,
+        selectedCurrency,
+        taxAmount,
+        effectiveTaxRate,
+        paymentType: (downPaymentSnapshot > 0 ? 'split' : 'debt') as 'split' | 'debt',
+        downPayment: downPaymentSnapshot,
+        debtRemaining: debtRemainingSnapshot,
+        invoiceNumber,
+      };
+
       // ✅ إشعار نهائي موحد وحيد لعملية البيع المؤجل أو المركب
       if (downPaymentSnapshot > 0) {
         showToast.success('فاتورة بيع مركب', {
@@ -1241,6 +1287,15 @@ export function CartPanel({
           price: formattedDebtPrice,
           currency: selectedCurrency.symbol,
           description: `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), debtDecimals)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), debtDecimals)}`,
+          primaryAction: {
+            label: t('pos.print') || 'طباعة',
+            onClick: () => handlePrint(debtSaleSnapshot),
+          },
+          secondaryAction: {
+            label: t('pos.share') || 'مشاركة',
+            onClick: () => handleWhatsApp(debtSaleSnapshot),
+          },
+          duration: 4000,
         });
       } else {
         showToast.success(t('pos.debtSaleRecorded') || 'فاتورة بيع مؤجل', {
@@ -1252,6 +1307,15 @@ export function CartPanel({
           price: formattedDebtPrice,
           currency: selectedCurrency.symbol,
           description: `${t('pos.customerSnapshot') || 'العميل'}: ${customerNameSnapshot}`,
+          primaryAction: {
+            label: t('pos.print') || 'طباعة',
+            onClick: () => handlePrint(debtSaleSnapshot),
+          },
+          secondaryAction: {
+            label: t('pos.share') || 'مشاركة',
+            onClick: () => handleWhatsApp(debtSaleSnapshot),
+          },
+          duration: 4000,
         });
       }
 

@@ -12,6 +12,10 @@ export interface SmartToastData {
     label: string;
     onClick: () => void;
   };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
   onDismiss?: () => void;
 
   // الحقول المنظمة لتفاصيل العمليات المباشرة
@@ -28,13 +32,29 @@ export interface SmartToastData {
 
 // Global emitter
 let listeners: ((data: SmartToastData | null) => void)[] = [];
+let activeToastUntil = 0;
+
+export const isSmartToastActive = (): boolean => {
+  return Date.now() < activeToastUntil;
+};
 
 export const showSmartToast = (data: Omit<SmartToastData, 'id'>) => {
+  // إخفاء أي إشعار sonner قديم فوراً لمنع التراكب نهائياً
+  try {
+    import('sonner').then(({ toast: sonnerToast }) => {
+      sonnerToast.dismiss();
+    }).catch(() => {});
+  } catch {}
+
+  const duration = data.duration || 3500;
+  activeToastUntil = Date.now() + duration;
+
   const id = Math.random().toString(36).substr(2, 9);
-  listeners.forEach((listener) => listener({ ...data, id }));
+  listeners.forEach((listener) => listener({ ...data, id, duration }));
 };
 
 export const hideSmartToast = () => {
+  activeToastUntil = 0;
   listeners.forEach((listener) => listener(null));
 };
 

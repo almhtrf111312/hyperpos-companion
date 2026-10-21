@@ -1,13 +1,14 @@
 import { toast } from 'sonner';
-import { showSmartToast } from '@/hooks/use-smart-toast';
+import { showSmartToast, isSmartToastActive } from '@/hooks/use-smart-toast';
 
 /**
  * Unified toast notification utility linked to Flow POS Pro notifications system
  * 
- * ✅ Standardized Sonner toast implementation across the app
+ * ✅ Standardized toast implementation across the app
  * ✅ Retains SmartToast exclusively for completed sale invoices
  * ✅ Prevents message stacking using deterministic message IDs
  * ✅ Throttles rapid identical messages
+ * ✅ Prevents Sonner popups from overlapping the big SmartToast card
  */
 
 // Throttle map to prevent repeated notifications
@@ -90,6 +91,10 @@ export interface ToastOptions {
     label: string;
     onClick: () => void;
   };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
   duration?: number;
   isInvoice?: boolean;
 }
@@ -111,6 +116,7 @@ function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
     statusBadge: optionsOrDesc.statusBadge,
     invoiceNumber: optionsOrDesc.invoiceNumber,
     primaryAction: optionsOrDesc.primaryAction,
+    secondaryAction: optionsOrDesc.secondaryAction,
     duration: optionsOrDesc.duration,
   };
 }
@@ -127,9 +133,6 @@ function formatHelperDescription(options?: ToastOptions): string | undefined {
 
 export const showToast = {
   success: (message: string, optionsOrDesc?: string | ToastOptions) => {
-    const key = getThrottleKey('success', message);
-    if (!shouldShowToast(key)) return;
-    
     const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
     const isInvoiceSale = isObj && Boolean(optionsOrDesc.invoiceNumber || optionsOrDesc.isInvoice);
 
@@ -144,6 +147,14 @@ export const showToast = {
       });
       return;
     }
+
+    // إذا كانت البطاقة الكبيرة معروضة حالياً، نتجنب إظهار إشعارات النجاح الروتينية فوقها لمنع التراكب
+    if (isSmartToastActive()) {
+      return;
+    }
+
+    const key = getThrottleKey('success', message);
+    if (!shouldShowToast(key)) return;
 
     // 🔔 كل ما عدا ذلك يُعرض عبر Sonner
     const desc = typeof optionsOrDesc === 'string'
@@ -217,6 +228,11 @@ export const showToast = {
   },
     
   info: (message: string, optionsOrDesc?: string | ToastOptions) => {
+    // إذا كانت البطاقة الكبيرة معروضة حالياً، نتجنب إظهار إشعارات المعلومات الروتينية فوقها
+    if (isSmartToastActive()) {
+      return;
+    }
+
     const key = getThrottleKey('info', message);
     if (!shouldShowToast(key)) return;
     
