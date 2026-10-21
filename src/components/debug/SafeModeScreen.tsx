@@ -10,7 +10,11 @@ export function SafeModeScreen() {
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('hyperpos') || key === 'setup_complete')) {
+        if (key && (key.startsWith('hyperpos') || key === 'setup_complete') &&
+            key !== 'hyperpos_privacy_accepted' &&
+            key !== 'hyperpos_privacy_version' &&
+            key !== 'hyperpos_language' &&
+            key !== 'hyperpos_theme') {
           keysToRemove.push(key);
         }
       }

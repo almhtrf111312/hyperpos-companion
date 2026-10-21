@@ -43,6 +43,8 @@ const PRESERVED_KEYS = new Set([
   'hyperpos_stay_logged_in',
   'hyperpos_session_cache',
   'hyperpos_setup_complete',
+  'hyperpos_privacy_accepted',
+  'hyperpos_privacy_version',
   'hyperpos_clear_version',
   'hyperpos_settings_layout_mode',
 ]);

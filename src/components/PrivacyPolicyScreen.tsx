@@ -24,17 +24,25 @@ const PRIVACY_VERSION_KEY = 'hyperpos_privacy_version';
 
 export function usePrivacyAccepted() {
   const [accepted, setAccepted] = useState(() => {
-    const wasAccepted = localStorage.getItem(PRIVACY_KEY) === 'true';
-    const savedVersion = localStorage.getItem(PRIVACY_VERSION_KEY) || '1';
-    // Force re-acceptance if privacy screen version changed
-    return wasAccepted && savedVersion === PRIVACY_VERSION;
+    try {
+      const wasAccepted = localStorage.getItem(PRIVACY_KEY) === 'true';
+      const savedVersion = localStorage.getItem(PRIVACY_VERSION_KEY) || '1';
+      // Force re-acceptance if privacy screen version changed
+      return wasAccepted && savedVersion === PRIVACY_VERSION;
+    } catch {
+      return false;
+    }
   });
 
-  const accept = () => {
-    localStorage.setItem(PRIVACY_KEY, 'true');
-    localStorage.setItem(PRIVACY_VERSION_KEY, PRIVACY_VERSION);
+  const accept = useCallback(() => {
+    try {
+      localStorage.setItem(PRIVACY_KEY, 'true');
+      localStorage.setItem(PRIVACY_VERSION_KEY, PRIVACY_VERSION);
+    } catch (e) {
+      console.warn('[Privacy] Failed to save privacy acceptance:', e);
+    }
     setAccepted(true);
-  };
+  }, []);
 
   return { accepted, accept };
 }

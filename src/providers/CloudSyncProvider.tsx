@@ -205,6 +205,9 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
           key !== 'hyperpos_stay_logged_in' &&
           key !== 'hyperpos_session_cache' &&
           key !== 'hyperpos_theme' &&
+          key !== 'hyperpos_setup_complete' &&
+          key !== 'hyperpos_privacy_accepted' &&
+          key !== 'hyperpos_privacy_version' &&
           key !== 'hyperpos_recurring_expenses_v1') {
         keysToRemove.push(key);
       }

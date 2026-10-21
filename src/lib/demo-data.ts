@@ -732,7 +732,11 @@ export const clearGuestDemoData = async (force: boolean = false): Promise<boolea
     if (key.startsWith('hyperpos_') &&
         key !== 'hyperpos_language' &&
         key !== 'hyperpos_theme' &&
-        key !== 'hyperpos_stay_logged_in') {
+        key !== 'hyperpos_stay_logged_in' &&
+        key !== 'hyperpos_session_cache' &&
+        key !== 'hyperpos_setup_complete' &&
+        key !== 'hyperpos_privacy_accepted' &&
+        key !== 'hyperpos_privacy_version') {
       keysToRemove.push(key);
     }
   }
