@@ -154,9 +154,35 @@ export const showToast = {
     const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
 
+    const isInvoice = isObj && (
+      optionsOrDesc.isInvoice === true ||
+      !!optionsOrDesc.invoiceNumber ||
+      optionsOrDesc.operation === 'فاتورة مكتملة' ||
+      (typeof optionsOrDesc.operation === 'string' && optionsOrDesc.operation.includes('فاتورة'))
+    );
+
     showSmartToast({
       id: isObj && optionsOrDesc.id ? String(optionsOrDesc.id) : undefined,
-      type: (isObj && optionsOrDesc.isInvoice) ? 'cash_sale' : 'success',
+      type: isInvoice ? 'cash_sale' : 'success',
+      title: message,
+      description: desc,
+      duration,
+      ...parsed,
+    });
+  },
+
+  settings: (message: string, optionsOrDesc?: string | ToastOptions) => {
+    const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
+    const desc = typeof optionsOrDesc === 'string'
+      ? optionsOrDesc
+      : optionsOrDesc?.description || message;
+
+    const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
+    const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
+
+    showSmartToast({
+      id: isObj && optionsOrDesc.id ? String(optionsOrDesc.id) : undefined,
+      type: 'settings',
       title: message,
       description: desc,
       duration,

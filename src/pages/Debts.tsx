@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
+import { showSmartToast } from '@/hooks/use-smart-toast';
 import { loadDefaultCurrencyCode, loadEnabledCurrencies } from '@/hooks/use-currency';
 import { resolveCurrencyMeta } from '@/lib/currencies';
 import { EVENTS, emitEvent } from '@/lib/events';
@@ -448,10 +449,20 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       setDebts(debtsData);
 
       setShowPaymentDialog(false);
+      const paidAmountSnapshot = paymentAmountInCurrency || finalPaymentUSD;
+      const customerSnapshot = selectedDebt?.customerName;
       setSelectedDebt(null);
       setPaymentAmountInput('');
       setPaymentAmount(0);
-      toast.success('طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ظپط¹ط© ط¨ظ†ط¬ط§ط­');
+      showSmartToast({
+        type: 'debt_sale',
+        title: 'تم تسجيل دفعة الدين بنجاح',
+        subtitle: customerSnapshot ? `العميل: ${customerSnapshot}` : undefined,
+        primaryLabel: 'المبلغ المدفوع',
+        primaryValue: `${paidAmountSnapshot} ${paymentCurrency}`,
+        operation: 'سداد دين',
+        duration: 4000,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ظپط¹ط©');
     } finally {
@@ -502,6 +513,9 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       const debtsData = await loadDebtsCloud();
       setDebts(debtsData);
       handleAddDebtDialogChange(false);
+      const addedDebtCustomer = newDebtForm.customerName;
+      const addedDebtAmount = newDebtForm.amount;
+      const addedDebtCurrency = newDebtCurrency;
       setNewDebtForm({
         customerName: '',
         customerPhone: '',
@@ -509,7 +523,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
         dueDate: '',
         notes: '',
       });
-      toast.success(t('debts.debtAddedSuccess'));
+      showSmartToast({
+        type: 'debt_sale',
+        title: t('debts.debtAddedSuccess') || 'تمت إضافة الدين بنجاح',
+        subtitle: `العميل: ${addedDebtCustomer}`,
+        primaryLabel: 'قيمة الدين',
+        primaryValue: `${addedDebtAmount} ${currencySymbols?.[addedDebtCurrency] || addedDebtCurrency}`,
+        operation: 'دين جديد',
+        duration: 4000,
+      });
     } finally {
       isSavingRef.current = false;
     }

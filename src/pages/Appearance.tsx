@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAppFont } from '@/hooks/use-app-font';
 import { useUIScale } from '@/hooks/use-ui-scale';
 import { toast } from '@/hooks/use-toast';
+import { showSmartToast } from '@/hooks/use-smart-toast';
 import { getPlatformStoragePrefix, applyAppFontToDOM, AppFontId } from '@/lib/app-font-config';
 import { applyUIScaleToDOM, UIScaleId } from '@/lib/ui-scale-config';
 import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
@@ -121,9 +122,11 @@ export default function Appearance() {
         }
       }
 
-      toast({
-        title: t('common.saved'),
-        description: isRTL ? 'تم حفظ التعديلات بنجاح' : 'Changes saved successfully',
+      showSmartToast({
+        type: 'settings',
+        title: t('common.saved') || 'تم الحفظ',
+        description: isRTL ? 'تم حفظ إعدادات المظهر بنجاح' : 'Appearance settings saved successfully',
+        duration: 3500,
       });
     } finally {
       setIsSaving(false);

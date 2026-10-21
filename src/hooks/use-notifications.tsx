@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-import { toast } from 'sonner';
+import { showToast } from '@/lib/toast-config';
 import { loadProductsCloud, getStatus } from '@/lib/cloud/products-cloud';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { sendLocalNotification } from '@/lib/native-notifications';
@@ -132,40 +132,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         stockQuantity: notification.data?.quantity,
         isMultiple: false,
       };
+      // ✅ إشعار تفاعلي فوري داخل التطبيق حصراً (In-App Only) عبر Dynamic Island SmartToast
       if (toastType === 'error') {
-        toast.error(notification.title, structuredOptions);
+        showToast.error(notification.title, structuredOptions);
       } else {
-        toast.warning(notification.title, structuredOptions);
-      }
-
-      // فحص تفضيلات المستخدم قبل إرسال الإشعار الأصلي لنظام أندرويد
-      try {
-        const raw = localStorage.getItem('hyperpos_settings_v1');
-        const settings = raw ? JSON.parse(raw) : null;
-        const prefs = settings?.notificationSettings;
-
-        // إذا كان المفتاح الرئيسي معطلاً لا نرسل أي إشعار أصلي
-        const masterEnabled = prefs?.masterEnabled !== false; // true by default if not set
-
-        // ربط نوع الإشعار بمفتاحه التفضيلي
-        let typeAllowed = true;
-        if (prefs && masterEnabled) {
-          if (notification.type === 'low_stock' || notification.type === 'out_of_stock') {
-            typeAllowed = prefs.lowStock !== false;
-          } else if (notification.type === 'debt_overdue' || notification.type === 'debt_due_today') {
-            typeAllowed = prefs.newDebt !== false;
-          } else if (notification.type === 'expired' || notification.type === 'expiring_soon') {
-            // expiry notifications use lowStock toggle as proxy
-            typeAllowed = prefs.lowStock !== false;
-          }
-        }
-
-        if (masterEnabled && typeAllowed) {
-          sendLocalNotification(notification.title, notification.message).catch(() => {});
-        }
-      } catch {
-        // فشل القراءة — أرسل الإشعار بشكل افتراضي
-        sendLocalNotification(notification.title, notification.message).catch(() => {});
+        showToast.warning(notification.title, structuredOptions);
       }
     }
   }, []);

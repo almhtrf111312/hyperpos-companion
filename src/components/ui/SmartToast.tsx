@@ -135,17 +135,17 @@ function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
   else if (type === 'error') cat = 'error';
   else if (type === 'warning') cat = 'warning';
   else {
-    const str = `${typeof toast.title === 'string' ? toast.title : ''} ${typeof toast.subtitle === 'string' ? toast.subtitle : ''} ${toast.operation || ''}`;
-    if (str.includes('سلة')) cat = 'cart';
-    else if (str.includes('آجل') || str.includes('دين') || str.includes('ذمم')) cat = 'debt_sale';
-    else if (str.includes('فاتورة') || str.includes('بيع')) cat = 'cash_sale';
-    else if (str.includes('حرج') || str.includes('منخفض')) cat = 'stock';
-    else if (str.includes('نفاد') || str.includes('فاضي') || str.includes('نفذ')) cat = 'out_of_stock';
-    else if (str.includes('إعداد')) cat = 'settings';
-    else if (str.includes('استرداد') || str.includes('مرتجع')) cat = 'refund';
-    else if (str.includes('مزامنة')) cat = 'sync';
-    else if (str.includes('خطأ') || str.includes('فشل')) cat = 'error';
-    else if (str.includes('تحذير') || str.includes('تنبيه')) cat = 'warning';
+    const str = `${typeof toast.title === 'string' ? toast.title : ''} ${typeof toast.subtitle === 'string' ? toast.subtitle : ''} ${typeof toast.description === 'string' ? toast.description : ''} ${toast.operation || ''}`.toLowerCase();
+    if (str.includes('سلة') || str.includes('cart') || str.includes('sepet')) cat = 'cart';
+    else if (str.includes('آجل') || str.includes('دين') || str.includes('ذمم') || str.includes('سداد') || str.includes('debt') || str.includes('borç') || str.includes('veresiye')) cat = 'debt_sale';
+    else if (str.includes('فاتورة') || str.includes('بيع') || str.includes('sale') || str.includes('invoice') || str.includes('satış') || str.includes('kasa')) cat = 'cash_sale';
+    else if (str.includes('حرج') || str.includes('منخفض') || str.includes('low stock') || str.includes('kritik') || str.includes('azalan')) cat = 'stock';
+    else if (str.includes('نفاد') || str.includes('فاضي') || str.includes('نفذ') || str.includes('out of stock') || str.includes('tükendi')) cat = 'out_of_stock';
+    else if (str.includes('إعداد') || str.includes('setting') || str.includes('ayar')) cat = 'settings';
+    else if (str.includes('استرداد') || str.includes('مرتجع') || str.includes('refund') || str.includes('iade')) cat = 'refund';
+    else if (str.includes('مزامنة') || str.includes('sync') || str.includes('senkron')) cat = 'sync';
+    else if (str.includes('خطأ') || str.includes('فشل') || str.includes('error') || str.includes('fail') || str.includes('hata')) cat = 'error';
+    else if (str.includes('تحذير') || str.includes('تنبيه') || str.includes('warning') || str.includes('uyarı')) cat = 'warning';
     else cat = 'general';
   }
 
@@ -190,10 +190,12 @@ export function SmartToast() {
   const [resolvedDuration, setResolvedDuration] = useState<number>(2500);
 
   const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
+  const remainingTimeRef = useRef<number>(2500);
   const pointerStartRef = useRef<{ x: number; y: number; time: number; pointerId: number } | null>(null);
   const isDraggingRef = useRef(false);
 
-  // إغلاق الإشعار بالسحب الجانبي مع دوران خفيف
+  // إغلاق الإشعار بالسحب الجانبي بزاوية دوران خفيفة وسلسة
   const dismissNotification = useCallback((direction: 'up' | 'left' | 'right' = 'up') => {
     if (autoDismissTimerRef.current) {
       clearTimeout(autoDismissTimerRef.current);
@@ -213,7 +215,7 @@ export function SmartToast() {
     }, 280);
   }, []);
 
-  // انكماش الإشعار وصعوده للأعلى لتبتلعه الجزيرة التفاعلية (Swipe Up / Expiration)
+  // انكماش الإشعار وصعوده للأعلى لتبتلعه الجزيرة التفاعلية فوراً (Swipe Up / Expiration)
   const retractNotification = useCallback(() => {
     if (autoDismissTimerRef.current) {
       clearTimeout(autoDismissTimerRef.current);
@@ -233,15 +235,28 @@ export function SmartToast() {
     }, 280);
   }, []);
 
-  // إعادة ضبط مؤقت الإغلاق التلقائي
-  const resetAutoDismiss = useCallback((duration: number) => {
+  // تجميد العد التنازلي عند اللمس أو وضع المؤشر
+  const pauseCountdown = useCallback(() => {
+    setIsPaused(true);
+    const elapsed = Date.now() - (startTimeRef.current || Date.now());
+    remainingTimeRef.current = Math.max(500, remainingTimeRef.current - elapsed);
+    if (autoDismissTimerRef.current) {
+      clearTimeout(autoDismissTimerRef.current);
+      autoDismissTimerRef.current = null;
+    }
+  }, []);
+
+  // استئناف العد التنازلي عند رفع اليد أو خروج المؤشر
+  const resumeCountdown = useCallback(() => {
+    setIsPaused(false);
+    startTimeRef.current = Date.now();
     if (autoDismissTimerRef.current) {
       clearTimeout(autoDismissTimerRef.current);
       autoDismissTimerRef.current = null;
     }
     autoDismissTimerRef.current = setTimeout(() => {
       retractNotification();
-    }, duration);
+    }, remainingTimeRef.current);
   }, [retractNotification]);
 
   // دورة حياة الإشعار عند استلام تنبيه جديد
@@ -255,6 +270,8 @@ export function SmartToast() {
 
     const duration = toast.duration || getDefaultToastDuration();
     setResolvedDuration(duration);
+    remainingTimeRef.current = duration;
+    startTimeRef.current = Date.now();
     setIsVisible(true);
     setIsPaused(false);
     setDismissDirection(null);
@@ -274,7 +291,14 @@ export function SmartToast() {
     // 3. التمدد السائل المستقر وبدء شريط المؤقت (Fluid Expand)
     const tExpand = setTimeout(() => {
       setAnimPhase('expanded');
-      resetAutoDismiss(duration);
+      startTimeRef.current = Date.now();
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+        autoDismissTimerRef.current = null;
+      }
+      autoDismissTimerRef.current = setTimeout(() => {
+        retractNotification();
+      }, duration);
     }, 360);
 
     return () => {
@@ -285,33 +309,24 @@ export function SmartToast() {
         autoDismissTimerRef.current = null;
       }
     };
-  }, [toast, resetAutoDismiss]);
+  }, [toast, retractNotification]);
 
   // تجميد الإشعار عند وضع المؤشر (Mouse Hover)
   const handleMouseEnter = () => {
-    setIsPaused(true);
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-      autoDismissTimerRef.current = null;
-    }
+    pauseCountdown();
   };
 
   const handleMouseLeave = () => {
     if (isDraggingRef.current) return;
-    setIsPaused(false);
-    resetAutoDismiss(resolvedDuration);
+    resumeCountdown();
   };
 
-  // محرك السحب واللمس مع التجميد الفوري عند وضع اليد
+  // محرك السحب واللمس مع التجميد الفوري عند وضع اليد (Touch / Pointer Down)
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return;
 
     isDraggingRef.current = true;
-    setIsPaused(true);
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-      autoDismissTimerRef.current = null;
-    }
+    pauseCountdown();
 
     pointerStartRef.current = {
       x: e.clientX,
@@ -360,36 +375,34 @@ export function SmartToast() {
 
     pointerStartRef.current = null;
 
-    // 1. سحب للأعلى (ابتلاع بالجزيرة)
-    if (deltaY < -35 || velocityY < -0.35) {
+    // 1. سحب للأعلى (ابتلاع ناعم بالجزيرة)
+    if (deltaY < -25 || velocityY < -0.25) {
       retractNotification();
       return;
     }
 
-    // 2. سحب لليمين (طيران جانبي)
-    if (deltaX > 35 || velocityX > 0.28) {
+    // 2. سحب لليمين (طيران جانبي بزاوية دوران خفيفة وسلسة)
+    if (deltaX > 25 || velocityX > 0.22) {
       dismissNotification('right');
       return;
     }
 
-    // 3. سحب لليسار (طيران جانبي)
-    if (deltaX < -35 || velocityX < -0.28) {
+    // 3. سحب لليسار (طيران جانبي بزاوية دوران خفيفة وسلسة)
+    if (deltaX < -25 || velocityX < -0.22) {
       dismissNotification('left');
       return;
     }
 
-    // لمس بدون سحب كافٍ: يستأنف المؤقت
+    // لمس بدون سحب: يستأنف العد التنازلي عند رفع اليد
     setDragState(null);
-    setIsPaused(false);
-    resetAutoDismiss(resolvedDuration);
+    resumeCountdown();
   };
 
   const handlePointerCancel = () => {
     isDraggingRef.current = false;
     pointerStartRef.current = null;
     setDragState(null);
-    setIsPaused(false);
-    resetAutoDismiss(resolvedDuration);
+    resumeCountdown();
   };
 
   if (!toast) return null;

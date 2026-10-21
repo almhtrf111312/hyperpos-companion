@@ -74,6 +74,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
+import { showSmartToast } from '@/hooks/use-smart-toast';
 import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
@@ -1010,9 +1011,13 @@ export default function Invoices() {
             lines.push(`💰 يُرجع نقداً للعميل ومن الوردية: ${formatCurrency(r.cashToRefund, refundedCurrency)}`);
           }
         }
-        toast.success(`✅ تم استرداد ${invoiceLabel}`, {
+        showSmartToast({
           id: toastId,
+          type: 'refund',
+          title: `تم استرداد ${invoiceLabel}`,
+          subtitle: `#${invoice.id || invoice.invoiceNumber}`,
           description: lines.join(' • '),
+          pillText: formatCurrency(refundedTotal, refundedCurrency),
           duration: 4500,
         });
 
@@ -1150,9 +1155,13 @@ export default function Invoices() {
       }
       lines.push(`📦 أُعيدت ${formatNumber(result.restoredUnitsCount)} قطعة`);
 
-      toast.success(result.isFullyRefunded ? `✅ تم استرداد كامل الفاتورة ${invoiceLabel}` : `✅ تم الاسترداد الجزئي للفاتورة ${invoiceLabel}`, {
+      showSmartToast({
         id: toastId,
+        type: 'refund',
+        title: result.isFullyRefunded ? `تم استرداد كامل الفاتورة ${invoiceLabel}` : `تم الاسترداد الجزئي للفاتورة ${invoiceLabel}`,
+        subtitle: `#${invoice.id || invoice.invoiceNumber}`,
         description: lines.join(' • '),
+        pillText: formatCurrency(result.refundedAmount, invoice.currency),
         duration: 5000,
       });
 
@@ -1375,9 +1384,19 @@ export default function Invoices() {
       emitEvent(EVENTS.INVOICES_UPDATED, null);
 
       setShowDebtPaymentDialog(false);
+      const paidAmountSnapshot = parseFloat(paymentAmountInput) || finalPaymentUSD;
+      const debtCustSnapshot = selectedDebtForPayment?.customerName;
       setSelectedDebtForPayment(null);
       setPaymentAmountInput('');
-      toast.success('تم تسجيل الدفعة بنجاح');
+      showSmartToast({
+        type: 'debt_sale',
+        title: 'تم تسجيل دفعة الدين بنجاح',
+        subtitle: debtCustSnapshot ? `العميل: ${debtCustSnapshot}` : undefined,
+        primaryLabel: 'المبلغ المدفوع',
+        primaryValue: `${paidAmountSnapshot} ${paymentCurrency}`,
+        operation: 'سداد دين',
+        duration: 4000,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدفعة');
     } finally {
