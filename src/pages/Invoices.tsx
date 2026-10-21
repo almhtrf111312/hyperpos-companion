@@ -1760,38 +1760,16 @@ export default function Invoices() {
 
   return (
     <div className="p-3 md:p-6 space-y-3.5">
-      {/* Top Bar: Segmented Switch with safe offset for mobile menu trigger */}
+      {/* Top Bar: Header pill with safe offset for mobile menu trigger */}
       <div className={cn(
         "flex items-center justify-between gap-2 select-none",
         isRTL ? "pr-14 md:pr-0" : "pl-14 md:pl-0"
       )}>
-        <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('sales')}
-            className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
-              activeMainTab === 'sales'
-                ? "bg-gradient-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
-            )}
-          >
-            <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{tx('invoices.salesInvoices', 'فواتير المبيعات')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('purchases')}
-            className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-2 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
-              activeMainTab === 'purchases'
-                ? "bg-gradient-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
-            )}
-          >
-            <Truck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{tx('invoices.purchaseInvoices', 'فواتير المشتريات')}</span>
-          </button>
+        <div className="inline-flex items-center gap-2 px-3.5 py-2 sm:py-2.5 rounded-2xl bg-gradient-primary text-primary-foreground shadow-xs border border-primary/20 select-none">
+          <ShoppingCart className="w-4 h-4 shrink-0" />
+          <span className="text-xs sm:text-sm font-bold whitespace-nowrap leading-relaxed pt-0.5">
+            {tx('invoices.salesInvoices', 'فواتير المبيعات')}
+          </span>
         </div>
       </div>
 
@@ -2106,22 +2084,22 @@ export default function Invoices() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-44 text-xs font-bold">
                           <DropdownMenuItem onClick={() => handleView(invoice)} className="justify-between cursor-pointer">
-                            <span>{t('common.view')}</span>
+                            <span>{t('common.view') || 'عرض'}</span>
                             <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleShare(invoice)} className="justify-between cursor-pointer">
-                            <span>{t('common.share')}</span>
+                            <span>{t('common.share') || 'مشاركة'}</span>
                             <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </DropdownMenuItem>
-                          {invoice.paymentType === 'debt' && invoice.status === 'pending' && (
+                          {invoice.paymentType === 'debt' && invoice.status !== 'paid' && invoice.status !== 'refunded' && invoice.status !== 'cancelled' && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handlePayDebt(invoice)} className="justify-between cursor-pointer">
-                                <span>{t('invoices.payInstallment')}</span>
+                                <span>{t('invoices.payInstallment') || 'تسديد دفعة'}</span>
                                 <Banknote className="w-3.5 h-3.5 text-muted-foreground" />
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleMarkPaid(invoice)} className="justify-between cursor-pointer">
-                                <span>{t('invoices.markAsPaid')}</span>
+                                <span>{t('invoices.markAsPaid') || 'تحديد كمدفوع'}</span>
                                 <Check className="w-3.5 h-3.5 text-muted-foreground" />
                               </DropdownMenuItem>
                             </>
@@ -2130,7 +2108,7 @@ export default function Invoices() {
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleRefund(invoice)} className="justify-between text-destructive cursor-pointer">
-                                <span>{t('invoices.refundInvoice')}</span>
+                                <span>{t('invoices.refundInvoice') || 'استرداد الفاتورة'}</span>
                                 <Undo2 className="w-3.5 h-3.5 text-destructive" />
                               </DropdownMenuItem>
                             </>
@@ -2276,61 +2254,6 @@ export default function Invoices() {
                       </div>
                     </div>
 
-                    {/* شريط الإجراءات السريعة للفاتورة (عرض، مشاركة، تسديد دفعة، استرداد) */}
-                    <div 
-                      className="mt-2 pt-2 border-t border-border/40 flex items-center justify-between gap-1.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* 1. زر العين (عرض التفاصيل) */}
-                        <button
-                          type="button"
-                          onClick={() => handleView(invoice)}
-                          className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer border border-border/60"
-                          title={tx('common.view', 'عرض التفاصيل')}
-                        >
-                          <Eye className="w-3.5 h-3.5 text-primary" />
-                          <span>{tx('common.view', 'عرض')}</span>
-                        </button>
-
-                        {/* 2. زر المشاركة */}
-                        <button
-                          type="button"
-                          onClick={() => handleShare(invoice)}
-                          className="h-7 px-2.5 rounded-lg bg-muted/60 hover:bg-muted text-foreground text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer border border-border/60"
-                          title={tx('common.share', 'مشاركة الفاتورة')}
-                        >
-                          <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="hidden sm:inline">{tx('common.share', 'مشاركة')}</span>
-                        </button>
-
-                        {/* 3. زر تسديد الدفعة (يظهر فقط لفواتير الآجل غير المسددة بالكامل) */}
-                        {invoice.paymentType === 'debt' && invoice.status !== 'paid' && (
-                          <button
-                            type="button"
-                            onClick={() => handlePayDebt(invoice)}
-                            className="h-7 px-2.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-black flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer border border-emerald-500/30 shadow-2xs"
-                            title={tx('invoices.payInstallment', 'تسديد دفعة')}
-                          >
-                            <Banknote className="w-3.5 h-3.5" />
-                            <span>{tx('invoices.payInstallment', 'تسديد دفعة')}</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* 4. زر الاسترداد (يظهر إذا لم تكن الفاتورة مستردة) */}
-                      {invoice.status !== 'refunded' && (
-                        <button
-                          type="button"
-                          onClick={() => handleRefund(invoice)}
-                          className="h-7 px-2 rounded-lg text-destructive/80 hover:text-destructive hover:bg-destructive/10 text-[10.5px] font-bold flex items-center gap-1 active:scale-95 transition-[colors,transform] cursor-pointer"
-                          title={tx('invoices.refundInvoice', 'استرداد')}
-                        >
-                          <Undo2 className="w-3 h-3" />
-                          <span>{tx('invoices.refund', 'استرداد')}</span>
-                        </button>
-                      )}
-                    </div>
                   </div>
                 );
               })

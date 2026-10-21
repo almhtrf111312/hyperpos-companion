@@ -1086,6 +1086,8 @@ export const refundInvoicePartialCloud = async (
       product_id: item.productId || null,
       product_name: item.productName,
       quantity: Math.round((Number(item.quantityToRefund ?? item.quantity) || 0) * 1000) / 1000,
+      unit_price: Number(item.unitPrice) || 0,
+      cost_price: Number(item.costPrice) || 0,
     }))
     .filter(item => item.quantity > 0);
   if (items.length === 0) return fail('يرجى تحديد كمية للإرجاع أكبر من الصفر');
@@ -1100,11 +1102,16 @@ export const refundInvoicePartialCloud = async (
   if (error) return fail(error.message || 'فشل الاسترداد الجزئي');
 
   const r = (data || {}) as Record<string, unknown>;
-  const refundedAmount = Number(r.refunded_amount) || 0;
-  const cashToRefund = Number(r.cash_to_refund) || 0;
-  const debtReduced = Number(r.debt_reduced) || 0;
-  const refundedProfit = Number(r.refunded_profit) || 0;
-  const refundedCogs = Number(r.refunded_cogs) || 0;
+  // ✅ التوافق المزدوج للمفاتيح (Backward/Forward Compatibility) بين مختلف إصدارات الدالة في قاعدة البيانات
+  const refundedAmount = Number(r.refunded_amount ?? r.refund_amount ?? 0) || 0;
+  const debtReduced = Number(r.debt_reduced ?? r.debt_reduction ?? 0) || 0;
+  const cashToRefund = Number(r.cash_to_refund ?? r.cash_refunded ?? (refundedAmount > debtReduced ? refundedAmount - debtReduced : 0)) || 0;
+  const refundedProfit = Number(r.refunded_profit ?? r.profit_reduced ?? 0) || 0;
+  const refundedCogs = Number(r.refunded_cogs ?? r.cogs_reduced ?? 0) || 0;
+  const restoredUnitsCount = Number(r.restored_units ?? r.restored_units_count ?? 0) || 0;
+  const restoredItemsCount = Number(r.restored_items ?? r.restored_items_count ?? (items.length > 0 ? 1 : 0)) || 0;
+  const isFullyRefunded = Boolean(r.is_fully_refunded ?? r.is_full_refund ?? r.full ?? false);
+  const newInvoiceTotal = Number(r.new_total ?? r.new_invoice_total ?? 0) || 0;
   const alreadyProcessed = r.already_processed === true;
 
   // خصم النقدية من الوردية النشطة (مرة واحدة فقط)
@@ -1175,10 +1182,10 @@ export const refundInvoicePartialCloud = async (
     refundedAmount,
     cashToRefund,
     debtReduced,
-    restoredItemsCount: Number(r.restored_items) || 0,
-    restoredUnitsCount: Number(r.restored_units) || 0,
-    isFullyRefunded: r.is_full_refund === true || r.is_fully_refunded === true,
-    newInvoiceTotal: Number(r.new_total) || 0,
+    restoredItemsCount,
+    restoredUnitsCount,
+    isFullyRefunded,
+    newInvoiceTotal,
   };
 };
 

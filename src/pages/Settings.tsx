@@ -1065,45 +1065,55 @@ export default function Settings() {
 
   // Handlers
   const handleSaveSettings = async () => {
-    const tryRate = Number(exchangeRates.TRY);
-    const sypRate = Number(exchangeRates.SYP);
-    const copies = Number(printSettings.copies);
-    const keepDays = Number(backupSettings.keepDays);
+    // 1. تحقق أسعار الصرف (فقط عند التواجد في تبويب المتجر والعملات أو الحفظ العام)
+    const rawTryRate = Number(exchangeRates.TRY);
+    const rawSypRate = Number(exchangeRates.SYP);
+    const tryRate = Number.isFinite(rawTryRate) && rawTryRate >= 0 ? rawTryRate : 0;
+    const sypRate = Number.isFinite(rawSypRate) && rawSypRate >= 0 ? rawSypRate : 0;
 
-    // Allow 0 or empty exchange rates (new accounts), but reject negative
-    if (exchangeRates.TRY !== '' && (!Number.isFinite(tryRate) || tryRate < 0)) {
-      toast({
-        title: t('common.error'),
-        description: t('settings.invalidExchangeRates'),
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (exchangeRates.SYP !== '' && (!Number.isFinite(sypRate) || sypRate < 0)) {
-      toast({
-        title: t('common.error'),
-        description: t('settings.invalidExchangeRates'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!Number.isFinite(copies) || copies < 1 || copies > 5) {
-      toast({
-        title: t('common.error'),
-        description: t('settings.invalidCopies'),
-        variant: 'destructive',
-      });
-      return;
+    if (activeTab === 'store' || !activeTab) {
+      if (exchangeRates.TRY !== '' && exchangeRates.TRY !== undefined && (!Number.isFinite(rawTryRate) || rawTryRate < 0)) {
+        toast({
+          title: t('common.error'),
+          description: `${t('settings.invalidExchangeRates')} (TRY)`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (exchangeRates.SYP !== '' && exchangeRates.SYP !== undefined && (!Number.isFinite(rawSypRate) || rawSypRate < 0)) {
+        toast({
+          title: t('common.error'),
+          description: `${t('settings.invalidExchangeRates')} (SYP)`,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
-    if (!Number.isFinite(keepDays) || keepDays < 7 || keepDays > 365) {
-      toast({
-        title: t('common.error'),
-        description: t('settings.invalidKeepDays'),
-        variant: 'destructive',
-      });
-      return;
+    // 2. تحقق عدد النسخ (حصراً عند تعديل تبويب الطباعة لتفادي إعاقة حفظ العملات)
+    if (activeTab === 'printing') {
+      const copies = Number(printSettings.copies);
+      if (!Number.isFinite(copies) || copies < 1 || copies > 5) {
+        toast({
+          title: t('common.error'),
+          description: t('settings.invalidCopies'),
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    // 3. تحقق أيام النسخ الاحتياطي (حصراً عند تعديل تبويب النسخ الاحتياطي)
+    if (activeTab === 'backup') {
+      const keepDays = Number(backupSettings.keepDays);
+      if (!Number.isFinite(keepDays) || keepDays < 7 || keepDays > 365) {
+        toast({
+          title: t('common.error'),
+          description: t('settings.invalidKeepDays'),
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     try {
