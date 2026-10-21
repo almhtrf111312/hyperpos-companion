@@ -9,6 +9,9 @@ import {
   RefreshCw,
   Bell,
   Printer,
+  Bluetooth,
+  Laptop,
+  Unlink,
   Database,
   Save,
   User,
@@ -66,7 +69,15 @@ import { saveCategories, Category } from '@/lib/categories-store';
 import DataResetSection from '@/components/settings/DataResetSection';
 import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { ProfileManagement } from '@/components/settings/ProfileManagement';
-import { printHTML } from '@/lib/native-print';
+import {
+  printHTML,
+  PrinterConfig,
+  BluetoothDevice,
+  getStoredPrinterConfig,
+  saveStoredPrinterConfig,
+  searchBluetoothPrinters,
+  connectAndTestBluetoothPrinter,
+} from '@/lib/native-print';
 import { checkNotificationPermissionNative, requestNotificationPermissionNative, sendLocalNotification } from '@/lib/native-notifications';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -512,6 +523,59 @@ export default function Settings() {
     dailyReport: persisted?.notificationSettings?.dailyReport ?? (initialUnified?.notificationSettings as any)?.dailyReport ?? false,
     durationSeconds: persisted?.notificationSettings?.durationSeconds ?? (initialUnified?.notificationSettings as any)?.durationSeconds ?? 2,
   });
+
+  // Bluetooth & Printer Management State
+  const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(getStoredPrinterConfig);
+  const [isSearchingBT, setIsSearchingBT] = useState(false);
+  const [btDevices, setBtDevices] = useState<BluetoothDevice[]>([]);
+  const [showBtDialog, setShowBtDialog] = useState(false);
+
+  const handleUpdatePrinterConfig = (updates: Partial<PrinterConfig>) => {
+    const next = { ...printerConfig, ...updates };
+    setPrinterConfig(next);
+    saveStoredPrinterConfig(next);
+    toast({
+      title: t('common.saved'),
+      description: isRTL ? 'تم حفظ إعدادات الطابعة بنجاح' : 'Printer settings updated',
+    });
+  };
+
+  const handleStartSearchBT = async () => {
+    setShowBtDialog(true);
+    setIsSearchingBT(true);
+    try {
+      const list = await searchBluetoothPrinters();
+      setBtDevices(list);
+    } catch (e) {
+      console.warn('Search BT error:', e);
+    } finally {
+      setIsSearchingBT(false);
+    }
+  };
+
+  const handleSelectBTDevice = async (device: BluetoothDevice) => {
+    const res = await connectAndTestBluetoothPrinter(device.address, device.name);
+    setPrinterConfig(getStoredPrinterConfig());
+    setShowBtDialog(false);
+    toast({
+      title: res.success ? t('common.success') : t('common.error'),
+      description: res.message || (isRTL ? `تم الاقتران بـ ${device.name}` : `Paired with ${device.name}`),
+    });
+  };
+
+  const handleUnpairBT = () => {
+    const next: PrinterConfig = {
+      ...printerConfig,
+      deviceName: undefined,
+      deviceAddress: undefined,
+    };
+    setPrinterConfig(next);
+    saveStoredPrinterConfig(next);
+    toast({
+      title: t('common.saved'),
+      description: isRTL ? 'تم إلغاء اقتران الطابعة' : 'Printer unpaired',
+    });
+  };
 
   // Printing settings
   const [printSettings, setPrintSettings] = useState({
@@ -2584,10 +2648,128 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground">تخصيص بنود وقالب الفاتورة، مفاتيح الإظهار، والعملات البديلة للطباعة والمشاركة</p>
             </div>
 
-            {/* إعدادات الطابعة العامة */}
-            <div className="space-y-3 pt-1 border-t border-border/40">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">إعدادات الطابعة</h3>
-              
+            {/* قسم إدارة الطابعة ونوع الاتصال المزدوج (بلوتوث vs سلكي) */}
+            <div className="space-y-4 pt-1 border-t border-border/40">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Printer className="w-4 h-4 text-primary" />
+                <span>إدارة الطابعة والاتصال المزدوج</span>
+              </h3>
+
+              {/* اختيار نوع الاتصال: بلوتوث حرارية أو سلكية / نظامية */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleUpdatePrinterConfig({ connectionType: 'bluetooth' })}
+                  className={cn(
+                    "p-3.5 rounded-xl border-2 text-start transition-all flex items-start gap-3 relative",
+                    printerConfig.connectionType === 'bluetooth'
+                      ? "border-primary bg-primary/10 shadow-xs"
+                      : "border-border/60 bg-card hover:bg-muted/40"
+                  )}
+                >
+                  <div className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                    printerConfig.connectionType === 'bluetooth' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  )}>
+                    <Bluetooth className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-foreground">{t('bluetoothThermalPrinter')}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">للهواتف والأجهزة اللوحية (ESC/POS حراري معالجة نقطية)</div>
+                  </div>
+                  {printerConfig.connectionType === 'bluetooth' && (
+                    <Check className="w-4 h-4 text-primary absolute rtl:left-3 ltr:right-3 top-3.5" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdatePrinterConfig({ connectionType: 'wired_system' })}
+                  className={cn(
+                    "p-3.5 rounded-xl border-2 text-start transition-all flex items-start gap-3 relative",
+                    printerConfig.connectionType === 'wired_system'
+                      ? "border-primary bg-primary/10 shadow-xs"
+                      : "border-border/60 bg-card hover:bg-muted/40"
+                  )}
+                >
+                  <div className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                    printerConfig.connectionType === 'wired_system' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  )}>
+                    <Laptop className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-foreground">{t('wiredSystemPrinter')}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">للكمبيوتر والويب عبر نافذة الطباعة الافتراضية</div>
+                  </div>
+                  {printerConfig.connectionType === 'wired_system' && (
+                    <Check className="w-4 h-4 text-primary absolute rtl:left-3 ltr:right-3 top-3.5" />
+                  )}
+                </button>
+              </div>
+
+              {/* إذا تم اختيار طابعة البلوتوث */}
+              {printerConfig.connectionType === 'bluetooth' && (
+                <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-semibold text-muted-foreground block">{t('connectedPrinter')}</span>
+                      {printerConfig.deviceAddress ? (
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-sm font-bold text-foreground">{printerConfig.deviceName || 'Thermal Printer'}</span>
+                          <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+                            {printerConfig.deviceAddress}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-medium text-amber-600 dark:text-amber-400 mt-1 block">
+                          {t('noPrinterSelected')}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleStartSearchBT}
+                        className="gap-1.5 h-9"
+                      >
+                        <Bluetooth className="w-4 h-4" />
+                        <span>{t('searchBluetoothPrinter')}</span>
+                      </Button>
+
+                      {printerConfig.deviceAddress && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleTestPrint}
+                            className="gap-1.5 h-9"
+                          >
+                            <Printer className="w-4 h-4" />
+                            <span>{t('testPrint')}</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleUnpairBT}
+                            className="h-9 text-destructive hover:bg-destructive/10"
+                            title="إلغاء الاقتران"
+                          >
+                            <Unlink className="w-4 h-4" />
+                            <span className="text-xs">إلغاء الاقتران</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* مقاس الورق ومفتاح الطباعة التلقائية */}
               <div className="flex items-center justify-between py-2 border-b border-border/30">
                 <div>
                   <span className="text-sm font-medium block">{t('settings.autoPrint')}</span>
@@ -2595,7 +2777,10 @@ export default function Settings() {
                 </div>
                 <Switch
                   checked={printSettings.autoPrint}
-                  onCheckedChange={(checked) => setPrintSettings({ ...printSettings, autoPrint: checked })}
+                  onCheckedChange={(checked) => {
+                    setPrintSettings({ ...printSettings, autoPrint: checked });
+                    handleUpdatePrinterConfig({ autoPrintAfterSale: checked });
+                  }}
                 />
               </div>
 
@@ -2603,8 +2788,12 @@ export default function Settings() {
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-foreground w-24 shrink-0">{t('settings.paperSize')}</label>
                   <select
-                    value={printSettings.paperSize}
-                    onChange={(e) => setPrintSettings({ ...printSettings, paperSize: e.target.value })}
+                    value={printerConfig.paperWidth || printSettings.paperSize || '80mm'}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setPrintSettings({ ...printSettings, paperSize: val });
+                      handleUpdatePrinterConfig({ paperWidth: val });
+                    }}
                     className="flex-1 h-9 px-3 rounded-lg bg-card border border-border/60 text-foreground text-sm"
                   >
                     <option value="58mm">58mm (طابعة صغيرة)</option>
@@ -4078,6 +4267,89 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog for Bluetooth Printer Discovery & Selection */}
+      <Dialog open={showBtDialog} onOpenChange={setShowBtDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Bluetooth className="w-5 h-5 text-primary" />
+              <span>{t('selectBluetoothPrinter')}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-2 space-y-3">
+            <div className="flex items-center justify-between text-xs text-muted-foreground pb-1">
+              <span>الأجهزة المكتشفة والمقترنة القريبة:</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStartSearchBT}
+                disabled={isSearchingBT}
+                className="h-7 px-2 text-xs gap-1"
+              >
+                <RefreshCw className={cn("w-3 h-3", isSearchingBT && "animate-spin")} />
+                <span>إعادة البحث</span>
+              </Button>
+            </div>
+
+            {isSearchingBT ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <span className="text-xs">جارٍ البحث عن طابعات البلوتوث المتاحة...</span>
+              </div>
+            ) : btDevices.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                لم يتم العثور على أجهزة بلوتوث نشطة. تأكد من تشغيل البلوتوث وإقران الطابعة في إعدادات الهاتف.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {btDevices.map((device) => {
+                  const isCurrent = printerConfig.deviceAddress === device.address;
+                  return (
+                    <button
+                      key={device.address}
+                      type="button"
+                      onClick={() => handleSelectBTDevice(device)}
+                      className={cn(
+                        "w-full p-3 rounded-xl border text-start transition-all flex items-center justify-between gap-3",
+                        isCurrent
+                          ? "border-primary bg-primary/10 shadow-xs"
+                          : "border-border/60 bg-muted/30 hover:bg-muted/70"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <Printer className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-foreground truncate">{device.name}</div>
+                          <div className="text-xs font-mono text-muted-foreground">{device.address}</div>
+                        </div>
+                      </div>
+                      {isCurrent ? (
+                        <span className="text-xs font-bold text-primary flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" />
+                          متصلة
+                        </span>
+                      ) : (
+                        <span className="text-xs text-primary font-medium">اختيار</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowBtDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

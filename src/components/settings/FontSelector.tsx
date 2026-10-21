@@ -10,13 +10,25 @@ import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 interface FontSelectorProps {
   className?: string;
   showCardContainer?: boolean;
+  draftFont?: AppFontId;
+  onDraftChange?: (fontId: AppFontId) => void;
 }
 
-export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
+export const FontSelector: React.FC<FontSelectorProps> = ({
+  className,
+  draftFont,
+  onDraftChange,
+}) => {
   const { currentFont, setFont, availableFonts } = useAppFont();
   const { isRTL } = useLanguage();
 
+  const selectedFontId = draftFont ?? currentFont;
+
   const handleSelectFont = async (fontId: AppFontId, fontName: string) => {
+    if (onDraftChange) {
+      onDraftChange(fontId);
+      return;
+    }
     if (fontId === currentFont) return;
     setFont(fontId);
     try {
@@ -48,16 +60,16 @@ export const FontSelector: React.FC<FontSelectorProps> = ({ className }) => {
 
       {/* تأكيد الخط الحالي النشط */}
       <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-primary/10 border border-primary/25 text-xs font-semibold text-primary">
-        <span>{isRTL ? 'الخط المعتمد حالياً:' : 'Active Font:'} {isRTL ? (availableFonts.find(f => f.id === currentFont)?.nameAr || currentFont) : (availableFonts.find(f => f.id === currentFont)?.name || currentFont)}</span>
+        <span>{isRTL ? 'الخط المعتمد حالياً:' : 'Active Font:'} {isRTL ? (availableFonts.find(f => f.id === selectedFontId)?.nameAr || selectedFontId) : (availableFonts.find(f => f.id === selectedFontId)?.name || selectedFontId)}</span>
         <span className="flex items-center gap-1 text-[11px] font-bold text-primary">
           <Check className="w-3.5 h-3.5 stroke-[3]" />
-          {isRTL ? 'مثبت ومحفوظ' : 'Saved'}
+          {draftFont && draftFont !== currentFont ? (isRTL ? 'معاينة غير محفوظة' : 'Draft Preview') : (isRTL ? 'مثبت ومحفوظ' : 'Saved')}
         </span>
       </div>
 
       <div className="flex flex-col gap-2.5">
         {availableFonts.map((font) => {
-          const isSelected = currentFont === font.id;
+          const isSelected = selectedFontId === font.id;
           return (
             <button
               key={font.id}

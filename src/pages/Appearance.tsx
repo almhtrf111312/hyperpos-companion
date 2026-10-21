@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Palette, Type, Maximize2, LayoutGrid, Save, Undo2, Loader2, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Type, Maximize2, LayoutGrid, Save, Undo2, Loader2, Sparkles } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
 import { UIScaleSelector } from '@/components/settings/UIScaleSelector';
 import { FontSelector } from '@/components/settings/FontSelector';
@@ -7,19 +7,46 @@ import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppFont } from '@/hooks/use-app-font';
+import { useUIScale } from '@/hooks/use-ui-scale';
 import { toast } from '@/hooks/use-toast';
-import { getPlatformStoragePrefix } from '@/lib/app-font-config';
+import { getPlatformStoragePrefix, applyAppFontToDOM, AppFontId } from '@/lib/app-font-config';
+import { applyUIScaleToDOM, UIScaleId } from '@/lib/ui-scale-config';
+import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 
-type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
+export type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
 
 export default function Appearance() {
   const { t, isRTL } = useLanguage();
-  const [activeTab, setActiveTab] = useState<AppearanceTab>('theme');
-  const { setFullTheme, previewTheme, revertTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<AppearanceTab>('fonts');
+  const { mode, color, blurEnabled, transparencyLevel, setFullTheme, previewTheme, revertTheme } = useTheme();
+  const { currentFont, setFont } = useAppFont();
+  const { currentScale, setScale } = useUIScale();
 
-  const [pendingTheme, setPendingTheme] = useState<PendingTheme | null>(null);
+  // Baseline stored settings captured upon entering Appearance
+  const savedThemeRef = useRef({ mode, color, blur: blurEnabled, transparency: transparencyLevel });
+  const savedFontRef = useRef<AppFontId>(currentFont);
+  const savedScaleRef = useRef<UIScaleId>(currentScale);
+
+  // Draft states for live preview without immediate storage commit
+  const [draftTheme, setDraftTheme] = useState<PendingTheme | null>(null);
+  const [draftFont, setDraftFont] = useState<AppFontId>(currentFont);
+  const [draftScale, setDraftScale] = useState<UIScaleId>(currentScale);
+
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Check whether any draft differs from the saved baseline
+  const hasThemeChanged = draftTheme !== null && (
+    draftTheme.mode !== savedThemeRef.current.mode ||
+    draftTheme.color !== savedThemeRef.current.color ||
+    draftTheme.blur !== savedThemeRef.current.blur ||
+    draftTheme.transparency !== savedThemeRef.current.transparency
+  );
+  const hasFontChanged = draftFont !== savedFontRef.current;
+  const hasScaleChanged = draftScale !== savedScaleRef.current;
+
+  const hasUnsavedChanges = hasThemeChanged || hasFontChanged || hasScaleChanged;
 
   const getLayoutStorageKey = () => `flowpos_layout_${getPlatformStoragePrefix()}`;
 
@@ -41,81 +68,114 @@ export default function Appearance() {
     });
   };
 
-  const handleSaveTheme = async () => {
-    if (!pendingTheme) return;
+  // Live preview handlers
+  const handleDraftFontChange = (newFont: AppFontId) => {
+    setDraftFont(newFont);
+    applyAppFontToDOM(newFont);
+  };
+
+  const handleDraftScaleChange = (newScale: UIScaleId) => {
+    setDraftScale(newScale);
+    applyUIScaleToDOM(newScale);
+  };
+
+  // Revert preview on unmount if user leaves page without saving
+  useEffect(() => {
+    return () => {
+      revertTheme();
+      applyAppFontToDOM(savedFontRef.current);
+      applyUIScaleToDOM(savedScaleRef.current);
+    };
+  }, [revertTheme]);
+
+  // Commit all draft changes
+  const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      setFullTheme(pendingTheme.mode, pendingTheme.color, pendingTheme.blur, pendingTheme.transparency);
-      setPendingTheme(null);
-      toast({ title: t('common.saved'), description: isRTL ? 'تم حفظ السمة بنجاح' : 'Theme saved' });
+      // 1. Save Theme
+      if (hasThemeChanged && draftTheme) {
+        setFullTheme(draftTheme.mode, draftTheme.color, draftTheme.blur, draftTheme.transparency);
+        savedThemeRef.current = { ...draftTheme };
+        setDraftTheme(null);
+      }
+
+      // 2. Save Font
+      if (hasFontChanged) {
+        setFont(draftFont);
+        savedFontRef.current = draftFont;
+        try {
+          await saveUnifiedStoreSettings({ appFont: draftFont });
+        } catch (e) {
+          console.warn('Sync font error:', e);
+        }
+      }
+
+      // 3. Save UI Scale
+      if (hasScaleChanged) {
+        setScale(draftScale);
+        savedScaleRef.current = draftScale;
+        try {
+          await saveUnifiedStoreSettings({ uiScale: draftScale });
+        } catch (e) {
+          console.warn('Sync scale error:', e);
+        }
+      }
+
+      toast({
+        title: t('common.saved'),
+        description: isRTL ? 'تم حفظ التعديلات بنجاح' : 'Changes saved successfully',
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUndoTheme = () => {
+  // Discard all draft changes
+  const handleCancelAll = () => {
     revertTheme();
-    setPendingTheme(null);
-    setResetSignal(prev => prev + 1);
+    applyAppFontToDOM(savedFontRef.current);
+    applyUIScaleToDOM(savedScaleRef.current);
+
+    setDraftTheme(null);
+    setDraftFont(savedFontRef.current);
+    setDraftScale(savedScaleRef.current);
+    setResetSignal((prev) => prev + 1);
   };
 
-  const handleTabClick = (tabId: AppearanceTab) => {
-    if (activeTab === 'theme' && pendingTheme && tabId !== 'theme') {
-      // ✅ حفظ السمة تلقائياً عند الانتقال لتبويب آخر بدلاً من إلغائها واسترجاع القديمة
-      setFullTheme(pendingTheme.mode, pendingTheme.color, pendingTheme.blur, pendingTheme.transparency);
-      setPendingTheme(null);
-      toast({ title: t('common.saved'), description: isRTL ? 'تم حفظ السمة بنجاح' : 'Theme saved' });
-    }
-    setActiveTab(tabId);
-  };
+  // Navigation tabs (Theme tab button intentionally removed as UI element; ThemeSection is shown directly)
+  const tabs = [
+    { id: 'fonts' as AppearanceTab, label: t('appearance.fonts'), icon: Type },
+    { id: 'scale' as AppearanceTab, label: t('appearance.uiScale'), icon: Maximize2 },
+    { id: 'layout' as AppearanceTab, label: t('appearance.layout'), icon: LayoutGrid },
+  ];
 
   return (
-    <div className="p-3 md:p-6 max-w-2xl mx-auto pb-24 pt-14 md:pt-4 space-y-4">
-      {/* شريط حفظ السمة العلوي والواضح لتجنب اختفائه على شاشات الجوال */}
-      {pendingTheme && (
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-primary text-primary-foreground shadow-md border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 shrink-0" />
-            <span className="text-xs sm:text-sm font-bold">{t('appearance.pendingChanges')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleSaveTheme}
-              disabled={isSaving}
-              className="h-8 px-3 rounded-xl font-bold gap-1 text-xs shadow-xs"
-            >
-              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>{t('appearance.saveTheme')}</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleUndoTheme}
-              className="h-8 w-8 p-0 rounded-xl bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-primary-foreground/20"
-              title={t('appearance.undo')}
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-      {/* 4 تبويبات رئيسية في شريط كبسولي مقسم ومتناسق بدون أي قص للنصوص أو النقاط */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
-        {[
-          { id: 'theme' as AppearanceTab, label: t('appearance.themeAndColors'), icon: Palette },
-          { id: 'fonts' as AppearanceTab, label: t('appearance.fonts'), icon: Type },
-          { id: 'scale' as AppearanceTab, label: t('appearance.uiScale'), icon: Maximize2 },
-          { id: 'layout' as AppearanceTab, label: t('appearance.layout'), icon: LayoutGrid },
-        ].map((tab) => {
+    <div className="p-3 md:p-6 max-w-2xl mx-auto pb-28 pt-14 md:pt-4 space-y-5">
+      {/* قسم المظهر العام معروض بشكل مباشر وافتراضي */}
+      <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm transition-all">
+        <ThemeSection
+          resetSignal={resetSignal}
+          onPendingChange={(pending, changed) => {
+            setDraftTheme(changed ? pending : null);
+            if (changed) {
+              previewTheme(pending.mode, pending.color, pending.blur, pending.transparency);
+            } else {
+              revertTheme();
+            }
+          }}
+        />
+      </div>
+
+      {/* شريط تبويبات الإعدادات الإضافية (الخطوط، حجم الواجهة، والتخطيط) */}
+      <div className="grid grid-cols-3 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => handleTabClick(tab.id)}
+              onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 select-none min-h-12 overflow-visible",
                 isActive
@@ -130,25 +190,21 @@ export default function Appearance() {
         })}
       </div>
 
-      {/* محتوى التبويب النشط داخل بطاقة موحدة بتشطيب متناسق */}
+      {/* محتوى التبويب النشط */}
       <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm transition-all">
-        {activeTab === 'theme' && (
-          <ThemeSection
-            resetSignal={resetSignal}
-            onPendingChange={(pending, changed) => {
-              setPendingTheme(changed ? pending : null);
-              if (changed) {
-                previewTheme(pending.mode, pending.color, pending.blur, pending.transparency);
-              } else {
-                revertTheme();
-              }
-            }}
+        {activeTab === 'fonts' && (
+          <FontSelector
+            draftFont={draftFont}
+            onDraftChange={handleDraftFontChange}
           />
         )}
 
-        {activeTab === 'fonts' && <FontSelector />}
-
-        {activeTab === 'scale' && <UIScaleSelector />}
+        {activeTab === 'scale' && (
+          <UIScaleSelector
+            draftScale={draftScale}
+            onDraftChange={handleDraftScaleChange}
+          />
+        )}
 
         {activeTab === 'layout' && (
           <div className="space-y-4">
@@ -192,24 +248,26 @@ export default function Appearance() {
         )}
       </div>
 
-      {/* زر الحفظ العائم للسمة فقط عند تغييرها */}
-      {pendingTheme && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+      {/* الشريط/الزر العائم الحصري عند حدوث أي تعديل غير محفوظ في السمة أو الخط أو الحجم */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-6 end-6 z-50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200">
           <Button
-            onClick={handleSaveTheme}
+            onClick={handleSaveAll}
             disabled={isSaving}
-            className="rounded-full shadow-lg h-11 px-5 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+            className="rounded-full shadow-2xl h-12 px-6 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm transition-all"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>{t('appearance.saveTheme')}</span>
+            <span>{isRTL ? 'حفظ التعديلات' : 'Save Changes'}</span>
           </Button>
           <Button
             variant="outline"
-            onClick={handleUndoTheme}
-            className="rounded-full shadow-md h-11 w-11 p-0 border-border/80 bg-background hover:bg-muted"
-            title={t('appearance.undo')}
+            onClick={handleCancelAll}
+            disabled={isSaving}
+            className="rounded-full shadow-lg h-12 px-4 gap-1.5 border-border/80 bg-background/95 hover:bg-muted font-medium text-sm transition-all"
+            title={isRTL ? 'إلغاء / تراجع' : 'Cancel / Undo'}
           >
             <Undo2 className="w-4 h-4" />
+            <span>{isRTL ? 'إلغاء' : 'Cancel'}</span>
           </Button>
         </div>
       )}

@@ -149,3 +149,17 @@ export function printHTML(htmlContent: string): void {
     }
   }
 }
+
+
+// Re-export Bluetooth & Printer configuration utilities
+export {
+  type PrinterConfig,
+  type BluetoothDevice,
+  PRINTER_CONFIG_KEY,
+  getStoredPrinterConfig,
+  saveStoredPrinterConfig,
+  searchBluetoothPrinters,
+  connectAndTestBluetoothPrinter,
+  htmlToEscPosRaster,
+  sendEscPosToBluetooth,
+} from './native-print';

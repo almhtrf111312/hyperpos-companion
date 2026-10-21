@@ -70,6 +70,8 @@ export function useAppFont() {
   return {
     currentFont,
     setFont,
+    previewFont: applyAppFontToDOM,
+    revertFont: () => applyAppFontToDOM(currentFont),
     availableFonts: APP_FONTS,
     currentFontConfig,
     isDefault: currentFont === DEFAULT_APP_FONT_ID,

@@ -251,6 +251,15 @@ export default function POS() {
   const cartRef = useRef<CartItem[]>(cart);
   const cartOpenRef = useRef(cartOpen);
   useEffect(() => { cartRef.current = cart; }, [cart]);
+
+  // Alert when printing is requested but no Bluetooth printer is paired
+  useEffect(() => {
+    const handleRequestPairing = () => {
+      showToast.info(isRTL ? 'يرجى ربط طابعة بلوتوث من شاشة الإعدادات > الطباعة' : 'Please pair a Bluetooth printer in Settings > Printing');
+    };
+    window.addEventListener('flowpos:request-printer-pairing', handleRequestPairing);
+    return () => window.removeEventListener('flowpos:request-printer-pairing', handleRequestPairing);
+  }, [isRTL]);
   useEffect(() => { cartOpenRef.current = cartOpen; }, [cartOpen]);
 
   // ✅ حفظ السلة تلقائياً عند كل تغيير

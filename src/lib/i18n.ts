@@ -20,6 +20,15 @@ export type TranslationKey = keyof typeof translations.ar;
 
 export const translations = {
   ar: {
+    searchBluetoothPrinter: "البحث عن طابعة بلوتوث",
+    selectBluetoothPrinter: "اختر طابعة البلوتوث",
+    connectedPrinter: "الطابعة المتصلة",
+    noPrinterSelected: "لم يتم تحديد طابعة بعد",
+    wiredSystemPrinter: "طابعة سلكية / طابعة النظام (PC)",
+    bluetoothThermalPrinter: "طابعة بلوتوث حرارية",
+    testPrint: "طباعة تجريبية",
+    unsavedAppearanceChanges: "لديك تعديلات غير محفوظة في المظهر أو الخطوط",
+
     "deferredInvoiceCompleted": "فاتورة مؤجلة مكتملة",
     "nowApprovedDeferred": "الآن • ذمم مؤجلة",
     "nowSavedStatus": "الآن • تم الحفظ",
@@ -2643,6 +2652,15 @@ export const translations = {
     'reports.paymentType': 'نوع الدفع',
   },
   en: {
+    searchBluetoothPrinter: "Search Bluetooth Printer",
+    selectBluetoothPrinter: "Select Bluetooth Printer",
+    connectedPrinter: "Connected Printer",
+    noPrinterSelected: "No printer selected yet",
+    wiredSystemPrinter: "Wired / System Printer (PC)",
+    bluetoothThermalPrinter: "Bluetooth Thermal Printer",
+    testPrint: "Test Print",
+    unsavedAppearanceChanges: "You have unsaved appearance or font changes",
+
     "deferredInvoiceCompleted": "Deferred Invoice Completed",
     "nowApprovedDeferred": "Now • Deferred Debt",
     "nowSavedStatus": "Now • Saved",
@@ -5187,6 +5205,15 @@ export const translations = {
   },
 
   tr: {
+    searchBluetoothPrinter: "Bluetooth Yazıcı Ara",
+    selectBluetoothPrinter: "Bluetooth Yazıcı Seçin",
+    connectedPrinter: "Bağlı Yazıcı",
+    noPrinterSelected: "Henüz yazıcı seçilmedi",
+    wiredSystemPrinter: "Kablolu / Sistem Yazıcısı (PC)",
+    bluetoothThermalPrinter: "Bluetooth Termal Yazıcı",
+    testPrint: "Test Yazdırma",
+    unsavedAppearanceChanges: "Kaydedilmemiş görünüm veya yazı tipi değişiklikleriniz var",
+
     "deferredInvoiceCompleted": "Vadeli Fatura Tamamlandı",
     "nowApprovedDeferred": "Şimdi • Vadeli",
     "nowSavedStatus": "Şimdi • Kaydedildi",

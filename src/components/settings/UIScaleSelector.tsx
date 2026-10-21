@@ -21,6 +21,8 @@ const SCALE_STEPS: UIScaleId[] = ['80', '90', '100', '110', '120'];
 interface UIScaleSelectorProps {
   className?: string;
   showCardContainer?: boolean;
+  draftScale?: UIScaleId;
+  onDraftChange?: (scaleId: UIScaleId) => void;
   onPendingChange?: (scale: UIScaleId | null, changed: boolean) => void;
   resetSignal?: number;
   onSaved?: () => void;
@@ -28,10 +30,14 @@ interface UIScaleSelectorProps {
 
 export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
   className,
+  draftScale,
+  onDraftChange,
   onPendingChange,
 }) => {
   const { isRTL } = useLanguage();
   const [currentScale, setCurrentScale] = useState<UIScaleId>(getStoredUIScale);
+
+  const effectiveScale = draftScale ?? currentScale;
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -45,10 +51,14 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
     };
   }, []);
 
-  const stepIndex = SCALE_STEPS.indexOf(currentScale);
+  const stepIndex = SCALE_STEPS.indexOf(effectiveScale);
 
   const handleStepChange = async (index: number) => {
     const newScale = SCALE_STEPS[index] || '100';
+    if (onDraftChange) {
+      onDraftChange(newScale);
+      return;
+    }
     setCurrentScale(newScale);
     setStoredUIScale(newScale);
     onPendingChange?.(newScale, true);
@@ -68,7 +78,7 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
     }
   };
 
-  const currentOption = UI_SCALE_OPTIONS.find((s) => s.id === currentScale);
+  const currentOption = UI_SCALE_OPTIONS.find((s) => s.id === effectiveScale);
 
   // ترتيب التسميات: في RTL من اليمين يبدأ الكبير جداً (خطوة 4) ثم كبير ثم وسط ثم صغير ثم صغير جداً (خطوة 0)
   // ليتطابق تماماً مع مؤشر شريط السحب الأفقي

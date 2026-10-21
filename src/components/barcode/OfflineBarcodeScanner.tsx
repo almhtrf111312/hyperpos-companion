@@ -312,7 +312,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
             <button
               type="button"
               onClick={toggleTorch}
-              className={`h-11 w-11 rounded-full flex items-center justify-center border ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-white/10 border-white/30 text-white'}`}
+              className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md'}`}
             >
               <Flashlight className="w-5 h-5" />
             </button>
@@ -323,7 +323,7 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
               stopCamera();
               onCloseRef.current();
             }}
-            className="h-11 w-11 rounded-full flex items-center justify-center bg-white/10 border border-white/30 text-white"
+            className="h-11 w-11 rounded-full flex items-center justify-center bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
@@ -364,11 +364,11 @@ export function OfflineBarcodeScanner({ isOpen, onClose, onScan }: OfflineBarcod
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">
             <p>{errorMessage}</p>
             <div className="mt-3 flex gap-2">
-              <Button type="button" size="sm" onClick={() => startCamera()}>
+              <Button type="button" size="sm" onClick={() => startCamera()} className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700">
                 <RotateCcw className="w-3 h-3" />
                 إعادة المحاولة
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => onCloseRef.current()}>
+              <Button type="button" size="sm" variant="outline" onClick={() => onCloseRef.current()} className="bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700">
                 إغلاق
               </Button>
             </div>

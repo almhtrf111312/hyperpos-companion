@@ -54,7 +54,18 @@ export const showSmartToast = (data: Omit<SmartToastData, 'id'> & { id?: string 
     }).catch(() => {});
   } catch {}
 
-  const duration = data.duration || 3500;
+  const defaultDuration = (() => {
+    try {
+      const saved = localStorage.getItem('hyperpos_toast_duration');
+      if (saved) {
+        const val = Number(saved);
+        if (!isNaN(val) && val >= 500 && val <= 10000) return val;
+      }
+    } catch {}
+    return 2500;
+  })();
+
+  const duration = data.duration || defaultDuration;
   activeToastUntil = Date.now() + duration;
 
   const id = data.id || Math.random().toString(36).substring(2, 9);

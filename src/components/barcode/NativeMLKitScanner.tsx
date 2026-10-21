@@ -360,7 +360,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           <button
             type="button"
             onClick={() => setShowManualInput(prev => !prev)}
-            className={`h-11 px-3 rounded-full flex items-center gap-1.5 border transition-colors ${showManualInput ? 'bg-white text-black border-white' : 'bg-black/60 border-white/30 text-white'}`}
+            className={`h-11 px-3 rounded-full flex items-center gap-1.5 transition-colors ${showManualInput ? 'bg-white text-black border-white' : 'bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md'}`}
             aria-label="إدخال يدوي"
           >
             <Keyboard className="w-4 h-4" />
@@ -370,7 +370,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             <button
               type="button"
               onClick={toggleTorch}
-              className={`h-11 w-11 rounded-full flex items-center justify-center border transition-colors ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/60 border-white/30 text-white'}`}
+              className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors ${torchOn ? 'bg-yellow-400/80 border-yellow-300 text-black' : 'bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md'}`}
               aria-label={torchOn ? 'إطفاء الفلاش' : 'تشغيل الفلاش'}
             >
               <Flashlight className="w-5 h-5" />
@@ -379,7 +379,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
           <button
             type="button"
             onClick={handleClose}
-            className="h-11 w-11 rounded-full flex items-center justify-center bg-black/60 border border-white/30 text-white"
+            className="h-11 w-11 rounded-full flex items-center justify-center bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md transition-colors"
             aria-label="إغلاق الماسح"
           >
             <X className="w-6 h-6" />
@@ -453,7 +453,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                   <button
                     type="button"
                     onClick={handleRetry}
-                    className="flex-1 py-2.5 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-neutral-700"
+                    className="flex-1 py-2.5 px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>إعادة المحاولة</span>
@@ -465,7 +465,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                         handleClose();
                         onFallbackRef.current?.();
                       }}
-                      className="flex-1 py-2.5 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-neutral-700"
+                      className="flex-1 py-2.5 px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
                     >
                       <span>ماسح الويب</span>
                     </button>
@@ -474,7 +474,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="w-full py-2 px-3 rounded-lg bg-transparent hover:bg-neutral-800 text-neutral-400 hover:text-white text-xs transition-colors"
+                  className="w-full py-2 px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700 text-xs transition-colors"
                 >
                   إلغاء وإغلاق
                 </button>
@@ -501,7 +501,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                 <button
                   type="button"
                   onClick={() => setShowManualInput(false)}
-                  className="p-1 rounded-lg text-neutral-400 hover:text-white"
+                  className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -534,7 +534,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                   <button
                     type="button"
                     onClick={() => setShowManualInput(false)}
-                    className="px-4 py-2.5 rounded-lg bg-neutral-800 text-neutral-300 text-sm hover:bg-neutral-700 transition-colors"
+                    className="px-4 py-2.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-900 [&_svg]:text-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 dark:[&_svg]:text-zinc-100 border border-zinc-300 dark:border-zinc-700 text-sm transition-colors"
                   >
                     رجوع للكاميرا
                   </button>
@@ -554,7 +554,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             <button
               type="button"
               onClick={() => handleZoomStep('out')}
-              className="h-9 w-9 rounded-full bg-black/70 border border-white/25 text-white flex items-center justify-center"
+              className="h-9 w-9 rounded-full bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md flex items-center justify-center transition-colors"
               aria-label="تصغير الزووم"
             >
               <ZoomOut className="w-4 h-4" />
@@ -566,8 +566,8 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
                 onClick={() => handleZoomPreset(z)}
                 className={`h-9 min-w-[2.5rem] px-2 rounded-full border text-xs font-bold transition-colors
                   ${Math.abs(currentZoom - z) < 0.2
-                    ? 'bg-white text-black border-white'
-                    : 'bg-black/70 border-white/25 text-white'}`}
+                    ? 'bg-white text-black border-white shadow-md'
+                    : 'bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md'}`}
                 aria-label={`زووم ${z}x`}
               >
                 {z === 1 ? '1×' : `${z}×`}
@@ -576,7 +576,7 @@ export function NativeMLKitScanner({ isOpen, onClose, onScan, onFallback }: Nati
             <button
               type="button"
               onClick={() => handleZoomStep('in')}
-              className="h-9 w-9 rounded-full bg-black/70 border border-white/25 text-white flex items-center justify-center"
+              className="h-9 w-9 rounded-full bg-black/65 hover:bg-black/80 !text-white [&_svg]:!text-white border border-white/25 shadow-md flex items-center justify-center transition-colors"
               aria-label="تكبير الزووم"
             >
               <ZoomIn className="w-4 h-4" />

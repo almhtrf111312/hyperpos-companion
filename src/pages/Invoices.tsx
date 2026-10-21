@@ -1386,6 +1386,14 @@ export default function Invoices() {
     }
   };
 
+  useEffect(() => {
+    const handleRequestPairing = () => {
+      toast.info(isRTL ? 'يرجى ربط طابعة بلوتوث من شاشة الإعدادات > الطباعة' : 'Please pair a Bluetooth printer in Settings > Printing');
+    };
+    window.addEventListener('flowpos:request-printer-pairing', handleRequestPairing);
+    return () => window.removeEventListener('flowpos:request-printer-pairing', handleRequestPairing);
+  }, [isRTL]);
+
   const handlePrint = (invoice: Invoice) => {
     // Dynamic store settings with proper defaults
     const storeDefaults = {
