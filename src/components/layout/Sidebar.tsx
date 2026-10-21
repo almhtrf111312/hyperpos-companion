@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { useUserRole } from '@/hooks/use-user-role';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { TranslationKey } from '@/lib/i18n';
 import { supabase } from '@/integrations/supabase/client';
 import { SyncStatusMenu } from './SyncStatusMenu';

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState, useContext } from 'react';
 import { AlertTriangle, Clock, RefreshCw, Trash2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { EVENTS } from '@/lib/events';
 import { cn } from '@/lib/utils';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';

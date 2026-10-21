@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/hooks/use-language';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import {
   FileText,
   User,

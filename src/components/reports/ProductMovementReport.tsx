@@ -8,7 +8,7 @@ import { loadInvoicesCloud, type Invoice } from '@/lib/cloud/invoices-cloud';
 import { listStockDamages, type StockDamage } from '@/lib/cloud/stock-damages-cloud';
 import { formatCurrency, formatNumber, cn } from '@/lib/utils';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
 
 interface MovementRow {

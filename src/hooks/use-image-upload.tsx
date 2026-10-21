@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 type UploadStatus = 'idle' | 'syncing' | 'done' | 'error';
 

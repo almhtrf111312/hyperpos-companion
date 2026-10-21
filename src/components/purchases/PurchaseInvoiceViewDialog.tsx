@@ -29,7 +29,7 @@ import {
 } from '@/lib/cloud/purchase-invoices-cloud';
 import { formatNumber, formatCurrency } from '@/lib/utils';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { emitEvent, EVENTS } from '@/lib/events';
 
 interface PurchaseInvoiceViewDialogProps {

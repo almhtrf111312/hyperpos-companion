@@ -2,7 +2,7 @@ import { emitEvent, EVENTS } from './events';
 import { deleteDebtByInvoiceId, loadDebts, recordPayment } from './debts-store';
 import { revertProfitDistribution } from './partners-store';
 import { safeSave, safeLoad } from './safe-storage';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 // Invoices store for managing all sales and maintenance invoices
 

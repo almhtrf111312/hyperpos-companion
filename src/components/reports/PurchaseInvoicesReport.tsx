@@ -5,7 +5,7 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { loadPurchaseInvoicesCloud, PurchaseInvoice } from '@/lib/cloud/purchase-invoices-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { useLanguage } from '@/hooks/use-language';
 

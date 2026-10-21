@@ -17,7 +17,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { clearAllDataCompletely } from '@/lib/clear-demo-data';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { t } from '@/lib/i18n';
 import { useLanguage } from '@/hooks/use-language';
 

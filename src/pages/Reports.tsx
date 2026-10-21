@@ -46,7 +46,7 @@ import {
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatCurrency, formatMoney, formatReportAmount } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useTheme } from '@/hooks/use-theme';
 import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';

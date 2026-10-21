@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
 import { formatNumber, formatMoney } from '@/lib/utils';
 import { shareReport } from '@/lib/native-share';

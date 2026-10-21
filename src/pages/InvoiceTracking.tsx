@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, PackageMinus, RefreshCw, Trash2, Receipt } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

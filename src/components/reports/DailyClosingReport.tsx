@@ -8,7 +8,7 @@ import { Expense } from '@/lib/cloud/expenses-cloud';
 import { Debt } from '@/lib/cloud/debts-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { Input } from '@/components/ui/input';
 import { toLocalDateString } from '@/lib/date-utils';
 import { useLanguage } from '@/hooks/use-language';

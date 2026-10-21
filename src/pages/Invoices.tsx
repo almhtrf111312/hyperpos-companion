@@ -73,7 +73,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from '@/components/ui/date-picker';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { showSmartToast } from '@/hooks/use-smart-toast';
 import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useAuth } from '@/hooks/use-auth';
 import { addActivityLog } from '@/lib/activity-log';
 import { formatNumber, formatCurrency, formatDateTime, formatDate, formatTime } from '@/lib/utils';

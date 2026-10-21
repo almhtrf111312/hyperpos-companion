@@ -52,7 +52,7 @@ import {
   Loader2,
   Banknote
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function CashShifts() {
