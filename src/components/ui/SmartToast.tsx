@@ -296,9 +296,13 @@ export function SmartToast() {
         clearTimeout(autoDismissTimerRef.current);
         autoDismissTimerRef.current = null;
       }
-      autoDismissTimerRef.current = setTimeout(() => {
-        retractNotification();
-      }, duration);
+      // 🛡️ إشعارات "جاري التنفيذ" (duration: Infinity) تبقى حتى تُستبدل أو تُغلق يدوياً
+      // setTimeout مع Infinity يتحول إلى ~1ms في المتصفحات فيختفي الإشعار فوراً
+      if (Number.isFinite(duration)) {
+        autoDismissTimerRef.current = setTimeout(() => {
+          retractNotification();
+        }, duration);
+      }
     }, 360);
 
     return () => {

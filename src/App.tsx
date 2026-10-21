@@ -1,5 +1,4 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, useSearchParams, useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
@@ -457,7 +456,6 @@ const App = () => (
                   <UserRoleProvider>
                     <WarehouseProvider>
                       <NotificationsProvider>
-                        <Sonner />
                         <SmartToast />
                         {/* LicenseWarningBadge is OUTSIDE LicenseGuard so it always renders */}
                         <LicenseWarningBadge />
