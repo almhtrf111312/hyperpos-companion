@@ -11,6 +11,7 @@ import {
 import { loadMembersCloud, addLoanCloud, LibraryMember } from '@/lib/cloud/library-cloud';
 import { DatePicker } from '@/components/ui/date-picker';
 import { showToast } from '@/lib/toast-config';
+import { showSmartToast } from '@/hooks/use-smart-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { format } from 'date-fns';
 
@@ -71,7 +72,18 @@ export function LoanQuickDialog({
     });
 
     if (loan) {
-      showToast.success(language === 'en' ? `Book loan registered for "${productName}" to ${selectedMember.name}` : `تم تسجيل إعارة "${productName}" للعضو ${selectedMember.name}`);
+      showSmartToast({
+        type: 'success',
+        title: language === 'en' ? 'Book Loan Registered' : 'تم تسجيل إعارة كتاب',
+        subtitle: `#LOAN-${(loan.id || '').substring(0, 6) || 'NEW'}`,
+        statusBadge: language === 'en' ? 'Now • Borrowed' : 'الآن • إعارة',
+        primaryLabel: language === 'en' ? 'Member' : 'العضو',
+        primaryValue: selectedMember.name,
+        secondaryLabel: language === 'en' ? 'Book' : 'الكتاب',
+        secondaryValue: productName,
+        pillText: language === 'en' ? 'Loaned ✓' : 'معار ✓',
+        duration: 4000,
+      });
       onLoanComplete();
       onClose();
     } else {

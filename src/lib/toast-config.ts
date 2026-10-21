@@ -1,14 +1,13 @@
-import { toast } from 'sonner';
-import { showSmartToast, isSmartToastActive } from '@/hooks/use-smart-toast';
+import { showSmartToast, hideSmartToast, hideSmartToastById } from '@/hooks/use-smart-toast';
 
 /**
  * Unified toast notification utility linked to Flow POS Pro notifications system
  * 
  * ✅ Standardized toast implementation across the app
- * ✅ Retains SmartToast exclusively for completed sale invoices
+ * ✅ Unifies all notifications into the large SmartToastCard with swipe-to-dismiss
  * ✅ Prevents message stacking using deterministic message IDs
  * ✅ Throttles rapid identical messages
- * ✅ Prevents Sonner popups from overlapping the big SmartToast card
+ * ✅ Integrates with Android native heads-up system notifications
  */
 
 // Throttle map to prevent repeated notifications
@@ -63,7 +62,7 @@ setInterval(() => {
 }, 30000);
 
 export function getSavedToastDuration(): number {
-  if (typeof window === 'undefined') return 2600;
+  if (typeof window === 'undefined') return 3000;
   try {
     const saved = localStorage.getItem('hyperpos_toast_duration');
     if (saved) {
@@ -71,7 +70,7 @@ export function getSavedToastDuration(): number {
       if (!isNaN(val) && val >= 500 && val <= 10000) return val;
     }
   } catch {}
-  return 2600;
+  return 3000;
 }
 
 export interface ToastOptions {
@@ -97,15 +96,28 @@ export interface ToastOptions {
   };
   duration?: number;
   isInvoice?: boolean;
+  subtitle?: string;
+  primaryLabel?: string;
+  primaryValue?: string;
+  secondaryLabel?: string;
+  secondaryValue?: string;
+  pillText?: string;
 }
 
 function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
   if (!optionsOrDesc) return {};
   if (typeof optionsOrDesc === 'string') {
-    return { subtitle: optionsOrDesc };
+    return { description: optionsOrDesc };
   }
   return {
-    subtitle: optionsOrDesc.description,
+    description: optionsOrDesc.description,
+    subtitle: optionsOrDesc.subtitle || (optionsOrDesc.invoiceNumber ? `#${optionsOrDesc.invoiceNumber.replace(/^#/, '')}` : undefined),
+    statusBadge: optionsOrDesc.statusBadge,
+    primaryLabel: optionsOrDesc.primaryLabel,
+    primaryValue: optionsOrDesc.primaryValue,
+    secondaryLabel: optionsOrDesc.secondaryLabel,
+    secondaryValue: optionsOrDesc.secondaryValue,
+    pillText: optionsOrDesc.pillText,
     operation: optionsOrDesc.operation,
     itemName: optionsOrDesc.itemName,
     itemCount: optionsOrDesc.itemCount,
@@ -113,7 +125,6 @@ function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
     price: optionsOrDesc.price,
     currency: optionsOrDesc.currency,
     stockQuantity: optionsOrDesc.stockQuantity,
-    statusBadge: optionsOrDesc.statusBadge,
     invoiceNumber: optionsOrDesc.invoiceNumber,
     primaryAction: optionsOrDesc.primaryAction,
     secondaryAction: optionsOrDesc.secondaryAction,
@@ -134,44 +145,23 @@ function formatHelperDescription(options?: ToastOptions): string | undefined {
 export const showToast = {
   success: (message: string, optionsOrDesc?: string | ToastOptions) => {
     const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
-    const isInvoiceSale = isObj && Boolean(optionsOrDesc.invoiceNumber || optionsOrDesc.isInvoice);
-
-    // 🌟 الكرت الكبير مخصص حصراً لاكتمال فاتورة البيع
-    if (isInvoiceSale) {
-      const parsed = parseToastArgs(optionsOrDesc);
-      showSmartToast({
-        title: message,
-        type: 'success',
-        time: 'الآن',
-        ...parsed,
-      });
-      return;
-    }
-
-    // إذا كانت البطاقة الكبيرة معروضة حالياً، نتجنب إظهار إشعارات النجاح الروتينية فوقها لمنع التراكب
-    if (isSmartToastActive()) {
-      return;
-    }
-
     const key = getThrottleKey('success', message);
     if (!shouldShowToast(key)) return;
 
-    // 🔔 كل ما عدا ذلك يُعرض عبر Sonner
     const desc = typeof optionsOrDesc === 'string'
       ? optionsOrDesc
       : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
 
+    const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
-    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
 
-    toast.success(message, {
-      id: toastId,
-      description: desc || undefined,
+    showSmartToast({
+      id: isObj && optionsOrDesc.id ? String(optionsOrDesc.id) : undefined,
+      type: (isObj && optionsOrDesc.isInvoice) ? 'cash_sale' : 'success',
+      title: message,
+      description: desc,
       duration,
-      action: isObj && optionsOrDesc.primaryAction ? {
-        label: optionsOrDesc.primaryAction.label,
-        onClick: optionsOrDesc.primaryAction.onClick,
-      } : undefined,
+      ...parsed,
     });
   },
     
@@ -184,22 +174,19 @@ export const showToast = {
       ? optionsOrDesc
       : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
 
-    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
-    // الأخطاء: إما مستمرة حتى الإغلاق اليدوي بالزر (Default) أو مدة 6 ثوانٍ على الأقل
+    const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const isPersistent = isObj && (optionsOrDesc as any).persistent === true;
     const duration = (isObj && optionsOrDesc.duration)
       ? Math.max(optionsOrDesc.duration, 6000)
       : (isPersistent ? Infinity : 6000);
 
-    toast.error(message, {
-      id: toastId,
-      description: desc || undefined,
+    showSmartToast({
+      id: isObj && optionsOrDesc.id ? String(optionsOrDesc.id) : undefined,
+      type: 'error',
+      title: message,
+      description: desc,
       duration,
-      closeButton: true,
-      action: isObj && optionsOrDesc.primaryAction ? {
-        label: optionsOrDesc.primaryAction.label,
-        onClick: optionsOrDesc.primaryAction.onClick,
-      } : undefined,
+      ...parsed,
     });
   },
     
@@ -212,27 +199,20 @@ export const showToast = {
       ? optionsOrDesc
       : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
 
-    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
-    const duration = (isObj && optionsOrDesc.duration) ? Math.max(optionsOrDesc.duration, 6000) : 6000;
+    const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
+    const duration = (isObj && optionsOrDesc.duration) ? Math.max(optionsOrDesc.duration, 5000) : 5000;
 
-    toast.warning(message, {
-      id: toastId,
-      description: desc || undefined,
+    showSmartToast({
+      id: isObj && optionsOrDesc.id ? String(optionsOrDesc.id) : undefined,
+      type: 'warning',
+      title: message,
+      description: desc,
       duration,
-      closeButton: true,
-      action: isObj && optionsOrDesc.primaryAction ? {
-        label: optionsOrDesc.primaryAction.label,
-        onClick: optionsOrDesc.primaryAction.onClick,
-      } : undefined,
+      ...parsed,
     });
   },
     
   info: (message: string, optionsOrDesc?: string | ToastOptions) => {
-    // إذا كانت البطاقة الكبيرة معروضة حالياً، نتجنب إظهار إشعارات المعلومات الروتينية فوقها
-    if (isSmartToastActive()) {
-      return;
-    }
-
     const key = getThrottleKey('info', message);
     if (!shouldShowToast(key)) return;
     
@@ -241,17 +221,24 @@ export const showToast = {
       ? optionsOrDesc
       : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
 
-    const toastId = isObj && optionsOrDesc.id ? optionsOrDesc.id : key;
+    const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
 
-    toast.info(message, {
-      id: toastId,
-      description: desc || undefined,
+    showSmartToast({
+      id: isObj && optionsOrDesc.id ? String(optionsOrDesc.id) : undefined,
+      type: 'info',
+      title: message,
+      description: desc,
       duration,
-      action: isObj && optionsOrDesc.primaryAction ? {
-        label: optionsOrDesc.primaryAction.label,
-        onClick: optionsOrDesc.primaryAction.onClick,
-      } : undefined,
+      ...parsed,
     });
+  },
+
+  dismiss: (toastId?: string | number) => {
+    if (toastId) {
+      hideSmartToastById(String(toastId));
+    } else {
+      hideSmartToast();
+    }
   },
 };

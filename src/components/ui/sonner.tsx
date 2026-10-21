@@ -3,28 +3,17 @@ import { Toaster as Sonner, toast as sonnerToast } from "sonner";
 import { useLanguage } from "@/hooks/use-language";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { showSmartToast, hideSmartToast, hideSmartToastById } from "@/hooks/use-smart-toast";
+import { getSavedToastDuration } from "@/lib/toast-config";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
-export function getSavedToastDuration(): number {
-  if (typeof window === 'undefined') return 2600;
-  try {
-    const saved = localStorage.getItem('hyperpos_toast_duration');
-    if (saved) {
-      const val = Number(saved);
-      if (!isNaN(val) && val >= 500 && val <= 10000) return val;
-    }
-  } catch {}
-  return 2600;
-}
+export { getSavedToastDuration };
 
 /**
  * Standardized Flow POS Pro Toast Component
- * - Mobile (<768px): top-center with safe area offset (58px).
- * - iPad / PC (>=768px): bottom-right (bottom-left in RTL).
- * - Success / Info: user configured duration (default 2.6s).
- * - Warning: 6s minimum.
- * - Error: Stays until dismissed by user with close button.
+ * Backward-compatible host for Sonner while all visual notifications
+ * are rendered via the unified SmartToastCard with swipe-to-dismiss.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
@@ -85,40 +74,118 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
+function formatSonnerDesc(data?: any): string | undefined {
+  if (!data) return undefined;
+  if (typeof data === 'string') return data;
+  if (data.description) return String(data.description);
+  return undefined;
+}
+
 /**
- * Standardized toast API wrapper:
- * - toast.success: auto-dismisses after hyperpos_toast_duration (default 2.6s)
- * - toast.info: auto-dismisses after hyperpos_toast_duration
- * - toast.warning: persists at least 6s with close button
- * - toast.error: persists until dismissed by the user with close button
+ * Standardized Flow POS Pro Toast Wrapper
+ * Bridges all Sonner calls to the unified SmartToastCard.
  */
 export const toast = Object.assign(
-  (message: any, data?: any) => sonnerToast(message, data),
+  (message: any, data?: any) => {
+    const msg = typeof message === 'string' ? message : (message ? String(message) : '');
+    const desc = formatSonnerDesc(data);
+    showSmartToast({
+      type: 'info',
+      title: msg,
+      description: desc,
+      duration: data?.duration || getSavedToastDuration(),
+    });
+    return String(Date.now());
+  },
   sonnerToast,
   {
-    error: (message: any, data?: any) =>
-      sonnerToast.error(message, {
-        duration: Infinity,
-        closeButton: true,
-        ...data,
-      }),
-    warning: (message: any, data?: any) =>
-      sonnerToast.warning(message, {
-        duration: 6000,
-        closeButton: true,
-        ...data,
-      }),
-    info: (message: any, data?: any) =>
-      sonnerToast.info(message, {
-        duration: getSavedToastDuration(),
-        ...data,
-      }),
-    success: (message: any, data?: any) =>
-      sonnerToast.success(message, {
-        duration: getSavedToastDuration(),
-        ...data,
-      }),
+    error: (message: any, data?: any) => {
+      const msg = typeof message === 'string' ? message : (message ? String(message) : '');
+      const desc = formatSonnerDesc(data);
+      const isPersistent = data?.duration === Infinity || data?.persistent === true;
+      showSmartToast({
+        id: data?.id ? String(data.id) : undefined,
+        type: 'error',
+        title: msg,
+        description: desc,
+        duration: isPersistent ? Infinity : (data?.duration || 6000),
+        primaryAction: data?.action ? {
+          label: data.action.label,
+          onClick: data.action.onClick,
+        } : undefined,
+      });
+      return String(Date.now());
+    },
+    warning: (message: any, data?: any) => {
+      const msg = typeof message === 'string' ? message : (message ? String(message) : '');
+      const desc = formatSonnerDesc(data);
+      showSmartToast({
+        id: data?.id ? String(data.id) : undefined,
+        type: 'warning',
+        title: msg,
+        description: desc,
+        duration: data?.duration || 5000,
+        primaryAction: data?.action ? {
+          label: data.action.label,
+          onClick: data.action.onClick,
+        } : undefined,
+      });
+      return String(Date.now());
+    },
+    info: (message: any, data?: any) => {
+      const msg = typeof message === 'string' ? message : (message ? String(message) : '');
+      const desc = formatSonnerDesc(data);
+      showSmartToast({
+        id: data?.id ? String(data.id) : undefined,
+        type: 'info',
+        title: msg,
+        description: desc,
+        duration: data?.duration || getSavedToastDuration(),
+        primaryAction: data?.action ? {
+          label: data.action.label,
+          onClick: data.action.onClick,
+        } : undefined,
+      });
+      return String(Date.now());
+    },
+    success: (message: any, data?: any) => {
+      const msg = typeof message === 'string' ? message : (message ? String(message) : '');
+      const desc = formatSonnerDesc(data);
+      showSmartToast({
+        id: data?.id ? String(data.id) : undefined,
+        type: 'success',
+        title: msg,
+        description: desc,
+        duration: data?.duration || getSavedToastDuration(),
+        primaryAction: data?.action ? {
+          label: data.action.label,
+          onClick: data.action.onClick,
+        } : undefined,
+      });
+      return String(Date.now());
+    },
+    dismiss: (toastId?: any) => {
+      if (toastId) {
+        hideSmartToastById(String(toastId));
+      } else {
+        hideSmartToast();
+      }
+      try {
+        sonnerToast.dismiss(toastId);
+      } catch {}
+    },
   }
 );
+
+// Monkey-patch sonnerToast instance to unify components that import directly from 'sonner'
+try {
+  if (typeof sonnerToast === 'function') {
+    (sonnerToast as any).success = toast.success;
+    (sonnerToast as any).error = toast.error;
+    (sonnerToast as any).warning = toast.warning;
+    (sonnerToast as any).info = toast.info;
+    (sonnerToast as any).dismiss = toast.dismiss;
+  }
+} catch {}
 
 export { Toaster };

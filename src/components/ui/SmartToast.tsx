@@ -1,761 +1,225 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useSmartToastListener, hideSmartToast, SmartToastData } from '@/hooks/use-smart-toast';
-import { cn } from '@/lib/utils';
-import { getCurrentLanguage } from '@/lib/i18n';
+import React, { useState, useRef, useEffect } from 'react';
+import { CheckCircle2, XCircle, Clock, Printer, Share2 } from 'lucide-react';
+import { useSmartToastListener } from '@/hooks/use-smart-toast';
 
-// =========================================================================
-// محرك المؤثرات الصوتية الخفيفة المدمج بواسطة Web Audio API (Native Feel)
-// =========================================================================
-function getAudioContext(): AudioContext | null {
-  try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return null;
-    const ctx = new AudioContextClass();
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    return ctx;
-  } catch {
-    return null;
-  }
-}
-
-function playSoftChime() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(440, now);
-    osc.frequency.exponentialRampToValueAtTime(587.33, now + 0.08);
-    gain.gain.setValueAtTime(0.04, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.1);
-  } catch {}
-}
-
-function playDismissSound() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(360, now);
-    osc.frequency.exponentialRampToValueAtTime(200, now + 0.07);
-    gain.gain.setValueAtTime(0.03, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.08);
-  } catch {}
-}
-
-// قراءة مدة بقاء الإشعار المضبوطة من الإعدادات (الافتراضي 3 ثوانٍ)
-function getDefaultToastDuration(): number {
-  try {
-    const saved = localStorage.getItem('hyperpos_toast_duration');
-    if (saved) {
-      const val = Number(saved);
-      if (!isNaN(val) && val >= 500 && val <= 5000) return val;
-    }
-  } catch {}
-  return 3000;
-}
-
-// =========================================================================
-// محلل التفاصيل الذكي: استخراج اسم العملية والقطعة والسعر والوحدات المتعددة
-// =========================================================================
-interface ParsedToastDetails {
-  operationName: string;
-  category: 'cart' | 'invoice' | 'stock' | 'out_of_stock' | 'restock' | 'pin' | 'payment' | 'general';
-  itemName?: string;
-  isMultiple?: boolean;
-  itemCount?: number;
-  price?: string;
-  stockQuantity?: number;
-  invoiceNumber?: string;
-  note?: string;
-}
-
-function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
-  if (toast.operation) {
-    let cat: ParsedToastDetails['category'] = 'general';
-    if (toast.operation.includes('سلة')) cat = 'cart';
-    else if (toast.operation.includes('فاتورة') || toast.operation.includes('بيع')) cat = 'invoice';
-    else if (toast.operation.includes('حرج') || toast.operation.includes('منخفض')) cat = 'stock';
-    else if (toast.operation.includes('نفاد') || toast.operation.includes('فاضي')) cat = 'out_of_stock';
-    else if (toast.operation.includes('زيادة') || toast.operation.includes('توريد')) cat = 'restock';
-    else if (toast.operation.includes('تثبيت') || toast.operation.includes('تعليق')) cat = 'pin';
-    else if (toast.operation.includes('دين') || toast.operation.includes('دفعة')) cat = 'payment';
-
-    return {
-      operationName: toast.operation,
-      category: cat,
-      itemName: toast.itemName,
-      isMultiple: toast.isMultiple !== undefined ? toast.isMultiple : (toast.itemCount !== undefined ? toast.itemCount > 1 : false),
-      itemCount: toast.itemCount,
-      price: toast.price ? String(toast.price) : undefined,
-      stockQuantity: toast.stockQuantity,
-      invoiceNumber: toast.invoiceNumber,
-      note: toast.subtitle,
-    };
-  }
-
-  const title = toast.title || '';
-  const subtitle = toast.subtitle || '';
-  const combined = `${title} ${subtitle}`;
-
-  // 1. إضافة إلى السلة
-  if (combined.includes('إضافة') && (combined.includes('سلة') || combined.includes('السلة'))) {
-    const match = combined.match(/(?:إضافة|أضيف)\s+(.+?)(?:\s+إلى\s+السلة|\s*\(|$)/);
-    const rawName = match ? match[1].trim() : undefined;
-    return {
-      operationName: 'إضافة منتج إلى السلة',
-      category: 'cart',
-      itemName: rawName,
-      isMultiple: combined.includes('وحدات متعددة') || combined.includes('كرتونة'),
-      note: subtitle !== title ? subtitle : undefined,
-    };
-  }
-
-  // 2. فاتورة مكتملة / بيع
-  if (combined.includes('فاتورة') || combined.includes('مزامنة') || combined.includes('مزامنتها')) {
-    const isDebt = combined.includes('آجل') || combined.includes('دين');
-    const priceMatch = combined.match(/([$₺€][\d,.]+|[\d,.]+\s*[$₺€]|[\d,.]+\s*(?:ل\.س|SP|TRY|USD))/i);
-    const invoiceNumMatch = combined.match(/#(?:INV-[\w-]+|\d+)/i);
-    return {
-      operationName: isDebt ? 'فاتورة بيع آجل' : 'فاتورة مكتملة',
-      category: 'invoice',
-      price: priceMatch ? priceMatch[0] : undefined,
-      invoiceNumber: toast.invoiceNumber || (invoiceNumMatch ? invoiceNumMatch[0].replace('#', '') : undefined),
-      isMultiple: toast.isMultiple !== undefined ? toast.isMultiple : (toast.itemCount !== undefined ? toast.itemCount > 1 : false),
-      itemCount: toast.itemCount,
-      note: subtitle !== title ? subtitle : undefined,
-    };
-  }
-
-  // 3. تنبيه مخزون حرج
-  if (combined.includes('مخزون منخفض') || combined.includes('حرج') || combined.includes('كمية منخفضة')) {
-    const nameMatch = combined.match(/المنتج\s+["'«]([^"'»]+)["'»]/) || combined.match(/المنتج\s+([^لديه]+)/);
-    const qtyMatch = combined.match(/\((\d+)\s*فقط\)/) || combined.match(/(\d+)\s*(?:فقط|قطعة)/);
-    return {
-      operationName: 'تنبيه مخزون حرج',
-      category: 'stock',
-      itemName: nameMatch ? nameMatch[1].trim() : undefined,
-      stockQuantity: qtyMatch ? Number(qtyMatch[1]) : undefined,
-      note: subtitle !== title ? subtitle : undefined,
-    };
-  }
-
-  // 4. نفاد المخزون
-  if (combined.includes('نفذ المخزون') || combined.includes('نفاد') || combined.includes('فاضي') || combined.includes('انتهت الكمية')) {
-    const nameMatch = combined.match(/المنتج\s+["'«]([^"'»]+)["'»]/);
-    return {
-      operationName: 'نفاد المخزون',
-      category: 'out_of_stock',
-      itemName: nameMatch ? nameMatch[1].trim() : undefined,
-      stockQuantity: 0,
-      note: 'المخزون نفد بالكامل (0)',
-    };
-  }
-
-  // 5. زيادة مخزون
-  if (combined.includes('زيادة مخزون') || combined.includes('توريد') || combined.includes('شراء')) {
-    return {
-      operationName: 'زيادة مخزون',
-      category: 'restock',
-      note: subtitle !== title ? subtitle : undefined,
-    };
-  }
-
-  // 6. تثبيت طلب
-  if (combined.includes('تثبيت') || combined.includes('معلق')) {
-    return {
-      operationName: 'تثبيت العملية',
-      category: 'pin',
-      note: subtitle !== title ? subtitle : undefined,
-    };
-  }
-
-  // 7. سداد دين
-  if (combined.includes('دين') || combined.includes('دفعة') || combined.includes('سداد')) {
-    const priceMatch = combined.match(/([$₺€][\d,.]+|[\d,.]+\s*[$₺€]|[\d,.]+\s*(?:ل\.س|SP|TRY|USD))/i);
-    return {
-      operationName: 'سداد دفعة / دفع دين',
-      category: 'payment',
-      price: priceMatch ? priceMatch[0] : undefined,
-      note: subtitle !== title ? subtitle : undefined,
-    };
-  }
-
-  // افتراضي
-  return {
-    operationName: title,
-    category: toast.type === 'error' ? 'out_of_stock' : toast.type === 'warning' ? 'stock' : 'general',
-    note: subtitle && subtitle !== title ? subtitle : undefined,
+export interface UnifiedSmartToastProps {
+  id: string;
+  type?: 'cash_sale' | 'debt_sale' | 'settings' | 'refund' | 'sync' | 'success' | 'error' | 'warning' | 'info';
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;          // مثال: رقم الفاتورة #INV-2026-002
+  statusBadge?: React.ReactNode;       // مثال: "الآن • معتمدة" أو "الآن • تم الحفظ"
+  primaryLabel?: React.ReactNode;      // السطر الأول في الصندوق الداخلي (مثال: رقم الفاتورة / العميل)
+  primaryValue?: React.ReactNode;      // قيمة السطر الأول الخاصة بالعملية
+  secondaryLabel?: React.ReactNode;    // السطر الثاني في الصندوق الداخلي (مثال: القطعة / التفاصيل)
+  secondaryValue?: React.ReactNode;    // قيمة السطر الثاني الخاصة بالعملية
+  description?: React.ReactNode;       // النص التفصيلي للإشعارات العامة وإشعارات الإعدادات
+  pillText?: React.ReactNode;          // الكبسولة البارزة على اليسار (مثال: المبلغ بالعملة أو شارة "محفوظ ✓")
+  duration?: number;
+  primaryAction?: {
+    label: string;
+    onClick: () => void;
   };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  onDismiss: (id: string) => void;
 }
 
-export function SmartToast() {
-  const { toast } = useSmartToastListener();
-  const [isVisible, setIsVisible] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [dismissDirection, setDismissDirection] = useState<'up' | 'left' | 'right' | null>(null);
-  const [dragState, setDragState] = useState<{ x: number; y: number; rotate: number; opacity: number } | null>(null);
+export const SmartToastCard: React.FC<UnifiedSmartToastProps> = ({
+  id,
+  type = 'success',
+  title,
+  subtitle,
+  statusBadge,
+  primaryLabel,
+  primaryValue,
+  secondaryLabel,
+  secondaryValue,
+  description,
+  pillText,
+  duration = 3500,
+  primaryAction,
+  secondaryAction,
+  onDismiss,
+}) => {
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const startXRef = useRef<number | null>(null);
 
-  // مراحل حركة البطاقة: ظهور مستقر ناعم أو انكماش خروج
-  const [animPhase, setAnimPhase] = useState<'expanded' | 'retracting' | 'dismissed'>('dismissed');
-  const [resolvedDuration, setResolvedDuration] = useState<number>(3000);
-
-  const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pointerStartRef = useRef<{ x: number; y: number; time: number; pointerId: number } | null>(null);
-  const isDraggingRef = useRef(false);
-
-  // إغلاق الإشعار بالسحب الخاطف
-  const dismissNotification = useCallback((direction: 'up' | 'left' | 'right' = 'up') => {
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
-    setDragState(null);
-    setIsPaused(false);
-    setDismissDirection(direction);
-    setIsVisible(false);
-    setAnimPhase('dismissed');
-    playDismissSound();
-
-    setTimeout(() => {
-      hideSmartToast();
-      setDismissDirection(null);
-    }, 250);
-  }, []);
-
-  // انكماش الإشعار وصعوده تلقائياً
-  const retractNotification = useCallback(() => {
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
-    setAnimPhase('retracting');
-    playDismissSound();
-
-    setTimeout(() => {
-      hideSmartToast();
-      setAnimPhase('dismissed');
-      setIsVisible(false);
-      setIsPaused(false);
-      setDismissDirection(null);
-      setDragState(null);
-    }, 250);
-  }, []);
-
-  // ضبط مؤقت الإغلاق التلقائي
-  const resetAutoDismiss = useCallback((duration: number) => {
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
-    autoDismissTimerRef.current = setTimeout(() => {
-      retractNotification();
-    }, duration);
-  }, [retractNotification]);
-
-  // دورة حياة الإشعار عند وصول رسالة جديدة - ظهور ناعم ومستقر فوراً دون انفجار أو ارتداد
+  // إغلاق تلقائي بعد انتهاء مدة الإشعار
   useEffect(() => {
-    if (!toast) {
-      setAnimPhase('dismissed');
-      setIsVisible(false);
-      setIsPaused(false);
-      return;
-    }
+    if (duration <= 0 || duration === Infinity) return;
+    const timer = setTimeout(() => {
+      setIsRemoving(true);
+      setTimeout(() => onDismiss(id), 180);
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [id, duration, onDismiss]);
 
-    const duration = toast.duration || getDefaultToastDuration();
-    setResolvedDuration(duration);
-    setIsVisible(true);
-    setIsPaused(false);
-    setDismissDirection(null);
-    setDragState(null);
-
-    // ظهور مستقر وأنيق للبطاقة مع نغمة خفيفة ناعمة
-    setAnimPhase('expanded');
-    playSoftChime();
-    resetAutoDismiss(duration);
-
-    return () => {
-      if (autoDismissTimerRef.current) {
-        clearTimeout(autoDismissTimerRef.current);
-      }
-    };
-  }, [toast, resetAutoDismiss]);
-
-  // تجميد الإشعار عند وضع المؤشر (Mouse Hover)
-  const handleMouseEnter = () => {
-    setIsPaused(true);
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
+  const handleStart = (clientX: number) => {
+    startXRef.current = clientX;
+    setIsDragging(true);
   };
 
-  const handleMouseLeave = () => {
-    if (isDraggingRef.current) return;
-    setIsPaused(false);
-    resetAutoDismiss(resolvedDuration);
+  const handleMove = (clientX: number) => {
+    if (!isDragging || startXRef.current === null) return;
+    setDragX(clientX - startXRef.current);
   };
 
-  // محرك السحب واللمس مع التجميد الفوري عند وضع اليد
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-
-    isDraggingRef.current = true;
-    pointerStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      time: Date.now(),
-      pointerId: e.pointerId,
-    };
-
-    setIsPaused(true);
-    if (autoDismissTimerRef.current) {
-      clearTimeout(autoDismissTimerRef.current);
-    }
-
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {}
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || !pointerStartRef.current) return;
-
-    const deltaX = e.clientX - pointerStartRef.current.x;
-    const deltaY = e.clientY - pointerStartRef.current.y;
-
-    const rot = Math.max(-12, Math.min(12, deltaX * 0.08));
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const op = Math.max(0.4, 1 - distance / 260);
-
-    setDragState({
-      x: deltaX,
-      y: deltaY < 0 ? deltaY : deltaY * 0.35,
-      rotate: rot,
-      opacity: op,
-    });
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || !pointerStartRef.current) return;
-
-    isDraggingRef.current = false;
-    const start = pointerStartRef.current;
-    pointerStartRef.current = null;
-
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {}
-
-    const deltaX = e.clientX - start.x;
-    const deltaY = e.clientY - start.y;
-    const deltaTime = Math.max(1, Date.now() - start.time);
-
-    const velocityX = deltaX / deltaTime;
-    const velocityY = deltaY / deltaTime;
-
-    // 1. سحب للأعلى
-    if (deltaY < -35 || velocityY < -0.35) {
-      dismissNotification('up');
-      return;
-    }
-
-    // 2. سحب لليمين
-    if (deltaX > 35 || velocityX > 0.28) {
-      dismissNotification('right');
-      return;
-    }
-
-    // 3. سحب لليسار
-    if (deltaX < -35 || velocityX < -0.28) {
-      dismissNotification('left');
-      return;
-    }
-
-    // إفلات اللمس دون سحب: يستأنف المؤقت انسيابياً
-    setDragState(null);
-    setIsPaused(false);
-    resetAutoDismiss(resolvedDuration);
-  };
-
-  const handlePointerCancel = () => {
-    isDraggingRef.current = false;
-    pointerStartRef.current = null;
-    setDragState(null);
-    setIsPaused(false);
-    resetAutoDismiss(resolvedDuration);
-  };
-
-  if (!toast) return null;
-
-  // استخراج وتحليل تفاصيل العملية
-  const details = resolveToastDetails(toast);
-
-  // أنماط الأيقونات والألوان التفاعلية المتناسقة تماماً مع السمة
-  const getCategoryConfig = () => {
-    switch (details.category) {
-      case 'cart':
-        return {
-          bg: 'bg-primary/15',
-          border: 'border-primary/30',
-          text: 'text-primary',
-          dot: 'bg-primary',
-          bar: 'bg-primary',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          ),
-        };
-      case 'invoice':
-        return {
-          bg: 'bg-emerald-500/15',
-          border: 'border-emerald-500/30',
-          text: 'text-emerald-500 dark:text-emerald-400',
-          dot: 'bg-emerald-500',
-          bar: 'bg-emerald-500',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ),
-        };
-      case 'stock':
-        return {
-          bg: 'bg-amber-500/15',
-          border: 'border-amber-500/30',
-          text: 'text-amber-500 dark:text-amber-400',
-          dot: 'bg-amber-500',
-          bar: 'bg-amber-500',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          ),
-        };
-      case 'out_of_stock':
-        return {
-          bg: 'bg-rose-500/15',
-          border: 'border-rose-500/30',
-          text: 'text-rose-500 dark:text-rose-400',
-          dot: 'bg-rose-500',
-          bar: 'bg-rose-500',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          ),
-        };
-      case 'restock':
-        return {
-          bg: 'bg-sky-500/15',
-          border: 'border-sky-500/30',
-          text: 'text-sky-500 dark:text-sky-400',
-          dot: 'bg-sky-500',
-          bar: 'bg-sky-500',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
-            </svg>
-          ),
-        };
-      case 'pin':
-        return {
-          bg: 'bg-purple-500/15',
-          border: 'border-purple-500/30',
-          text: 'text-purple-500 dark:text-purple-400',
-          dot: 'bg-purple-500',
-          bar: 'bg-purple-500',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-          ),
-        };
-      case 'payment':
-        return {
-          bg: 'bg-indigo-500/15',
-          border: 'border-indigo-500/30',
-          text: 'text-indigo-500 dark:text-indigo-400',
-          dot: 'bg-indigo-500',
-          bar: 'bg-indigo-500',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          ),
-        };
-      default:
-        return {
-          bg: 'bg-primary/15',
-          border: 'border-primary/30',
-          text: 'text-primary',
-          dot: 'bg-primary',
-          bar: 'bg-primary',
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ),
-        };
-    }
-  };
-
-  const config = getCategoryConfig();
-
-  // تحول فيزيائي ناعم ومستقر تماماً
-  let transform = 'translate(0px, 0px) scale(1)';
-  let opacity = 1;
-  const cardClass = 'w-full max-w-[29rem] rounded-[24px]';
-
-  if (animPhase === 'retracting') {
-    transform = 'translateY(-16px) scale(0.97)';
-    opacity = 0;
-  } else if (!isVisible) {
-    if (dismissDirection === 'right') {
-      transform = 'translateX(100vw) rotate(6deg)';
-    } else if (dismissDirection === 'left') {
-      transform = 'translateX(-100vw) rotate(-6deg)';
+  const handleEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (Math.abs(dragX) > 75) {
+      setIsRemoving(true);
+      setTimeout(() => onDismiss(id), 180);
     } else {
-      transform = 'translateY(-24px) scale(0.96)';
+      setDragX(0);
     }
-    opacity = 0;
-  } else if (dragState) {
-    transform = `translate(${dragState.x}px, ${dragState.y}px) rotate(${dragState.rotate}deg)`;
-    opacity = dragState.opacity;
-  }
+    startXRef.current = null;
+  };
 
-  const isDismissing = !isVisible && dismissDirection !== null;
+  const isError = type === 'error';
+  const isWarning = type === 'warning' || type === 'debt_sale';
+
+  const accentColor = isError
+    ? 'border-red-500/30 bg-white dark:bg-zinc-900 shadow-red-500/5'
+    : isWarning
+    ? 'border-amber-500/30 bg-white dark:bg-zinc-900 shadow-amber-500/5'
+    : 'border-emerald-500/30 bg-white dark:bg-zinc-900 shadow-emerald-500/5';
+
+  const pillClasses = isError
+    ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+    : isWarning
+    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
 
   return (
-    <div className="fixed top-5 inset-x-0 px-3 z-[100] flex justify-center pointer-events-none">
-      {/* بطاقة الإشعار الذكية الأنيقة (تتوافق 100% مع الشفافية والسمة) */}
-      <div
-        className={cn(
-          "smart-toast-card pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none touch-none",
-          cardClass,
-          "transition-all duration-250 ease-out",
-          animPhase === 'expanded' && isVisible && "opacity-100 translate-y-0 scale-100",
-          animPhase === 'retracting' && "opacity-0 -translate-y-4 scale-96 pointer-events-none",
-          isDismissing && "opacity-0 scale-96 pointer-events-none",
-          dragState && !isDismissing && "dragging"
+    <div
+      dir="rtl"
+      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+      onTouchEnd={handleEnd}
+      onMouseDown={(e) => handleStart(e.clientX)}
+      onMouseMove={(e) => handleMove(e.clientX)}
+      onMouseUp={handleEnd}
+      style={{
+        transform: isRemoving
+          ? `translate3d(${dragX >= 0 ? '120%' : '-120%'}, 0, 0)`
+          : `translate3d(${dragX}px, 0, 0)`,
+        opacity: isRemoving ? 0 : Math.max(0.2, 1 - Math.abs(dragX) / 260),
+        transition: isDragging ? 'none' : 'transform 0.22s ease-out, opacity 0.22s ease-out',
+        touchAction: 'pan-y',
+      }}
+      className={`w-[94vw] max-w-md mx-auto rounded-2xl border shadow-xl p-3.5 select-none cursor-grab active:cursor-grabbing backdrop-blur-md ${accentColor}`}
+    >
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          {isError ? (
+            <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+          ) : isWarning ? (
+            <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+          )}
+          <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate">{title}</span>
+          {subtitle && (
+            <span className="text-xs font-semibold text-primary dark:text-primary-foreground/90 shrink-0">{subtitle}</span>
+          )}
+        </div>
+        {statusBadge && (
+          <span className="text-[11px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+            {statusBadge}
+          </span>
         )}
-        style={{
-          transform,
-          opacity,
-        }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-      >
-        {/* مقبض السحب المرئي العلوي (Pill Handle) */}
-        <div className="pt-2 pb-1 flex justify-center">
-          <div className="w-8 h-1 rounded-full bg-foreground/20"></div>
+      </div>
+
+      <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200/70 dark:border-zinc-700/60 p-3 flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-1 text-right flex-1 min-w-0">
+          {primaryLabel || primaryValue ? (
+            <div className="text-xs text-zinc-600 dark:text-zinc-300 truncate">
+              {primaryLabel && <span className="text-zinc-400 ml-1">{primaryLabel}:</span>}
+              <span className="font-bold text-zinc-800 dark:text-zinc-100">{primaryValue}</span>
+            </div>
+          ) : null}
+
+          {secondaryLabel || secondaryValue ? (
+            <div className="text-xs text-zinc-600 dark:text-zinc-300 truncate">
+              {secondaryLabel && <span className="text-zinc-400 ml-1">{secondaryLabel}:</span>}
+              <span className="font-medium text-zinc-700 dark:text-zinc-200">{secondaryValue}</span>
+            </div>
+          ) : null}
+
+          {description && (
+            <div className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-relaxed">
+              {description}
+            </div>
+          )}
         </div>
 
-        {/* محتوى الإشعار المباشر مع كامل التفاصيل */}
-        <div className="px-3.5 pb-2.5 pt-0.5 space-y-2">
-          {/* سطر الرأس: أيقونة العملية + اسم العملية + مؤشر التجميد + زر الإغلاق */}
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              {/* أيقونة العملية الدقيقة مع نبض متوهج */}
-              <div className={cn("w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 relative", config.bg, config.border, config.text)}>
-                {config.icon}
-                <span className={cn("absolute top-1 right-1 w-2 h-2 rounded-full pulse-dot", config.dot)} />
-              </div>
+        {pillText && (
+          <div className={`px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 ${pillClasses}`}>
+            {pillText}
+          </div>
+        )}
+      </div>
 
-              {/* اسم العملية وحالة الوقت / التجميد */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-[13px] font-extrabold text-foreground truncate leading-tight tracking-tight">
-                    {details.operationName}
-                  </h4>
-                  {details.invoiceNumber && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted font-mono font-bold text-foreground border border-border/40 shrink-0">
-                      #{details.invoiceNumber}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {isPaused ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 dark:text-amber-400">
-                      <span>⏸</span> مجمّد للقراءة
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      {toast.time || 'الآن'}
-                    </span>
-                  )}
-                  {details.category === 'invoice' && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
-                      معتمدة
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* زر إغلاق صريح وناعم */}
+      {/* أزرار الإجراءات المتكاملة (طباعة / مشاركة) إن وُجدت */}
+      {(primaryAction || secondaryAction) && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-200/50 dark:border-zinc-700/50">
+          {primaryAction && (
             <button
               type="button"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                dismissNotification('up');
+                primaryAction.onClick();
+                onDismiss(id);
               }}
-              className="w-7 h-7 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition active:scale-90 border border-border/40 shrink-0"
-              title="إغلاق"
+              className="flex-1 py-1.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition active:scale-95 shadow-sm flex items-center justify-center gap-1.5"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span>{primaryAction.label}</span>
             </button>
-          </div>
-
-          {/* كتلة تفاصيل العملية المباشرة */}
-          <div className="p-2.5 rounded-2xl bg-foreground/[0.03] dark:bg-white/[0.04] border border-border/40 space-y-1.5 text-xs">
-            {/* سطر رقم الفاتورة الصريح إذا وُجد */}
-            {details.invoiceNumber && (
-              <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/25">
-                <span className="text-[11px] text-muted-foreground font-medium">رقم الفاتورة:</span>
-                <span className="font-mono font-extrabold text-xs text-foreground bg-muted/60 px-2 py-0.5 rounded-lg border border-border/30">
-                  #{details.invoiceNumber}
-                </span>
-              </div>
-            )}
-
-            {/* سطر القطعة أو الوحدات المتعددة */}
-            {details.isMultiple ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-primary/20 text-primary font-bold text-xs">
-                  <span>📦</span>
-                  <span>{getCurrentLanguage() === 'en' ? 'Multiple items' : 'وحدات متعددة'}</span>
-                  {details.itemCount && (
-                    <span className="font-mono text-[11px] opacity-80">
-                      ({details.itemCount} {getCurrentLanguage() === 'en' ? (details.itemCount > 1 ? 'pcs' : 'pc') : 'قطع'})
-                    </span>
-                  )}
-                </span>
-                {details.price && (
-                  <span className="font-mono font-extrabold text-xs text-foreground bg-muted/50 px-2 py-0.5 rounded-lg border border-border/30">
-                    {details.price}
-                  </span>
-                )}
-              </div>
-            ) : details.itemName ? (
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <span className="text-[11px] text-muted-foreground shrink-0 font-medium">القطعة:</span>
-                  <span className="font-bold text-foreground text-xs truncate" title={details.itemName}>
-                    {details.itemName}
-                  </span>
-                </div>
-                {details.price && (
-                  <span className="font-mono font-extrabold text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 shrink-0">
-                    {details.price}
-                  </span>
-                )}
-              </div>
-            ) : null}
-
-            {/* سطر السعر الصريح إذا لم تكن القطعة معروضة */}
-            {!details.itemName && !details.isMultiple && details.price && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-muted-foreground font-medium">السعر / القيمة:</span>
-                <span className="font-mono font-black text-sm text-primary tracking-tight">
-                  {details.price}
-                </span>
-              </div>
-            )}
-
-            {/* سطر المخزون (لتنبيهات المخزون الحرج أو نفاد المخزون) */}
-            {details.stockQuantity !== undefined && (
-              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-border/25">
-                <span className="text-[11px] text-muted-foreground font-medium">المخزون المتوفر:</span>
-                <span
-                  className={cn(
-                    "font-mono font-bold text-xs px-2 py-0.5 rounded-lg border",
-                    details.stockQuantity === 0
-                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                  )}
-                >
-                  {details.stockQuantity === 0 ? 'نفد بالكامل (0)' : `${details.stockQuantity} قطعة فقط`}
-                </span>
-              </div>
-            )}
-
-            {/* سطر الملاحظة أو التفصيل الإضافي */}
-            {details.note && (
-              <div className="text-[11px] text-muted-foreground leading-relaxed pt-0.5 border-t border-border/25">
-                {details.note}
-              </div>
-            )}
-
-            {/* أزرار الإجراءات المتكاملة (طباعة / مشاركة) بتنسيق راقٍ متناسق */}
-            {(toast.primaryAction || toast.secondaryAction) && (
-              <div className="flex items-center gap-2 pt-1.5">
-                {toast.primaryAction && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast.primaryAction?.onClick();
-                      dismissNotification('up');
-                    }}
-                    className="flex-1 py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition active:scale-95 shadow-sm flex items-center justify-center gap-1.5"
-                  >
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    <span>{toast.primaryAction.label}</span>
-                  </button>
-                )}
-                {toast.secondaryAction && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast.secondaryAction?.onClick();
-                      dismissNotification('up');
-                    }}
-                    className="flex-1 py-2 px-3 rounded-xl bg-muted/80 hover:bg-muted text-foreground font-bold text-xs transition active:scale-95 border border-border/60 flex items-center justify-center gap-1.5"
-                  >
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                    <span>{toast.secondaryAction.label}</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          )}
+          {secondaryAction && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                secondaryAction.onClick();
+                onDismiss(id);
+              }}
+              className="flex-1 py-1.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 font-bold text-xs transition active:scale-95 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center gap-1.5"
+            >
+              <Share2 className="w-3.5 h-3.5 shrink-0" />
+              <span>{secondaryAction.label}</span>
+            </button>
+          )}
         </div>
+      )}
+    </div>
+  );
+};
 
-        {/* شريط المؤقت الزمني للإغلاق التلقائي (يتجمد فوراً عند وضع اليد) */}
-        <div className="h-1 bg-muted/40 dark:bg-white/10 w-full overflow-hidden">
-          <div
-            className={cn(
-              "h-full",
-              config.bar,
-              animPhase === 'expanded' && isVisible && !isPaused && "timer-active",
-              (isPaused || animPhase !== 'expanded' || !isVisible) && "timer-paused"
-            )}
-            style={{ '--duration': `${resolvedDuration}ms` } as React.CSSProperties}
+export function SmartToast() {
+  const { toasts, dismissToast } = useSmartToastListener();
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div className="fixed top-4 inset-x-0 px-3 z-[9999] flex flex-col items-center gap-2.5 pointer-events-none">
+      {toasts.map((item) => (
+        <div key={item.id} className="pointer-events-auto">
+          <SmartToastCard
+            {...item}
+            onDismiss={dismissToast}
           />
         </div>
-      </div>
+      ))}
     </div>
   );
 }

@@ -20,6 +20,9 @@ export type TranslationKey = keyof typeof translations.ar;
 
 export const translations = {
   ar: {
+    "deferredInvoiceCompleted": "فاتورة مؤجلة مكتملة",
+    "nowApprovedDeferred": "الآن • ذمم مؤجلة",
+    "nowSavedStatus": "الآن • تم الحفظ",
     "cashShifts.cashier": "الكاشير",
     "common.options": "خيارات",
     "common.retry": "إعادة المحاولة",
@@ -2631,6 +2634,9 @@ export const translations = {
     'reports.paymentType': 'نوع الدفع',
   },
   en: {
+    "deferredInvoiceCompleted": "Deferred Invoice Completed",
+    "nowApprovedDeferred": "Now • Deferred Debt",
+    "nowSavedStatus": "Now • Saved",
 
     'dashboard.unifiedTitle': 'Unified Reports & KPI Dashboard',
     'dashboard.syncedOffline': 'Synced Offline System',
@@ -5163,6 +5169,9 @@ export const translations = {
   },
 
   tr: {
+    "deferredInvoiceCompleted": "Vadeli Fatura Tamamlandı",
+    "nowApprovedDeferred": "Şimdi • Vadeli",
+    "nowSavedStatus": "Şimdi • Kaydedildi",
 
     'dashboard.unifiedTitle': 'Birleşik Raporlar ve KPI Paneli',
     'dashboard.syncedOffline': 'Senkronize Çevrimdışı Sistem',
@@ -7663,6 +7672,9 @@ export const translations = {
     'reports.paymentType': 'Ödeme Türü',
   },
   fa: {
+    "deferredInvoiceCompleted": "فاکتور نسیه تکمیل شد",
+    "nowApprovedDeferred": "اکنون • بدهی موعددار",
+    "nowSavedStatus": "اکنون • ذخیره شد",
 
     'dashboard.unifiedTitle': 'داشبورد یکپارچه گزارش‌ها و شاخص‌ها',
     'dashboard.syncedOffline': 'سیستم همگام‌آفلاین',
@@ -10619,6 +10631,9 @@ export const translations = {
   },
 
   ku: {
+    "deferredInvoiceCompleted": "پسوولەی قەرز تەواو بوو",
+    "nowApprovedDeferred": "ئێستا • قەرز",
+    "nowSavedStatus": "ئێستا • پاشەکەوت کرا",
     'dashboard.unifiedTitle': 'داشبۆردی یەکگرتووی ڕاپۆرت و پێوەرەکان',
     'dashboard.syncedOffline': 'سیستەمی ئۆفلاینی هاوکاتکراو',
     'dashboard.filterToday': 'ئەمڕۆ',

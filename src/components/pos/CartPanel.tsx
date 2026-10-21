@@ -36,6 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { showToast } from '@/lib/toast-config';
+import { showSmartToast } from '@/hooks/use-smart-toast';
 import { loadCustomers, Customer } from '@/lib/customers-store';
 import { getNextInvoiceNumber } from '@/lib/invoices-store';
 import { addActivityLog } from '@/lib/activity-log';
@@ -1276,48 +1277,35 @@ export function CartPanel({
         invoiceNumber,
       };
 
-      // ✅ إشعار نهائي موحد وحيد لعملية البيع المؤجل أو المركب
-      if (downPaymentSnapshot > 0) {
-        showToast.success('فاتورة بيع مركب', {
-          operation: 'فاتورة بيع مركب',
-          invoiceNumber,
-          itemName: singleName,
-          isMultiple: !isSingle,
-          itemCount: totalPieces,
-          price: formattedDebtPrice,
-          currency: selectedCurrency.symbol,
-          description: `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), debtDecimals)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), debtDecimals)}`,
-          primaryAction: {
-            label: t('pos.print') || 'طباعة',
-            onClick: () => handlePrint(debtSaleSnapshot),
-          },
-          secondaryAction: {
-            label: t('pos.share') || 'مشاركة',
-            onClick: () => handleWhatsApp(debtSaleSnapshot),
-          },
-          duration: 4000,
-        });
-      } else {
-        showToast.success(t('pos.debtSaleRecorded') || 'فاتورة بيع مؤجل', {
-          operation: t('pos.debtSaleRecorded') || 'فاتورة بيع مؤجل',
-          invoiceNumber,
-          itemName: singleName,
-          isMultiple: !isSingle,
-          itemCount: totalPieces,
-          price: formattedDebtPrice,
-          currency: selectedCurrency.symbol,
-          description: `${t('pos.customerSnapshot') || 'العميل'}: ${customerNameSnapshot}`,
-          primaryAction: {
-            label: t('pos.print') || 'طباعة',
-            onClick: () => handlePrint(debtSaleSnapshot),
-          },
-          secondaryAction: {
-            label: t('pos.share') || 'مشاركة',
-            onClick: () => handleWhatsApp(debtSaleSnapshot),
-          },
-          duration: 4000,
-        });
-      }
+      // ✅ إشعار نهائي موحد وحيد لعملية البيع المؤجل أو المركب باستخدام بطاقة SmartToast الكبيرة
+      const itemsLabel = t('pos.items') || 'الأصناف';
+      const itemsDetail = isSingle
+        ? singleName
+        : (totalPieces > 1 ? `${singleName || (t('pos.multipleItems') || 'أصناف متعددة')} (${totalPieces})` : singleName);
+
+      showSmartToast({
+        type: 'debt_sale',
+        title: t('deferredInvoiceCompleted'),
+        subtitle: `#${invoiceNumber}`,
+        statusBadge: t('nowApprovedDeferred'),
+        primaryLabel: t('pos.customer') || 'العميل',
+        primaryValue: customerNameSnapshot,
+        secondaryLabel: itemsLabel,
+        secondaryValue: itemsDetail,
+        description: downPaymentSnapshot > 0
+          ? `نقدي: ${selectedCurrency.symbol}${formatNumber(downPaymentSnapshot * (selectedCurrency.rate || 1), debtDecimals)} + دين: ${selectedCurrency.symbol}${formatNumber(debtRemainingSnapshot * (selectedCurrency.rate || 1), debtDecimals)}`
+          : undefined,
+        pillText: formattedDebtPrice,
+        primaryAction: {
+          label: t('pos.print') || 'طباعة',
+          onClick: () => handlePrint(debtSaleSnapshot),
+        },
+        secondaryAction: {
+          label: t('pos.share') || 'مشاركة',
+          onClick: () => handleWhatsApp(debtSaleSnapshot),
+        },
+        duration: 4000,
+      });
 
       // ✅ تشغيل المزامنة الفورية بالخلفية بهدوء لتحديث المؤشر دون إشعارات مكررة
       (async () => {

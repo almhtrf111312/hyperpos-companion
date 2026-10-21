@@ -1,5 +1,6 @@
 import * as React from "react";
-import { toast as sonnerToast } from "@/components/ui/sonner";
+import { showSmartToast, hideSmartToast, hideSmartToastById } from "@/hooks/use-smart-toast";
+import { getSavedToastDuration } from "@/lib/toast-config";
 
 export interface ToastOptions {
   title?: React.ReactNode;
@@ -10,38 +11,45 @@ export interface ToastOptions {
 }
 
 /**
- * Compatibility bridge redirecting legacy useToast calls to Sonner
+ * Standardized Flow POS Pro useToast hook
+ * Routes legacy and component useToast calls to the unified SmartToastCard.
  */
 export function toast(options: ToastOptions | string, extra?: any) {
   if (typeof options === "string") {
-    return sonnerToast(options, extra);
+    const desc = typeof extra === "object" && extra?.description ? extra.description : undefined;
+    showSmartToast({
+      type: "success",
+      title: options,
+      description: desc,
+      duration: typeof extra === "object" && extra?.duration ? extra.duration : getSavedToastDuration(),
+    });
+    return String(Date.now());
   }
 
   const { title, description, variant, duration, ...rest } = options;
+  const isDestructive = variant === "destructive";
 
-  if (variant === "destructive") {
-    return sonnerToast.error(title || description, {
-      description: title ? description : undefined,
-      duration: duration ?? Infinity,
-      closeButton: true,
-      ...rest,
-    });
-  }
-
-  return sonnerToast.success(title || description, {
-    description: title ? description : undefined,
-    duration: duration ?? 2600,
+  showSmartToast({
+    type: isDestructive ? "error" : "success",
+    title: title || (isDestructive ? "خطأ" : "إشعار"),
+    description,
+    duration: duration ?? (isDestructive ? 6000 : getSavedToastDuration()),
     ...rest,
   });
-}
 
-// Attach all native Sonner methods to toast
-Object.assign(toast, sonnerToast);
+  return String(Date.now());
+}
 
 export function useToast() {
   return {
     toast,
-    dismiss: (toastId?: string) => sonnerToast.dismiss(toastId),
+    dismiss: (toastId?: string) => {
+      if (toastId) {
+        hideSmartToastById(toastId);
+      } else {
+        hideSmartToast();
+      }
+    },
     toasts: [],
   };
 }

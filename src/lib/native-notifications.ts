@@ -186,3 +186,57 @@ export async function sendLocalNotification(
 
   return false;
 }
+
+const ANDROID_CHANNEL_ID = 'flowpos_high_priority_channel';
+let channelInitialized = false;
+
+export async function initAndroidNotificationChannel() {
+  if (!Capacitor.isNativePlatform() || channelInitialized) return;
+  try {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') {
+      await LocalNotifications.requestPermissions();
+    }
+    await LocalNotifications.createChannel({
+      id: ANDROID_CHANNEL_ID,
+      name: 'FlowPOS Pro Notifications',
+      description: 'إشعارات المبيعات والعمليات الفورية',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+      lights: true,
+    });
+    channelInitialized = true;
+  } catch (err) {
+    console.warn('Native notification channel init error:', err);
+  }
+}
+
+export async function triggerAndroidSystemNotification(payload: {
+  title: string;
+  body: string;
+  subText?: string;
+}) {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await initAndroidNotificationChannel();
+      const notificationId = Math.floor((Date.now() % 2147483000) + Math.random() * 1000);
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notificationId,
+            title: payload.title,
+            body: payload.body,
+            summaryText: payload.subText || 'FlowPOS Pro',
+            channelId: ANDROID_CHANNEL_ID,
+            schedule: { at: new Date(Date.now() + 50), allowWhileIdle: true },
+          },
+        ],
+      });
+      return true;
+    }
+  } catch (err) {
+    console.warn('Failed to trigger Android system notification:', err);
+  }
+  return false;
+}
