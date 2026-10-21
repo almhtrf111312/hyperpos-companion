@@ -837,6 +837,7 @@ const failedRefund = (error: string): RefundResult => ({
 const refundInFlight = new Set<string>();
 
 // Refund invoice - marks as refunded, restores stock, settles debts, reverses customer stats
+// ✅ حالة الاسترداد مثبتة افتراضياً على 'good' (سليم) بحيث تعود الكميات دائماً للمخزون بشكل مباشر
 export const refundInvoiceCloud = async (id: string, source: 'online' | 'offline-sync' = 'online'): Promise<RefundResult | boolean> => {
   // ✅ Client-side mutex - reject duplicate concurrent calls immediately
   if (refundInFlight.has(id)) {
@@ -1073,6 +1074,7 @@ export interface PartialRefundResult {
 /**
  * ✅ استرداد جزئي لأصناف محددة من الفاتورة
  * يعيد كميات الأصناف المحددة فقط للمخزون، ويعدل إجمالي الفاتورة، وأرباحها، والدين أو النقدية
+ * حالة الاسترداد مثبتة افتراضياً على 'good' (سليم) لإعادة البضاعة للمخزون بشكل مباشر
  */
 export const refundInvoicePartialCloud = async (
   invoiceNumber: string,

@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { setCurrentUserId, fetchStoreSettings, saveStoreSettings } from '@/lib/supabase-store';
-import { EVENTS, emitEvent } from '@/lib/events';
+import { EVENTS, emitEvent, emitAppRefresh } from '@/lib/events';
 import { useRealtimeSync } from '@/hooks/use-realtime-sync';
 import { executePendingCloudClear } from '@/lib/clear-demo-data';
 import { processQueue, getQueueStatus, getFailedOperations, loadQueue } from '@/lib/sync-queue';
@@ -21,6 +21,7 @@ import {
   applySettingsToRuntime,
   saveUnifiedStoreSettings,
   buildCloudStorePayload,
+  pullStoreSettingsWithGuard,
   DEFAULT_UNIFIED_SETTINGS,
 } from '@/lib/store-settings-sync';
 
@@ -232,43 +233,12 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         loadRecurringExpensesCloud().catch(() => {});
       });
 
-      const cloudSettings = await fetchStoreSettings();
-      const localSettings = loadUnifiedStoreSettings();
-      
-      if (cloudSettings) {
-        // الدمج الموحد والذكي: الحفاظ على القيم المحلية وتحديثها بما يرد من السحابة دون مسح أي حقل
-        const merged = mergeStoreSettings(localSettings, cloudSettings);
-        applySettingsToRuntime(merged);
+      // سحب الإعدادات بحماية Anti-Overwrite Guard (Pull-Before-Push) دون أي رفع تلقائي
+      await pullStoreSettingsWithGuard();
 
-        const isJustSignedUp = typeof window !== 'undefined' && sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
-        if (!isJustSignedUp) {
-          localStorage.setItem('hyperpos_setup_complete', 'true');
-        }
-
-        // إذا كانت السحابة تفتقر لبيانات محلية مهمة أُنشئت أوفلاين، نرفعها بهدوء في الخلفية
-        const cloudSync = (cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object'
-          ? cloudSettings.sync_settings as Record<string, unknown>
-          : {}) as Record<string, any>;
-        const cloudMissingStoreInfo = !cloudSettings.name && Boolean(localSettings.storeSettings?.name);
-        const cloudMissingCurrencies = !cloudSync.currencyNames && Boolean(localSettings.currencyNames);
-        const cloudMissingFont = !cloudSettings.font_family && !cloudSync.appFont && Boolean(localSettings.appFont);
-        const cloudMissingScale = !cloudSync.uiScale && Boolean(localSettings.uiScale);
-
-        if (cloudMissingStoreInfo || cloudMissingCurrencies || cloudMissingFont || cloudMissingScale) {
-          saveUnifiedStoreSettings(merged).catch((e) => console.warn('[CloudSync] Background sync back error:', e));
-        }
-      } else {
-        // ✅ فحص الإعدادات المحلية أولاً لتجنب استبدالها ببيانات افتراضية عند انقطاع الإنترنت أو بطء الاستجابة
-        const existingLocal = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        if (!existingLocal) {
-          const defaults = { ...DEFAULT_UNIFIED_SETTINGS };
-          applySettingsToRuntime(defaults);
-          saveStoreSettings(buildCloudStorePayload(defaults)).catch(() => {});
-        } else {
-          // تطبيق الإعدادات المحلية الموجودة لضمان عمل الخط والمقياس والثيم فوراً دون اتصال
-          applySettingsToRuntime(localSettings);
-          console.log('[CloudSync] Cloud returned null but local settings exist, keeping local and applied to runtime');
-        }
+      const isJustSignedUp = typeof window !== 'undefined' && sessionStorage.getItem('hyperpos_just_signed_up') === 'true';
+      if (!isJustSignedUp) {
+        localStorage.setItem('hyperpos_setup_complete', 'true');
       }
 
       setLastSyncTime(new Date().toISOString());

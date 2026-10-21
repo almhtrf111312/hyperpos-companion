@@ -152,11 +152,15 @@ export const SmartToastCard: React.FC<UnifiedSmartToastProps> = ({
             </div>
           ) : null}
 
-          {description && (
+          {description ? (
             <div className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-relaxed">
               {description}
             </div>
-          )}
+          ) : (!primaryValue && title ? (
+            <div className="text-xs font-medium text-zinc-700 dark:text-zinc-200 leading-relaxed">
+              {title}
+            </div>
+          ) : null)}
         </div>
 
         {pillText && (

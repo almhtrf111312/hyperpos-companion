@@ -14,6 +14,8 @@ import {
   DEFAULT_APP_FONT_ID,
   isValidAppFontId,
   applyAppFontToDOM,
+  getStoredAppFont,
+  getPlatformStoragePrefix,
 } from '@/lib/app-font-config';
 import {
   UIScaleId,
@@ -23,8 +25,9 @@ import {
   isValidUIScaleId,
   applyUIScaleToDOM,
   setStoredUIScale,
+  getStoredUIScale,
 } from '@/lib/ui-scale-config';
-import { applyTheme, applyBlurTheme, ThemeMode, ThemeColor } from '@/hooks/use-theme';
+import { applyTheme, applyBlurTheme, ThemeMode, ThemeColor, getThemeStorageKey, THEME_STORAGE_KEY } from '@/hooks/use-theme';
 import { Language, setLanguage } from '@/lib/i18n';
 import { ProductFieldsConfig } from '@/lib/product-fields-config';
 import { CustomField } from '@/lib/custom-fields-config';
@@ -37,7 +40,6 @@ import { enqueueStoreSettingsUpdate } from '@/lib/sync-queue';
 import { emitEvent, EVENTS } from '@/lib/events';
 
 export const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
-export const THEME_STORAGE_KEY = 'hyperpos_theme_v1';
 
 export interface StoreInfo {
   name: string;
@@ -56,6 +58,7 @@ export interface FullThemeSettings {
 }
 
 export interface UnifiedStoreSettings {
+  updatedAt?: number;
   storeSettings: StoreInfo;
   primaryCurrency: 'USD' | 'TRY' | 'SYP' | string;
   enabledCurrencies: {
@@ -112,6 +115,7 @@ export interface UnifiedStoreSettings {
 }
 
 export const DEFAULT_UNIFIED_SETTINGS: UnifiedStoreSettings = {
+  updatedAt: undefined,
   storeSettings: {
     name: '',
     type: 'general',
@@ -184,10 +188,14 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
 
-    // قراءة الثيم المحلي
+    // قراءة الثيم المحلي للمنصة الحالية
     let localThemeSettings: FullThemeSettings = DEFAULT_UNIFIED_SETTINGS.themeSettings;
     try {
-      const rawTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      const themeKey = getThemeStorageKey();
+      let rawTheme = localStorage.getItem(themeKey);
+      if (!rawTheme) {
+        rawTheme = localStorage.getItem('hyperpos_theme_v1');
+      }
       if (rawTheme) {
         const pt = JSON.parse(rawTheme);
         localThemeSettings = {
@@ -201,36 +209,17 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       // ignore
     }
 
-    // قراءة الخط المحلي
-    let localFont: AppFontId = DEFAULT_APP_FONT_ID;
-    try {
-      const storedFont = localStorage.getItem(APP_FONT_STORAGE_KEY);
-      if (isValidAppFontId(storedFont)) {
-        localFont = storedFont;
-      } else if (isValidAppFontId(parsed?.appFont || parsed?.font_family)) {
-        localFont = (parsed?.appFont || parsed?.font_family) as AppFontId;
-      }
-    } catch {
-      // ignore
-    }
+    // قراءة الخط المحلي للمنصة الحالية
+    const localFont: AppFontId = getStoredAppFont();
 
-    // قراءة المقياس المحلي
-    let localScale: UIScaleId = DEFAULT_UI_SCALE_ID;
-    try {
-      const storedScale = localStorage.getItem(UI_SCALE_STORAGE_KEY);
-      if (isValidUIScaleId(storedScale)) {
-        localScale = storedScale;
-      } else if (isValidUIScaleId(parsed?.uiScale || parsed?.sync_settings?.uiScale || parsed?.syncSettings?.uiScale)) {
-        localScale = (parsed?.uiScale || parsed?.sync_settings?.uiScale || parsed?.syncSettings?.uiScale) as UIScaleId;
-      }
-    } catch {
-      // ignore
-    }
+    // قراءة المقياس المحلي للمنصة الحالية
+    const localScale: UIScaleId = getStoredUIScale();
 
-    // قراءة نمط لوحة التحكم
+    // قراءة نمط لوحة التحكم للمنصة الحالية
     let localDesign: 'classic' | 'unified_pro' = 'classic';
     try {
-      const d = localStorage.getItem('hyperpos_dashboard_design_v1');
+      const designKey = `flowpos_layout_${getPlatformStoragePrefix()}`;
+      const d = localStorage.getItem(designKey) || localStorage.getItem('hyperpos_dashboard_design_v1');
       if (d === 'unified_pro' || d === 'classic') localDesign = d;
     } catch {
       // ignore
@@ -276,6 +265,7 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
     };
 
     return {
+      updatedAt: typeof parsed?.updatedAt === 'number' ? parsed.updatedAt : undefined,
       storeSettings,
       primaryCurrency: parsed?.primaryCurrency || 'USD',
       enabledCurrencies,
@@ -328,6 +318,10 @@ export function mergeStoreSettings(
   const cloudSync = (cloud.sync_settings && typeof cloud.sync_settings === 'object'
     ? cloud.sync_settings as Record<string, unknown>
     : {}) as Record<string, any>;
+
+  const cloudUpdatedAt = Number(cloudSync.updatedAt) || (cloud.updated_at ? new Date(cloud.updated_at as string).getTime() : 0);
+  const localUpdatedAt = Number(base.updatedAt) || 0;
+  const mergedUpdatedAt = Math.max(localUpdatedAt, cloudUpdatedAt) || Date.now();
 
   // 1. معلومات المتجر الأساسية
   const localStore = base.storeSettings || DEFAULT_UNIFIED_SETTINGS.storeSettings;
@@ -394,51 +388,21 @@ export function mergeStoreSettings(
     ? (cloud.language as Language)
     : (base.language || 'ar');
 
-  // 8. الثيم والسمة الكاملة
-  const cloudThemeObj = (cloud.theme_settings && typeof cloud.theme_settings === 'object')
-    ? (cloud.theme_settings as Record<string, any>)
-    : (cloudSync.theme || {});
+  // 8. الثيم والسمة (معزولة محلياً حسب المنصة ولا تُستبدل من السحابة)
   const localThemeObj = base.themeSettings || DEFAULT_UNIFIED_SETTINGS.themeSettings;
-
-  const mergedMode: ThemeMode = (cloud.theme === 'light' || cloud.theme === 'dark')
-    ? cloud.theme
-    : (cloudThemeObj.mode === 'light' || cloudThemeObj.mode === 'dark')
-    ? cloudThemeObj.mode
-    : (localThemeObj.mode || 'dark');
-
   const mergedThemeSettings: FullThemeSettings = {
-    mode: mergedMode,
-    color: (cloudThemeObj.color as ThemeColor) || localThemeObj.color || 'emerald',
-    blur: cloudThemeObj.blur !== undefined ? Boolean(cloudThemeObj.blur) : (localThemeObj.blur ?? true),
-    transparency: typeof cloudThemeObj.transparency === 'number' ? cloudThemeObj.transparency : (localThemeObj.transparency ?? 80),
+    ...localThemeObj,
   };
+  const mergedMode: ThemeMode = base.theme || localThemeObj.mode || 'dark';
 
-  // 9. إعدادات المظهر ولوحة التحكم
-  const cloudAppearance = (cloud.appearance_settings && typeof cloud.appearance_settings === 'object')
-    ? (cloud.appearance_settings as Record<string, any>)
-    : (cloudSync.appearanceSettings || {});
-  const localAppearance = base.appearanceSettings || DEFAULT_UNIFIED_SETTINGS.appearanceSettings;
-  const mergedAppearance = {
-    ...localAppearance,
-    ...cloudAppearance,
-    dashboardDesign: (cloudAppearance.dashboardDesign === 'unified_pro' || cloudAppearance.dashboardDesign === 'classic')
-      ? cloudAppearance.dashboardDesign
-      : (cloudSync.dashboardDesign || localAppearance.dashboardDesign || 'classic'),
-  };
+  // 9. إعدادات المظهر ولوحة التحكم (معزولة محلياً حسب المنصة)
+  const mergedAppearance = base.appearanceSettings || DEFAULT_UNIFIED_SETTINGS.appearanceSettings;
 
-  // 10. خط النظام (appFont / font_family)
-  let mergedFont: AppFontId = base.appFont || DEFAULT_APP_FONT_ID;
-  if (isValidAppFontId(cloud.font_family)) {
-    mergedFont = cloud.font_family as AppFontId;
-  } else if (isValidAppFontId(cloudSync.appFont)) {
-    mergedFont = cloudSync.appFont as AppFontId;
-  }
+  // 10. خط النظام (معزول محلياً حسب المنصة)
+  const mergedFont: AppFontId = base.appFont || DEFAULT_APP_FONT_ID;
 
-  // 11. مقياس الواجهة (uiScale)
-  let mergedScale: UIScaleId = base.uiScale || DEFAULT_UI_SCALE_ID;
-  if (isValidUIScaleId(cloudSync.uiScale)) {
-    mergedScale = cloudSync.uiScale as UIScaleId;
-  }
+  // 11. مقياس الواجهة (معزول محلياً حسب المنصة)
+  const mergedScale: UIScaleId = base.uiScale || DEFAULT_UI_SCALE_ID;
 
   // 12. الضريبة
   const mergedTaxEnabled = typeof cloud.tax_enabled === 'boolean'
@@ -488,6 +452,7 @@ export function mergeStoreSettings(
     : (base.customFields || null);
 
   return {
+    updatedAt: mergedUpdatedAt,
     storeSettings: mergedStore,
     primaryCurrency: mergedPrimary,
     enabledCurrencies: mergedEnabled,
@@ -526,42 +491,15 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
     // 1. حفظ في SETTINGS_STORAGE_KEY
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 
-    // 2. تطبيق الخط وتحديث مفتاحه
-    if (isValidAppFontId(settings.appFont)) {
-      try {
-        localStorage.setItem(APP_FONT_STORAGE_KEY, settings.appFont);
-        applyAppFontToDOM(settings.appFont);
-        window.dispatchEvent(new CustomEvent(APP_FONT_CHANGED_EVENT, { detail: { fontId: settings.appFont } }));
-      } catch {
-        // ignore
-      }
-    }
+    // 2. تطبيق الخط المحلي للمنصة
+    const platformFont = getStoredAppFont();
+    applyAppFontToDOM(platformFont);
 
-    // 3. تطبيق مقياس الواجهة وتحديث مفتاحه
-    if (isValidUIScaleId(settings.uiScale)) {
-      setStoredUIScale(settings.uiScale);
-    }
+    // 3. تطبيق مقياس الواجهة للمنصة
+    const platformScale = getStoredUIScale();
+    applyUIScaleToDOM(platformScale);
 
-    // 4. تطبيق الثيم وتحديث مفتاحه
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(settings.themeSettings));
-      applyTheme(settings.themeSettings.mode, settings.themeSettings.color);
-      applyBlurTheme(settings.themeSettings.blur, settings.themeSettings.mode, settings.themeSettings.transparency);
-    } catch {
-      // ignore
-    }
-
-    // 5. تطبيق نمط لوحة التحكم
-    if (settings.appearanceSettings?.dashboardDesign) {
-      try {
-        localStorage.setItem('hyperpos_dashboard_design_v1', settings.appearanceSettings.dashboardDesign);
-        window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: settings.appearanceSettings.dashboardDesign }));
-      } catch {
-        // ignore
-      }
-    }
-
-    // 6. تطبيق حقول المنتجات والحقول المخصصة
+    // 4. تطبيق حقول المنتجات والحقول المخصصة
     if (settings.productFieldsConfig) {
       try {
         localStorage.setItem('hyperpos_product_fields_v1', JSON.stringify(settings.productFieldsConfig));
@@ -579,7 +517,7 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
       }
     }
 
-    // 7. إطلاق الأحداث العامة لتحديث شاشات الكاشير، الفواتير، والمنتجات
+    // 5. إطلاق الأحداث العامة لتحديث شاشات الكاشير، الفواتير، والمنتجات
     emitEvent(EVENTS.SETTINGS_UPDATED, settings);
     emitEvent(EVENTS.STORE_TYPE_CHANGED);
   } catch (err) {
@@ -589,8 +527,8 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
 
 /**
  * بناء حمولة الحفظ السحابي لجدول stores
- * - تملأ الأعمدة المخصصة: theme, theme_settings, appearance_settings, font_family, primary_currency, etc.
- * - تدمج كائن sync_settings بالكامل شاملاً كل الإعدادات المشتركة
+ * - تستبعد تماماً المظهر والخطوط والمقياس لحمايتها من الكتابة العكسية بين المنصات
+ * - تدمج كائن sync_settings حاملاً إعدادات المتجر والعملات والضرائب والتشغيل و updatedAt
  */
 export function buildCloudStorePayload(
   settings: UnifiedStoreSettings,
@@ -598,14 +536,14 @@ export function buildCloudStorePayload(
 ): Record<string, unknown> {
   const mergedSync: Record<string, unknown> = {
     ...(existingCloudSync || {}),
-    uiScale: settings.uiScale,
-    appFont: settings.appFont,
-    theme: settings.themeSettings,
+    updatedAt: settings.updatedAt || Date.now(),
     primaryCurrency: settings.primaryCurrency,
     enabledCurrencies: settings.enabledCurrencies,
     currencyNames: settings.currencyNames,
     currencySymbols: settings.currencySymbols,
     exchangeRates: settings.exchangeRates,
+    taxEnabled: settings.taxEnabled,
+    taxRate: settings.taxRate,
     discountPercentEnabled: settings.discountPercentEnabled,
     discountFixedEnabled: settings.discountFixedEnabled,
     barcodeScanMode: settings.barcodeScanMode,
@@ -613,7 +551,6 @@ export function buildCloudStorePayload(
     trackCapital: settings.trackCapital,
     initialCapital: settings.initialCapital,
     backupSettings: settings.backupSettings,
-    dashboardDesign: settings.appearanceSettings?.dashboardDesign || 'classic',
   };
 
   if (settings.productFieldsConfig) {
@@ -640,13 +577,6 @@ export function buildCloudStorePayload(
       SYP: settings.exchangeRates.SYP,
     },
     language: settings.language,
-    theme: settings.themeSettings.mode,
-    theme_settings: settings.themeSettings,
-    appearance_settings: {
-      dashboardDesign: settings.appearanceSettings?.dashboardDesign || 'classic',
-      ...settings.appearanceSettings,
-    },
-    font_family: settings.appFont,
     tax_enabled: settings.taxEnabled,
     tax_rate: settings.taxRate,
     notification_settings: settings.notificationSettings,
@@ -664,18 +594,58 @@ export interface SaveSettingsResult {
 }
 
 /**
+ * سحب الإعدادات السحابية بحماية Anti-Overwrite Guard (Pull-Before-Push)
+ * يتم استدعاؤها عند فتح التطبيق أو تسجيل الدخول:
+ * - إذا كان المتصفح جديداً (!localUpdatedAt) أو كان السحابي أحدث (cloudUpdatedAt > localUpdatedAt):
+ *   يتم اعتماد الإعدادات السحابية وتحديث localStorage والعملات والضرائب فوراً.
+ * - يمنع منعاً باتاً رفع الإعدادات الافتراضية للسحابة أثناء عملية السحب.
+ */
+export async function pullStoreSettingsWithGuard(): Promise<UnifiedStoreSettings> {
+  const localSettings = loadUnifiedStoreSettings();
+  try {
+    const cloudSettings = await fetchStoreSettings();
+    if (!cloudSettings) {
+      return localSettings;
+    }
+
+    const cloudSync = (cloudSettings.sync_settings && typeof cloudSettings.sync_settings === 'object'
+      ? cloudSettings.sync_settings as Record<string, unknown>
+      : {}) as Record<string, any>;
+    const cloudUpdatedAt = Number(cloudSync.updatedAt) || (cloudSettings.updated_at ? new Date(cloudSettings.updated_at as string).getTime() : 0);
+    const localUpdatedAt = Number(localSettings.updatedAt) || 0;
+
+    // إذا كانت جلسة محلية جديدة دون طابع زمني أو كان السحابي أحدث
+    if (!localUpdatedAt || cloudUpdatedAt > localUpdatedAt) {
+      console.log(`[StoreSettingsSync] Adopting cloud settings (cloud: ${cloudUpdatedAt}, local: ${localUpdatedAt})`);
+      const merged = mergeStoreSettings(localSettings, cloudSettings);
+      merged.updatedAt = cloudUpdatedAt || Date.now();
+      applySettingsToRuntime(merged);
+      return merged;
+    } else {
+      console.log(`[StoreSettingsSync] Local settings are current (local: ${localUpdatedAt} >= cloud: ${cloudUpdatedAt})`);
+      return localSettings;
+    }
+  } catch (err) {
+    console.warn('[StoreSettingsSync] Failed to pull store settings from cloud:', err);
+    return localSettings;
+  }
+}
+
+/**
  * حفظ الإعدادات الموحدة:
- * 1. حفظ محلي فوري وتطبيق على الواجهة بدون أي انتظار.
- * 2. مزامنة سحابية في الخلفية مع توضيح الحالة الدقيقة (محفوظ محلياً، بانتظار المزامنة، تمت المزامنة).
+ * 1. حفظ محلي فوري وتطبيق على الواجهة بدون أي انتظار مع طابع زمني جديد updatedAt.
+ * 2. مزامنة سحابية في الخلفية مع توضيح الحالة الدقيقة.
  */
 export async function saveUnifiedStoreSettings(
   partial: Partial<UnifiedStoreSettings>
 ): Promise<SaveSettingsResult> {
   // 1. تحميل الإعدادات الحالية ودمج الجزئيات معها
   const current = loadUnifiedStoreSettings();
+  const updatedAt = partial.updatedAt || Date.now();
   const merged: UnifiedStoreSettings = {
     ...current,
     ...partial,
+    updatedAt,
     storeSettings: {
       ...current.storeSettings,
       ...(partial.storeSettings || {}),

@@ -147,9 +147,11 @@ export default function Customers() {
     // Listen for updates
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.APP_REFRESH, handleUpdate);
 
     return () => {
       window.removeEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.APP_REFRESH, handleUpdate);
     };
   }, [loadData]);
 

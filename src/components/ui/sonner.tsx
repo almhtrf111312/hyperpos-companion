@@ -13,7 +13,7 @@ export { getSavedToastDuration };
 /**
  * Standardized Flow POS Pro Toast Component
  * Backward-compatible host for Sonner while all visual notifications
- * are rendered via the unified SmartToastCard with swipe-to-dismiss.
+ * are rendered in-app via the unified SmartToastCard with swipe-to-dismiss.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
@@ -83,12 +83,12 @@ function formatSonnerDesc(data?: any): string | undefined {
 
 /**
  * Standardized Flow POS Pro Toast Wrapper
- * Bridges all Sonner calls to the unified SmartToastCard.
+ * Bridges all Sonner calls to the unified in-app SmartToastCard.
  */
 export const toast = Object.assign(
   (message: any, data?: any) => {
     const msg = typeof message === 'string' ? message : (message ? String(message) : '');
-    const desc = formatSonnerDesc(data);
+    const desc = formatSonnerDesc(data) || msg;
     showSmartToast({
       type: 'info',
       title: msg,
@@ -101,7 +101,7 @@ export const toast = Object.assign(
   {
     error: (message: any, data?: any) => {
       const msg = typeof message === 'string' ? message : (message ? String(message) : '');
-      const desc = formatSonnerDesc(data);
+      const desc = formatSonnerDesc(data) || msg;
       const isPersistent = data?.duration === Infinity || data?.persistent === true;
       showSmartToast({
         id: data?.id ? String(data.id) : undefined,
@@ -118,7 +118,7 @@ export const toast = Object.assign(
     },
     warning: (message: any, data?: any) => {
       const msg = typeof message === 'string' ? message : (message ? String(message) : '');
-      const desc = formatSonnerDesc(data);
+      const desc = formatSonnerDesc(data) || msg;
       showSmartToast({
         id: data?.id ? String(data.id) : undefined,
         type: 'warning',
@@ -134,7 +134,7 @@ export const toast = Object.assign(
     },
     info: (message: any, data?: any) => {
       const msg = typeof message === 'string' ? message : (message ? String(message) : '');
-      const desc = formatSonnerDesc(data);
+      const desc = formatSonnerDesc(data) || msg;
       showSmartToast({
         id: data?.id ? String(data.id) : undefined,
         type: 'info',
@@ -150,7 +150,7 @@ export const toast = Object.assign(
     },
     success: (message: any, data?: any) => {
       const msg = typeof message === 'string' ? message : (message ? String(message) : '');
-      const desc = formatSonnerDesc(data);
+      const desc = formatSonnerDesc(data) || msg;
       showSmartToast({
         id: data?.id ? String(data.id) : undefined,
         type: 'success',

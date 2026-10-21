@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
 import { toast } from '@/hooks/use-toast';
-import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
+import { getPlatformStoragePrefix } from '@/lib/app-font-config';
 
 type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
 
@@ -21,27 +21,24 @@ export default function Appearance() {
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
+  const getLayoutStorageKey = () => `flowpos_layout_${getPlatformStoragePrefix()}`;
+
   const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
-    return (localStorage.getItem('hyperpos_dashboard_design_v1') as any) || 'classic';
+    const platformKey = `flowpos_layout_${getPlatformStoragePrefix()}`;
+    return (localStorage.getItem(platformKey) as any) || (localStorage.getItem('hyperpos_dashboard_design_v1') as any) || 'classic';
   });
 
   const handleDesignChange = async (design: 'classic' | 'unified_pro') => {
     setDashboardDesign(design);
+    const platformKey = getLayoutStorageKey();
+    localStorage.setItem(platformKey, design);
     localStorage.setItem('hyperpos_dashboard_design_v1', design);
     window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: design }));
 
-    try {
-      const res = await saveUnifiedStoreSettings({
-        appearanceSettings: { dashboardDesign: design },
-      });
-      if (res.status === 'synced') {
-        toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم ومزامنته سحابياً بنجاح' : 'Layout updated & synced to cloud' });
-      } else {
-        toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم محلياً (بانتظار المزامنة)' : 'Layout updated locally (queued for sync)' });
-      }
-    } catch {
-      toast({ title: t('common.saved'), description: isRTL ? 'تم تغيير نمط التصميم بنجاح' : 'Layout updated' });
-    }
+    toast({
+      title: t('common.saved'),
+      description: isRTL ? 'تم تغيير نمط التصميم محلياً لهذه المنصة بنجاح' : 'Layout updated for this platform',
+    });
   };
 
   const handleSaveTheme = async () => {

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
-import { triggerAndroidSystemNotification } from '@/lib/native-notifications';
 
 export interface SmartToastData {
   id: string;
@@ -59,11 +58,8 @@ export const showSmartToast = (data: Omit<SmartToastData, 'id'> & { id?: string 
   activeToastUntil = Date.now() + duration;
 
   const id = data.id || Math.random().toString(36).substring(2, 9);
-
-  // 2. قراءة لغة التطبيق لتهيئة الشارات تلقائياً
   const lang = (typeof window !== 'undefined' && localStorage.getItem('hyperpos_language')) || 'ar';
 
-  // 3. معالجة وتوليد القيم الذكية الافتراضية إذا لم تُمرر
   let {
     type = 'success',
     title,
@@ -84,6 +80,35 @@ export const showSmartToast = (data: Omit<SmartToastData, 'id'> & { id?: string 
 
   if (invoiceNumber && !subtitle) {
     subtitle = `#${String(invoiceNumber).replace(/^#/, '')}`;
+  }
+
+  // 🛡️ معالجة شاملة لمنع ظهور الإشعار فارغاً:
+  // إذا تم تمرير نص مفرد في title فقط دون description ودون primaryValue
+  if (!description && !primaryValue && title) {
+    description = title;
+    if (type === 'error') {
+      title = lang === 'en' ? 'Error' : lang === 'tr' ? 'Hata' : 'خطأ';
+    } else if (type === 'warning') {
+      title = lang === 'en' ? 'Warning' : lang === 'tr' ? 'Uyarı' : 'تنبيه';
+    } else if (type === 'info') {
+      title = lang === 'en' ? 'Notice' : lang === 'tr' ? 'Bildirim' : 'إشعار';
+    } else if (type === 'settings') {
+      title = lang === 'en' ? 'Settings' : lang === 'tr' ? 'Ayarlar' : 'إعدادات النظام';
+    } else {
+      title = lang === 'en' ? 'Successful' : lang === 'tr' ? 'Başarılı' : 'تم بنجاح';
+    }
+  } else if (!title && description) {
+    if (type === 'error') {
+      title = lang === 'en' ? 'Error' : lang === 'tr' ? 'Hata' : 'خطأ';
+    } else if (type === 'warning') {
+      title = lang === 'en' ? 'Warning' : lang === 'tr' ? 'Uyarı' : 'تنبيه';
+    } else if (type === 'info') {
+      title = lang === 'en' ? 'Notice' : lang === 'tr' ? 'Bildirim' : 'إشعار';
+    } else if (type === 'settings') {
+      title = lang === 'en' ? 'Settings' : lang === 'tr' ? 'Ayarlar' : 'إعدادات النظام';
+    } else {
+      title = lang === 'en' ? 'Successful' : lang === 'tr' ? 'Başarılı' : 'تم بنجاح';
+    }
   }
 
   if (!statusBadge) {
@@ -148,28 +173,7 @@ export const showSmartToast = (data: Omit<SmartToastData, 'id'> & { id?: string 
     duration,
   };
 
-  // 4. إطلاق إشعار نظام أندرويد الأصلي بالتوازي مع البطاقة
-  const textTitle = typeof toastItem.title === 'string'
-    ? toastItem.title
-    : (toastItem.title ? String(toastItem.title) : 'FlowPOS Pro');
-
-  const textBody = typeof toastItem.description === 'string'
-    ? toastItem.description
-    : typeof toastItem.primaryValue === 'string'
-    ? toastItem.primaryValue
-    : typeof toastItem.subtitle === 'string'
-    ? toastItem.subtitle
-    : typeof toastItem.pillText === 'string'
-    ? toastItem.pillText
-    : textTitle;
-
-  triggerAndroidSystemNotification({
-    title: textTitle,
-    body: textBody,
-    subText: 'FlowPOS Pro',
-  }).catch(() => {});
-
-  // 5. تحديث قائمة الإشعارات النشطة (أقصى حد إشعارين لتفادي التكدس)
+  // ✅ الإشعار فوري داخل التطبيق حصراً (In-App Only - 0ms delay) بدون أي استدعاء خارجي لأندرويد
   currentToasts = [...currentToasts.filter(t => t.id !== id), toastItem].slice(-2);
   listeners.forEach(fn => fn([...currentToasts]));
 };
@@ -205,7 +209,7 @@ export function useSmartToastListener() {
 
   return {
     toasts,
-    toast: toasts[toasts.length - 1] || null, // للتوافق مع أي استدعاء يعتمد toast الفردي
+    toast: toasts[toasts.length - 1] || null,
     dismissToast,
     hideSmartToast,
   };

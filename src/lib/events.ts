@@ -30,6 +30,8 @@ export const EVENTS = {
   STOCK_TRANSFERS_UPDATED: 'hyperpos:stock-transfers-updated',
   STORE_TYPE_CHANGED: 'hyperpos:store-type-changed',
   PURCHASES_UPDATED: 'hyperpos:purchases-updated',
+  // Silent Non-Blocking App Refresh Event (Pull to Refresh & Realtime Updates)
+  APP_REFRESH: 'hyperpos:app-refresh',
 };
 
 // Subscribe to an event and return unsubscribe function
@@ -46,4 +48,8 @@ export function emitEvent(name: string, detail?: any) {
   } catch {
     // ignore (server-side rendering or no window)
   }
+}
+
+export function emitAppRefresh(detail?: any) {
+  emitEvent(EVENTS.APP_REFRESH, detail);
 }

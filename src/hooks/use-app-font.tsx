@@ -5,6 +5,8 @@ import {
   APP_FONTS,
   DEFAULT_APP_FONT_ID,
   APP_FONT_STORAGE_KEY,
+  LEGACY_APP_FONT_STORAGE_KEY,
+  getAppFontStorageKey,
   APP_FONT_CHANGED_EVENT,
   getStoredAppFont,
   setStoredAppFont,
@@ -33,7 +35,8 @@ export function useAppFont() {
     };
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === APP_FONT_STORAGE_KEY && isValidAppFontId(e.newValue)) {
+      const activeKey = getAppFontStorageKey();
+      if ((e.key === activeKey || e.key === APP_FONT_STORAGE_KEY || e.key === LEGACY_APP_FONT_STORAGE_KEY) && isValidAppFontId(e.newValue)) {
         setCurrentFontState(e.newValue);
         applyAppFontToDOM(e.newValue);
       }

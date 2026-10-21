@@ -457,8 +457,9 @@ export default function Settings() {
 
     savePersistedSettings(updated as PersistedSettings);
 
-    // الحفظ المتزامن والموحد في الخلفية (Offline-First)
+    // الحفظ المتزامن والموحد في الخلفية (Offline-First) مع طابع زمني جديد
     saveUnifiedStoreSettings({
+      updatedAt: Date.now(),
       enabledCurrencies: nextEnabled,
       primaryCurrency: newPrimary,
     }).catch(e => console.warn('[Settings] toggleCurrency unified save error:', e));
@@ -1123,6 +1124,7 @@ export default function Settings() {
       const existingProductFields = productFieldsConfig || loadProductFieldsConfig();
 
       const saveResult = await saveUnifiedStoreSettings({
+        updatedAt: Date.now(),
         storeSettings,
         primaryCurrency,
         enabledCurrencies,
@@ -4017,6 +4019,7 @@ export default function Settings() {
               onClick={async () => {
                 try {
                   await saveUnifiedStoreSettings({
+                    updatedAt: Date.now(),
                     storeSettings: { ...storeSettings, type: storeSettings.type },
                   });
                 } catch (e) { console.warn('[Settings] Unified store_type save failed:', e); }
@@ -4057,6 +4060,7 @@ export default function Settings() {
                 }
                 try {
                   await saveUnifiedStoreSettings({
+                    updatedAt: Date.now(),
                     storeSettings: { ...storeSettings, type: storeSettings.type },
                   });
                 } catch (e) { console.warn('[Settings] Unified store_type save failed:', e); }

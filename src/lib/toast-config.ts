@@ -3,11 +3,10 @@ import { showSmartToast, hideSmartToast, hideSmartToastById } from '@/hooks/use-
 /**
  * Unified toast notification utility linked to Flow POS Pro notifications system
  * 
- * ✅ Standardized toast implementation across the app
+ * ✅ Standardized in-app toast implementation across the app (0ms delay)
  * ✅ Unifies all notifications into the large SmartToastCard with swipe-to-dismiss
- * ✅ Prevents message stacking using deterministic message IDs
- * ✅ Throttles rapid identical messages
- * ✅ Integrates with Android native heads-up system notifications
+ * ✅ Guarantees full display of title and description with zero blank states
+ * ✅ Throttles rapid identical messages to prevent visual spam
  */
 
 // Throttle map to prevent repeated notifications
@@ -150,7 +149,7 @@ export const showToast = {
 
     const desc = typeof optionsOrDesc === 'string'
       ? optionsOrDesc
-      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc) || message;
 
     const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();
@@ -172,7 +171,7 @@ export const showToast = {
     const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
     const desc = typeof optionsOrDesc === 'string'
       ? optionsOrDesc
-      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc) || message;
 
     const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const isPersistent = isObj && (optionsOrDesc as any).persistent === true;
@@ -197,7 +196,7 @@ export const showToast = {
     const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
     const desc = typeof optionsOrDesc === 'string'
       ? optionsOrDesc
-      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc) || message;
 
     const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const duration = (isObj && optionsOrDesc.duration) ? Math.max(optionsOrDesc.duration, 5000) : 5000;
@@ -219,7 +218,7 @@ export const showToast = {
     const isObj = typeof optionsOrDesc === 'object' && optionsOrDesc !== null;
     const desc = typeof optionsOrDesc === 'string'
       ? optionsOrDesc
-      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc);
+      : optionsOrDesc?.description || formatHelperDescription(optionsOrDesc) || message;
 
     const parsed = isObj ? parseToastArgs(optionsOrDesc) : {};
     const duration = (isObj && optionsOrDesc.duration) ? optionsOrDesc.duration : getSavedToastDuration();

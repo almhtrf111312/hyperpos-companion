@@ -359,8 +359,15 @@ export function LicenseManagement() {
                     </span>
                   </div>
                   {license.email && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Mail className="w-3 h-3" /> {license.email}
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
+                      <Mail className="w-3 h-3 shrink-0" />
+                      <span
+                        dir="ltr"
+                        title={license.email}
+                        className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono"
+                      >
+                        {license.email}
+                      </span>
                     </span>
                   )}
                   <div className="flex items-center gap-2 flex-wrap">

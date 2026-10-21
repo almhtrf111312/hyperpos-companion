@@ -12,11 +12,11 @@ export interface ToastOptions {
 
 /**
  * Standardized Flow POS Pro useToast hook
- * Routes legacy and component useToast calls to the unified SmartToastCard.
+ * Routes legacy and component useToast calls to the in-app unified SmartToastCard.
  */
 export function toast(options: ToastOptions | string, extra?: any) {
   if (typeof options === "string") {
-    const desc = typeof extra === "object" && extra?.description ? extra.description : undefined;
+    const desc = typeof extra === "object" && extra?.description ? extra.description : options;
     showSmartToast({
       type: "success",
       title: options,
@@ -29,10 +29,13 @@ export function toast(options: ToastOptions | string, extra?: any) {
   const { title, description, variant, duration, ...rest } = options;
   const isDestructive = variant === "destructive";
 
+  const effectiveTitle = title || (isDestructive ? "خطأ" : "إشعار");
+  const effectiveDesc = description || effectiveTitle;
+
   showSmartToast({
     type: isDestructive ? "error" : "success",
-    title: title || (isDestructive ? "خطأ" : "إشعار"),
-    description,
+    title: effectiveTitle,
+    description: effectiveDesc,
     duration: duration ?? (isDestructive ? 6000 : getSavedToastDuration()),
     ...rest,
   });

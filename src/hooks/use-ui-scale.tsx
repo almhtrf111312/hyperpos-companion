@@ -5,6 +5,8 @@ import {
   UI_SCALE_OPTIONS,
   DEFAULT_UI_SCALE_ID,
   UI_SCALE_STORAGE_KEY,
+  LEGACY_UI_SCALE_STORAGE_KEY,
+  getUIScaleStorageKey,
   UI_SCALE_CHANGED_EVENT,
   getStoredUIScale,
   setStoredUIScale,
@@ -33,7 +35,8 @@ export function useUIScale() {
     };
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === UI_SCALE_STORAGE_KEY && isValidUIScaleId(e.newValue)) {
+      const activeKey = getUIScaleStorageKey();
+      if ((e.key === activeKey || e.key === UI_SCALE_STORAGE_KEY || e.key === LEGACY_UI_SCALE_STORAGE_KEY) && isValidUIScaleId(e.newValue)) {
         setCurrentScaleState(e.newValue);
         applyUIScaleToDOM(e.newValue);
       }

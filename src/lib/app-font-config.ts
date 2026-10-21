@@ -11,7 +11,20 @@ export interface AppFontOption {
   previewClass: string;
 }
 
-export const APP_FONT_STORAGE_KEY = 'hyperpos_app_font';
+export function getPlatformStoragePrefix(): 'mobile' | 'desktop' | 'web' {
+  const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
+  if (isCapacitor) return 'mobile';
+  const isElectron = typeof window !== 'undefined' && (navigator.userAgent.toLowerCase().includes('electron') || !!(window as any).electron);
+  if (isElectron) return 'desktop';
+  return 'web';
+}
+
+export function getAppFontStorageKey(): string {
+  return `flowpos_font_${getPlatformStoragePrefix()}`;
+}
+
+export const APP_FONT_STORAGE_KEY = 'flowpos_font';
+export const LEGACY_APP_FONT_STORAGE_KEY = 'hyperpos_app_font';
 export const DEFAULT_APP_FONT_ID: AppFontId = 'cairo';
 export const APP_FONT_CHANGED_EVENT = 'hyperpos:app_font_changed';
 
@@ -74,12 +87,16 @@ export function isValidAppFontId(val: unknown): val is AppFontId {
 
 export function getStoredAppFont(): AppFontId {
   try {
-    let stored = localStorage.getItem(APP_FONT_STORAGE_KEY);
+    const platformKey = getAppFontStorageKey();
+    let stored = localStorage.getItem(platformKey);
+    if (!stored) {
+      stored = localStorage.getItem(LEGACY_APP_FONT_STORAGE_KEY);
+    }
     if (!stored) {
       const rawSettings = localStorage.getItem('hyperpos_settings_v1');
       if (rawSettings) {
         const parsed = JSON.parse(rawSettings);
-        stored = parsed?.appFont || parsed?.font_family || parsed?.sync_settings?.appFont || parsed?.syncSettings?.appFont;
+        stored = parsed?.appFont || parsed?.font_family;
       }
     }
     if (stored) {
@@ -106,16 +123,10 @@ export function applyAppFontToDOM(fontId: AppFontId): void {
 export function setStoredAppFont(fontId: AppFontId): void {
   if (!isValidAppFontId(fontId)) return;
   try {
-    localStorage.setItem(APP_FONT_STORAGE_KEY, fontId);
-    const rawSettings = localStorage.getItem('hyperpos_settings_v1');
-    if (rawSettings) {
-      const parsed = JSON.parse(rawSettings);
-      parsed.appFont = fontId;
-      parsed.font_family = fontId;
-      if (!parsed.sync_settings) parsed.sync_settings = {};
-      parsed.sync_settings.appFont = fontId;
-      localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
-    }
+    const platformKey = getAppFontStorageKey();
+    localStorage.setItem(platformKey, fontId);
+    // Keep legacy key updated locally as fallback
+    localStorage.setItem(LEGACY_APP_FONT_STORAGE_KEY, fontId);
   } catch {
     // ignore
   }

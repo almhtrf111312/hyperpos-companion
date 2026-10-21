@@ -608,10 +608,12 @@ export default function POS() {
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
+    window.addEventListener(EVENTS.APP_REFRESH, onProductsUpdated as EventListener);
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, onProductsUpdated as EventListener);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, onCategoriesUpdated as EventListener);
+      window.removeEventListener(EVENTS.APP_REFRESH, onProductsUpdated as EventListener);
     };
   }, [loadData, formatPosProducts, profile, activeWarehouse, updateProducts]);
 

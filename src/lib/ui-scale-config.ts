@@ -21,7 +21,14 @@ export interface UIScaleOption {
   descriptionEn: string;
 }
 
-export const UI_SCALE_STORAGE_KEY = 'hyperpos_ui_scale';
+import { getPlatformStoragePrefix } from '@/lib/app-font-config';
+
+export function getUIScaleStorageKey(): string {
+  return `flowpos_ui_scale_${getPlatformStoragePrefix()}`;
+}
+
+export const UI_SCALE_STORAGE_KEY = 'flowpos_ui_scale';
+export const LEGACY_UI_SCALE_STORAGE_KEY = 'hyperpos_ui_scale';
 export const DEFAULT_UI_SCALE_ID: UIScaleId = '100';
 export const DEFAULT_UI_SCALE_PX = '14px';
 export const UI_SCALE_CHANGED_EVENT = 'hyperpos:ui_scale_changed';
@@ -102,12 +109,16 @@ export function isValidUIScaleId(val: unknown): val is UIScaleId {
 
 export function getStoredUIScale(): UIScaleId {
   try {
-    let stored = localStorage.getItem(UI_SCALE_STORAGE_KEY);
+    const platformKey = getUIScaleStorageKey();
+    let stored = localStorage.getItem(platformKey);
+    if (!stored) {
+      stored = localStorage.getItem(LEGACY_UI_SCALE_STORAGE_KEY);
+    }
     if (!stored) {
       const rawSettings = localStorage.getItem('hyperpos_settings_v1');
       if (rawSettings) {
         const parsed = JSON.parse(rawSettings);
-        stored = parsed?.uiScale || parsed?.sync_settings?.uiScale || parsed?.syncSettings?.uiScale;
+        stored = parsed?.uiScale;
       }
     }
     if (stored) {
@@ -140,15 +151,9 @@ export function applyUIScaleToDOM(scaleId: UIScaleId): void {
 export function setStoredUIScale(scaleId: UIScaleId): void {
   if (!isValidUIScaleId(scaleId)) return;
   try {
-    localStorage.setItem(UI_SCALE_STORAGE_KEY, scaleId);
-    const rawSettings = localStorage.getItem('hyperpos_settings_v1');
-    if (rawSettings) {
-      const parsed = JSON.parse(rawSettings);
-      parsed.uiScale = scaleId;
-      if (!parsed.sync_settings) parsed.sync_settings = {};
-      parsed.sync_settings.uiScale = scaleId;
-      localStorage.setItem('hyperpos_settings_v1', JSON.stringify(parsed));
-    }
+    const platformKey = getUIScaleStorageKey();
+    localStorage.setItem(platformKey, scaleId);
+    localStorage.setItem(LEGACY_UI_SCALE_STORAGE_KEY, scaleId);
   } catch {
     // ignore
   }

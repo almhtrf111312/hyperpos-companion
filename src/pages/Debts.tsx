@@ -142,9 +142,11 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     // Listen for updates
     const handleUpdate = () => loadData();
     window.addEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.APP_REFRESH, handleUpdate);
 
     return () => {
       window.removeEventListener(EVENTS.DEBTS_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.APP_REFRESH, handleUpdate);
     };
   }, []);
 

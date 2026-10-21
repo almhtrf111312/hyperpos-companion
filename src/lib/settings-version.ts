@@ -20,12 +20,14 @@ const KEYS_TO_CLEAR = [
   'hyperpos_sync_settings',
 ];
 
-// Keys to NEVER clear (user session & critical data)
+// Keys to NEVER clear (user session, operational settings & critical per-platform appearance data)
 // These are preserved across version bumps:
 // - sb-* (Supabase auth tokens)
+// - hyperpos_settings_v1 (Unified store settings with anti-overwrite timestamp)
+// - flowpos_theme_*, flowpos_font_*, flowpos_ui_scale_*, flowpos_layout_* (Platform-isolated appearance)
 // - hyperpos_products_*, hyperpos_customers_*, etc. (cached data)
 // - hyperpos_product_form_temp (form persistence)
-// - privacy_accepted, hyperpos_language
+// - hyperpos_privacy_accepted, hyperpos_language
 
 /**
  * Check if local settings version is outdated and clear stale keys if so.

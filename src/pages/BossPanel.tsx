@@ -1488,9 +1488,15 @@ export default function BossPanel() {
 
                               {/* Email */}
                               {owner.email && (
-                                <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground min-w-0">
                                   <Mail className="w-3 h-3 flex-shrink-0" />
-                                  <span className="font-mono break-all">{owner.email}</span>
+                                  <span
+                                    dir="ltr"
+                                    title={owner.email}
+                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono"
+                                  >
+                                    {owner.email}
+                                  </span>
                                   <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => copyToClipboard(owner.email!)}>
                                     <Copy className="w-3 h-3" />
                                   </Button>
@@ -1683,7 +1689,13 @@ export default function BossPanel() {
                                           <div className="flex flex-col min-w-0">
                                             <span className="text-sm font-medium truncate">{cashier.full_name || 'بدون اسم'}</span>
                                             {cashier.email && (
-                                              <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[12.8rem]">{cashier.email}</span>
+                                              <span
+                                                dir="ltr"
+                                                title={cashier.email}
+                                                className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px] sm:max-w-none inline-block text-left"
+                                              >
+                                                {cashier.email}
+                                              </span>
                                             )}
                                           </div>
                                           <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${typeColor}`}>{typeLabel}</Badge>
@@ -1882,21 +1894,39 @@ export default function BossPanel() {
                             )}
                           </div>
                           {(assignedOwner || code.assigned_email) && (
-                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-primary/10 text-primary rounded-lg px-2 py-1.5">
+                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-primary/10 text-primary rounded-lg px-2 py-1.5 min-w-0">
                               <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                              <span className="break-all">
-                                مخصص لـ: {assignedOwner?.full_name || code.assigned_email || 'حساب محدد'}
-                                {assignedOwner?.email && <span className="font-mono opacity-80"> ({assignedOwner.email})</span>}
-                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span>مخصص لـ: {assignedOwner?.full_name || code.assigned_email || 'حساب محدد'}</span>
+                                {assignedOwner?.email && (
+                                  <span
+                                    dir="ltr"
+                                    title={assignedOwner.email}
+                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono opacity-80"
+                                  >
+                                    {' '}({assignedOwner.email})
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           )}
                           {(usedOwner || code.used_at) && (
-                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg px-2 py-1.5">
+                            <div className="flex items-start gap-1.5 text-[11px] md:text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg px-2 py-1.5 min-w-0">
                               <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                              <span className="break-all">
-                                فُعِّل بواسطة: {usedOwner?.full_name || usedOwner?.email || 'حساب'}
+                              <div className="min-w-0 flex-1">
+                                <span>فُعِّل بواسطة: {usedOwner?.full_name || ''}</span>
+                                {usedOwner?.email && (
+                                  <span
+                                    dir="ltr"
+                                    title={usedOwner.email}
+                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono opacity-80"
+                                  >
+                                    {' '}({usedOwner.email})
+                                  </span>
+                                )}
+                                {!usedOwner?.full_name && !usedOwner?.email && <span>حساب</span>}
                                 {code.used_at && <span className="opacity-80"> — {new Date(code.used_at).toLocaleDateString('ar-EG')}</span>}
-                              </span>
+                              </div>
                             </div>
                           )}
                           <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
@@ -1915,11 +1945,17 @@ export default function BossPanel() {
                               </span>
                             )}
                             {linkedOwner && (
-                              <span className="flex items-center gap-1.5 bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
-                                <Mail className="w-3.5 h-3.5" />
-                                مرتبط بـ: {linkedOwner.name || 'بدون اسم'}
+                              <span className="flex items-center gap-1.5 bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium min-w-0">
+                                <Mail className="w-3.5 h-3.5 shrink-0" />
+                                <span>مرتبط بـ: {linkedOwner.name || 'بدون اسم'}</span>
                                 {linkedOwner.email && (
-                                  <span className="font-mono text-[11px] opacity-80">({linkedOwner.email})</span>
+                                  <span
+                                    dir="ltr"
+                                    title={linkedOwner.email}
+                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono text-[11px] opacity-80"
+                                  >
+                                    ({linkedOwner.email})
+                                  </span>
                                 )}
                               </span>
                             )}
@@ -1989,7 +2025,15 @@ export default function BossPanel() {
                                 )}
                               </div>
                               {owner.email && (
-                                <p className="text-xs text-muted-foreground font-mono mt-1">{owner.email}</p>
+                                <p className="text-xs text-muted-foreground mt-1 min-w-0">
+                                  <span
+                                    dir="ltr"
+                                    title={owner.email}
+                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono"
+                                  >
+                                    {owner.email}
+                                  </span>
+                                </p>
                               )}
                               {owner.license_expires && (
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -2378,9 +2422,15 @@ export default function BossPanel() {
               <div className="bg-muted/50 p-3 rounded-lg space-y-1">
                 <p className="font-medium">{activationDialog?.owner.full_name || 'بدون اسم'}</p>
                 {activationDialog?.owner.email && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Mail className="w-3 h-3" />
-                    {activationDialog.owner.email}
+                  <p className="text-sm text-muted-foreground flex items-center gap-1 min-w-0">
+                    <Mail className="w-3 h-3 shrink-0" />
+                    <span
+                      dir="ltr"
+                      title={activationDialog.owner.email}
+                      className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono"
+                    >
+                      {activationDialog.owner.email}
+                    </span>
                   </p>
                 )}
               </div>

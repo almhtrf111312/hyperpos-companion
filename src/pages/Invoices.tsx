@@ -310,17 +310,24 @@ export default function Invoices() {
   const [refundMode, setRefundMode] = useState<'full' | 'partial'>('full');
   const [partialRefundQuantities, setPartialRefundQuantities] = useState<Record<string, number>>({});
   const [showRefunded, setShowRefunded] = useState(false);
-  const [refundCondition, setRefundCondition] = useState<'good' | 'damaged'>('good');
+  // ✅ حالة البضاعة المرتجعة مثبتة دائماً على 'good' (سليم) لتعود الكميات تلقائياً إلى المخزون
+  const refundCondition: 'good' = 'good';
   const [refundMeta, setRefundMeta] = useState<Record<string, { condition: 'good' | 'damaged'; at: string; mode: string }>>(() => {
     try { return JSON.parse(localStorage.getItem('hyperpos_refund_meta_v1') || '{}'); } catch { return {}; }
   });
-  const saveRefundMeta = (invoiceId: string) => {
+  const saveRefundMeta = (invoiceId: string, mode: 'full' | 'partial' = refundMode) => {
     setRefundMeta(prev => {
-      const next = { ...prev, [invoiceId]: { condition: refundCondition, at: new Date().toISOString(), mode: refundMode } };
+      const next = { ...prev, [invoiceId]: { condition: 'good' as const, at: new Date().toISOString(), mode } };
       try { localStorage.setItem('hyperpos_refund_meta_v1', JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   };
+
+  const canPartialRefund = useMemo(() => {
+    const items = invoiceToRefund?.items || [];
+    const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    return items.length > 1 || totalQuantity > 1;
+  }, [invoiceToRefund]);
   const [stats, setStats] = useState({ total: 0, todayCount: 0, todaySales: 0, totalSales: 0, pendingDebts: 0, totalProfit: 0 });
   const refundGuard = useActionGuard();
   const markPaidGuard = useActionGuard();
@@ -633,9 +640,11 @@ export default function Invoices() {
     };
 
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
+    window.addEventListener(EVENTS.APP_REFRESH, handleUpdate);
 
     return () => {
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
+      window.removeEventListener(EVENTS.APP_REFRESH, handleUpdate);
     };
   }, [loadData]);
 
@@ -897,7 +906,7 @@ export default function Invoices() {
   const confirmRefund = () => refundGuard.run(async () => {
     if (!invoiceToRefund) return;
     const invoice = invoiceToRefund;
-    saveRefundMeta(invoice.id);
+    saveRefundMeta(invoice.id, 'full');
     // Snapshot invoice-specific data BEFORE running so notifications reflect this exact invoice
     const invoiceLabel = invoice.id;
     const refundFin = getInvoiceFinancials(invoice);
@@ -1045,7 +1054,7 @@ export default function Invoices() {
   const confirmPartialRefund = () => refundGuard.run(async () => {
     if (!invoiceToRefund) return;
     const invoice = invoiceToRefund;
-    saveRefundMeta(invoice.id);
+    saveRefundMeta(invoice.id, 'partial');
     const invoiceLabel = invoice.id;
     const toastId = `refund-${invoiceLabel}`;
 
@@ -2067,12 +2076,23 @@ export default function Invoices() {
                 const invUsdProfit = financials.baseProfit || 0;
                 const invUpper = (invoice.currency || 'USD').toUpperCase();
                 const itemCount = invoice.items?.filter(it => !it.refunded && it.quantity > 0).length || 0;
+                const isFullyRefunded = invoice.status === 'refunded';
+                const isPartiallyRefunded = !isFullyRefunded && (
+                  refundMeta[invoice.id]?.mode === 'partial' ||
+                  Boolean(invoice.items && invoice.items.length > 0 && invoice.items.some(it => it.refunded || it.quantity <= 0)) ||
+                  Boolean((invoice as any).is_partially_refunded || (invoice as any).partially_refunded)
+                );
 
                 return (
                   <div
                     key={invoice.id}
                     onClick={() => handleView(invoice)}
-                    className="invoice-card bg-card text-card-foreground rounded-xl p-3 border border-border/80 shadow-xs relative hover:border-primary/40 active:scale-[0.99] transition-[colors,transform] cursor-pointer select-none"
+                    className={cn(
+                      "invoice-card rounded-xl p-3 border shadow-xs relative active:scale-[0.99] transition-[colors,transform] cursor-pointer select-none",
+                      isFullyRefunded
+                        ? "border-rose-500/40 bg-rose-500/5 hover:border-rose-500/60"
+                        : "border-border/80 bg-card text-card-foreground hover:border-primary/40"
+                    )}
                   >
                     {/* زر الخيارات ثلاثي النقاط - أعلى اليسار */}
                     <div className="absolute left-2.5 top-2.5 z-10" onClick={(e) => e.stopPropagation()}>
@@ -2104,7 +2124,7 @@ export default function Invoices() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          {invoice.status !== 'refunded' && (
+                          {!isFullyRefunded && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleRefund(invoice)} className="justify-between text-destructive cursor-pointer">
@@ -2149,11 +2169,19 @@ export default function Invoices() {
                         )
                       )}
 
-                      {/* شارة الاسترداد إن وجدت */}
-                      {invoice.status === 'refunded' && (
-                        <span className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      {/* شارة الاسترداد الكلي */}
+                      {isFullyRefunded && (
+                        <span className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/40 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs">
                           <Undo2 className="w-2.5 h-2.5" />
-                          {t('invoices.refunded') || 'مستردة'}
+                          {t('refundedInvoiceBadge') || t('invoices.refundedInvoiceBadge') || 'مستردة بالكامل'}
+                        </span>
+                      )}
+
+                      {/* شارة الاسترداد الجزئي */}
+                      {isPartiallyRefunded && (
+                        <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs">
+                          <Layers className="w-2.5 h-2.5" />
+                          {t('partiallyRefundedBadge') || t('invoices.partiallyRefundedBadge') || 'مستردة جزئياً'}
                         </span>
                       )}
 
@@ -2162,13 +2190,6 @@ export default function Invoices() {
                         <span className="bg-destructive/15 text-destructive border border-destructive/30 text-[8.5px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                           <XCircle className="w-2.5 h-2.5" />
                           {'ملغاة'}
-                        </span>
-                      )}
-
-                      {/* حالة فحص الفاتورة المستردة */}
-                      {refundMeta[invoice.id] && (
-                        <span className="text-[8.5px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border border-border font-medium">
-                          {refundMeta[invoice.id].condition === 'damaged' ? t('invoices.conditionDefective') : t('invoices.conditionGood')}
                         </span>
                       )}
 
@@ -2646,11 +2667,30 @@ export default function Invoices() {
           {invoiceToRefund?.type === 'sale' && invoiceToRefund.items && invoiceToRefund.items.length > 0 && (
             <div className="sticky top-0 z-10 bg-background px-6 pt-1 pb-2">
               <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant={refundMode === 'full' ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal text-xs gap-1.5" onClick={() => setRefundMode('full')}>
+                <Button
+                  type="button"
+                  variant={refundMode === 'full' ? 'default' : 'outline'}
+                  className="h-auto min-h-10 whitespace-normal text-xs gap-1.5"
+                  onClick={() => setRefundMode('full')}
+                >
                   <RotateCcw className="w-3.5 h-3.5 shrink-0" />
                   {t('invoices.fullRefund') || 'استرداد كلي'}
                 </Button>
-                <Button type="button" variant={refundMode === 'partial' ? 'default' : 'outline'} className="h-auto min-h-10 whitespace-normal text-xs gap-1.5" onClick={() => setRefundMode('partial')}>
+                <Button
+                  type="button"
+                  variant={refundMode === 'partial' ? 'default' : 'outline'}
+                  className={cn(
+                    "h-auto min-h-10 whitespace-normal text-xs gap-1.5",
+                    !canPartialRefund && "opacity-50 cursor-not-allowed"
+                  )}
+                  disabled={!canPartialRefund}
+                  onClick={() => {
+                    if (canPartialRefund) {
+                      setRefundMode('partial');
+                    }
+                  }}
+                  title={!canPartialRefund ? (t('invoices.partialRefundNotAvailable') || 'الاسترداد الجزئي يتطلب أكثر من صنف أو أكثر من قطعة') : undefined}
+                >
                   <Layers className="w-3.5 h-3.5 shrink-0" />
                   {t('invoices.partialRefund') || 'استرداد جزئي'}
                 </Button>
@@ -2875,24 +2915,6 @@ export default function Invoices() {
               </div>
             )}
 
-            {/* Returned goods condition */}
-            <div className="space-y-1.5 text-right">
-              <span className="text-xs font-medium text-muted-foreground">{t('invoices.itemCondition') || 'حالة البضاعة المرتجعة'}:</span>
-              <div className="grid grid-cols-2 gap-2">
-                {(['good', 'damaged'] as const).map((c) => (
-                  <Button
-                    key={c}
-                    type="button"
-                    size="sm"
-                    variant={refundCondition === c ? (c === 'good' ? 'default' : 'destructive') : 'outline'}
-                    className="h-9 text-xs"
-                    onClick={() => setRefundCondition(c)}
-                  >
-                    {c === 'good' ? (t('invoices.conditionGood') || 'سليم') : (t('invoices.conditionDefective') || 'معيب')}
-                  </Button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <DialogFooter className="p-4 border-t bg-muted/20 gap-2 flex-row justify-end">
@@ -2907,7 +2929,7 @@ export default function Invoices() {
                 aria-busy={refundGuard.isRunning}
               >
                 <Undo2 className={cn('w-4 h-4', refundGuard.isRunning && 'animate-spin')} />
-                {refundGuard.isRunning ? (t('common.loading') || 'جاري الاسترداد...') : (t('invoices.confirmFullRefund') || 'تأكيد الاسترداد الكامل')}
+                {refundGuard.isRunning ? (t('common.loading') || 'جاري الاسترداد...') : (t('confirmReturnAction') || t('invoices.confirmFullRefund') || 'تأكيد الاسترجاع')}
               </Button>
             ) : (
               <Button

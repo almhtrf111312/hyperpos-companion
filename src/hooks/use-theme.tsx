@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getPlatformStoragePrefix } from '@/lib/app-font-config';
 
 export type ThemeMode = 'light' | 'dark';
 export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta' | 'coffee' | 'silver';
@@ -21,7 +22,12 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = 'hyperpos_theme_v1';
+export function getThemeStorageKey(): string {
+  return `flowpos_theme_${getPlatformStoragePrefix()}`;
+}
+
+export const THEME_STORAGE_KEY = 'flowpos_theme';
+export const LEGACY_THEME_STORAGE_KEY = 'hyperpos_theme_v1';
 
 // Theme color definitions with HSL values
 export const themeColors: Record<ThemeColor, { name: string; nameAr: string; primary: string; accent: string }> = {
@@ -411,10 +417,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [transparencyLevel, setTransparencyLevelState] = useState<number>(DEFAULT_TRANSPARENCY);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // ✅ Step 1: Load from localStorage IMMEDIATELY (synchronous, no blocking)
+  // ✅ Step 1: Load from platform-isolated localStorage IMMEDIATELY (synchronous, no blocking)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      const platformKey = getThemeStorageKey();
+      let saved = localStorage.getItem(platformKey);
+      if (!saved) {
+        saved = localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+      }
       if (saved) {
         const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency } = JSON.parse(saved);
         const finalMode = savedMode || DEFAULT_MODE;
@@ -438,51 +448,41 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setIsInitialized(true);
   }, []);
 
-  // ✅ Step 2: Sync from cloud in BACKGROUND (non-blocking)
+  // ✅ Step 2: Storage listener for same-platform multi-tab synchronization
   useEffect(() => {
-    const syncFromCloud = async () => {
-      try {
-        const { fetchStoreSettings } = await import('@/lib/supabase-store');
-        const store = await fetchStoreSettings();
-        if (!store) return;
-
-        const cloudSettings = (store.theme_settings && typeof store.theme_settings === 'object')
-          ? store.theme_settings as Record<string, any>
-          : ((store.sync_settings as any)?.theme || {});
-
-        const modeFromStore = (store.theme === 'light' || store.theme === 'dark') ? store.theme : cloudSettings.mode;
-        if (modeFromStore || cloudSettings.color) {
-          const finalMode: ThemeMode = modeFromStore === 'light' ? 'light' : (modeFromStore === 'dark' ? 'dark' : mode);
-          const finalColor: ThemeColor = cloudSettings.color || color;
-          const finalBlur = cloudSettings.blur ?? blurEnabled;
-          const finalTransparency = typeof cloudSettings.transparency === 'number' ? cloudSettings.transparency : transparencyLevel;
+    const handleStorage = (e: StorageEvent) => {
+      const platformKey = getThemeStorageKey();
+      if ((e.key === platformKey || e.key === THEME_STORAGE_KEY || e.key === LEGACY_THEME_STORAGE_KEY) && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          const finalMode = parsed.mode || DEFAULT_MODE;
+          const finalColor = parsed.color || DEFAULT_COLOR;
+          const finalBlur = parsed.blur ?? DEFAULT_BLUR;
+          const finalTransparency = typeof parsed.transparency === 'number' ? parsed.transparency : DEFAULT_TRANSPARENCY;
           setModeState(finalMode);
           setColorState(finalColor);
           setBlurEnabledState(finalBlur);
           setTransparencyLevelState(finalTransparency);
           applyTheme(finalMode, finalColor);
           applyBlurTheme(finalBlur, finalMode, finalTransparency);
-          localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: finalMode, color: finalColor, blur: finalBlur, transparency: finalTransparency }));
+        } catch {
+          // ignore
         }
-      } catch { /* ignore cloud sync errors */ }
+      }
     };
-    syncFromCloud();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const syncThemeToCloud = useCallback(async (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
-    try {
-      const themeSettings = { mode: m, color: c, blur: b, transparency: t };
-      const { saveUnifiedStoreSettings } = await import('@/lib/store-settings-sync');
-      await saveUnifiedStoreSettings({
-        theme: m,
-        themeSettings,
-      });
-    } catch { /* ignore cloud sync errors */ }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const saveTheme = (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
-    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify({ mode: m, color: c, blur: b, transparency: t }));
-    syncThemeToCloud(m, c, b, t);
+    try {
+      const platformKey = getThemeStorageKey();
+      const themeData = JSON.stringify({ mode: m, color: c, blur: b, transparency: t });
+      localStorage.setItem(platformKey, themeData);
+      localStorage.setItem(LEGACY_THEME_STORAGE_KEY, themeData);
+    } catch {
+      // ignore
+    }
   };
 
   const setMode = (newMode: ThemeMode) => {

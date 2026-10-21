@@ -568,10 +568,12 @@ export default function Products() {
 
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
     window.addEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
+    window.addEventListener(EVENTS.APP_REFRESH, handleProductsUpdated);
 
     return () => {
       window.removeEventListener(EVENTS.PRODUCTS_UPDATED, handleProductsUpdated);
       window.removeEventListener(EVENTS.CATEGORIES_UPDATED, handleCategoriesUpdated);
+      window.removeEventListener(EVENTS.APP_REFRESH, handleProductsUpdated);
     };
   }, [loadData, loadArchivedData]);
 
