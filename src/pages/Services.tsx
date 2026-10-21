@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DatePicker } from '@/components/ui/date-picker';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { EVENTS, emitEvent } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';

@@ -7,7 +7,7 @@ import { loadWarehousesCloud, loadWarehouseStockCloud } from '@/lib/cloud/wareho
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { useLanguage } from '@/hooks/use-language';
 import { cn, formatCurrency } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 interface DistributorCustodyValue {
   warehouseId: string;

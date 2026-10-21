@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { loadInvoicesCloud, deleteInvoiceCloud, Invoice } from '@/lib/cloud/invoices-cloud';
 import { getStoreSettings, getPrintSettings } from '@/lib/print-utils';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';

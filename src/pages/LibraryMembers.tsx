@@ -17,7 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
 import { DatePicker } from '@/components/ui/date-picker';
 import {

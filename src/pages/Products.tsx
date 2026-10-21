@@ -60,7 +60,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { PENDING_BARCODE_KEY } from '@/components/barcode/OfflineBarcodeScanner';
 import { CategoryManager } from '@/components/CategoryManager';

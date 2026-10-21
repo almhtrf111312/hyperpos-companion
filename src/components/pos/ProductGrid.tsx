@@ -7,7 +7,7 @@ import { cn, formatNumber } from '@/lib/utils';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
 import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
 

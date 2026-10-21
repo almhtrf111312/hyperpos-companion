@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DatePicker } from '@/components/ui/date-picker';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { showSmartToast } from '@/hooks/use-smart-toast';
 import { loadDefaultCurrencyCode, loadEnabledCurrencies } from '@/hooks/use-currency';
 import { resolveCurrencyMeta } from '@/lib/currencies';

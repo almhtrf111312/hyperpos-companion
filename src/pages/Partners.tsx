@@ -57,7 +57,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { getCategoryNames } from '@/lib/categories-store';
 import { CategoryManager } from '@/components/CategoryManager';
 import { loadProducts } from '@/lib/products-store';

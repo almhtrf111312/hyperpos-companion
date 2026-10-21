@@ -7,7 +7,7 @@ import { useNotifications, Notification } from '@/hooks/use-notifications';
 import { loadProductsCloud, updateProductCloud } from '@/lib/cloud/products-cloud';
 import { loadDebtsCloud } from '@/lib/cloud/debts-cloud';
 import { loadInvoicesCloud, Invoice } from '@/lib/cloud/invoices-cloud';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
 import { formatNumber } from '@/lib/utils';
 

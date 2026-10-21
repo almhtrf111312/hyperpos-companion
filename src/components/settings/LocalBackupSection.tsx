@@ -13,7 +13,7 @@ import {
   BACKUP_UPDATED_EVENT,
   LocalBackup,
 } from '@/lib/local-auto-backup';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { loadUnifiedStoreSettings, applySettingsToRuntime } from '@/lib/store-settings-sync';
 

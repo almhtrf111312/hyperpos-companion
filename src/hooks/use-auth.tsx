@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { getDeviceId } from '@/lib/device-fingerprint';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { isGuestDemoMode, clearGuestDemoData } from '@/lib/demo-data';
 
 // Helper function to check if account is active and license is not revoked

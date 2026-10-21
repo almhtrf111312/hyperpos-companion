@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useLanguage } from '@/hooks/use-language';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import {
   ShoppingBag,
   Image as ImageIcon,

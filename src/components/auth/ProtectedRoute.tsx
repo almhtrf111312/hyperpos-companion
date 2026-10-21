@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, checkUserAccountStatus } from '@/hooks/use-auth';
 import { Loader2, Smartphone } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { isGuestDemoMode } from '@/lib/demo-data';
 
 interface ProtectedRouteProps {

@@ -9,7 +9,7 @@ import {
   setStoredUIScale,
   applyUIScaleToDOM,
 } from '@/lib/ui-scale-config';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { Slider } from '@/components/ui/slider';
 import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 import { EVENTS } from '@/lib/events';

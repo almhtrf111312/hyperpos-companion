@@ -9,7 +9,7 @@ import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 interface DistributorStock {
   productId: string;

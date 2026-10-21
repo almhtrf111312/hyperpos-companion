@@ -7,7 +7,7 @@ import { formatNumber, formatReportAmount } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { exportGenericToPDF, exportGenericToExcel } from '@/lib/reports/dataset-builder';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
 
 interface Props {

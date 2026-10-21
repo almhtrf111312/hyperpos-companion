@@ -3,7 +3,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Globe, Check, Save } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { Language } from '@/lib/i18n';
 
 export function LanguageSection() {

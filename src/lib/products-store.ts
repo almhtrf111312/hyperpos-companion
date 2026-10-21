@@ -1,6 +1,6 @@
 import { emitEvent, EVENTS } from './events';
 import { safeSave } from './safe-storage';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 const PRODUCTS_STORAGE_KEY = 'hyperpos_products_v1';
 

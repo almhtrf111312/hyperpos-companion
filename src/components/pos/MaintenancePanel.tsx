@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { addInvoiceCloud } from '@/lib/cloud/invoices-cloud';
 import { distributeDetailedProfitCloud } from '@/lib/cloud/partners-cloud';
 import { addDebtFromInvoiceCloud } from '@/lib/cloud/debts-cloud';

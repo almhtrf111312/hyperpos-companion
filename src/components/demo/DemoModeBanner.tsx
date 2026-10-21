@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isGuestDemoMode, getDemoRemainingTime, clearGuestDemoData } from '@/lib/demo-data';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 /**
  * DemoModeBanner

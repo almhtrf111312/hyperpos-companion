@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLicense } from './use-license';
 import { useAuth } from './use-auth';
 

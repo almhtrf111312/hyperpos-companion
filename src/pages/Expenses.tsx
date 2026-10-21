@@ -57,7 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from '@/components/ui/date-picker';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import {
   loadExpensesCloud,
   addExpenseCloud,

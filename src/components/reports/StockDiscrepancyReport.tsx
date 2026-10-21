@@ -7,7 +7,7 @@ import { listStockDiscrepancies, type StockDiscrepancy } from '@/lib/cloud/stock
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { cn, formatNumber, formatReportAmount } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
 
 interface Props {

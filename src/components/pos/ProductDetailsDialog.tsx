@@ -12,7 +12,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { ProductImage } from '@/components/products/ProductImage';
 import { loadAllWarehouseStocksLocalFirst } from '@/lib/cloud/warehouses-cloud';
 import { cn, formatMoney } from '@/lib/utils';

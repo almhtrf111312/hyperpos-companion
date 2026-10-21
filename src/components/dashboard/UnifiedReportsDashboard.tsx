@@ -45,7 +45,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { Button } from '@/components/ui/button';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 interface UnifiedReportsDashboardProps {
   stats: any;

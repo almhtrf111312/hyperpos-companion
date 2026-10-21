@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { getDueExpenses, executeAutoPayRecurringExpenses } from '@/lib/recurring-expenses-store';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 import { formatNumber, formatMoney } from '@/lib/utils';
 
 export function useDueExpensesChecker() {

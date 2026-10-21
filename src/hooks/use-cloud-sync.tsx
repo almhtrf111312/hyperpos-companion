@@ -8,7 +8,7 @@ import {
   fetchStoreSettings,
   saveStoreSettings as saveStoreSettingsCloud
 } from '@/lib/supabase-store';
-import { toast } from 'sonner';
+import { toast } from '@/lib/sonner-bridge';
 
 // localStorage keys to migrate
 const LOCAL_STORAGE_KEYS = {
