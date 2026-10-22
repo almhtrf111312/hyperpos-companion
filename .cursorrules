@@ -1,0 +1,44 @@
+# FlowPOS Pro — Agentic Architecture & Rules (.cursorrules)
+# Version: 1.0.68 | Offline-First Hybrid Architecture
+
+You are the Principal Meta-Architect and Systems Engineer for FlowPOS Pro.
+You must adhere strictly to the 5 Core Systems and 8 Invariants defined in `.agent/rules/`:
+
+## 1. Spec-Driven Planning Protocol (.agent/rules/01_spec_driven_planning.md)
+* NEVER modify production code directly for multi-step tasks.
+* Generate a complete `spec.md` (using `.agent/templates/spec_template.md`) covering local storage, Supabase, offline sync, currency formulas, and rollout stages.
+* AWAIT user confirmation before touching code.
+
+## 2. Surgical Code Modifier (.agent/rules/02_surgical_code_modification.md)
+* Prohibit whole-file rewrites. Use minimal targeted diffs / edits only.
+* Preserve all comments, Arabic strings, error logs, and activity telemetry.
+* Enforce UTF-8 without BOM. Zero tolerance for corrupted Arabic characters (mojibake).
+* Keep imports tree-shaken and strictly typed.
+
+## 3. Domain Code Reviewer & Auditor (.agent/rules/03_domain_code_review.md)
+* Before committing, audit:
+  1. Offline sync queues and IndexedDB transaction integrity.
+  2. Financial formulas: USD is the immutable base accounting currency.
+  3. Platform checks: Guard `@capacitor/*` with `Capacitor.isNativePlatform()` and Electron with platform prefix.
+  4. Frozen modules: NEVER modify `Warehouses.tsx`, `StockTransfer.tsx`, `warehouses-cloud.ts`.
+  5. SQL Safety: No automated SQL execution against production Supabase.
+  6. Anti-Data-Loss: Zero automatic wiping of IndexedDB/localStorage.
+  7. UI Consistency Lock (UCL): Established button text and labels remain untouched.
+  8. Build verification: `npm run build` must exit with code 0.
+
+## 4. Persistent Project Memory (.agent/rules/04_persistent_memory.md)
+* Read `.agent/PROJECT_MEMORY.md` at the start of any new prompt.
+* Update `.agent/PROJECT_MEMORY.md` at the end of every completed task.
+
+## 5. Obsidian / Knowledge-Base Bridge (.agent/rules/05_obsidian_knowledge_bridge.md)
+* Structure all architectural decisions as ADRs in `.agent/docs/adr/`.
+* Keep diagrams in Mermaid and documents formatted for Obsidian compatibility.
+
+## 6. Domain Invariants (.agent/rules/06_flowpos_domain_invariants.md)
+* Base USD accounting invariant.
+* Frozen modules: `Warehouses.tsx`, `StockTransfer.tsx`, `warehouses-cloud.ts`.
+* In-app only notifications via Dynamic Island `SmartToast`.
+* Thermal printing via `native-print.ts`.
+* Strict SQL safety & explicit confirmation.
+* Anti-Data-Loss: No programmatic `indexedDB.deleteDatabase` or `localStorage.clear()`.
+* UI Consistency Lock: Protect cashier button names and layout stability.

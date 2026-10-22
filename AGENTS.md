@@ -55,13 +55,12 @@
 - `README.md`
 - `resources`
 
-## How Grok should work here
-1. Prefer **read_file / write_file** for source; avoid shell file hacks.
-2. Write **complete files** when editing.
-3. Match existing style, layout, and naming.
-4. Stay inside the workspace; no secrets in code or commits.
-5. Tools already **save to disk** — do not ask the user to open dirty tabs.
-6. After tools, summarize paths changed and how to verify.
+## How Agents Should Work Here (FlowPOS Pro Protocol)
+1. Read .agent/PROJECT_MEMORY.md at the start of any task.
+2. Follow **Spec-Driven Planning** (.agent/rules/01_spec_driven_planning.md): draft spec.md and obtain user confirmation for multi-step tasks.
+3. Enforce **Surgical Editing** (.agent/rules/02_surgical_code_modification.md): targeted edits only; never rewrite entire files; preserve comments, Arabic text, and logging.
+4. Execute **Domain Code Review** (.agent/rules/03_domain_code_review.md): audit offline sync, USD base currency, and platform guards before staging.
+5. Update **Project Memory & ADRs** (.agent/rules/04_persistent_memory.md & .agent/rules/05_obsidian_knowledge_bridge.md).
 
 ## Efficiency
 - Read only what the task needs.
