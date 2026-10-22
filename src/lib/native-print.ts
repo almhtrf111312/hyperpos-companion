@@ -474,11 +474,28 @@ export function saveStoredPrinterConfig(config: PrinterConfig): void {
 }
 
 /**
+ * Check if Bluetooth hardware or platform bridge is actually supported in current runtime
+ */
+export function isBluetoothSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    typeof (window as any).BluetoothSerial?.connect === 'function' ||
+    typeof (window as any).Capacitor?.Plugins?.BluetoothSerial?.connect === 'function' ||
+    (typeof navigator !== 'undefined' && Boolean((navigator as any).bluetooth))
+  );
+}
+
+/**
  * Search paired / available Bluetooth printers
+ * Returns only real hardware devices discovered via supported platform bridges.
+ * If no device is discovered or supported, returns an empty list [].
  */
 export async function searchBluetoothPrinters(): Promise<BluetoothDevice[]> {
+  const devices: BluetoothDevice[] = [];
+  const seenAddresses = new Set<string>();
+
   // 1. Android Capacitor / Cordova BluetoothSerial bridge if present
-  if (typeof window !== 'undefined' && (window as any).BluetoothSerial?.list) {
+  if (typeof window !== 'undefined' && typeof (window as any).BluetoothSerial?.list === 'function') {
     try {
       const paired = await new Promise<any[]>((resolve) => {
         (window as any).BluetoothSerial.list(
@@ -489,11 +506,17 @@ export async function searchBluetoothPrinters(): Promise<BluetoothDevice[]> {
           }
         );
       });
-      if (paired && paired.length > 0) {
-        return paired.map(d => ({
-          name: d.name || 'Bluetooth Printer',
-          address: d.address || d.id || '',
-        }));
+      if (paired && Array.isArray(paired)) {
+        for (const d of paired) {
+          const addr = d.address || d.id || '';
+          if (addr && !seenAddresses.has(addr)) {
+            seenAddresses.add(addr);
+            devices.push({
+              name: d.name || 'Bluetooth Printer',
+              address: addr,
+            });
+          }
+        }
       }
     } catch (e) {
       console.warn('[Printer] BluetoothSerial bridge failed:', e);
@@ -504,11 +527,17 @@ export async function searchBluetoothPrinters(): Promise<BluetoothDevice[]> {
   if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.BluetoothSerial) {
     try {
       const res = await (window as any).Capacitor.Plugins.BluetoothSerial.list();
-      if (res?.devices?.length > 0) {
-        return res.devices.map((d: any) => ({
-          name: d.name || 'Bluetooth Printer',
-          address: d.address || d.id || '',
-        }));
+      if (res?.devices && Array.isArray(res.devices)) {
+        for (const d of res.devices) {
+          const addr = d.address || d.id || '';
+          if (addr && !seenAddresses.has(addr)) {
+            seenAddresses.add(addr);
+            devices.push({
+              name: d.name || 'Bluetooth Printer',
+              address: addr,
+            });
+          }
+        }
       }
     } catch (e) {
       console.warn('[Printer] Capacitor BluetoothSerial plugin error:', e);
@@ -519,59 +548,102 @@ export async function searchBluetoothPrinters(): Promise<BluetoothDevice[]> {
   if (typeof navigator !== 'undefined' && (navigator as any).bluetooth?.getDevices) {
     try {
       const webDevices = await (navigator as any).bluetooth.getDevices();
-      if (webDevices && webDevices.length > 0) {
-        return webDevices.map((d: any) => ({
-          name: d.name || 'Bluetooth Thermal Device',
-          address: d.id,
-        }));
+      if (webDevices && Array.isArray(webDevices)) {
+        for (const d of webDevices) {
+          const addr = d.id || '';
+          if (addr && !seenAddresses.has(addr)) {
+            seenAddresses.add(addr);
+            devices.push({
+              name: d.name || 'Bluetooth Thermal Device',
+              address: addr,
+            });
+          }
+        }
       }
     } catch (e) {
       console.warn('[Printer] Web Bluetooth getDevices:', e);
     }
   }
 
-  // Fallback / simulation devices for testing on devices without hardware paired
-  return [
-    { name: 'POS-58 Thermal (Bluetooth)', address: '86:67:7A:B2:10:01' },
-    { name: 'POS-80 Bluetooth Receipt', address: '00:11:22:33:44:55' },
-    { name: 'MPT-II Mobile ESC/POS', address: 'DC:0D:30:19:C2:A1' },
-    { name: 'XP-58B Thermal Printer', address: '01:23:45:67:89:AB' },
-  ];
+  // Never return fake/mock devices. Return empty list if no real hardware is found.
+  return devices;
 }
 
 /**
- * Connect to thermal printer & verify connection / save as default
+ * Connect to thermal printer & verify connection / save as default.
+ * Only saves config and reports success if connection and test print data succeed.
  */
-export async function connectAndTestBluetoothPrinter(address: string, name?: string): Promise<{ success: boolean; message: string }> {
+export async function connectAndTestBluetoothPrinter(
+  address: string,
+  name?: string
+): Promise<{ success: boolean; message: string }> {
+  if (!address) {
+    return {
+      success: false,
+      message: 'عنوان الطابعة غير محدد أو غير صالح',
+    };
+  }
+
+  const hasCordova = typeof window !== 'undefined' && typeof (window as any).BluetoothSerial?.connect === 'function';
+  const hasCapacitor = typeof window !== 'undefined' && typeof (window as any).Capacitor?.Plugins?.BluetoothSerial?.connect === 'function';
+  const hasWebBluetooth = typeof navigator !== 'undefined' && Boolean((navigator as any).bluetooth);
+
+  if (!hasCordova && !hasCapacitor && !hasWebBluetooth) {
+    return {
+      success: false,
+      message: 'إضافة البلوتوث غير متوفرة أو غير مدعومة في هذه البيئة. يرجى استخدام طابعة النظام/المشاركة أو تشغيل التطبيق في بيئة أندرويد مدعومة.',
+    };
+  }
+
   try {
+    const testText = '\x1B\x40\x1B\x61\x01\n=== FlowPOS Pro ===\nThermal Printer Connected!\n\n\x1D\x56\x41\x00';
+
+    if (hasCordova) {
+      await new Promise<void>((resolve, reject) => {
+        (window as any).BluetoothSerial.connect(
+          address,
+          () => {
+            (window as any).BluetoothSerial.write(
+              testText,
+              () => resolve(),
+              (writeErr: any) => reject(writeErr)
+            );
+          },
+          (connectErr: any) => reject(connectErr)
+        );
+      });
+    } else if (hasCapacitor) {
+      await (window as any).Capacitor.Plugins.BluetoothSerial.connect({ address });
+      await (window as any).Capacitor.Plugins.BluetoothSerial.write({ data: testText });
+    } else if (hasWebBluetooth) {
+      const webDevices = await (navigator as any).bluetooth.getDevices?.();
+      const matchedDevice = webDevices?.find((d: any) => d.id === address);
+      if (matchedDevice && matchedDevice.gatt) {
+        if (!matchedDevice.gatt.connected) {
+          await matchedDevice.gatt.connect();
+        }
+      } else {
+        throw new Error('الجهاز غير مصرح به أو تعذر العثور على خادم GATT للبلوتوث');
+      }
+    }
+
+    // Save only after genuine connection and transmission succeeded
     const config = getStoredPrinterConfig();
     config.connectionType = 'bluetooth';
     config.deviceAddress = address;
     if (name) config.deviceName = name;
     saveStoredPrinterConfig(config);
 
-    if (typeof window !== 'undefined' && (window as any).BluetoothSerial?.connect) {
-      await new Promise<void>((resolve, reject) => {
-        (window as any).BluetoothSerial.connect(
-          address,
-          () => {
-            const testText = '\x1B\x40\x1B\x61\x01\n=== FlowPOS Pro ===\nThermal Printer Connected!\n\n\x1D\x56\x41\x00';
-            (window as any).BluetoothSerial.write(testText, resolve, reject);
-          },
-          (err: any) => reject(err)
-        );
-      });
-    }
-
     return {
       success: true,
-      message: 'تم الاقتران وحفظ الطابعة بنجاح',
+      message: `تم الاقتران والاتصال بنجاح بالطابعة ${name || address} وإرسال إشارة الاختبار`,
     };
   } catch (err: any) {
     console.warn('[Printer] connectAndTest error:', err);
+    const detail = err?.message || (typeof err === 'string' ? err : 'تعذر إتمام الاتصال بالجهاز');
     return {
-      success: true,
-      message: 'تم حفظ إعدادات الطابعة بنجاح',
+      success: false,
+      message: `فشل الاتصال بالطابعة (${detail}). تأكد من تشغيل البلوتوث واقتران الطابعة بالجهاز أولاً.`,
     };
   }
 }
@@ -680,7 +752,8 @@ export async function htmlToEscPosRaster(htmlContent: string, paperWidth: '58mm'
 }
 
 export async function sendEscPosToBluetooth(rasterData: Uint8Array, address: string): Promise<boolean> {
-  if (typeof window !== 'undefined' && (window as any).BluetoothSerial?.write) {
+  // 1. BluetoothSerial Cordova bridge
+  if (typeof window !== 'undefined' && typeof (window as any).BluetoothSerial?.write === 'function') {
     try {
       await new Promise<void>((resolve, reject) => {
         (window as any).BluetoothSerial.write(rasterData.buffer, resolve, reject);
@@ -688,8 +761,21 @@ export async function sendEscPosToBluetooth(rasterData: Uint8Array, address: str
       return true;
     } catch (e) {
       console.warn('[Printer] BluetoothSerial write failed:', e);
+      return false;
     }
   }
+
+  // 2. Capacitor Bluetooth plugin
+  if (typeof window !== 'undefined' && typeof (window as any).Capacitor?.Plugins?.BluetoothSerial?.write === 'function') {
+    try {
+      await (window as any).Capacitor.Plugins.BluetoothSerial.write({ data: rasterData });
+      return true;
+    } catch (e) {
+      console.warn('[Printer] Capacitor BluetoothSerial write failed:', e);
+      return false;
+    }
+  }
+
   return false;
 }
 

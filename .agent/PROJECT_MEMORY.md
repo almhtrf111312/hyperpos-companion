@@ -69,6 +69,11 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-22:** Thermal Printing & Bluetooth Pairing Realism Protocol:
+  * Cleaned `src/lib/native-print.ts`: purged the 4 static mock Bluetooth devices from discovery fallback. If no hardware is detected, `searchBluetoothPrinters` returns an empty array `[]` ("لم يتم العثور على طابعات").
+  * Fixed `connectAndTestBluetoothPrinter`: removed mock success. System returns `success: false` if plugin is missing or connection fails, and only saves printer configuration after actual connection and test data transmission succeed.
+  * Added `isBluetoothSupported` runtime detection for Cordova `BluetoothSerial`, Capacitor plugin, and Web Bluetooth.
+  * Updated `src/pages/Settings.tsx` (`handleStartSearchBT`, `handleSelectBTDevice`, discovery dialog): distinguishes clearly between discovered devices, live connecting state, verified connected printers, and unsupported environments with strict UCL adherence.
 * **2026-10-22 (`3ded844`):** Granular Notification Events Management & Muted Default Events.
   * Muted (disabled by default) 4 specific notifications without deleting code:
     1. Event 19: `invoices_share_image_generating` ("جاري إنشاء صورة الفاتورة للمشاركة...").

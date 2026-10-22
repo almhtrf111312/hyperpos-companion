@@ -160,6 +160,7 @@ export {
   saveStoredPrinterConfig,
   searchBluetoothPrinters,
   connectAndTestBluetoothPrinter,
+  isBluetoothSupported,
   htmlToEscPosRaster,
   sendEscPosToBluetooth,
 } from './native-print';

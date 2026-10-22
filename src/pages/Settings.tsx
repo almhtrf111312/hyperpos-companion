@@ -78,6 +78,7 @@ import {
   saveStoredPrinterConfig,
   searchBluetoothPrinters,
   connectAndTestBluetoothPrinter,
+  isBluetoothSupported,
 } from '@/lib/native-print';
 import { checkNotificationPermissionNative, requestNotificationPermissionNative, sendLocalNotification } from '@/lib/native-notifications';
 import { cn, formatDateTime } from '@/lib/utils';
@@ -536,6 +537,7 @@ export default function Settings() {
   const [isSearchingBT, setIsSearchingBT] = useState(false);
   const [btDevices, setBtDevices] = useState<BluetoothDevice[]>([]);
   const [showBtDialog, setShowBtDialog] = useState(false);
+  const [isConnectingBT, setIsConnectingBT] = useState<string | null>(null);
 
   const handleUpdatePrinterConfig = (updates: Partial<PrinterConfig>) => {
     const next = { ...printerConfig, ...updates };
@@ -555,19 +557,39 @@ export default function Settings() {
       setBtDevices(list);
     } catch (e) {
       console.warn('Search BT error:', e);
+      setBtDevices([]);
     } finally {
       setIsSearchingBT(false);
     }
   };
 
   const handleSelectBTDevice = async (device: BluetoothDevice) => {
-    const res = await connectAndTestBluetoothPrinter(device.address, device.name);
-    setPrinterConfig(getStoredPrinterConfig());
-    setShowBtDialog(false);
-    toast({
-      title: res.success ? t('common.success') : t('common.error'),
-      description: res.message || (isRTL ? `تم الاقتران بـ ${device.name}` : `Paired with ${device.name}`),
-    });
+    setIsConnectingBT(device.address);
+    try {
+      const res = await connectAndTestBluetoothPrinter(device.address, device.name);
+      setPrinterConfig(getStoredPrinterConfig());
+      if (res.success) {
+        setShowBtDialog(false);
+        toast({
+          title: t('common.success'),
+          description: res.message || (isRTL ? `تم الاقتران بـ ${device.name}` : `Paired with ${device.name}`),
+        });
+      } else {
+        toast({
+          title: t('common.error'),
+          description: res.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: t('common.error'),
+        description: e?.message || (isRTL ? 'فشل الاتصال بالطابعة' : 'Failed to connect to printer'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsConnectingBT(null);
+    }
   };
 
   const handleUnpairBT = () => {
@@ -2802,6 +2824,10 @@ export default function Settings() {
                           <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
                             {printerConfig.deviceAddress}
                           </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            متصلة
+                          </span>
                         </div>
                       ) : (
                         <span className="text-sm font-medium text-amber-600 dark:text-amber-400 mt-1 block">
@@ -4361,13 +4387,26 @@ export default function Settings() {
           </DialogHeader>
 
           <div className="py-2 space-y-3">
+            {/* تنبيه حالة دعم البلوتوث الفعلي */}
+            {!isBluetoothSupported() && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>إضافة البلوتوث المباشر غير متوفرة في هذه البيئة</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  يتطلب الاتصال المباشر بيئة أندرويد مع صلاحيات البلوتوث الممنوحة، أو متصفح يدعم Web Bluetooth. يمكنك دائماً استخدام «طابعة النظام السلكية/الافتراضية» كبديل مستقر ومباشر.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-between text-xs text-muted-foreground pb-1">
               <span>الأجهزة المكتشفة والمقترنة القريبة:</span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleStartSearchBT}
-                disabled={isSearchingBT}
+                disabled={isSearchingBT || !!isConnectingBT}
                 className="h-7 px-2 text-xs gap-1"
               >
                 <RefreshCw className={cn("w-3 h-3", isSearchingBT && "animate-spin")} />
@@ -4378,44 +4417,59 @@ export default function Settings() {
             {isSearchingBT ? (
               <div className="py-8 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <span className="text-xs">جارٍ البحث عن طابعات البلوتوث المتاحة...</span>
+                <span className="text-xs">جارٍ فحص طابعات البلوتوث المتاحة...</span>
               </div>
             ) : btDevices.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
-                لم يتم العثور على أجهزة بلوتوث نشطة. تأكد من تشغيل البلوتوث وإقران الطابعة في إعدادات الهاتف.
+              <div className="py-8 text-center text-xs text-muted-foreground space-y-1">
+                <p className="font-semibold text-foreground">لم يتم العثور على طابعات</p>
+                <p>تأكد من تشغيل الطابعة، تفعيل البلوتوث، وإقران الطابعة أولاً في إعدادات الهاتف.</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {btDevices.map((device) => {
                   const isCurrent = printerConfig.deviceAddress === device.address;
+                  const isConnectingThis = isConnectingBT === device.address;
                   return (
                     <button
                       key={device.address}
                       type="button"
+                      disabled={!!isConnectingBT}
                       onClick={() => handleSelectBTDevice(device)}
                       className={cn(
                         "w-full p-3 rounded-xl border text-start transition-all flex items-center justify-between gap-3",
                         isCurrent
-                          ? "border-primary bg-primary/10 shadow-xs"
-                          : "border-border/60 bg-muted/30 hover:bg-muted/70"
+                          ? "border-emerald-500/50 bg-emerald-500/10 shadow-xs"
+                          : "border-border/60 bg-muted/30 hover:bg-muted/70",
+                        isConnectingThis && "border-primary bg-primary/10 animate-pulse"
                       )}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                          isCurrent ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-primary/10 text-primary"
+                        )}>
                           <Printer className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-bold text-foreground truncate">{device.name}</div>
+                          <div className="text-sm font-bold text-foreground truncate flex items-center gap-1.5">
+                            <span>{device.name}</span>
+                            <span className="text-[10px] font-normal text-muted-foreground bg-muted px-1.5 py-0.2 rounded border border-border/40">جهاز مكتشف</span>
+                          </div>
                           <div className="text-xs font-mono text-muted-foreground">{device.address}</div>
                         </div>
                       </div>
-                      {isCurrent ? (
-                        <span className="text-xs font-bold text-primary flex items-center gap-1">
+                      {isConnectingThis ? (
+                        <span className="text-xs text-primary font-medium flex items-center gap-1">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          جارٍ الاتصال...
+                        </span>
+                      ) : isCurrent ? (
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <Check className="w-3.5 h-3.5" />
                           متصلة
                         </span>
                       ) : (
-                        <span className="text-xs text-primary font-medium">اختيار</span>
+                        <span className="text-xs text-primary font-medium hover:underline">اختيار واختبار</span>
                       )}
                     </button>
                   );
@@ -4425,7 +4479,7 @@ export default function Settings() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowBtDialog(false)}>
+            <Button variant="outline" size="sm" onClick={() => setShowBtDialog(false)} disabled={!!isConnectingBT}>
               {t('common.cancel')}
             </Button>
           </DialogFooter>
