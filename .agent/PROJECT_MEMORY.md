@@ -69,6 +69,16 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-22 (`3ded844`):** Granular Notification Events Management & Muted Default Events.
+  * Muted (disabled by default) 4 specific notifications without deleting code:
+    1. Event 19: `invoices_share_image_generating` ("جاري إنشاء صورة الفاتورة للمشاركة...").
+    2. Event 20: `invoices_copied_clipboard` ("تم نسخ تفاصيل الفاتورة بنجاح").
+    3. Event 48: `sync_completed_success` ("تمت المزامنة بنجاح ✓" / "تم ترحيل بياناتك إلى السحابة").
+    4. Event 49: `sync_offline_queued_warning` ("تم حفظ فاتورة البيع المؤجل أوفلاين...").
+  * Categorized all system notifications in `Settings -> Notifications` into 7 organized groups matching the repository audit (POS & Sales, Invoices & Refunds, Debts & Customers, Products & Stock, Cashbox & Shifts, Sync & Backup, Settings & System).
+  * Provided direct event titles with individual Switch toggles, count badges, and persistent state in `hyperpos_settings_v1` and Supabase JSONB settings.
+  * Created transparent gatekeeper `isNotificationEventAllowed` and `resolveEventKeyFromText` in `src/lib/notification-events-config.ts` integrated directly into `use-smart-toast.ts`, `toast-config.ts`, and `BackgroundSyncIndicator.tsx`.
+* **2026-10-22 (`3ad165e`):** Removed legacy test notification trigger card and native permission prompt from `Settings.tsx`.
 * **2026-10-22:** Configured `UI/UX Pro Max` skill and rule (`07_ui_ux_pro_max_guidelines.md`) on standby mode. Established the 8 Immutable Invariants (SQL Safety, Anti-Data-Loss, UI Consistency Lock).
 * **2026-10-22 (`f03e6b9`):** Autonomous Meta-Architect workflow initialization: Spec-Driven Planning, Ponytail surgical edits, Code Review Auditor, Persistent Memory, and Obsidian ADR documentation bridge.
 * **2026-10-22 (`b5dba73`):** Web notification compatibility update and `src/lib/sonner-bridge.ts` integration.
