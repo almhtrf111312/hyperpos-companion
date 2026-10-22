@@ -209,7 +209,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         data: { licenseExpiresAt: expiresAt, licenseDaysRemaining: remainingDays },
       };
       setNotifications(prev => [newNotification, ...prev]);
-      toast.warning(newNotification.title, { description: newNotification.message });
+      showToast.warning(newNotification.title, { description: newNotification.message });
     } else if (remainingDays <= 30 || isTrial) {
       const newNotification: Notification = {
         id: 'license_status_' + Date.now(),
@@ -312,7 +312,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       // إشعار مُجمّع واحد فقط بدل عشرات الإشعارات المتتالية
       if (alertsCount > 0) {
-        toast.warning('تنبيهات جديدة', {
+        showToast.warning('تنبيهات جديدة', {
           description: `لديك ${alertsCount} تنبيه بحاجة للمراجعة. افتح قائمة الإشعارات للتفاصيل.`,
         });
       }
