@@ -914,7 +914,7 @@ export default function Settings() {
       icon: Bell,
       category: 'core',
       color: 'purple',
-      badge: notificationPerm === 'granted' ? (isRTL ? 'مفعل 🔔' : 'Active 🔔') : (isRTL ? 'تنبيه' : 'Alert'),
+      badge: notificationSettings.masterEnabled !== false ? (isRTL ? 'مفعل 🔔' : 'Active 🔔') : (isRTL ? 'معطل' : 'Off'),
       keywords: ['إشعار', 'إشعارات', 'تنبيه', 'صوت', 'notifications', 'alerts', 'sound'],
     },
     {
@@ -2485,39 +2485,6 @@ export default function Settings() {
       case 'notifications':
         return (
           <div className="space-y-3">
-            {/* بطاقة حالة إذن النظام */}
-            {notificationPerm === 'granted' ? (
-              <div className="flex items-center justify-between gap-3 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-400">الإشعارات مفعلة وتعمل بنجاح</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">التطبيق جاهز لإرسال تنبيهات المبيعات والديون ونفاذ المخزون</p>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" onClick={handleSendTestNotification} className="shrink-0 h-8 px-2.5 text-xs font-semibold">
-                  إشعار تجريبي
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3 p-3.5 bg-primary/10 border border-primary/25 rounded-xl">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
-                    <Bell className="w-4 h-4 animate-bounce" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-bold text-foreground">تفعيل إذن الإشعارات</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">اضغط لمنح إذن وصول تنبيهات البيع والمخزون</p>
-                  </div>
-                </div>
-                <Button size="sm" onClick={handleRequestNotificationPermission} className="shrink-0 h-8 px-3 text-xs font-semibold">
-                  تفعيل الآن
-                </Button>
-              </div>
-            )}
-
             {/* المفتاح الرئيسي الشامل للإشعارات */}
             <div className={`flex items-center justify-between gap-3 p-4 rounded-xl border-2 transition-colors ${
               notificationSettings.masterEnabled
