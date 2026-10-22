@@ -17,7 +17,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const { isRTL, t } = useLanguage();
-  const { triggerPullToRefreshSync } = useCloudSyncContext();
+  const { syncNow: triggerPullToRefreshSync } = useCloudSyncContext();
   
   // Pull-to-refresh states
   const [pullDistance, setPullDistance] = useState(0);

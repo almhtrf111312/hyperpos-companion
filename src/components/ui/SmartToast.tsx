@@ -254,6 +254,7 @@ export function SmartToast() {
       clearTimeout(autoDismissTimerRef.current);
       autoDismissTimerRef.current = null;
     }
+    if (!Number.isFinite(remainingTimeRef.current)) return;
     autoDismissTimerRef.current = setTimeout(() => {
       retractNotification();
     }, remainingTimeRef.current);
@@ -833,7 +834,7 @@ export function SmartToast() {
               animPhase === 'expanded' && isVisible && !isPaused && "timer-active",
               (isPaused || animPhase !== 'expanded' || !isVisible) && "timer-paused"
             )}
-            style={{ '--duration': `${resolvedDuration}ms` } as React.CSSProperties}
+            style={{ '--duration': Number.isFinite(resolvedDuration) ? `${resolvedDuration}ms` : '0ms' } as React.CSSProperties}
           />
         </div>
       </div>

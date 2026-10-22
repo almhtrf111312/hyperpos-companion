@@ -1266,7 +1266,7 @@ export function CartPanel({
         totalInCurrency: roundCurrency(totalDebtSale * (selectedCurrency.rate || 1)),
         subtotal,
         discount,
-        discountAmount: effectiveDiscountAmount,
+        discountAmount,
         discountType,
         selectedCurrency,
         taxAmount,

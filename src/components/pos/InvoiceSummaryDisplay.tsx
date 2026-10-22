@@ -53,17 +53,30 @@ export function InvoiceSummaryDisplay({
       {/* Discount */}
       {discountAmount > 0 && (
         <div className="flex justify-between text-success">
-              <span>{t('invoices.paidCash') || t('debts.paidAmount') || 'المدفوع نقداً'}</span>
-              <span>
-                {currencySymbol}{formatNumber(paidAmount)}
-                {currencyCode !== 'USD' && (
-                  <span className="text-xs text-muted-foreground mr-1">
-                    ({usdSymbol}{paidInUSD.toFixed(2)})
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
+          <span>{t('invoices.discount') || 'الخصم'}</span>
+          <span>
+            -{usdSymbol}{formatNumber(discountAmount)}
+            {discountType === 'percent' && discount > 0 && (
+              <span className="text-xs text-muted-foreground mr-1">({discount}%)</span>
+            )}
+          </span>
+        </div>
+      )}
+
+      {/* Paid cash & remaining debt */}
+      {isDebt && (
+        <>
+          <div className="flex justify-between text-success">
+            <span>{t('invoices.paidCash') || t('debts.paidAmount') || 'المدفوع نقداً'}</span>
+            <span>
+              {currencySymbol}{formatNumber(paidAmount)}
+              {currencyCode !== 'USD' && (
+                <span className="text-xs text-muted-foreground mr-1">
+                  ({usdSymbol}{paidInUSD.toFixed(2)})
+                </span>
+              )}
+            </span>
+          </div>
 
           <div className="flex justify-between text-destructive font-bold">
             <span>{t('invoices.debtRemaining') || 'المتبقي (دين)'}</span>

@@ -449,7 +449,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       setDebts(debtsData);
 
       setShowPaymentDialog(false);
-      const paidAmountSnapshot = paymentAmountInCurrency || finalPaymentUSD;
+      const paidAmountSnapshot = finalPaymentUSD;
       const customerSnapshot = selectedDebt?.customerName;
       setSelectedDebt(null);
       setPaymentAmountInput('');
@@ -515,7 +515,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       handleAddDebtDialogChange(false);
       const addedDebtCustomer = newDebtForm.customerName;
       const addedDebtAmount = newDebtForm.amount;
-      const addedDebtCurrency = newDebtCurrency;
+      const addedDebtCurrency = 'USD';
       setNewDebtForm({
         customerName: '',
         customerPhone: '',
