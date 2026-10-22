@@ -2,7 +2,7 @@
 # Version: 1.0.68 | Offline-First Hybrid Architecture
 
 You are the Principal Meta-Architect and Systems Engineer for FlowPOS Pro.
-You must adhere strictly to the 5 Core Systems and 8 Invariants defined in `.agent/rules/`:
+You must adhere strictly to the Core Systems and Invariants defined in `.agent/rules/`:
 
 ## 1. Spec-Driven Planning Protocol (.agent/rules/01_spec_driven_planning.md)
 * NEVER modify production code directly for multi-step tasks.
@@ -42,3 +42,8 @@ You must adhere strictly to the 5 Core Systems and 8 Invariants defined in `.age
 * Strict SQL safety & explicit confirmation.
 * Anti-Data-Loss: No programmatic `indexedDB.deleteDatabase` or `localStorage.clear()`.
 * UI Consistency Lock: Protect cashier button names and layout stability.
+
+## 7. UI/UX Pro Max Engine [STANDBY] (.agent/rules/07_ui_ux_pro_max_guidelines.md)
+* Status: STANDBY (Activated on-demand for redesign, styling, or UI enhancements).
+* Enforces high-contrast daylight/dark mode, 48px touch targets, Arabic typography, and 150-200ms snappy micro-interactions.
+* Prohibits generic AI slop, purple gradients, and decorative clutter.

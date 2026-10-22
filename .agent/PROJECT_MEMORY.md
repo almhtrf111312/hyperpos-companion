@@ -22,7 +22,7 @@
 
 ---
 
-## 🔒 Frozen & Protected Invariants
+## 🔒 The 8 Immutable Invariants
 1. **USD Accounting Invariant:** USD is the system's immutable calculation base. All profits, partner distributions, debts, and ledger items are pegged to USD. Foreign currencies are calculated via real-time/saved exchange rates.
 2. **Frozen Modules (DO NOT TOUCH):**
    * `src/pages/Warehouses.tsx`
@@ -33,13 +33,46 @@
 4. **SQL Safety & Schema Guard:** Automated or unilateral execution of SQL migrations/RPCs against production Supabase is strictly banned. Schema inspection and explicit user approval are mandatory.
 5. **Anti-Data-Loss (Local Storage Guard):** Zero programmatic wiping of `IndexedDB` (`hyperpos_cache`) or `localStorage`. Resets require physical user button click with a confirmation modal to protect unsynced offline invoices.
 6. **UI Consistency Lock (UCL):** Established cashier button names and labels (e.g., "فاتورة نقدية", "طباعة", "سداد") are locked to prevent disruption of cashier muscle memory.
+7. **Thermal Printing Protocol:** Must support thermal receipt printers (ESC/POS 80mm/58mm, Bluetooth, USB) and Canvas-to-Image sharing via `src/lib/native-print.ts`. Never use raw `window.print()` in mobile WebViews.
+8. **Offline Mutex Lock Protocol:** POS checkout must acquire `transaction-lock.ts` to prevent duplicate submissions on cashier double-taps.
+
+---
+
+## 🛠️ Repository Skills Matrix & Standby Catalog
+
+### 1. Active Autonomous FlowPOS Core Skills (`.agent/skills/`)
+* **`flowpos-spec-planner`:** Enforces Spec-Driven planning protocol before multi-file refactors.
+* **`flowpos-code-auditor`:** Domain auditor checking offline sync, USD invariants, and platform safety.
+* **`flowpos-memory-sync`:** Synchronizes `.agent/PROJECT_MEMORY.md` at the end of every workflow.
+* **`flowpos-obsidian-sync`:** Generates and updates ADR architecture markdown files in `.agent/docs/adr/`.
+
+### 2. Standby Engine: UI/UX Pro Max (`.agent/skills/ui-ux-pro-max/`)
+* **`ui-ux-pro-max` [STANDBY]:** Elite design engine for high-contrast, tactile cashier-speed UI, 48px touch targets, Arabic RTL typography, and 150-200ms snappy micro-interactions. Activated on-demand for redesign or styling requests.
+
+### 3. User Execution Preferences (`.gemini/skills/user-workflow/`)
+* **`user-workflow`:** Mandates direct production implementation without test scripts, direct git pushes, Arabic completion summaries, and frontend-focused scope boundaries.
+
+### 4. Auxiliary Standby Design Skills (`.agents/skills/`)
+*(Kept dormant / on standby; available to borrow rules if specialized creative tasks arise)*:
+* `brandkit`: Brand guidelines and logo system generation.
+* `design-taste-frontend` & `design-taste-frontend-v1`: Web landing and layout aesthetics.
+* `full-output-enforcement`: Anti-truncation enforcement for legacy LLMs.
+* `gpt-taste`: GSAP motion and creative layout variance.
+* `high-end-visual-design`: Agency-style spacing, shadows, and card structures.
+* `image-to-code`: Generates code from UI mockups.
+* `imagegen-frontend-mobile` & `imagegen-frontend-web`: Conceptual visual image prompts.
+* `industrial-brutalist-ui`: Mechanical, high-density terminal layouts.
+* `minimalist-ui`: Editorial monochrome layouts.
+* `redesign-existing-projects`: Generic AI UI cleanup auditor.
+* `stitch-design-taste`: Google Stitch design system generator.
 
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-22:** Configured `UI/UX Pro Max` skill and rule (`07_ui_ux_pro_max_guidelines.md`) on standby mode. Established the 8 Immutable Invariants (SQL Safety, Anti-Data-Loss, UI Consistency Lock).
+* **2026-10-22 (`f03e6b9`):** Autonomous Meta-Architect workflow initialization: Spec-Driven Planning, Ponytail surgical edits, Code Review Auditor, Persistent Memory, and Obsidian ADR documentation bridge.
 * **2026-10-22 (`b5dba73`):** Web notification compatibility update and `src/lib/sonner-bridge.ts` integration.
-* **2026-10-22 (`5acefb3`):** Unified in-app Dynamic Island interactive toast system with tactile freeze & resume countdown physics on touch/hover, lateral shockwaves, multilingual keywords (AR/EN/TR), and explicit category bindings for cash sales, debt sales, refunds, settings, and stock alerts.
-* **2026-10-21:** Appearance platform isolation (`getPlatformStoragePrefix`), barcode scanner daylight contrast fix, floating save bar in settings.
+* **2026-10-22 (`5acefb3`):** Unified in-app Dynamic Island interactive toast system with tactile freeze & resume countdown physics on touch/hover, lateral shockwaves, multilingual keywords (AR/EN/TR).
 
 ---
 
