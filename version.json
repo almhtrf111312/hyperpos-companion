@@ -1,8 +1,14 @@
 {
-  "versionCode": 300,
-  "versionName": "1.0.70",
-  "lastUpdated": "2026-10-19T23:50:00.000Z",
+  "versionCode": 301,
+  "versionName": "1.0.71",
+  "lastUpdated": "2026-10-22T00:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 301,
+      "versionName": "1.0.71",
+      "date": "2026-10-22",
+      "description": "v1.0.71 - توحيد كل الإشعارات داخل التطبيق تحت بطاقة Dynamic Island: تحويل 62 ملفاً من مكتبة sonner القديمة إلى الجسر الموحد، إزالة الإشعارات الصغيرة القديمة نهائياً، وإصلاح إشعار (جاري التنفيذ) العالق الذي كان يختفي فوراً أو يبقى بلا نهاية"
+    },
     {
       "versionCode": 300,
       "versionName": "1.0.70",
