@@ -73,6 +73,8 @@ export interface Invoice {
   sync_failed?: boolean;
   warehouseId?: string;
   dueDate?: string;
+  currencyName?: string;
+  invoiceNumber?: string;
   id: string;
   type: InvoiceType;
   customerId?: string;
