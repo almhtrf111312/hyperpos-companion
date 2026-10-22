@@ -36,6 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { showToast } from '@/lib/toast-config';
+import { isNotificationEventAllowed } from '@/lib/notification-events-config';
 import { showSmartToast } from '@/hooks/use-smart-toast';
 import { loadCustomers, Customer } from '@/lib/customers-store';
 import { getNextInvoiceNumber } from '@/lib/invoices-store';
@@ -1334,7 +1335,9 @@ export function CartPanel({
     } catch (error) {
       console.error('Debt sale error:', error);
       failSync(t('pos.savedLocallyRetry') || 'حدث خطأ - الفاتورة محفوظة محلياً');
-      showToast.warning(t('pos.offlineSaleWarning') || 'تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
+      if (isNotificationEventAllowed('sync_offline_queued_warning')) {
+        showToast.warning(t('pos.offlineSaleWarning') || 'تم حفظ فاتورة البيع المؤجل أوفلاين - سيتم رفعها تلقائياً');
+      }
     } finally {
       savingRef.current = false;
       setIsSaving(false);

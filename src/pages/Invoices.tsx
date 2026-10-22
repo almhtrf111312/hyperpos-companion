@@ -75,6 +75,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from '@/lib/sonner-bridge';
 import { showSmartToast } from '@/hooks/use-smart-toast';
+import { isNotificationEventAllowed } from '@/lib/notification-events-config';
 import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime, roundCurrency } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
@@ -1732,7 +1733,9 @@ export default function Invoices() {
         });
         setShowShareSheet(false);
       } else {
-        toast.info(t('invoices.generatingShareImage') || (language === 'en' ? 'Generating invoice image for sharing...' : 'جاري إنشاء صورة الفاتورة للمشاركة...'), { duration: 1500 });
+        if (isNotificationEventAllowed('invoices_share_image_generating')) {
+          toast.info(t('invoices.generatingShareImage') || (language === 'en' ? 'Generating invoice image for sharing...' : 'جاري إنشاء صورة الفاتورة للمشاركة...'), { duration: 1500 });
+        }
         const success = await shareInvoice(shareData);
         if (success) {
           setShowShareSheet(false);
@@ -1788,7 +1791,9 @@ export default function Invoices() {
       };
       const text = generateInvoiceShareText(shareData);
       await navigator.clipboard.writeText(text);
-      toast.success(t('invoices.invoiceCopied') || (language === 'en' ? 'Invoice details copied successfully' : 'تم نسخ تفاصيل الفاتورة بنجاح'));
+      if (isNotificationEventAllowed('invoices_copied_clipboard')) {
+        toast.success(t('invoices.invoiceCopied') || (language === 'en' ? 'Invoice details copied successfully' : 'تم نسخ تفاصيل الفاتورة بنجاح'));
+      }
     } catch (e) {
       toast.error(t('invoices.invoiceCopyFailed') || (language === 'en' ? 'Failed to copy invoice details' : 'تعذر نسخ تفاصيل الفاتورة'));
     }

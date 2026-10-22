@@ -8,6 +8,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { EVENTS } from '@/lib/events';
 import { getQueueStatus, SyncQueueStatus, loadQueue, resetOperationForRetry, QueuedOperation } from '@/lib/sync-queue';
 import { showToast } from '@/lib/toast-config';
+import { isNotificationEventAllowed } from '@/lib/notification-events-config';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -296,7 +297,7 @@ export function useSyncState() {
         setSyncState('success');
       }
       setSyncMessage(message);
-      if (triggerToast && message) {
+      if (triggerToast && message && isNotificationEventAllowed('sync_completed_success')) {
         showToast.success(message);
       }
       

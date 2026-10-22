@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import React from 'react';
+import { isNotificationEventAllowed, resolveEventKeyFromText } from '@/lib/notification-events-config';
 
 export interface SmartToastData {
   id: string;
+  eventKey?: string;
   type?: 'cash_sale' | 'debt_sale' | 'settings' | 'refund' | 'sync' | 'success' | 'error' | 'warning' | 'info';
   title: React.ReactNode;
   subtitle?: React.ReactNode;          // مثال: رقم الفاتورة #INV-2026-002
@@ -47,6 +49,18 @@ export const isSmartToastActive = (): boolean => {
 };
 
 export const showSmartToast = (data: Omit<SmartToastData, 'id'> & { id?: string }) => {
+  // 0. فحص السماحية عبر بوابة أحداث الإشعارات (Gatekeeper check)
+  const eventKey =
+    data.eventKey ||
+    resolveEventKeyFromText(
+      typeof data.title === 'string' ? data.title : undefined,
+      typeof data.description === 'string' ? data.description : undefined
+    );
+
+  if (eventKey && !isNotificationEventAllowed(eventKey)) {
+    return;
+  }
+
   // 1. مسح أي إشعار sonner قديم فوراً لمنع التراكب
   try {
     import('sonner').then(({ toast: sonnerToast }) => {

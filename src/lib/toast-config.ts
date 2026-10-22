@@ -95,6 +95,7 @@ export interface ToastOptions {
   };
   duration?: number;
   isInvoice?: boolean;
+  eventKey?: string;
   subtitle?: string;
   primaryLabel?: string;
   primaryValue?: string;
@@ -128,6 +129,7 @@ function parseToastArgs(optionsOrDesc?: string | ToastOptions) {
     primaryAction: optionsOrDesc.primaryAction,
     secondaryAction: optionsOrDesc.secondaryAction,
     duration: optionsOrDesc.duration,
+    eventKey: optionsOrDesc.eventKey,
   };
 }
 

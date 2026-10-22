@@ -9,6 +9,7 @@ import {
   saveStoreSettings as saveStoreSettingsCloud
 } from '@/lib/supabase-store';
 import { toast } from '@/lib/sonner-bridge';
+import { isNotificationEventAllowed } from '@/lib/notification-events-config';
 
 // localStorage keys to migrate
 const LOCAL_STORAGE_KEYS = {
@@ -205,9 +206,11 @@ export function useCloudSync() {
       if (hasLocalData) {
         console.log('Migrating local data to cloud...');
         await migrateLocalToCloud();
-        toast.success('تم ترحيل بياناتك إلى السحابة بنجاح', {
-          description: 'بياناتك الآن محفوظة بأمان ويمكنك الوصول لها من أي جهاز'
-        });
+        if (isNotificationEventAllowed('sync_completed_success')) {
+          toast.success('تم ترحيل بياناتك إلى السحابة بنجاح', {
+            description: 'بياناتك الآن محفوظة بأمان ويمكنك الوصول لها من أي جهاز'
+          });
+        }
       } else {
         // First time user, create default store
         await saveStoreSettingsCloud({

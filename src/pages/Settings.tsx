@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Coins, Undo2, Smartphone, UserCheck, Users, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { Coins, Undo2, Smartphone, UserCheck, Users, ArrowLeft, ArrowRight, Sparkles, ShoppingCart, SlidersHorizontal } from 'lucide-react';
+import { NOTIFICATION_EVENT_GROUPS, getDefaultNotificationEvents } from '@/lib/notification-events-config';
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
 import {
@@ -145,6 +146,7 @@ interface NotificationSettingsType {
   paymentReceived: boolean;
   dailyReport: boolean;
   durationSeconds?: number; // وقت بقاء الإشعار بالثواني (0.5 إلى 3.0)
+  events?: Record<string, boolean>; // مفاتيح أحداث الإشعارات المخصصة
 }
 
 interface PrintSettingsType {
@@ -513,15 +515,20 @@ export default function Settings() {
   });
 
   // Notification settings
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsType>({
-    masterEnabled: persisted?.notificationSettings?.masterEnabled ?? (initialUnified?.notificationSettings as any)?.masterEnabled ?? true,
-    sound: persisted?.notificationSettings?.sound ?? (initialUnified?.notificationSettings as any)?.sound ?? true,
-    newSale: persisted?.notificationSettings?.newSale ?? (initialUnified?.notificationSettings as any)?.newSale ?? true,
-    lowStock: persisted?.notificationSettings?.lowStock ?? (initialUnified?.notificationSettings as any)?.lowStock ?? true,
-    newDebt: persisted?.notificationSettings?.newDebt ?? (initialUnified?.notificationSettings as any)?.newDebt ?? true,
-    paymentReceived: persisted?.notificationSettings?.paymentReceived ?? (initialUnified?.notificationSettings as any)?.paymentReceived ?? true,
-    dailyReport: persisted?.notificationSettings?.dailyReport ?? (initialUnified?.notificationSettings as any)?.dailyReport ?? false,
-    durationSeconds: persisted?.notificationSettings?.durationSeconds ?? (initialUnified?.notificationSettings as any)?.durationSeconds ?? 2,
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsType>(() => {
+    const defaultEvts = getDefaultNotificationEvents();
+    const savedEvts = persisted?.notificationSettings?.events ?? (initialUnified?.notificationSettings as any)?.events ?? {};
+    return {
+      masterEnabled: persisted?.notificationSettings?.masterEnabled ?? (initialUnified?.notificationSettings as any)?.masterEnabled ?? true,
+      sound: persisted?.notificationSettings?.sound ?? (initialUnified?.notificationSettings as any)?.sound ?? true,
+      newSale: persisted?.notificationSettings?.newSale ?? (initialUnified?.notificationSettings as any)?.newSale ?? true,
+      lowStock: persisted?.notificationSettings?.lowStock ?? (initialUnified?.notificationSettings as any)?.lowStock ?? true,
+      newDebt: persisted?.notificationSettings?.newDebt ?? (initialUnified?.notificationSettings as any)?.newDebt ?? true,
+      paymentReceived: persisted?.notificationSettings?.paymentReceived ?? (initialUnified?.notificationSettings as any)?.paymentReceived ?? true,
+      dailyReport: persisted?.notificationSettings?.dailyReport ?? (initialUnified?.notificationSettings as any)?.dailyReport ?? false,
+      durationSeconds: persisted?.notificationSettings?.durationSeconds ?? (initialUnified?.notificationSettings as any)?.durationSeconds ?? 2,
+      events: { ...defaultEvts, ...savedEvts },
+    };
   });
 
   // Bluetooth & Printer Management State
@@ -1793,6 +1800,66 @@ export default function Settings() {
     }
   };
 
+
+  // Helper for notification categories icons
+  const getCategoryIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'ShoppingCart': return ShoppingCart;
+      case 'FileText': return FileText;
+      case 'Users': return Users;
+      case 'Package': return Package;
+      case 'DollarSign': return DollarSign;
+      case 'Cloud': return Cloud;
+      case 'Sliders': return SlidersHorizontal;
+      default: return Bell;
+    }
+  };
+
+  const getCategoryColorClasses = (color: string) => {
+    switch (color) {
+      case 'emerald':
+        return {
+          bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+          badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+        };
+      case 'orange':
+        return {
+          bg: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+          badge: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+        };
+      case 'amber':
+        return {
+          bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+          badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+        };
+      case 'blue':
+        return {
+          bg: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+          badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+        };
+      case 'rose':
+        return {
+          bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+          badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+        };
+      case 'sky':
+        return {
+          bg: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+          badge: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+        };
+      case 'purple':
+        return {
+          bg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+          badge: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+        };
+      default:
+        return {
+          bg: 'bg-primary/10 text-primary',
+          badge: 'bg-primary/10 text-primary border-primary/20',
+        };
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'profile':
@@ -2484,14 +2551,14 @@ export default function Settings() {
 
       case 'notifications':
         return (
-          <div className="space-y-3">
-            {/* المفتاح الرئيسي الشامل للإشعارات */}
-            <div className={`flex items-center justify-between gap-3 p-4 rounded-xl border-2 transition-colors ${
+          <div className="space-y-4">
+            {/* بطاقة التفعيل الشامل للإشعارات */}
+            <div className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
               notificationSettings.masterEnabled
-                ? 'bg-primary/5 border-primary/30'
-                : 'bg-muted/50 border-border'
+                ? 'bg-primary/5 border-primary/20 shadow-sm'
+                : 'bg-muted/40 border-border/60'
             }`}>
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   notificationSettings.masterEnabled ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                 }`}>
@@ -2503,8 +2570,8 @@ export default function Settings() {
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {notificationSettings.masterEnabled
-                      ? 'سيتم إرسال جميع التنبيهات المحددة'
-                      : 'لن تصلك أي تنبيهات حتى تعيد التفعيل'}
+                      ? 'سيتم إرسال جميع التنبيهات المحددة في النظام'
+                      : 'لن تصلك أي تنبيهات داخلية حتى تعيد التفعيل'}
                   </p>
                 </div>
               </div>
@@ -2514,12 +2581,12 @@ export default function Settings() {
               />
             </div>
 
-            {/* خيارات التحكم التفصيلية */}
+            {/* إعدادات الصوت ومدة العرض */}
             <div className={`bg-card/80 dark:bg-card/40 rounded-2xl border border-border/50 divide-y divide-border/40 overflow-hidden transition-opacity ${
               notificationSettings.masterEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'
             }`}>
               <div className="px-4 py-3 bg-muted/20">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('settings.notifications')}</h2>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">إعدادات العرض والصوت</h2>
               </div>
               {/* الصوت */}
               <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
@@ -2539,32 +2606,6 @@ export default function Settings() {
                   onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, sound: checked })}
                 />
               </div>
-              {[
-                { key: 'newSale', label: t('settings.newSale'), desc: 'إشعار فوري عند تسجيل فاتورة جديدة', icon: CheckCircle2 },
-                { key: 'lowStock', label: t('settings.lowStock'), desc: 'تنبيه عند اقتراب نفاذ كميات الأصناف', icon: AlertCircle },
-                { key: 'newDebt', label: t('settings.newDebt'), desc: 'إشعار عند إضافة دين أو ذمة مالية', icon: FileText },
-                { key: 'paymentReceived', label: t('settings.paymentReceived'), desc: 'إشعار عند تسجيل دفعة أو سداد نقدي', icon: DollarSign },
-                { key: 'dailyReport', label: t('settings.dailyReport'), desc: 'ملخص بالأداء والمبيعات نهاية اليوم', icon: Clock },
-              ].map((item) => {
-                const isChecked = notificationSettings[item.key as keyof NotificationSettingsType] as boolean;
-                return (
-                  <div key={item.key} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center shrink-0">
-                        <item.icon className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-foreground block">{item.label}</span>
-                        <span className="text-xs text-muted-foreground block">{isChecked ? 'مفعل' : 'معطل'} • {item.desc}</span>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={isChecked}
-                      onCheckedChange={(checked) => setNotificationSettings({ ...notificationSettings, [item.key]: checked })}
-                    />
-                  </div>
-                );
-              })}
 
               {/* وقت بقاء الإشعار على الشاشة (من نصف ثانية إلى 3 ثواني) */}
               <div className="px-4 py-3.5 hover:bg-muted/20 transition-colors">
@@ -2603,6 +2644,80 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* تصنيفات أحداث الإشعارات السبعة المفصلة */}
+            <div className={`space-y-4 pt-1 transition-opacity ${
+              notificationSettings.masterEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'
+            }`}>
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">تخصيص تنبيهات النظام حسب القسم</h3>
+                  <p className="text-xs text-muted-foreground">تفعيل أو كتم التنبيه الفوري لكل حدث تشغيلي في النظام</p>
+                </div>
+              </div>
+
+              {NOTIFICATION_EVENT_GROUPS.map((group) => {
+                const IconComp = getCategoryIconComponent(group.icon);
+                const colors = getCategoryColorClasses(group.color);
+                const currentEvents = notificationSettings.events || {};
+                
+                const activeCount = group.events.filter(evt => currentEvents[evt.key] ?? evt.defaultEnabled).length;
+                const totalCount = group.events.length;
+
+                return (
+                  <div
+                    key={group.id}
+                    className="bg-card/80 dark:bg-card/40 rounded-2xl border border-border/50 overflow-hidden shadow-sm"
+                  >
+                    {/* ترويسة المجموعة */}
+                    <div className="px-4 py-3 bg-muted/20 border-b border-border/40 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colors.bg}`}>
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-bold text-foreground">{group.title}</span>
+                      </div>
+                      <Badge variant="outline" className={`text-[11px] font-mono font-medium ${colors.badge}`}>
+                        {activeCount} / {totalCount} مفعل
+                      </Badge>
+                    </div>
+
+                    {/* قائمة أحداث المجموعة */}
+                    <div className="divide-y divide-border/30">
+                      {group.events.map((evt) => {
+                        const isChecked = currentEvents[evt.key] ?? evt.defaultEnabled;
+                        return (
+                          <div
+                            key={evt.key}
+                            className="flex items-center justify-between px-4 py-3 hover:bg-muted/15 transition-colors"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <span className={`text-sm block transition-colors ${
+                                isChecked ? 'font-medium text-foreground' : 'text-muted-foreground'
+                              }`}>
+                                {evt.title}
+                              </span>
+                            </div>
+                            <Switch
+                              checked={isChecked}
+                              onCheckedChange={(checked) => {
+                                setNotificationSettings({
+                                  ...notificationSettings,
+                                  events: {
+                                    ...(notificationSettings.events || getDefaultNotificationEvents()),
+                                    [evt.key]: checked,
+                                  },
+                                });
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
