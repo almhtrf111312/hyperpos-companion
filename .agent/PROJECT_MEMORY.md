@@ -69,7 +69,12 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
-* **2026-10-22:** Thermal Printing & Bluetooth Pairing Realism Protocol:
+* **2026-10-22:** Refined Compact SmartToast & Purged Shockwave Burst Effects:
+  * Removed explosion rings, edge flares, `@keyframes lateralShockwave`, and harsh impact audio (`playBurstSound()`) from `SmartToast.tsx` and `src/index.css`.
+  * Reduced card footprint from `max-w-[29rem]` (~464px) to `max-w-[22.5rem] sm:max-w-[23.5rem]` (~360px-376px) with zero content or button clipping.
+  * Harmonized text, background, and borders with CSS theme variables across Light, Dark, and Blur (`.blur-theme`) glassmorphism modes.
+  * Preserved full swipe gestures (up, left, right), tactile countdown pause & resume physics on touch/cursor, multi-item details, and Print/Share buttons.
+* **2026-10-22 (`0a72c01`):** Thermal Printing & Bluetooth Pairing Realism Protocol:
   * Cleaned `src/lib/native-print.ts`: purged the 4 static mock Bluetooth devices from discovery fallback. If no hardware is detected, `searchBluetoothPrinters` returns an empty array `[]` ("لم يتم العثور على طابعات").
   * Fixed `connectAndTestBluetoothPrinter`: removed mock success. System returns `success: false` if plugin is missing or connection fails, and only saves printer configuration after actual connection and test data transmission succeed.
   * Added `isBluetoothSupported` runtime detection for Cordova `BluetoothSerial`, Capacitor plugin, and Web Bluetooth.
