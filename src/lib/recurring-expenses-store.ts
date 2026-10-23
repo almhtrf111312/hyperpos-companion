@@ -178,7 +178,6 @@ export async function payRecurringExpense(id: string): Promise<boolean> {
 
     // 2. خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
     processExpense(expense.amount, expense.type);
-    emitEvent(EVENTS.EXPENSES_UPDATED, null);
     
     // 3. Calculate next due date strictly into the future
     const todayDate = new Date();
@@ -196,6 +195,9 @@ export async function payRecurringExpense(id: string): Promise<boolean> {
       lastPaidDate: todayStr,
       nextDueDate: nextDueDateStr,
     });
+    
+    // 5. إطلاق حدث التحديث الآن فقط بعد أن أصبح الكاش يحمل تاريخ اليوم الجديد
+    emitEvent(EVENTS.EXPENSES_UPDATED, null);
     
     return true;
   } finally {

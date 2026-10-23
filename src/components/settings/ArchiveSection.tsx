@@ -142,7 +142,7 @@ export function ArchiveSection() {
               { id: 'invoices' as GeneralSubTab, label: 'فواتير مستردة وملغاة', count: archivedInvoices.length, icon: FileX },
               { id: 'debts' as GeneralSubTab, label: t('archive.paidDebts') || 'ديون مسددة', count: paidDebts.length, icon: CreditCard },
               { id: 'products' as GeneralSubTab, label: t('archive.outOfStock') || 'أصناف نفذت', count: outOfStockProducts.length, icon: Package },
-              { id: 'deleted' as GeneralSubTab, label: 'سجل الحذف والاسترداد', count: deletedLogs.length, icon: Trash2 },
+              { id: 'deleted' as GeneralSubTab, label: 'سجل الحذف والاسترداد (محلي لهذا الجهاز)', count: deletedLogs.length, icon: Trash2 },
             ].map(tab => (
               <button
                 key={tab.id}

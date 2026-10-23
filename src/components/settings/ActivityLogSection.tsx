@@ -314,16 +314,18 @@ export function ActivityLogSection() {
 
       {/* 5. Clear Confirmation Modal */}
       <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
-        <DialogContent className="max-w-xs rounded-2xl" dir={isRTL ? 'rtl' : 'ltr'}>
+        <DialogContent className="max-w-sm rounded-2xl" dir={isRTL ? 'rtl' : 'ltr'}>
           <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-lg mt-2">
             🗑️
           </div>
-          <DialogHeader className="text-center space-y-1">
-            <DialogTitle className="text-xs font-bold text-zinc-900 dark:text-foreground text-center">
-              {isAr ? 'مسح سجل الحركات؟' : 'Clear Activity Log?'}
+          <DialogHeader className="text-center space-y-1.5">
+            <DialogTitle className="text-sm font-bold text-zinc-900 dark:text-foreground text-center">
+              {isAr ? 'مسح سجل الحركات المؤقت؟' : 'Clear Activity Log?'}
             </DialogTitle>
-            <DialogDescription className="text-[11px] text-zinc-500 text-center">
-              {isAr ? 'هل أنت متأكد من مسح جميع سجلات التدقيق؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to clear all audit logs? This cannot be undone.'}
+            <DialogDescription className="text-xs text-zinc-500 text-center leading-relaxed">
+              {isAr 
+                ? 'سيتم مسح سجل النشاط المؤقت المخزن محلياً على هذا الجهاز فقط دون التأثير على الفواتير أو القيود المالية أو التدقيق السحابي.'
+                : 'This will clear temporary local activity logs on this device only, without affecting invoices, financial records, or cloud audit logs.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-2 pt-2 text-xs font-semibold">

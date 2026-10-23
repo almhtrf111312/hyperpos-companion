@@ -426,8 +426,8 @@ export const getExpenseStatsCloud = async () => {
   
   const byType: Record<string, number> = {};
   monthlyExpenses.forEach(e => {
-    const label = e.typeLabel;
-    byType[label] = (byType[label] || 0) + (Number(e.amount) || 0);
+    const key = e.type || e.customType || e.typeLabel || 'other';
+    byType[key] = (byType[key] || 0) + (Number(e.amount) || 0);
   });
   
   return {

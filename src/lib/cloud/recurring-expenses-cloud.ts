@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { emitEvent, EVENTS } from '../events';
 import { addToQueue } from '../sync-queue';
+import { toLocalDateString } from '../date-utils';
 import type { ExpenseType } from './expenses-cloud';
 import { 
   type RecurringInterval, 
@@ -112,10 +113,29 @@ const fetchFresh_loadRecurringExpensesCloud = async (): Promise<RecurringExpense
   // If cloud returns rows, map and cache
   if (cloudRows && cloudRows.length > 0) {
     const mapped = cloudRows.map(toRecurringExpense);
-    recurringCache = mapped;
+    const local = loadRecurringExpensesLocally();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const localTodayStr = toLocalDateString(new Date());
+
+    // حماية: إذا كان السجل المحلي مدفوعاً اليوم والسحابة لم تلحق بالتحديث بعد، نحافظ على السداد المحلي
+    const merged = mapped.map(cloudItem => {
+      const localItem = local.find(l => l.id === cloudItem.id);
+      const isPaidTodayLocally = !!(localItem && (localItem.lastPaidDate === todayStr || localItem.lastPaidDate === localTodayStr));
+      const isPaidTodayCloud = cloudItem.lastPaidDate === todayStr || cloudItem.lastPaidDate === localTodayStr;
+      if (isPaidTodayLocally && !isPaidTodayCloud) {
+        return {
+          ...cloudItem,
+          lastPaidDate: localItem.lastPaidDate,
+          nextDueDate: localItem.nextDueDate,
+        };
+      }
+      return cloudItem;
+    });
+
+    recurringCache = merged;
     cacheTimestamp = Date.now();
-    saveRecurringExpensesLocally(mapped);
-    return mapped;
+    saveRecurringExpensesLocally(merged);
+    return merged;
   }
 
   // If cloud is empty, check if we have local unmigrated rows

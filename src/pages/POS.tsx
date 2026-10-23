@@ -14,7 +14,7 @@ import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn, formatNumber } from '@/lib/utils';
 import { loadProductsCloud, loadProductsLocalFirst, getProductByBarcodeCloud, Product, invalidateProductsCache } from '@/lib/cloud/products-cloud';
-import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { getCategoryNamesCloud, getCategoryNamesLocalFirst } from '@/lib/cloud/categories-cloud';
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -428,9 +428,11 @@ export default function POS() {
 
   // Load products and categories from cloud or memory cache
   const [products, setProducts] = useState<POSProduct[]>(() => memoryPosProductsCache);
-  const [categories, setCategories] = useState<string[]>(() =>
-    memoryPosCategoriesCache.length > 0 ? memoryPosCategoriesCache : [t('common.all')]
-  );
+  const [categories, setCategories] = useState<string[]>(() => {
+    if (memoryPosCategoriesCache.length > 0) return memoryPosCategoriesCache;
+    const localCats = getCategoryNamesLocalFirst();
+    return [t('common.all'), ...localCats];
+  });
 
   const updateProducts = useCallback((items: POSProduct[]) => {
     memoryPosProductsCache = items;
@@ -516,6 +518,11 @@ export default function POS() {
             }
           } else {
             updateProducts(initialPosProducts);
+          }
+
+          const localCats = getCategoryNamesLocalFirst();
+          if (localCats && localCats.length > 0) {
+            updateCategories([t('common.all'), ...localCats]);
           }
 
           // إيقاف مؤشر التحميل فوراً ليظهر كل شيء في أقل من نصف ثانية

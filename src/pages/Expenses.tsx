@@ -89,7 +89,10 @@ export default function Expenses() {
   const { t, isRTL } = useLanguage();
 
   const getLocalizedExpenseType = (type: string, fallback?: string): string => {
-    return (t as any)(`expenses.types.${type}`) || fallback || type;
+    const translationKey = `expenses.types.${type}`;
+    const translated = (t as any)(translationKey);
+    if (translated && translated !== translationKey) return translated;
+    return fallback || type;
   };
 
   const getLocalizedInterval = (interval: { value: number; label: string; interval: string }): string => {
