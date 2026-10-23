@@ -185,6 +185,9 @@ export default function BossPanel() {
 
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'cashier' | 'code'; id: string; name: string } | null>(null);
+  const [revokeLicenseConfirm, setRevokeLicenseConfirm] = useState<{ userId: string; name: string } | null>(null);
+  const [isRevokingLicense, setIsRevokingLicense] = useState(false);
+  const [isReactivatingLicense, setIsReactivatingLicense] = useState(false);
 
   // Edit Name Dialog
   const [editNameDialog, setEditNameDialog] = useState<{ owner: Owner } | null>(null);
@@ -614,30 +617,36 @@ export default function BossPanel() {
   };
 
   const handleRevokeLicense = async (ownerId: string) => {
+    setIsRevokingLicense(true);
     try {
       const { data, error } = await supabase.rpc('boss_revoke_user_license', {
         _target_user_id: ownerId,
       });
 
       if (error) {
-        throw new Error(error.message || 'فشل في إلغاء الترخيص');
+        throw new Error(error.message || 'فشل في إيقاف الترخيص');
       }
 
       const res = data as { success?: boolean; error?: string; message?: string } | null;
-      if (res?.success === true) {
-        toast.success('تم إلغاء ترخيص المالك وتعطيل الحساب');
-        fetchData();
+      const isSuccess = (res && typeof res === 'object' && 'success' in res && res.success === true) || data === true;
+      if (isSuccess) {
+        toast.success('تم إيقاف ترخيص المستخدم بنجاح');
+        setRevokeLicenseConfirm(null);
+        await fetchData();
       } else {
-        const errorMsg = res?.error || res?.message || 'فشل في إلغاء الترخيص من الخادم';
+        const errorMsg = (res && typeof res === 'object' && (res.error || res.message)) || 'فشل في إيقاف الترخيص من الخادم';
         throw new Error(errorMsg);
       }
     } catch (error: any) {
       console.error('Error revoking license:', error);
-      toast.error(error.message || 'فشل في إلغاء الترخيص');
+      toast.error(error.message || 'فشل في إيقاف الترخيص');
+    } finally {
+      setIsRevokingLicense(false);
     }
   };
 
   const handleReactivateLicense = async (ownerId: string) => {
+    setIsReactivatingLicense(true);
     try {
       const { data, error } = await supabase.rpc('boss_reactivate_user_license', {
         _target_user_id: ownerId,
@@ -648,16 +657,19 @@ export default function BossPanel() {
       }
 
       const res = data as { success?: boolean; error?: string; message?: string } | null;
-      if (res?.success === true) {
-        toast.success('تمت إعادة تفعيل ترخيص المالك وتنشيط الحساب بنجاح');
-        fetchData();
+      const isSuccess = (res && typeof res === 'object' && 'success' in res && res.success === true) || data === true;
+      if (isSuccess) {
+        toast.success('تمت إعادة تفعيل ترخيص المستخدم بنجاح');
+        await fetchData();
       } else {
-        const errorMsg = res?.error || res?.message || 'فشل في إعادة تفعيل الترخيص من الخادم';
+        const errorMsg = (res && typeof res === 'object' && (res.error || res.message)) || 'فشل في إعادة تفعيل الترخيص من الخادم';
         throw new Error(errorMsg);
       }
     } catch (error: any) {
       console.error('Error reactivating license:', error);
       toast.error(error.message || 'فشل في إعادة تفعيل الترخيص');
+    } finally {
+      setIsReactivatingLicense(false);
     }
   };
 
@@ -1466,7 +1478,7 @@ export default function BossPanel() {
                                   </Badge>
                                 ) : owner.license_revoked ? (
                                   <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
-                                    ترخيص ملغى
+                                    ترخيص موقوف
                                   </Badge>
                                 ) : !owner.license_expires ? (
                                   <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
@@ -1574,13 +1586,23 @@ export default function BossPanel() {
                                     تفعيل عن بعد
                                   </DropdownMenuItem>
                                   {isLicenseValid && (
-                                    <DropdownMenuItem onClick={() => handleRevokeLicense(owner.user_id)} className="text-orange-600">
+                                    <DropdownMenuItem
+                                      onClick={() => setRevokeLicenseConfirm({
+                                        userId: owner.user_id,
+                                        name: owner.full_name || owner.email || 'هذا المستخدم',
+                                      })}
+                                      className="text-amber-600 dark:text-amber-500 font-medium cursor-pointer"
+                                    >
                                       <Ban className="w-4 h-4" />
-                                      إلغاء الترخيص
+                                      إيقاف الترخيص
                                     </DropdownMenuItem>
                                   )}
-                                  {(owner.license_revoked || !owner.is_active) && (
-                                    <DropdownMenuItem onClick={() => handleReactivateLicense(owner.user_id)} className="text-emerald-600 font-medium">
+                                  {Boolean(owner.license_expires && owner.license_revoked) && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleReactivateLicense(owner.user_id)}
+                                      className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer"
+                                      disabled={isReactivatingLicense}
+                                    >
                                       <RotateCcw className="w-4 h-4" />
                                       إعادة تفعيل الترخيص
                                     </DropdownMenuItem>
@@ -1633,7 +1655,7 @@ export default function BossPanel() {
                               >
                                 <Calendar className="w-3 h-3" />
                                 {owner.license_revoked
-                                  ? 'ترخيص ملغى'
+                                  ? 'ترخيص موقوف'
                                   : daysRemaining > 0
                                   ? `متبقي: ${daysRemaining} يوم`
                                   : 'منتهي الصلاحية'}
@@ -2008,7 +2030,7 @@ export default function BossPanel() {
                                 <span className="font-medium text-sm">{owner.full_name || 'بدون اسم'}</span>
                                 {isRevoked ? (
                                   <Badge variant="destructive" className="text-[10px] font-semibold">
-                                    ترخيص ملغى
+                                    ترخيص موقوف
                                   </Badge>
                                 ) : !owner.license_expires ? (
                                   <Badge variant="destructive" className="text-[10px] font-semibold">
@@ -2043,12 +2065,13 @@ export default function BossPanel() {
                               )}
                             </div>
                             <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
-                              {(isRevoked || !owner.is_active) && (
+                              {Boolean(owner.license_expires && isRevoked) && (
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="text-xs text-emerald-600 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                                   onClick={() => handleReactivateLicense(owner.user_id)}
+                                  disabled={isReactivatingLicense}
                                 >
                                   <RotateCcw className="w-3 h-3" />
                                   إعادة تفعيل
@@ -2622,6 +2645,42 @@ export default function BossPanel() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Revoke License Confirmation Dialog */}
+        <AlertDialog open={!!revokeLicenseConfirm} onOpenChange={(open) => !open && !isRevokingLicense && setRevokeLicenseConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <Ban className="w-5 h-5 text-destructive" />
+                تأكيد إيقاف الترخيص
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2 text-sm leading-relaxed">
+                <span className="block">
+                  هل أنت متأكد من رغبتك في إيقاف ترخيص المستخدم{' '}
+                  <strong className="text-foreground font-semibold">"{revokeLicenseConfirm?.name}"</strong>؟
+                </span>
+                <span className="block text-xs text-muted-foreground mt-1">
+                  سيتم تعليق وصول المستخدم للنظام مؤقتاً دون حذف حسابه أو المساس بأي بيانات أو سجلات خاصة به، ويمكنك إعادة تفعيل الترخيص في أي وقت.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isRevokingLicense}>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isRevokingLicense}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (revokeLicenseConfirm) {
+                    await handleRevokeLicense(revokeLicenseConfirm.userId);
+                  }
+                }}
+              >
+                {isRevokingLicense ? 'جاري الإيقاف...' : 'إيقاف الترخيص'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Edit Name Dialog */}
         <Dialog open={!!editNameDialog} onOpenChange={() => setEditNameDialog(null)}>
           <DialogContent>
@@ -2687,7 +2746,7 @@ export default function BossPanel() {
                         className={!editLicenseDialog.owner.license_revoked && days > 0 ? 'bg-emerald-600 text-white font-semibold' : 'font-semibold'}
                       >
                         {editLicenseDialog.owner.license_revoked
-                          ? 'ترخيص ملغى'
+                          ? 'ترخيص موقوف'
                           : days > 0
                           ? `متبقي: ${days} يوم`
                           : 'منتهي الصلاحية'}
