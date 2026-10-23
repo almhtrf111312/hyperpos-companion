@@ -928,6 +928,18 @@ export default function Invoices() {
       setInvoices(prev => prev.map(inv =>
         inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
       ));
+
+      // ⚡ إعادة كميات الأصناف محلياً وفورياً لنقطة البيع (Delta Update)
+      if (invoice.items && invoice.items.length > 0) {
+        import('@/lib/cloud/products-cloud').then(({ restoreProductsQuantitiesLocally }) => {
+          const itemsToRestore = invoice.items.map(item => ({
+            productId: item.productId || item.id,
+            quantity: item.quantity,
+          }));
+          restoreProductsQuantitiesLocally(itemsToRestore);
+        }).catch(() => {});
+      }
+
       if (invoice.customerId) {
         import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
           updateCustomerStatsCloud(invoice.customerId!).catch(() => {});
@@ -990,10 +1002,18 @@ export default function Invoices() {
 
         // Refresh product quantities from cloud so local inventory reflects the refund
         try {
+          if (invoice.items && invoice.items.length > 0) {
+            import('@/lib/cloud/products-cloud').then(({ restoreProductsQuantitiesLocally }) => {
+              const itemsToRestore = invoice.items.map(item => ({
+                productId: item.productId || item.id,
+                quantity: item.quantity,
+              }));
+              restoreProductsQuantitiesLocally(itemsToRestore);
+            }).catch(() => {});
+          }
           invalidateProductsCache();
           refreshProductsFromCloud().then(() => {
-            // Notify listeners that products updated
-            emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+            // Background sync completes quietly
           }).catch(() => {});
         } catch (e) { /* noop */ }
 

@@ -1396,3 +1396,35 @@ export const checkStockAvailabilityCloud = async (
   };
 };
 
+/**
+ * ⚡ إعادة كميات المنتجات محلياً وفورياً بعد الاسترداد دون استدعاء السحابة
+ * يحدث فقط الأصناف المتأثرة في الذاكرة وIndexedDB ويبث الحدث للـ POS
+ */
+export function restoreProductsQuantitiesLocally(items: Array<{ productId: string; quantity: number }>) {
+  try {
+    if (!items || items.length === 0) return;
+    const itemMap = new Map(items.map(i => [i.productId, Number(i.quantity) || 0]));
+
+    // 1. تحديث الكاش الموجود بالذاكرة
+    if (productsCache && productsCache.length > 0) {
+      const updatedProducts: Product[] = [];
+      productsCache = productsCache.map(prod => {
+        const qtyToAdd = itemMap.get(prod.id);
+        if (qtyToAdd && qtyToAdd > 0) {
+          const updated = { ...prod, quantity: (Number(prod.quantity) || 0) + qtyToAdd };
+          updatedProducts.push(updated);
+          return updated;
+        }
+        return prod;
+      });
+
+      // حفظ الكاش السريع
+      saveToLocalCache(productsCache);
+
+      // بث المنتجات التي تغيرت فقط كـ Delta إلى شاشة POS
+      emitEvent(EVENTS.PRODUCTS_UPDATED, updatedProducts);
+    }
+  } catch (err) {
+    console.warn('[ProductsCloud] restoreProductsQuantitiesLocally failed:', err);
+  }
+}

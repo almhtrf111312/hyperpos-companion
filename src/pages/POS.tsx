@@ -589,34 +589,41 @@ export default function POS() {
     loadData(0, hasCached);
 
     // ✅ الاستماع لحدث EVENTS.PRODUCTS_UPDATED لتحديث لحظي وفوري من الكاش أولاً ثم الخلفية
-    const onProductsUpdated = async () => {
+    const onProductsUpdated = (e: Event) => {
       try {
-        const local = await loadProductsLocalFirst();
-        if (local && local.length > 0) {
-          const userType = profile?.user_type || 'cashier';
-          const posItems = formatPosProducts(local);
-          if ((userType === 'distributor' || userType === 'pos') && activeWarehouse) {
-            const { loadWarehouseStockLocally } = await import('@/lib/cloud/warehouses-cloud');
-            const localWarehouseStock = loadWarehouseStockLocally(activeWarehouse.id);
-            if (localWarehouseStock && localWarehouseStock.length > 0) {
-              const filtered = posItems
-                .map(p => {
-                  const s = localWarehouseStock.find(item => item.product_id === p.id);
-                  if (s && s.quantity > 0) return { ...p, quantity: s.quantity };
-                  return null;
-                })
-                .filter((p): p is POSProduct => p !== null);
-              updateProducts(filtered);
-            } else {
-              updateProducts(posItems);
-            }
-          } else {
-            updateProducts(posItems);
-          }
+        const customEv = e as CustomEvent<Product[] | null>;
+        const payload = customEv.detail;
+        // إذا وصل تحديث جزئي لأصناف محددة فقط (مثل الأصناف المستردة)
+        if (Array.isArray(payload) && payload.length > 0 && payload.length < 50) {
+          const deltaMap = new Map(payload.map(p => [p.id, p]));
+          
+          updateProducts((prev) =>
+            prev.map(item => {
+              const updated = deltaMap.get(item.id);
+              if (updated) {
+                return {
+                  ...item,
+                  quantity: updated.quantity,
+                };
+              }
+              return item;
+            })
+          );
+          // لا داعي لاستدعاء loadData(0, true) هنا لتجنب تنزيل 1000 منتج وإبطاء الـ POS
+          return;
         }
-      } catch (e) {
-        console.warn('[POS] onProductsUpdated local cache error:', e);
+
+        // في حال التحديث الشامل
+        if (Array.isArray(payload) && payload.length >= 50) {
+          const posItems = formatPosProducts(payload);
+          updateProducts(posItems);
+          return;
+        }
+      } catch (err) {
+        console.warn('[POS] onProductsUpdated error:', err);
       }
+      
+      // خلفية هادئة فقط إذا لم تكن البيانات متوفرة
       loadData(0, true);
     };
 
