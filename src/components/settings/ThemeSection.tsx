@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Sun, Moon, Palette, Check, Blend } from 'lucide-react';
-import { useTheme, themeColors, ThemeColor, ThemeMode } from '@/hooks/use-theme';
+import { Sun, Moon, Palette, Check, Blend, Sparkles } from 'lucide-react';
+import { useTheme, themeColors, ThemeColor, ThemeMode, ThemeStyle } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -12,6 +12,7 @@ export interface PendingTheme {
   color: ThemeColor;
   blur: boolean;
   transparency: number;
+  style: ThemeStyle;
 }
 
 interface ThemeSectionProps {
@@ -20,13 +21,14 @@ interface ThemeSectionProps {
 }
 
 export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps) {
-  const { mode, color, blurEnabled, transparencyLevel } = useTheme();
+  const { mode, color, blurEnabled, transparencyLevel, themeStyle } = useTheme();
   const { t, isRTL } = useLanguage();
   
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
   const [pendingBlur, setPendingBlur] = useState<boolean>(blurEnabled);
   const [pendingTransparency, setPendingTransparency] = useState<number>(transparencyLevel);
+  const [pendingStyle, setPendingStyle] = useState<ThemeStyle>(themeStyle || 'standard');
 
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
 
@@ -37,22 +39,28 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
       setPendingColor(color);
       setPendingBlur(blurEnabled);
       setPendingTransparency(transparencyLevel);
+      setPendingStyle(themeStyle || 'standard');
     }
-  }, [resetSignal, mode, color, blurEnabled, transparencyLevel]);
+  }, [resetSignal, mode, color, blurEnabled, transparencyLevel, themeStyle]);
 
-  const notifyChange = (m: ThemeMode, c: ThemeColor, b: boolean, tr: number) => {
-    const hasChanges = m !== mode || c !== color || b !== blurEnabled || tr !== transparencyLevel;
-    onPendingChange?.({ mode: m, color: c, blur: b, transparency: tr }, hasChanges);
+  const notifyChange = (m: ThemeMode, c: ThemeColor, b: boolean, tr: number, s: ThemeStyle) => {
+    const hasChanges = m !== mode || c !== color || b !== blurEnabled || tr !== transparencyLevel || s !== (themeStyle || 'standard');
+    onPendingChange?.({ mode: m, color: c, blur: b, transparency: tr, style: s }, hasChanges);
   };
 
   const handleModeChange = (newMode: ThemeMode) => {
     setPendingMode(newMode);
-    notifyChange(newMode, pendingColor, pendingBlur, pendingTransparency);
+    notifyChange(newMode, pendingColor, pendingBlur, pendingTransparency, pendingStyle);
   };
 
   const handleColorChange = (newColor: ThemeColor) => {
     setPendingColor(newColor);
-    notifyChange(pendingMode, newColor, pendingBlur, pendingTransparency);
+    notifyChange(pendingMode, newColor, pendingBlur, pendingTransparency, pendingStyle);
+  };
+
+  const handleStyleChange = (newStyle: ThemeStyle) => {
+    setPendingStyle(newStyle);
+    notifyChange(pendingMode, pendingColor, pendingBlur, pendingTransparency, newStyle);
   };
 
   const handleBlurChange = (enabled: boolean) => {
@@ -60,13 +68,13 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
     const newTransparency = !enabled ? 0 : (pendingTransparency === 0 ? 50 : pendingTransparency);
     if (!enabled) setPendingTransparency(0);
     else if (pendingTransparency === 0) setPendingTransparency(50);
-    notifyChange(pendingMode, pendingColor, enabled, newTransparency);
+    notifyChange(pendingMode, pendingColor, enabled, newTransparency, pendingStyle);
   };
 
   const handleTransparencyChange = (value: number[]) => {
     const val = value[0];
     setPendingTransparency(val);
-    notifyChange(pendingMode, pendingColor, pendingBlur, val);
+    notifyChange(pendingMode, pendingColor, pendingBlur, val, pendingStyle);
   };
 
   return (
@@ -119,6 +127,70 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
             {pendingMode === 'dark' && (
               <Check className="w-4 h-4 text-primary absolute rtl:left-2.5 ltr:right-2.5" />
             )}
+          </button>
+        </div>
+      </div>
+
+      {/* Theme Style Selection (FlowPOS Standard vs Xiaomi HyperOS) */}
+      <div className="pt-2">
+        <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span>{isRTL ? 'نمط الواجهة والتصميم' : 'Design System Style'}</span>
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => handleStyleChange('standard')}
+            className={cn(
+              "p-3.5 sm:p-4 rounded-xl border-2 text-start transition-all relative active:scale-98",
+              pendingStyle === 'standard'
+                ? "border-primary bg-primary/10 shadow-xs"
+                : "border-border/60 bg-muted/40 hover:bg-muted/70"
+            )}
+          >
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="font-bold text-xs sm:text-sm text-foreground">
+                {isRTL ? 'الافتراضي (FlowPOS Standard)' : 'FlowPOS Standard'}
+              </span>
+              {pendingStyle === 'standard' && (
+                <Check className="w-4 h-4 text-primary shrink-0" />
+              )}
+            </div>
+            <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+              {isRTL 
+                ? 'المظهر القياسي المستقر بحواف متوازنة وتناسق مريح.'
+                : 'Standard stable styling with balanced edges and comfortable contrast.'}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleStyleChange('xiaomi')}
+            className={cn(
+              "p-3.5 sm:p-4 rounded-xl border-2 text-start transition-all relative active:scale-98",
+              pendingStyle === 'xiaomi'
+                ? "border-primary bg-primary/10 shadow-xs"
+                : "border-border/60 bg-muted/40 hover:bg-muted/70"
+            )}
+          >
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-xs sm:text-sm text-foreground">
+                  {isRTL ? 'مظهر شاومي (Xiaomi HyperOS)' : 'Xiaomi HyperOS'}
+                </span>
+                <span className="px-1.5 py-0.2 rounded-md bg-primary/20 text-primary text-[10px] font-bold">
+                  HyperOS
+                </span>
+              </div>
+              {pendingStyle === 'xiaomi' && (
+                <Check className="w-4 h-4 text-primary shrink-0" />
+              )}
+            </div>
+            <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+              {isRTL 
+                ? 'زوايا دائرية ناعمة (Squircle) وتأثيرات زجاجية مستوحاة من واجهة HyperOS.'
+                : 'Soft squircle corners and dynamic glass depth inspired by HyperOS.'}
+            </p>
           </button>
         </div>
       </div>

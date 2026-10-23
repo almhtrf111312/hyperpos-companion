@@ -4,19 +4,22 @@ import { getPlatformStoragePrefix } from '@/lib/app-font-config';
 
 export type ThemeMode = 'light' | 'dark';
 export type ThemeColor = 'emerald' | 'blue' | 'purple' | 'rose' | 'orange' | 'cyan' | 'indigo' | 'coral' | 'lime' | 'magenta' | 'coffee' | 'silver';
+export type ThemeStyle = 'standard' | 'xiaomi';
 
 interface ThemeContextType {
   mode: ThemeMode;
   color: ThemeColor;
   blurEnabled: boolean;
   transparencyLevel: number;
+  themeStyle: ThemeStyle;
   setMode: (mode: ThemeMode) => void;
   setColor: (color: ThemeColor) => void;
   setBlurEnabled: (enabled: boolean) => void;
   setTransparencyLevel: (level: number) => void;
+  setThemeStyle: (style: ThemeStyle) => void;
   setTheme: (mode: ThemeMode, color: ThemeColor) => void;
-  setFullTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, transparency?: number) => void;
-  previewTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, transparency: number) => void;
+  setFullTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, transparency?: number, style?: ThemeStyle) => void;
+  previewTheme: (mode: ThemeMode, color: ThemeColor, blur: boolean, transparency: number, style?: ThemeStyle) => void;
   revertTheme: () => void;
 }
 
@@ -355,6 +358,17 @@ const DEFAULT_MODE: ThemeMode = 'light';
 const DEFAULT_COLOR: ThemeColor = 'blue';
 const DEFAULT_BLUR: boolean = false;
 const DEFAULT_TRANSPARENCY: number = 0;
+const DEFAULT_STYLE: ThemeStyle = 'standard';
+
+export function applyThemeStyle(style: ThemeStyle) {
+  const root = document.documentElement;
+  root.setAttribute('data-theme-style', style);
+  if (style === 'xiaomi') {
+    root.classList.add('theme-xiaomi');
+  } else {
+    root.classList.remove('theme-xiaomi');
+  }
+}
 
 export function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: number = 0) {
   const root = document.documentElement;
@@ -364,20 +378,14 @@ export function applyBlurTheme(enabled: boolean, mode: ThemeMode, transparency: 
     // حساب نسبة العتامة الأساسية (0 إلى 1)
     const normalized = Math.max(0, (100 - transparency) / 100);
     
-    // منحنى شفافية متدرج وواضح جداً (Power Curve)
-    // عند 10: عتامة 0.86
-    // عند 50: عتامة 0.38
-    // عند 80: عتامة 0.10
-    // عند 90: عتامة 0.04
-    // عند 100: عتامة 0.015 (زجاجي خالص فائق النقاء)
-    let alpha = Math.pow(normalized, 1.4);
-    alpha = Math.max(0.015, alpha);
-    
-    // ضبط لون الخلفية الزجاجية مع الحفاظ على التباين
-    let darkAlpha = Math.max(0.03, alpha * 0.85);
-    let lightAlpha = Math.max(0.02, alpha * 0.90);
+    // الحد الأدنى للعتامة مع تباين زجاجي مريح
+    let alpha = Math.pow(normalized, 1.2);
+    alpha = Math.max(0.12, alpha); // يمنع هبوط العتامة للصفر
+
+    let darkAlpha = Math.max(0.14, alpha * 0.75);
+    let lightAlpha = Math.max(0.18, alpha * 0.85);
     let glassBg = mode === 'dark' 
-      ? `rgba(12, 16, 24, ${darkAlpha})` 
+      ? `rgba(15, 23, 42, ${darkAlpha})` 
       : `rgba(255, 255, 255, ${lightAlpha})`;
     
     root.style.setProperty('--glass-opacity', `${alpha}`);
@@ -415,6 +423,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [color, setColorState] = useState<ThemeColor>(DEFAULT_COLOR);
   const [blurEnabled, setBlurEnabledState] = useState<boolean>(DEFAULT_BLUR);
   const [transparencyLevel, setTransparencyLevelState] = useState<number>(DEFAULT_TRANSPARENCY);
+  const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(DEFAULT_STYLE);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // ✅ Step 1: Load from platform-isolated localStorage IMMEDIATELY (synchronous, no blocking)
@@ -426,24 +435,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         saved = localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
       }
       if (saved) {
-        const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency } = JSON.parse(saved);
+        const { mode: savedMode, color: savedColor, blur: savedBlur, transparency: savedTransparency, style: savedStyle } = JSON.parse(saved);
         const finalMode = savedMode || DEFAULT_MODE;
         const finalColor = savedColor || DEFAULT_COLOR;
         const finalBlur = savedBlur ?? DEFAULT_BLUR;
         const finalTransparency = savedTransparency ?? DEFAULT_TRANSPARENCY;
+        const finalStyle = (savedStyle as ThemeStyle) || DEFAULT_STYLE;
         setModeState(finalMode);
         setColorState(finalColor);
         setBlurEnabledState(finalBlur);
         setTransparencyLevelState(finalTransparency);
+        setThemeStyleState(finalStyle);
         applyTheme(finalMode, finalColor);
         applyBlurTheme(finalBlur, finalMode, finalTransparency);
+        applyThemeStyle(finalStyle);
       } else {
         applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
         applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
+        applyThemeStyle(DEFAULT_STYLE);
       }
     } catch {
       applyTheme(DEFAULT_MODE, DEFAULT_COLOR);
       applyBlurTheme(DEFAULT_BLUR, DEFAULT_MODE, DEFAULT_TRANSPARENCY);
+      applyThemeStyle(DEFAULT_STYLE);
     }
     setIsInitialized(true);
   }, []);
@@ -459,12 +473,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           const finalColor = parsed.color || DEFAULT_COLOR;
           const finalBlur = parsed.blur ?? DEFAULT_BLUR;
           const finalTransparency = typeof parsed.transparency === 'number' ? parsed.transparency : DEFAULT_TRANSPARENCY;
+          const finalStyle = (parsed.style as ThemeStyle) || DEFAULT_STYLE;
           setModeState(finalMode);
           setColorState(finalColor);
           setBlurEnabledState(finalBlur);
           setTransparencyLevelState(finalTransparency);
+          setThemeStyleState(finalStyle);
           applyTheme(finalMode, finalColor);
           applyBlurTheme(finalBlur, finalMode, finalTransparency);
+          applyThemeStyle(finalStyle);
         } catch {
           // ignore
         }
@@ -474,10 +491,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const saveTheme = (m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
+  const saveTheme = (m: ThemeMode, c: ThemeColor, b: boolean, t: number, s: ThemeStyle = themeStyle) => {
     try {
       const platformKey = getThemeStorageKey();
-      const themeData = JSON.stringify({ mode: m, color: c, blur: b, transparency: t });
+      const themeData = JSON.stringify({ mode: m, color: c, blur: b, transparency: t, style: s });
       localStorage.setItem(platformKey, themeData);
       localStorage.setItem(LEGACY_THEME_STORAGE_KEY, themeData);
     } catch {
@@ -490,27 +507,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModeState(newMode);
     applyTheme(newMode, color);
     applyBlurTheme(blurEnabled, newMode, transparencyLevel);
-    saveTheme(newMode, color, blurEnabled, transparencyLevel);
+    saveTheme(newMode, color, blurEnabled, transparencyLevel, themeStyle);
   };
 
   const setColor = (newColor: ThemeColor) => {
     triggerThemeTransition();
     setColorState(newColor);
     applyTheme(mode, newColor);
-    saveTheme(mode, newColor, blurEnabled, transparencyLevel);
+    saveTheme(mode, newColor, blurEnabled, transparencyLevel, themeStyle);
   };
 
   const setBlurEnabled = (enabled: boolean) => {
     triggerThemeTransition();
     setBlurEnabledState(enabled);
     applyBlurTheme(enabled, mode, transparencyLevel);
-    saveTheme(mode, color, enabled, transparencyLevel);
+    saveTheme(mode, color, enabled, transparencyLevel, themeStyle);
   };
 
   const setTransparencyLevel = (level: number) => {
     setTransparencyLevelState(level);
     applyBlurTheme(blurEnabled, mode, level);
-    saveTheme(mode, color, blurEnabled, level);
+    saveTheme(mode, color, blurEnabled, level, themeStyle);
+  };
+
+  const setThemeStyle = (newStyle: ThemeStyle) => {
+    triggerThemeTransition();
+    setThemeStyleState(newStyle);
+    applyThemeStyle(newStyle);
+    saveTheme(mode, color, blurEnabled, transparencyLevel, newStyle);
   };
 
   const setTheme = (newMode: ThemeMode, newColor: ThemeColor) => {
@@ -519,30 +543,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setColorState(newColor);
     applyTheme(newMode, newColor);
     applyBlurTheme(blurEnabled, newMode, transparencyLevel);
-    saveTheme(newMode, newColor, blurEnabled, transparencyLevel);
+    saveTheme(newMode, newColor, blurEnabled, transparencyLevel, themeStyle);
   };
 
-  const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean, transparency?: number) => {
+  const setFullTheme = (newMode: ThemeMode, newColor: ThemeColor, blur: boolean, transparency?: number, style?: ThemeStyle) => {
     triggerThemeTransition();
     const t = transparency ?? transparencyLevel;
+    const s = style ?? themeStyle;
     setModeState(newMode);
     setColorState(newColor);
     setBlurEnabledState(blur);
     setTransparencyLevelState(t);
+    setThemeStyleState(s);
     applyTheme(newMode, newColor);
     applyBlurTheme(blur, newMode, t);
-    saveTheme(newMode, newColor, blur, t);
+    applyThemeStyle(s);
+    saveTheme(newMode, newColor, blur, t, s);
   };
 
-  const previewTheme = useCallback((m: ThemeMode, c: ThemeColor, b: boolean, t: number) => {
+  const previewTheme = useCallback((m: ThemeMode, c: ThemeColor, b: boolean, t: number, s?: ThemeStyle) => {
     applyTheme(m, c);
     applyBlurTheme(b, m, t);
+    if (s) applyThemeStyle(s);
   }, []);
 
   const revertTheme = useCallback(() => {
     applyTheme(mode, color);
     applyBlurTheme(blurEnabled, mode, transparencyLevel);
-  }, [mode, color, blurEnabled, transparencyLevel]);
+    applyThemeStyle(themeStyle);
+  }, [mode, color, blurEnabled, transparencyLevel, themeStyle]);
 
   return (
     <ThemeContext.Provider value={{ 
@@ -550,10 +579,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       color, 
       blurEnabled, 
       transparencyLevel, 
+      themeStyle,
       setMode, 
       setColor, 
       setBlurEnabled, 
       setTransparencyLevel, 
+      setThemeStyle,
       setTheme, 
       setFullTheme,
       previewTheme,

@@ -595,6 +595,13 @@ input, textarea {
   --blur-intensity: 20px;
 }
 
+.blur-theme body {
+  background-image: 
+    radial-gradient(at 0% 0%, hsl(var(--primary) / 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsl(var(--accent) / 0.06) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
 /* Cards - primary glass surfaces */
 .blur-theme .bg-card,
 .blur-theme [class*="bg-card"],
@@ -633,16 +640,13 @@ input, textarea {
   border-color: var(--glass-border) !important;
 }
 
-/* bg-muted and bg-secondary: semi-transparent instead of glass */
-.blur-theme .bg-muted,
-.blur-theme [class*="bg-muted"]:not([class*="text-muted"]) {
-  background: hsl(var(--muted) / 0.5) !important;
-  backdrop-filter: none !important;
-}
-
+/* أزرار وعناصر تفاعلية زجاجية نصف شفافة */
+.blur-theme .bg-muted:not([class*="text-muted"]),
 .blur-theme .bg-secondary {
-  background: hsl(var(--secondary) / 0.5) !important;
-  backdrop-filter: none !important;
+  background: hsl(var(--muted) / 0.45) !important;
+  backdrop-filter: blur(8px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  border: 1px solid var(--glass-border) !important;
 }
 
 /* Dialog and Sheet - higher blur for focus */
@@ -2003,16 +2007,6 @@ html {
   box-shadow: var(--glass-shadow), var(--glass-inset-shadow) !important;
 }
 
-.blur-theme body {
-  background: 
-    radial-gradient(circle at 18% 15%, hsl(var(--primary) / 0.22) 0%, transparent 48%),
-    radial-gradient(circle at 82% 20%, hsl(var(--accent) / 0.20) 0%, transparent 50%),
-    radial-gradient(circle at 50% 65%, hsl(var(--primary) / 0.16) 0%, transparent 55%),
-    radial-gradient(circle at 25% 85%, hsl(var(--accent) / 0.16) 0%, transparent 48%),
-    radial-gradient(circle at 85% 90%, hsl(var(--primary) / 0.14) 0%, transparent 45%),
-    hsl(var(--background)) !important;
-  background-attachment: fixed !important;
-}
 
 /* ===== Fast Snappy Modal & Bottom Sheet Animations ===== */
 
@@ -2152,4 +2146,21 @@ html {
 .min-touch-target {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* ===== Xiaomi HyperOS Theme Foundation ===== */
+.theme-xiaomi {
+  --radius: 1.15rem;
+}
+
+.theme-xiaomi .rounded-xl {
+  border-radius: 1.15rem !important;
+}
+
+.theme-xiaomi .rounded-2xl {
+  border-radius: 1.35rem !important;
+}
+
+.theme-xiaomi.blur-theme .bg-card {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
 }

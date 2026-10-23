@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Type, Maximize2, LayoutGrid, Save, Undo2, Loader2, Sparkles } from 'lucide-react';
+import { Palette, Type, Maximize2, LayoutGrid, Save, Undo2, Loader2, Sparkles } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
 import { UIScaleSelector } from '@/components/settings/UIScaleSelector';
 import { FontSelector } from '@/components/settings/FontSelector';
@@ -19,13 +19,13 @@ export type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
 
 export default function Appearance() {
   const { t, isRTL } = useLanguage();
-  const [activeTab, setActiveTab] = useState<AppearanceTab>('fonts');
-  const { mode, color, blurEnabled, transparencyLevel, setFullTheme, previewTheme, revertTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<AppearanceTab>('theme');
+  const { mode, color, blurEnabled, transparencyLevel, themeStyle, setFullTheme, previewTheme, revertTheme } = useTheme();
   const { currentFont, setFont } = useAppFont();
   const { currentScale, setScale } = useUIScale();
 
   // Baseline stored settings captured upon entering Appearance
-  const savedThemeRef = useRef({ mode, color, blur: blurEnabled, transparency: transparencyLevel });
+  const savedThemeRef = useRef({ mode, color, blur: blurEnabled, transparency: transparencyLevel, style: themeStyle });
   const savedFontRef = useRef<AppFontId>(currentFont);
   const savedScaleRef = useRef<UIScaleId>(currentScale);
 
@@ -42,7 +42,8 @@ export default function Appearance() {
     draftTheme.mode !== savedThemeRef.current.mode ||
     draftTheme.color !== savedThemeRef.current.color ||
     draftTheme.blur !== savedThemeRef.current.blur ||
-    draftTheme.transparency !== savedThemeRef.current.transparency
+    draftTheme.transparency !== savedThemeRef.current.transparency ||
+    draftTheme.style !== savedThemeRef.current.style
   );
   const hasFontChanged = draftFont !== savedFontRef.current;
   const hasScaleChanged = draftScale !== savedScaleRef.current;
@@ -95,7 +96,7 @@ export default function Appearance() {
     try {
       // 1. Save Theme
       if (hasThemeChanged && draftTheme) {
-        setFullTheme(draftTheme.mode, draftTheme.color, draftTheme.blur, draftTheme.transparency);
+        setFullTheme(draftTheme.mode, draftTheme.color, draftTheme.blur, draftTheme.transparency, draftTheme.style);
         savedThemeRef.current = { ...draftTheme };
         setDraftTheme(null);
       }
@@ -145,8 +146,9 @@ export default function Appearance() {
     setResetSignal((prev) => prev + 1);
   };
 
-  // Navigation tabs (Theme tab button intentionally removed as UI element; ThemeSection is shown directly)
+  // Navigation tabs
   const tabs = [
+    { id: 'theme' as AppearanceTab, label: isRTL ? 'المظهر والثيم' : 'Theme & Style', icon: Palette },
     { id: 'fonts' as AppearanceTab, label: t('appearance.fonts'), icon: Type },
     { id: 'scale' as AppearanceTab, label: t('appearance.uiScale'), icon: Maximize2 },
     { id: 'layout' as AppearanceTab, label: t('appearance.layout'), icon: LayoutGrid },
@@ -154,23 +156,8 @@ export default function Appearance() {
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto pb-28 pt-14 md:pt-4 space-y-5">
-      {/* قسم المظهر العام معروض بشكل مباشر وافتراضي */}
-      <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm transition-all">
-        <ThemeSection
-          resetSignal={resetSignal}
-          onPendingChange={(pending, changed) => {
-            setDraftTheme(changed ? pending : null);
-            if (changed) {
-              previewTheme(pending.mode, pending.color, pending.blur, pending.transparency);
-            } else {
-              revertTheme();
-            }
-          }}
-        />
-      </div>
-
-      {/* شريط تبويبات الإعدادات الإضافية (الخطوط، حجم الواجهة، والتخطيط) */}
-      <div className="grid grid-cols-3 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
+      {/* شريط تبويبات الإعدادات (المظهر والثيم، الخطوط، حجم الواجهة، والتخطيط) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -195,6 +182,20 @@ export default function Appearance() {
 
       {/* محتوى التبويب النشط */}
       <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm transition-all">
+        {activeTab === 'theme' && (
+          <ThemeSection
+            resetSignal={resetSignal}
+            onPendingChange={(pending, changed) => {
+              setDraftTheme(changed ? pending : null);
+              if (changed) {
+                previewTheme(pending.mode, pending.color, pending.blur, pending.transparency, pending.style);
+              } else {
+                revertTheme();
+              }
+            }}
+          />
+        )}
+
         {activeTab === 'fonts' && (
           <FontSelector
             draftFont={draftFont}
