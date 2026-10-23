@@ -2276,13 +2276,27 @@ html {
 }
 
 /* 4. HyperOS Floating Capsule Tabs & Tablists */
-.theme-xiaomi [role="tablist"],
-.theme-xiaomi [data-slot="tabs-list"] {
+.theme-xiaomi [role="tablist"]:not(.grid):not([class*="grid"]),
+.theme-xiaomi [data-slot="tabs-list"]:not(.grid):not([class*="grid"]) {
   background: var(--xiaomi-surface-glass) !important;
   backdrop-filter: blur(24px) saturate(170%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(170%) !important;
   border: 1px solid var(--xiaomi-border-refract) !important;
   border-radius: 9999px !important;
+  padding: 0.3rem !important;
+  box-shadow: 0 6px 24px -6px rgba(0, 0, 0, 0.09), var(--xiaomi-specular-highlight) !important;
+  gap: 0.3rem !important;
+}
+
+.theme-xiaomi [role="tablist"].grid,
+.theme-xiaomi [role="tablist"][class*="grid"],
+.theme-xiaomi [data-slot="tabs-list"].grid,
+.theme-xiaomi [data-slot="tabs-list"][class*="grid"] {
+  background: var(--xiaomi-surface-glass) !important;
+  backdrop-filter: blur(24px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(170%) !important;
+  border: 1px solid var(--xiaomi-border-refract) !important;
+  border-radius: 1rem !important;
   padding: 0.3rem !important;
   box-shadow: 0 6px 24px -6px rgba(0, 0, 0, 0.09), var(--xiaomi-specular-highlight) !important;
   gap: 0.3rem !important;

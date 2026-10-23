@@ -7,7 +7,7 @@
  * Single Source of Truth for Root Font-Size Scaling.
  */
 
-export type UIScaleId = '80' | '90' | '100' | '110' | '120';
+export type UIScaleId = '60' | '70' | '80' | '90' | '100' | '110' | '120';
 
 export interface UIScaleOption {
   id: UIScaleId;
@@ -29,8 +29,8 @@ export function getUIScaleStorageKey(): string {
 
 export const UI_SCALE_STORAGE_KEY = 'flowpos_ui_scale';
 export const LEGACY_UI_SCALE_STORAGE_KEY = 'hyperpos_ui_scale';
-export const DEFAULT_UI_SCALE_ID: UIScaleId = '100';
-export const DEFAULT_UI_SCALE_PX = '14px';
+export const DEFAULT_UI_SCALE_ID: UIScaleId = '60';
+export const DEFAULT_UI_SCALE_PX = '8.4px';
 export const UI_SCALE_CHANGED_EVENT = 'hyperpos:ui_scale_changed';
 
 /**
@@ -38,6 +38,8 @@ export const UI_SCALE_CHANGED_EVENT = 'hyperpos:ui_scale_changed';
  * Paired identically with the early-bootstrap script in index.html.
  */
 export const UI_SCALE_MAP: Readonly<Record<UIScaleId, string>> = {
+  '60': '8.4px',
+  '70': '9.8px',
   '80': '11.2px',
   '90': '12.6px',
   '100': '14px',
@@ -46,6 +48,28 @@ export const UI_SCALE_MAP: Readonly<Record<UIScaleId, string>> = {
 } as const;
 
 export const UI_SCALE_OPTIONS: readonly UIScaleOption[] = [
+  {
+    id: '60',
+    percentage: 60,
+    fontSizePx: UI_SCALE_MAP['60'],
+    labelAr: 'الأصغر إطلاقاً (60%)',
+    labelEn: 'Ultra Compact (60%)',
+    badgeAr: 'أقصى كثافة',
+    badgeEn: 'Ultra Density',
+    descriptionAr: 'حجم مكثف جداً يمنح أقصى مساحة رؤية لكامل الجداول والفواتير على شاشات الموبايل',
+    descriptionEn: 'Ultra compact scale offering maximum visible rows and panels on mobile displays',
+  },
+  {
+    id: '70',
+    percentage: 70,
+    fontSizePx: UI_SCALE_MAP['70'],
+    labelAr: 'مدمج جداً (70%)',
+    labelEn: 'Super Compact (70%)',
+    badgeAr: 'كثافة عالية',
+    badgeEn: 'High Density',
+    descriptionAr: 'حجم مدمج ومريح يعرض بيانات إضافية واسعة مع الحفاظ على وضوح القراءة',
+    descriptionEn: 'Super compact scale fitting extensive data while maintaining comfortable reading',
+  },
   {
     id: '80',
     percentage: 80,

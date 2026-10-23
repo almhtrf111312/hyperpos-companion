@@ -1266,24 +1266,24 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 w-full h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/70 gap-1.5 shadow-sm">
+          <TabsList className="flex items-center gap-1.5 overflow-x-auto scrollbar-none p-1.5 bg-muted/60 rounded-2xl w-full sm:grid sm:grid-cols-4 md:grid-cols-7 h-auto border border-border/70 shadow-sm">
             <TabsTrigger
               value="users"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <Users className="w-4 h-4 shrink-0" />
               <span className="leading-tight">المستخدمين</span>
             </TabsTrigger>
             <TabsTrigger
               value="codes"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <Key className="w-4 h-4 shrink-0" />
               <span className="leading-tight">الأكواد</span>
             </TabsTrigger>
             <TabsTrigger
               value="issues"
-              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="relative flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span className="leading-tight">التراخيص</span>
@@ -1295,21 +1295,21 @@ export default function BossPanel() {
             </TabsTrigger>
             <TabsTrigger
               value="contact"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <MessageCircle className="w-4 h-4 shrink-0" />
               <span className="leading-tight">التواصل</span>
             </TabsTrigger>
             <TabsTrigger
               value="system"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <Wrench className="w-4 h-4 shrink-0" />
               <span className="leading-tight">النظام</span>
             </TabsTrigger>
             <TabsTrigger
               value="radar"
-              className="relative flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="relative flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <Terminal className="w-4 h-4 shrink-0" />
               <span className="leading-tight">رادار الأخطاء</span>
@@ -1321,7 +1321,7 @@ export default function BossPanel() {
             </TabsTrigger>
             <TabsTrigger
               value="ai-assistant"
-              className="flex-col sm:flex-row w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25"
+              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-[11px] sm:text-sm font-semibold rounded-xl transition-colors duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25 whitespace-nowrap"
             >
               <Sparkles className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
               <span className="leading-tight">المساعد الذكي</span>

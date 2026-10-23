@@ -16,7 +16,7 @@ import { EVENTS } from '@/lib/events';
 
 import { cn } from '@/lib/utils';
 
-const SCALE_STEPS: UIScaleId[] = ['80', '90', '100', '110', '120'];
+const SCALE_STEPS: UIScaleId[] = ['60', '70', '80', '90', '100', '110', '120'];
 
 interface UIScaleSelectorProps {
   className?: string;
@@ -54,7 +54,7 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
   const stepIndex = SCALE_STEPS.indexOf(effectiveScale);
 
   const handleStepChange = async (index: number) => {
-    const newScale = SCALE_STEPS[index] || '100';
+    const newScale = SCALE_STEPS[index] || '60';
     if (onDraftChange) {
       onDraftChange(newScale);
       return;
@@ -84,18 +84,22 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
   // ليتطابق تماماً مع مؤشر شريط السحب الأفقي
   const stepsConfig = isRTL
     ? [
-        { index: 4, label: 'كبير جداً' },
-        { index: 3, label: 'كبير' },
-        { index: 2, label: 'وسط' },
-        { index: 1, label: 'صغير' },
-        { index: 0, label: 'صغير جداً' },
+        { index: 6, label: 'كبير جداً' },
+        { index: 5, label: 'كبير' },
+        { index: 4, label: 'وسط' },
+        { index: 3, label: 'صغير' },
+        { index: 2, label: 'مدمج' },
+        { index: 1, label: 'مكثف' },
+        { index: 0, label: 'الأصغر' },
       ]
     : [
-        { index: 0, label: 'Extra Small' },
-        { index: 1, label: 'Small' },
-        { index: 2, label: 'Normal' },
-        { index: 3, label: 'Large' },
-        { index: 4, label: 'Extra Large' },
+        { index: 0, label: '60%' },
+        { index: 1, label: '70%' },
+        { index: 2, label: '80%' },
+        { index: 3, label: '90%' },
+        { index: 4, label: '100%' },
+        { index: 5, label: '110%' },
+        { index: 6, label: '120%' },
       ];
 
   return (
@@ -116,20 +120,20 @@ export const UIScaleSelector: React.FC<UIScaleSelectorProps> = ({
       <div className="space-y-3 pt-2">
         <div dir="ltr" className="px-2">
           <Slider
-            value={[stepIndex >= 0 ? stepIndex : 2]}
+            value={[stepIndex >= 0 ? stepIndex : 0]}
             min={0}
-            max={4}
+            max={6}
             step={1}
             onValueChange={(val) => handleStepChange(val[0])}
             className="w-full cursor-pointer"
           />
         </div>
 
-        {/* تسميات النقاط الخمس: من اليمين (كبير جداً) إلى اليسار (صغير جداً) في RTL */}
-        <div className="grid grid-cols-5 text-center text-[10px] md:text-xs font-medium text-muted-foreground select-none">
+        {/* تسميات النقاط السبع: من اليمين (كبير جداً) إلى اليسار (الأصغر 60%) في RTL */}
+        <div className="grid grid-cols-7 text-center text-[10px] md:text-xs font-medium text-muted-foreground select-none">
           {stepsConfig.map((item) => {
             const isActive = stepIndex === item.index;
-            const isDefault = item.index === 2;
+            const isDefault = item.index === 0;
             return (
               <button
                 key={item.index}

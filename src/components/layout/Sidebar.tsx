@@ -93,6 +93,7 @@ const storeTypeIcons: Record<string, React.ElementType> = {
   clothing: Shirt,
   restaurant: UtensilsCrossed,
   repair: Wrench,
+  maintenance: Wrench,
   bookstore: BookOpen,
   bakery: CookingPot,
   general: Store,

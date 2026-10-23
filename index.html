@@ -30,10 +30,10 @@
             } catch (err) {}
           }
           if (scale) scale = String(scale).trim().replace(/^['"]|['"]$/g, '');
-          var scaleMap = { '80': '11.2px', '90': '12.6px', '100': '14px', '110': '15.4px', '120': '16.8px' };
-          var defaultScale = '100';
+          var scaleMap = { '60': '8.4px', '70': '9.8px', '80': '11.2px', '90': '12.6px', '100': '14px', '110': '15.4px', '120': '16.8px' };
+          var defaultScale = '60';
           var activeScale = scaleMap[scale] ? scale : defaultScale;
-          var scalePx = scaleMap[activeScale];
+          var scalePx = scaleMap[activeScale] || '8.4px';
           document.documentElement.style.fontSize = scalePx;
           document.documentElement.setAttribute('data-ui-scale', activeScale);
           var isRtl = lang === 'ar' || lang === 'fa' || lang === 'ku';
