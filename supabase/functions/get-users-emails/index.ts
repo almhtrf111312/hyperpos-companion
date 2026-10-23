@@ -47,18 +47,26 @@ Deno.serve(async (req) => {
     }
     console.log('Authenticated caller:', callerId)
 
-    // Check if caller is admin or boss
-    const { data: callerRole, error: roleError } = await adminClient
-      .from('user_roles')
-      .select('role, owner_id')
-      .eq('user_id', callerId)
-      .single()
+    // Check if caller is admin or boss — retry on transient network errors
+    let callerRole: { role: string; owner_id: string | null } | null = null
+    let roleError: unknown = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await adminClient
+        .from('user_roles')
+        .select('role, owner_id')
+        .eq('user_id', callerId)
+        .maybeSingle()
+      if (!res.error) { callerRole = res.data; roleError = null; break }
+      roleError = res.error
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)))
+    }
 
     if (roleError) {
-      console.error('Error fetching caller role:', roleError)
+      console.error('Error fetching caller role (after retries):', roleError)
+      // Degrade gracefully: the UI works without emails
       return new Response(
-        JSON.stringify({ error: 'Failed to verify permissions' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ emails: {}, warning: 'permissions_check_unavailable' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
