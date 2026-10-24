@@ -255,7 +255,7 @@ export default function InvoiceTracking() {
 
   return (
     <div className="p-4 space-y-4" dir="rtl">
-      <header className="space-y-1">
+      <header className="space-y-1 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Receipt className="h-5 w-5 text-primary" />
           تتبع الفواتير

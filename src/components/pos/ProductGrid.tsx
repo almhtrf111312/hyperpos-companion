@@ -217,15 +217,15 @@ export function ProductGrid({
         </div>
 
         {/* Categories Horizontal Scroll */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 md:mx-0 md:px-0">
+        <div data-tour="categories" className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 md:mx-0 md:px-0">
           {categories.map((category, index) => (
             <button
               key={category + index}
               onClick={() => onCategoryChange(category)}
               className={cn(
-                "px-4 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-[transform,colors,box-shadow] duration-200 flex-shrink-0 active:scale-95",
+                "category-pill px-4 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-bold whitespace-nowrap transition-[transform,colors,box-shadow] duration-200 flex-shrink-0 active:scale-95",
                 selectedCategory === category
-                  ? "bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/20"
+                  ? "active bg-primary text-primary-foreground shadow-md scale-105 ring-2 ring-primary/20"
                   : "bg-card text-muted-foreground hover:text-foreground hover:bg-muted/80 shadow-sm border border-border/60"
               )}
             >

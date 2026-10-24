@@ -30,7 +30,7 @@ export default function ContactDeveloper() {
   const siteUrl = site ? (site.startsWith('http') ? site : `https://${site}`) : '';
 
   return (
-    <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-5" dir={direction}>
+    <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-5 pt-12 md:pt-4" dir={direction}>
       {/* Developer Info Card */}
       <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3 shadow-sm">
         <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">

@@ -86,7 +86,6 @@ import {
   exportToPDF,
 } from '@/lib/pdf-export';
 import { useLanguage } from '@/hooks/use-language';
-import { MainLayout } from '@/components/layout/MainLayout';
 import { EVENTS } from '@/lib/events';
 import { getCurrentStoreType, getVisibleSections, isNoInventoryMode } from '@/lib/store-type-config';
 import { ReportFiltersBar, ReportFilters } from '@/components/reports/ReportFiltersBar';
@@ -2029,7 +2028,7 @@ export default function Reports() {
   // ========== RENDER ==========
 
   return (
-    <MainLayout>
+
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
         {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
         <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
@@ -3165,7 +3164,7 @@ export default function Reports() {
           </div>
         )}
       </div>
-    </MainLayout>
+
   );
 }
 

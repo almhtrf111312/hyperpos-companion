@@ -376,8 +376,7 @@ export default function Customers() {
       {/* Top Navigation Tabs - lifted with smart mobile clearance */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-3">
         <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-          <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
-            <TabsList className="bg-transparent p-0 h-auto gap-1">
+          <TabsList className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none h-auto">
               <TabsTrigger
                 value="customers"
                 className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
@@ -392,8 +391,7 @@ export default function Customers() {
                 <CreditCard className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabDebts' as any) || 'الديون'}</span>
               </TabsTrigger>
-            </TabsList>
-          </div>
+          </TabsList>
         </div>
 
         <TabsContent value="customers" className="space-y-3 m-0">

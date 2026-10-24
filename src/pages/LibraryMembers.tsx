@@ -180,8 +180,7 @@ export default function LibraryMembers() {
       {/* Top Tabs with smart mobile clearance */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-3">
         <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-          <div className="inline-flex p-1 rounded-2xl bg-muted/80 border border-border shadow-xs select-none">
-            <TabsList className="bg-transparent p-0 h-auto gap-1">
+          <TabsList className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none h-auto">
               <TabsTrigger
                 value="members"
                 className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm text-muted-foreground cursor-pointer"
@@ -196,8 +195,7 @@ export default function LibraryMembers() {
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>الإعارات</span>
               </TabsTrigger>
-            </TabsList>
-          </div>
+          </TabsList>
         </div>
 
         {/* Compact Stats Strip */}

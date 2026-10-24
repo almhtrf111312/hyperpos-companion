@@ -502,7 +502,7 @@ export function SmartToast() {
   const isDismissing = !isVisible && dismissDirection !== null;
 
   return (
-    <div className="fixed top-4 inset-x-0 px-3 z-[100] flex justify-center pointer-events-none" dir="rtl">
+    <div className="fixed top-[calc(0.75rem+env(safe-area-inset-top))] inset-x-0 px-3 z-[100] flex justify-center pointer-events-none" dir="rtl">
       {/* بطاقة الإشعار الذكية المدمجة والمحسوبة وفق ألوان السمة */}
       <div
         className={cn(

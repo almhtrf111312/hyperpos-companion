@@ -2212,9 +2212,14 @@ html {
   transition: transform 0.2s var(--spring-easing), background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.theme-xiaomi button:active,
-.theme-xiaomi [role="button"]:active {
+.theme-xiaomi button:not([data-slot*="menu-item"]):not([data-slot*="select-item"]):active:not([class*="-translate-x-1/2"]),
+.theme-xiaomi [role="button"]:not([role="menuitem"]):not([role="option"]):active:not([class*="-translate-x-1/2"]) {
   transform: scale(0.96) !important;
+}
+
+.theme-xiaomi button[class*="-translate-x-1/2"]:active,
+.theme-xiaomi [role="button"][class*="-translate-x-1/2"]:active {
+  transform: translateX(-50%) scale(0.96) !important;
 }
 
 .theme-xiaomi button.rounded-full,
@@ -2302,9 +2307,20 @@ html {
   gap: 0.3rem !important;
 }
 
-.theme-xiaomi [role="tab"],
-.theme-xiaomi [data-slot="tabs-trigger"] {
+.theme-xiaomi [role="tablist"]:not(.grid):not([class*="grid"]) [role="tab"]:not(.flex-col),
+.theme-xiaomi [role="tablist"]:not(.grid):not([class*="grid"]) [data-slot="tabs-trigger"]:not(.flex-col) {
   border-radius: 9999px !important;
+  font-weight: 700 !important;
+  transition: transform 0.22s var(--spring-easing), background-color 0.2s ease, box-shadow 0.2s ease, color 0.15s ease !important;
+}
+
+.theme-xiaomi [role="tablist"].grid [role="tab"],
+.theme-xiaomi [role="tablist"][class*="grid"] [role="tab"],
+.theme-xiaomi [data-slot="tabs-list"].grid [data-slot="tabs-trigger"],
+.theme-xiaomi [data-slot="tabs-list"][class*="grid"] [data-slot="tabs-trigger"],
+.theme-xiaomi [role="tab"].flex-col,
+.theme-xiaomi [data-slot="tabs-trigger"].flex-col {
+  border-radius: 1rem !important;
   font-weight: 700 !important;
   transition: transform 0.22s var(--spring-easing), background-color 0.2s ease, box-shadow 0.2s ease, color 0.15s ease !important;
 }
@@ -2326,6 +2342,7 @@ html {
 .theme-xiaomi [data-tour="categories"] button,
 .theme-xiaomi .category-pill {
   border-radius: 9999px !important;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.06) !important;
   transition: transform 0.2s var(--spring-easing), background-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
