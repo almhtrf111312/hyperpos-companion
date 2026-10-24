@@ -18,7 +18,7 @@ import { getCategoryNamesCloud, getCategoryNamesLocalFirst } from '@/lib/cloud/c
 import { showToast } from '@/lib/toast-config';
 import { EVENTS } from '@/lib/events';
 import { usePOSShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { getCurrentStoreType, isNoInventoryMode } from '@/lib/store-type-config';
+import { getCurrentStoreType, isNoInventoryMode, getVisibleSections } from '@/lib/store-type-config';
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { loadCurrencySymbols, loadCurrencyNames } from '@/hooks/use-currency';
@@ -1179,6 +1179,7 @@ export default function POS() {
                 onAddNewCart={handleAddNewCart}
                 onRemoveCart={handleRemoveCart}
                 lastAddedItemId={lastAddedItemId}
+                isMaintenanceEnabled={!hideMaintenanceSection && Boolean(getVisibleSections(getCurrentStoreType())?.maintenance)}
                 isMobile={false}
               />
             </div>
@@ -1210,6 +1211,7 @@ export default function POS() {
               onAddNewCart={handleAddNewCart}
               onRemoveCart={handleRemoveCart}
               lastAddedItemId={lastAddedItemId}
+              isMaintenanceEnabled={!hideMaintenanceSection && Boolean(getVisibleSections(getCurrentStoreType())?.maintenance)}
               onClose={() => handleSetCartOpen(false)}
               isMobile
             />

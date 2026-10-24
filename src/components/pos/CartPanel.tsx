@@ -64,7 +64,7 @@ import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
 import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/currencies';
 
 import { Calculator } from '@/components/ui/Calculator';
-import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
+import { isNoInventoryMode, getCurrentStoreType, getVisibleSections } from '@/lib/store-type-config';
 import { MaintenancePanel } from '@/components/pos/MaintenancePanel';
 
 const isRepairStoreType = () => getCurrentStoreType() === 'repair';
@@ -197,6 +197,7 @@ interface CartPanelProps {
   onAddNewCart?: () => void;
   onRemoveCart?: (cartId: string, e?: React.MouseEvent) => void;
   lastAddedItemId?: string | null;
+  isMaintenanceEnabled?: boolean;
 }
 
 function generateQuickCashOptions(totalAmount: number, currencyCode: string, exchangeRate: number = 1): number[] {
@@ -258,6 +259,7 @@ export function CartPanel({
   onAddNewCart,
   onRemoveCart,
   lastAddedItemId,
+  isMaintenanceEnabled: propIsMaintenanceEnabled,
 }: CartPanelProps) {
   const { user, profile } = useAuth();
   const { t, language, isRTL } = useLanguage();
@@ -318,6 +320,25 @@ export function CartPanel({
   const [customerSuggestions, setCustomerSuggestions] = useState<Customer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);  // ✅ آلة حاسبة
+  const [showMaintenance, setShowMaintenance] = useState(false);
+
+  const isMaintenanceEnabled = useMemo(() => {
+    if (typeof propIsMaintenanceEnabled === 'boolean') {
+      return propIsMaintenanceEnabled;
+    }
+    try {
+      const raw = window.localStorage.getItem('hyperpos_settings_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.hideMaintenanceSection) return false;
+      }
+      const storeType = getCurrentStoreType();
+      const visible = getVisibleSections(storeType);
+      return Boolean(visible?.maintenance);
+    } catch {
+      return false;
+    }
+  }, [propIsMaintenanceEnabled]);
 
   // ✅ حفظ بيانات آخر عملية بيع لعرض أزرار الطباعة والمشاركة فوراً
   const [lastSale, setLastSale] = useState<{
