@@ -2,7 +2,7 @@ name: Build FlowPOS Pro Windows
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, event-or-artifact ]
   workflow_dispatch:
 
 jobs:

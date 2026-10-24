@@ -5,6 +5,13 @@
  * Allows users to easily select pre-filled currency symbols, names, and codes.
  */
 
+import {
+  getMoneyState,
+  getCurrencyDef,
+  getActiveCurrencyDef,
+  normalizeCurrencyCode,
+} from '@/lib/money-engine';
+
 export interface PredefinedCurrency {
   code: string;
   symbol: string;
@@ -20,7 +27,7 @@ export const PREDEFINED_CURRENCIES: PredefinedCurrency[] = [
   { code: 'AED', symbol: 'د.إ', name: 'الدرهم الإماراتي', nameEn: 'UAE Dirham', category: 'gulf_me', suggestedRate: 3.67 },
   { code: 'KWD', symbol: 'د.ك', name: 'الدينار الكويتي', nameEn: 'Kuwaiti Dinar', category: 'gulf_me', suggestedRate: 0.31 },
   { code: 'QAR', symbol: 'ر.ق', name: 'الريال القطري', nameEn: 'Qatari Riyal', category: 'gulf_me', suggestedRate: 3.64 },
-  { code: 'BHR', symbol: 'د.ب', name: 'الدينار البحريني', nameEn: 'Bahraini Dinar', category: 'gulf_me', suggestedRate: 0.38 },
+  { code: 'BHD', symbol: 'د.ب', name: 'الدينار البحريني', nameEn: 'Bahraini Dinar', category: 'gulf_me', suggestedRate: 0.38 },
   { code: 'OMR', symbol: 'ر.ع', name: 'الريال العماني', nameEn: 'Omani Rial', category: 'gulf_me', suggestedRate: 0.38 },
   { code: 'JOD', symbol: 'د.أ', name: 'الدينار الأردني', nameEn: 'Jordanian Dinar', category: 'gulf_me', suggestedRate: 0.71 },
   { code: 'IQD', symbol: 'د.ع', name: 'الدينار العراقي', nameEn: 'Iraqi Dinar', category: 'gulf_me', suggestedRate: 1310 },
@@ -59,7 +66,7 @@ export const CURRENCY_CATEGORIES = [
  */
 export function getPredefinedCurrency(code?: string): PredefinedCurrency | undefined {
   if (!code) return undefined;
-  const upper = code.trim().toUpperCase();
+  const upper = normalizeCurrencyCode(code);
   return PREDEFINED_CURRENCIES.find(c => c.code === upper);
 }
 
@@ -69,10 +76,8 @@ export function getPredefinedCurrency(code?: string): PredefinedCurrency | undef
  */
 export function getCurrencySymbolByCode(code?: string, fallback?: string): string {
   if (!code) return fallback || '$';
-  const upper = code.trim().toUpperCase();
-  const found = PREDEFINED_CURRENCIES.find(c => c.code === upper);
-  if (found) return found.symbol;
-  return fallback || upper;
+  const def = getCurrencyDef(code);
+  return def.symbol || fallback || def.code;
 }
 
 /**
@@ -84,7 +89,7 @@ export function inferCurrencyFromExchangeRate(rate: number, hintedCode?: string)
 
   // إذا كان هناك تلميح بكود العملة
   if (hintedCode && hintedCode.trim().toUpperCase() !== 'USD') {
-    const hintUpper = hintedCode.trim().toUpperCase();
+    const hintUpper = normalizeCurrencyCode(hintedCode);
 
     // فحص أمان صارم: إذا كان سعر الصرف غير متوافق نهائياً مع العملة المزعومة،
     // نمنع تطبيق الكود الخاطئ ونستنتج العملة الحقيقية من السعر
@@ -142,7 +147,7 @@ export function inferCurrencyFromExchangeRate(rate: number, hintedCode?: string)
   if (rate > 1.05 && rate < 15) {
     // عملات الخليج والمغرب العربي ذات الصرف المنخفض
     if (hintedCode) {
-      const match = PREDEFINED_CURRENCIES.find(c => c.code === hintedCode.trim().toUpperCase());
+      const match = PREDEFINED_CURRENCIES.find(c => c.code === normalizeCurrencyCode(hintedCode));
       if (match) return match;
     }
     return PREDEFINED_CURRENCIES.find(c => c.code === 'SAR');
@@ -186,22 +191,17 @@ export function resolveHistoricalCurrency(
   // 1. العملة المحفوظة في الفاتورة هي المرجع؛ التخمين من سعر الصرف فقط للفواتير القديمة بلا كود
   let code: string;
   if (rawCurrency && rawCurrency !== 'USD') {
-    code = rawCurrency;
+    code = normalizeCurrencyCode(rawCurrency);
   } else {
     const active = (fallbackSettings?.currencyCode || '').toUpperCase();
     code = (active && active !== 'USD')
-      ? active
+      ? normalizeCurrencyCode(active)
       : (inferCurrencyFromExchangeRate(rate, rawCurrency)?.code || 'USD');
   }
 
   // 2. التحقق من صحة الرمز وتجميده
   let symbol: string;
-  const canonical = getCurrencySymbolByCode(code);
 
-  // متى نعتبر الرمز المخزن غير صالح ويجب استبداله بالرمز المعياري الموثوق؟
-  // - إذا كان فارغاً أو "$" لفاتورة غير دولارية
-  // - إذا كان "€" ولكن العملة ليست EUR وسعر الصرف لا يمت لليورو بصلة (مثل LBP 89500 أو TRY 34)
-  // - إذا كان الرمز لا يطابق العملة المستنتجة بشكل قاطع
   const isSuspiciousSymbol =
     !rawSymbol ||
     rawSymbol === '$' ||
@@ -223,107 +223,35 @@ export function resolveHistoricalCurrency(
 
 /**
  * دالة موحدة وذكية لجلب رمز العملة للفاتورة
- * تقرأ رمز العملة المحفوظ في الفاتورة أولاً، ثم إعدادات المتجر المخصصة، ثم القائمة الافتراضية،
- * لمنع ظهور 'TL' أو '₺' أو '$' بدلاً من العملة المخصصة التي حددها المستخدم.
+ * تقرأ رمز العملة المحفوظ في الفاتورة أولاً، ثم كاش المحرك الموحد
  */
 export function resolveInvoiceCurrencySymbol(
   currencyCode?: string,
   savedSymbol?: string
 ): string {
-  const upperCode = (currencyCode || '').trim().toUpperCase();
-
-  // 1. إذا كان الكود دولار أمريكي
-  if (upperCode === 'USD') {
+  const code = normalizeCurrencyCode(currencyCode || 'USD');
+  if (code === 'USD') {
     return '$';
   }
 
-  // 2. فحص إعدادات المتجر والعملات المخصصة المحفوظة في localStorage
-  let customSymbolFromSettings: string | undefined;
-  try {
-    if (typeof window !== 'undefined') {
-      const possibleKeys = ['hyperpos_settings_v1', 'store_settings', 'hyperpos_settings', 'custom_currencies', 'currency_settings'];
-      for (const key of possibleKeys) {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const parsed = JSON.parse(raw);
+  const def = getCurrencyDef(code);
 
-        // أ) فحص جدول currencySymbols المعرف في الإعدادات
-        if (parsed.currencySymbols && typeof parsed.currencySymbols === 'object') {
-          const sym = parsed.currencySymbols[upperCode];
-          if (typeof sym === 'string' && sym.trim() !== '') {
-            customSymbolFromSettings = sym.trim();
-            break;
-          }
-        }
-
-        // ب) فحص الحقول المخصصة المباشرة
-        if (parsed.customCurrencySymbol && (upperCode === parsed.customCurrencyCode || upperCode === 'TRY' || upperCode === 'CUSTOM')) {
-          customSymbolFromSettings = parsed.customCurrencySymbol.trim();
-          break;
-        }
-
-        // ج) فحص primaryCurrency إذا كان الرمز مخصصاً
-        if (parsed.currencySymbol && (upperCode === parsed.currencyCode || upperCode === parsed.primaryCurrency)) {
-          customSymbolFromSettings = parsed.currencySymbol.trim();
-          break;
-        }
-
-        // د) مصفوفة العملات المعدلة
-        if (Array.isArray(parsed.currencies)) {
-          const matched = parsed.currencies.find((c) => c.code === upperCode);
-          if (matched && matched.symbol && typeof matched.symbol === 'string' && matched.symbol.trim() !== '') {
-            customSymbolFromSettings = matched.symbol.trim();
-            break;
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Failed to parse custom currency settings:', err);
-  }
-
-  // إذا تم العثور على رمز مخصص في الإعدادات، وكان كود العملة TRY ولكن المستخدم غير رمزها إلى رمز مخصص
-  if (customSymbolFromSettings && customSymbolFromSettings !== '') {
-    if (upperCode === 'TRY' && customSymbolFromSettings !== '₺' && customSymbolFromSettings !== 'TL') {
-      return customSymbolFromSettings;
-    }
-    if (!savedSymbol || savedSymbol.trim() === '' || savedSymbol.trim() === '$' || savedSymbol.trim() === 'TL') {
-      return customSymbolFromSettings;
-    }
-  }
-
-  // 3. إذا كان الرمز محفوظاً مسبقاً داخل الفاتورة نفسها وصالحاً
+  // إذا كان الرمز محفوظاً مسبقاً داخل الفاتورة نفسها وصالحاً
   if (savedSymbol && typeof savedSymbol === 'string') {
     const trimmed = savedSymbol.trim();
-    const isSuspicious = trimmed === '' || (trimmed === '$' && upperCode !== '' && upperCode !== 'USD');
+    const isSuspicious =
+      trimmed === '' ||
+      (trimmed === '$' && code !== 'USD') ||
+      (trimmed === '₺' && code !== 'TRY') ||
+      (trimmed === 'ل.س' && code !== 'SYP') ||
+      (trimmed === '€' && code !== 'EUR');
     if (!isSuspicious) {
-      if ((trimmed === 'TL' || trimmed === '₺') && customSymbolFromSettings && customSymbolFromSettings !== '₺' && customSymbolFromSettings !== 'TL') {
-        return customSymbolFromSettings;
-      }
-      if (trimmed === 'TL') {
-        return customSymbolFromSettings || '₺';
-      }
+      if (trimmed === 'TL') return def.symbol || '₺';
       return trimmed;
     }
   }
 
-  // 4. إذا وجدنا رمز في الإعدادات
-  if (customSymbolFromSettings) {
-    return customSymbolFromSettings;
-  }
-
-  // 5. البحث في مصفوفة العملات المعيارية
-  const canonical = PREDEFINED_CURRENCIES.find(c => c.code === upperCode);
-  if (canonical && canonical.symbol) {
-    return canonical.symbol;
-  }
-
-  // 6. حالات احتياطية
-  if (upperCode === 'SYP') return 'ل.س';
-  if (upperCode === 'TRY') return '₺';
-
-  // 7. بدلاً من إرجاع 'TL' بشكل خاطئ، إرجاع كود العملة نفسه
-  return upperCode || '$';
+  return def.symbol || code;
 }
 
 /**
@@ -333,68 +261,23 @@ export function resolveInvoiceCurrencyName(
   currencyCode?: string,
   savedName?: string
 ): string {
-  const upperCode = (currencyCode || '').trim().toUpperCase();
-  if (upperCode === 'USD') return 'دولار أمريكي';
+  const code = normalizeCurrencyCode(currencyCode || 'USD');
+  if (code === 'USD') return 'دولار أمريكي';
 
   if (savedName && typeof savedName === 'string' && savedName.trim() !== '') {
     return savedName.trim();
   }
 
-  try {
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem('hyperpos_settings_v1');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const name = parsed?.currencyNames?.[upperCode];
-        if (name && typeof name === 'string' && name.trim() !== '') {
-          return name.trim();
-        }
-      }
-    }
-  } catch {}
-
-  const canonical = PREDEFINED_CURRENCIES.find(c => c.code === upperCode);
-  if (canonical && canonical.name) return canonical.name;
-
-  if (upperCode === 'SYP') return 'ليرة سورية';
-  if (upperCode === 'TRY') return 'ليرة تركية';
-  return upperCode;
+  const def = getCurrencyDef(code);
+  return def.name || code;
 }
 
 /**
- * الحصول على العملة الافتراضية للعرض ورمزها من مصدر الإعدادات الموحد
+ * الحصول على العملة الافتراضية للعرض ورمزها من مصدر الإعدادات الموحد في الذاكرة
  */
 export function getDisplayCurrency(): { code: string; symbol: string } {
-  try {
-    if (typeof window !== 'undefined') {
-      const raw = window.localStorage.getItem('hyperpos_settings_v1');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const primary = (parsed.primaryCurrency || parsed.currencyCode || parsed.defaultCurrency || '').trim().toUpperCase();
-        const enabled = parsed.enabledCurrencies;
-
-        let activeCode = primary;
-        if (enabled && activeCode && enabled[activeCode] === false) {
-          activeCode = primary;
-        }
-        if (!activeCode) {
-          activeCode = 'USD';
-        }
-
-        const syms = parsed.currencySymbols;
-        const symbol =
-          (syms && syms[activeCode] && typeof syms[activeCode] === 'string' && syms[activeCode].trim())
-            ? syms[activeCode].trim()
-            : (parsed.currencySymbol && typeof parsed.currencySymbol === 'string' && parsed.currencySymbol.trim())
-            ? parsed.currencySymbol.trim()
-            : getCurrencySymbolByCode(activeCode, activeCode);
-
-        return { code: activeCode, symbol };
-      }
-    }
-  } catch {}
-
-  return { code: 'USD', symbol: getCurrencySymbolByCode('USD', '$') };
+  const active = getActiveCurrencyDef();
+  return { code: active.code, symbol: active.symbol };
 }
 
 /**
@@ -406,7 +289,7 @@ export function convertUsdToDisplay(
   rateAtDate?: number | null
 ): number | null {
   if (typeof amountUsd !== 'number' || isNaN(amountUsd)) return null;
-  const upper = (displayCurrency || '').trim().toUpperCase();
+  const upper = normalizeCurrencyCode(displayCurrency || 'USD');
   if (upper === 'USD') return amountUsd;
   if (rateAtDate && typeof rateAtDate === 'number' && !isNaN(rateAtDate) && rateAtDate > 0) {
     return amountUsd * rateAtDate;
@@ -423,8 +306,7 @@ export interface ResolvedCurrencyMeta {
 }
 
 /**
- * المحرك المركزي الموحد لحل وتأكيد بيانات العملة (الكود، الرمز، الاسم، وسعر الصرف مقابل الدولار)
- * يمنع منعاً باتاً إرجاع '₺' أو اسم 'ليرة تركية' إلا إذا كان الكود صراحة 'TRY'
+ * المحرك المركزي الموحد لحل وتأكيد بيانات العملة من الكاش الحي في الذاكرة
  */
 export function resolveCurrencyMeta(
   currencyCode?: string,
@@ -432,84 +314,49 @@ export function resolveCurrencyMeta(
   customRate?: number,
   customName?: string
 ): ResolvedCurrencyMeta {
-  let settings: any = null;
-  try {
-    if (typeof window !== 'undefined') {
-      const raw = window.localStorage.getItem('hyperpos_settings_v1');
-      if (raw) settings = JSON.parse(raw);
-    }
-  } catch {}
+  const state = getMoneyState();
 
   // 1. تحديد كود العملة المستهدف
   let code = (currencyCode || '').trim().toUpperCase();
   if (!code || code === 'STORED' || code === 'DEFAULT') {
-    code = (settings?.primaryCurrency || settings?.currencyCode || settings?.defaultCurrency || '').trim().toUpperCase();
-    if (!code) {
-      const enabled = settings?.enabledCurrencies;
-      code = 'USD';
-    }
+    code = state.activeCode;
   }
-  if (!code) code = 'USD';
-
+  code = normalizeCurrencyCode(code);
   const isUsd = code === 'USD';
+  const def = getCurrencyDef(code);
 
-  // 2. البحث عن العملة المعيارية من القائمة المسبقة
-  const canonical = PREDEFINED_CURRENCIES.find(c => c.code === code);
-
-  // 3. تحديد الرمز بدقة ومنع الرموز الخاطئة (مثل ₺ لغير التركي أو $ لغير الدولار)
-  let symbol = '';
-  const rawSymbol = (customSymbol || '').trim();
+  // 2. تحديد الرمز بدقة ومنع الرموز الخاطئة
+  let symbol = (customSymbol || '').trim();
   const isSuspicious =
-    rawSymbol === '' ||
-    (rawSymbol === '₺' && code !== 'TRY') ||
-    (rawSymbol === '$' && code !== 'USD') ||
-    (rawSymbol === '€' && code !== 'EUR') ||
-    (rawSymbol === 'ل.س' && code !== 'SYP');
+    !symbol ||
+    (symbol === '₺' && code !== 'TRY') ||
+    (symbol === '$' && code !== 'USD') ||
+    (symbol === '€' && code !== 'EUR') ||
+    (symbol === 'ل.س' && code !== 'SYP');
 
-  if (!isSuspicious && rawSymbol) {
-    symbol = rawSymbol;
-  } else if (settings?.currencySymbols?.[code]) {
-    const s = String(settings.currencySymbols[code]).trim();
-    if (!(s === '₺' && code !== 'TRY') && !(s === '$' && code !== 'USD')) {
-      symbol = s;
-    }
-  }
-  
-  if (!symbol) {
-    symbol = canonical ? canonical.symbol : (isUsd ? '$' : code);
+  if (isSuspicious) {
+    symbol = def.symbol || (isUsd ? '$' : code);
   }
 
-  // 4. تحديد الاسم بدقة
-  let name = '';
-  const rawName = (customName || '').trim();
+  // 3. تحديد الاسم بدقة
+  let name = (customName || '').trim();
   const isSuspiciousName =
-    rawName === '' ||
-    (rawName.includes('تركي') && code !== 'TRY') ||
-    (rawName.includes('دولار') && code !== 'USD') ||
-    (rawName.includes('سوري') && code !== 'SYP');
+    !name ||
+    (name.includes('تركي') && code !== 'TRY') ||
+    (name.includes('دولار') && code !== 'USD') ||
+    (name.includes('سوري') && code !== 'SYP');
 
-  if (!isSuspiciousName && rawName) {
-    name = rawName;
-  } else if (settings?.currencyNames?.[code]) {
-    const n = String(settings.currencyNames[code]).trim();
-    if (!(n.includes('تركي') && code !== 'TRY')) {
-      name = n;
-    }
-  }
-  
-  if (!name) {
-    name = canonical ? canonical.name : (isUsd ? 'دولار أمريكي' : code);
+  if (isSuspiciousName) {
+    name = def.name || (isUsd ? 'دولار أمريكي' : code);
   }
 
-  // 5. تحديد سعر الصرف مقابل الدولار
+  // 4. تحديد سعر الصرف مقابل الدولار
   let rate = 1;
   if (!isUsd) {
     if (typeof customRate === 'number' && !isNaN(customRate) && customRate > 0) {
       rate = customRate;
-    } else if (settings?.exchangeRates?.[code] && Number(settings.exchangeRates[code]) > 0) {
-      rate = Number(settings.exchangeRates[code]);
-    } else if (canonical?.suggestedRate) {
-      rate = canonical.suggestedRate;
+    } else {
+      rate = def.rate > 0 ? def.rate : 1;
     }
   }
 
@@ -555,24 +402,28 @@ export function getActiveStoreCurrency(): ResolvedCurrencyMeta {
 }
 
 /**
- * تنسيق المبالغ المالية المخزنة داخلياً بالدولار الأمريكي وتحويلها ديناميكياً
- * إلى عملة المتجر المعتمدة الحالية مع مراعاة دقة الكسور (بدون فواصل إذا كان الصرف >= 100)
+ * عملة التقارير: الدولار أو العملة الافتراضية للمتجر (من الكاش في الذاكرة)
  */
 export const REPORT_CURRENCY_KEY = 'hyperpos_report_currency';
-/** عملة التقارير: الدولار أو العملة الافتراضية للمتجر (اختيار المستخدم) */
+
 export function getReportCurrency(): ResolvedCurrencyMeta {
-  try {
-    const pick = typeof window !== 'undefined' ? window.localStorage.getItem(REPORT_CURRENCY_KEY) : null;
-    if (pick === 'USD') return resolveCurrencyMeta('USD');
-  } catch {}
-  return getActiveStoreCurrency();
+  const state = getMoneyState();
+  const def = getCurrencyDef(state.reportCode);
+  return {
+    code: def.code,
+    symbol: def.symbol,
+    name: def.name,
+    rate: def.rate,
+    isUsd: def.code === 'USD',
+  };
 }
 
 export function formatReportAmount(amountUsd: number): string {
   if (typeof amountUsd !== 'number' || isNaN(amountUsd)) return '0.00';
   const active = getReportCurrency();
   const converted = active.isUsd ? amountUsd : amountUsd * (active.rate > 0 ? active.rate : 1);
-  const decimals = active.rate >= 100 ? 0 : 2;
+  const def = getCurrencyDef(active.code);
+  const decimals = def.decimals;
   const numStr = converted.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -584,5 +435,3 @@ export function formatReportAmount(amountUsd: number): string {
   }
   return `${numStr}\u00A0${cleanSymbol}`;
 }
-
-

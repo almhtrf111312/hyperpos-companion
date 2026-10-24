@@ -69,6 +69,13 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-24 (Branch: `event-or-artifact`):** Phase 2 - In-Memory Money Engine & Compatibility Layer:
+  * Created `src/lib/money-engine.ts`: In-memory currency engine with zero-render-blocking localStorage calls, automatic `hyperpos_settings_v1_backup` safety guard, 8-decimal `round8` USD precision, dynamic currency decimal rules (0, 2, 3), and snapshot creation/formatting.
+  * Created `src/hooks/use-money.tsx`: React hook powered by `useSyncExternalStore` for reactive currency updates.
+  * Created `src/components/ui/MoneyInput.tsx`: `<MoneyInput />` and `<MoneyDisplay />` financial input and display components.
+  * Updated `src/types/index.ts`: Expanded `CurrencyCode` to support any standard currency code.
+  * Updated `src/lib/currencies.ts` & `src/hooks/use-currency.tsx`: Fixed BHR -> BHD and connected all display and formatting functions to the in-memory engine while preserving 100% backward compatibility.
+  * Configured GitHub Actions CI workflows (`build-apk.yml`, `build-windows.yml`) to automatically build and upload APK/EXE testing artifacts for `event-or-artifact`.
 * **2026-10-24:** Phase 1 - Feature Error Boundary, Lazy Loading & Manual Chunks:
   * Created `src/components/debug/FeatureErrorBoundary.tsx` with unified `captureError` integration (`source: 'react_boundary'`).
   * Converted 7 heavy pages in `src/App.tsx` (`Products`, `Customers`, `Services`, `Invoices`, `InvoiceTracking`, `Expenses`, `CashShifts`) to `React.lazy` with idle background preloading (`requestIdleCallback` after 2500ms).

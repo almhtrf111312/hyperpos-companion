@@ -1,5 +1,5 @@
 // Currency types
-export type CurrencyCode = 'USD' | 'TRY' | 'SYP';
+export type CurrencyCode = 'USD' | 'TRY' | 'SYP' | (string & {});
 
 export interface Currency {
   code: CurrencyCode;

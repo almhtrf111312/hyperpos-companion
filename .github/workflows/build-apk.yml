@@ -2,7 +2,7 @@ name: Build FlowPOS Pro APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, event-or-artifact ]
     tags: ['v*']
   workflow_dispatch:
 
