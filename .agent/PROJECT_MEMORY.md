@@ -69,6 +69,12 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-24:** Phase 1 - Feature Error Boundary, Lazy Loading & Manual Chunks:
+  * Created `src/components/debug/FeatureErrorBoundary.tsx` with unified `captureError` integration (`source: 'react_boundary'`).
+  * Converted 7 heavy pages in `src/App.tsx` (`Products`, `Customers`, `Services`, `Invoices`, `InvoiceTracking`, `Expenses`, `CashShifts`) to `React.lazy` with idle background preloading (`requestIdleCallback` after 2500ms).
+  * Wrapped all application routes with `<FeatureErrorBoundary featureName="...">` while maintaining `ProtectedRoute`, `RoleGuard`, and frozen module integrity.
+  * Configured `build.rollupOptions.output.manualChunks` in `vite.config.ts`, isolating heavy libraries into `vendor-charts`, `vendor-pdf`, `vendor-excel`, and `vendor-radix`.
+  * Reduced `Reports` chunk from 2,035 kB down to 254 kB (8x smaller), stripped 735 kB from the main entry chunk, and accelerated build time from 68s to 21s.
 * **2026-10-24 (`721b07c`):** v1.0.72 - Completed The 10 Improvements Plan & Dynamic Notification Theming:
   1. Default Weekly Invoices: Default filter in `Invoices.tsx` is 'week' for both listing and KPI cards.
   2. Fixed Products Tabs: 3-column fixed responsive grid with vertical icons on mobile, zero clipping.

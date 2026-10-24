@@ -111,6 +111,26 @@ export default defineConfig(({ mode }) => ({
   build: {
     // base './' needed for Electron file:// protocol
     ...(process.env.ELECTRON_BUILD === 'true' ? {} : {}),
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts') || id.includes('d3-')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('jspdf')) {
+              return 'vendor-pdf';
+            }
+            if (id.includes('exceljs')) {
+              return 'vendor-excel';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'vendor-radix';
+            }
+          }
+        },
+      },
+    },
   },
   base: './',
 }));

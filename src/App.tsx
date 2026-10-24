@@ -35,17 +35,18 @@ import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import { useAppPermissions } from "./hooks/use-app-permissions";
 import { PrivacyPolicyScreen, usePrivacyAccepted } from "./components/PrivacyPolicyScreen";
 import POS from "./pages/POS";
-import Products from "./pages/Products";
-import Customers from "./pages/Customers";
-import Services from "./pages/Services";
-import Invoices from "./pages/Invoices";
-import InvoiceTracking from "./pages/InvoiceTracking";
-import Expenses from "./pages/Expenses";
-import CashShifts from "./pages/CashShifts";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import { FeatureErrorBoundary } from "@/components/debug/FeatureErrorBoundary";
 
-// Lazy-loaded heavy and rarely-used pages to keep the initial startup bundle ultra-fast
+// Lazy-loaded heavy pages to keep the initial startup bundle ultra-fast
+const Products = lazy(() => import("./pages/Products"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Services = lazy(() => import("./pages/Services"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const InvoiceTracking = lazy(() => import("./pages/InvoiceTracking"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const CashShifts = lazy(() => import("./pages/CashShifts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Reports = lazy(() => import("./pages/Reports"));
 const BossPanel = lazy(() => import("./pages/BossPanel"));
@@ -122,6 +123,22 @@ const AppContent = () => {
 
   // License expiration reminder toasts
   useLicenseReminder();
+
+  // Preload most frequently accessed heavy pages in the background after startup idle
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const preload = () => {
+        import("./pages/Products").catch(() => {});
+        import("./pages/Invoices").catch(() => {});
+      };
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(preload);
+      } else {
+        preload();
+      }
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Privacy policy acceptance
   const { accepted: privacyAccepted, accept: acceptPrivacy } = usePrivacyAccepted();
@@ -396,48 +413,47 @@ const PageFallback = () => (
       <ExitConfirmDialog />
       <Suspense fallback={<PageFallback />}>
         <Routes>
-
         {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/login" element={<FeatureErrorBoundary featureName="تسجيل الدخول"><Login /></FeatureErrorBoundary>} />
+        <Route path="/signup" element={<FeatureErrorBoundary featureName="إنشاء حساب"><Signup /></FeatureErrorBoundary>} />
+        <Route path="/reset-password" element={<FeatureErrorBoundary featureName="استعادة كلمة المرور"><ResetPassword /></FeatureErrorBoundary>} />
 
         {/* Full-screen protected routes (no MainLayout) */}
-        <Route path="/" element={<ProtectedRoute><IndexRoute /></ProtectedRoute>} />
-        <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
-        <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-        <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><BossPanel /></RoleGuard></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><FeatureErrorBoundary featureName="نقطة البيع"><IndexRoute /></FeatureErrorBoundary></ProtectedRoute>} />
+        <Route path="/pos" element={<ProtectedRoute><FeatureErrorBoundary featureName="نقطة البيع"><POS /></FeatureErrorBoundary></ProtectedRoute>} />
+        <Route path="/help" element={<ProtectedRoute><FeatureErrorBoundary featureName="المساعدة والدعم"><Help /></FeatureErrorBoundary></ProtectedRoute>} />
+        <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><FeatureErrorBoundary featureName="لوحة الإدارة"><BossPanel /></FeatureErrorBoundary></RoleGuard></ProtectedRoute>} />
 
         {/* Protected routes wrapped by a single persistent MainLayout */}
         <Route element={<ProtectedRoute><MainLayout><Outlet /></MainLayout></ProtectedRoute>}>
           {/* Cashier accessible */}
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/*" element={<Customers />} />
+          <Route path="/customers" element={<FeatureErrorBoundary featureName="العملاء والديون"><Customers /></FeatureErrorBoundary>} />
+          <Route path="/customers/*" element={<FeatureErrorBoundary featureName="العملاء والديون"><Customers /></FeatureErrorBoundary>} />
           <Route path="/debts" element={<DebtsRedirect />} />
-          <Route path="/invoices" element={<Invoices />} />
-          <Route path="/invoice-tracking" element={<InvoiceTracking />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/services/*" element={<Services />} />
-          <Route path="/expenses" element={<Expenses />} />
-          <Route path="/cash-shifts" element={<CashShifts />} />
-          <Route path="/appearance" element={<Appearance />} />
-          <Route path="/library" element={<LibraryMembers />} />
-          <Route path="/contact" element={<ContactDeveloper />} />
+          <Route path="/invoices" element={<FeatureErrorBoundary featureName="سجل الفواتير"><Invoices /></FeatureErrorBoundary>} />
+          <Route path="/invoice-tracking" element={<FeatureErrorBoundary featureName="تتبع الفواتير"><InvoiceTracking /></FeatureErrorBoundary>} />
+          <Route path="/services" element={<FeatureErrorBoundary featureName="الخدمات"><Services /></FeatureErrorBoundary>} />
+          <Route path="/services/*" element={<FeatureErrorBoundary featureName="الخدمات"><Services /></FeatureErrorBoundary>} />
+          <Route path="/expenses" element={<FeatureErrorBoundary featureName="المصاريف"><Expenses /></FeatureErrorBoundary>} />
+          <Route path="/cash-shifts" element={<FeatureErrorBoundary featureName="ورديات الصندوق"><CashShifts /></FeatureErrorBoundary>} />
+          <Route path="/appearance" element={<FeatureErrorBoundary featureName="المظهر"><Appearance /></FeatureErrorBoundary>} />
+          <Route path="/library" element={<FeatureErrorBoundary featureName="المكتبة"><LibraryMembers /></FeatureErrorBoundary>} />
+          <Route path="/contact" element={<FeatureErrorBoundary featureName="تواصل مع المطور"><ContactDeveloper /></FeatureErrorBoundary>} />
 
           {/* Admin/Boss only */}
           <Route path="/dashboard" element={<Navigate to="/reports" replace />} />
-          <Route path="/products" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
-          <Route path="/products/*" element={<RoleGuard allowedRoles={['boss', 'admin']}><Products /></RoleGuard>} />
-          <Route path="/purchases" element={<RoleGuard allowedRoles={['boss', 'admin']}><Purchases /></RoleGuard>} />
+          <Route path="/products" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="إدارة المنتجات"><Products /></FeatureErrorBoundary></RoleGuard>} />
+          <Route path="/products/*" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="إدارة المنتجات"><Products /></FeatureErrorBoundary></RoleGuard>} />
+          <Route path="/purchases" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="فواتير الشراء"><Purchases /></FeatureErrorBoundary></RoleGuard>} />
           <Route path="/partners" element={<RoleGuard allowedRoles={['boss', 'admin']}><PartnersRedirect /></RoleGuard>} />
           {/* FROZEN: warehouses & stock transfer disabled — redirect home */}
           <Route path="/warehouses" element={<Navigate to="/" replace />} />
           <Route path="/stock-transfer" element={<Navigate to="/" replace />} />
-          <Route path="/reports" element={<RoleGuard allowedRoles={['boss', 'admin']}><Reports /></RoleGuard>} />
-          <Route path="/settings" element={<RoleGuard allowedRoles={['boss', 'admin']}><Settings /></RoleGuard>} />
+          <Route path="/reports" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="التقارير"><Reports /></FeatureErrorBoundary></RoleGuard>} />
+          <Route path="/settings" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="الإعدادات"><Settings /></FeatureErrorBoundary></RoleGuard>} />
         </Route>
 
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<FeatureErrorBoundary featureName="الصفحة غير موجودة"><NotFound /></FeatureErrorBoundary>} />
       </Routes>
       </Suspense>
     </>
