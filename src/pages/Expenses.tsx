@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
+import { useMoney } from '@/hooks/use-money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -86,6 +87,9 @@ import { processExpense, reverseExpenseTransaction, restoreExpenseCash } from '@
 import { toLocalDateString } from '@/lib/date-utils';
 
 export default function Expenses() {
+  const m = useMoney();
+  const [expenseCurrency, setExpenseCurrency] = useState<string>(() => m.activeCode);
+  const currentExpenseDef = m.getCurrencyDef(expenseCurrency);
   const { t, isRTL } = useLanguage();
 
   const getLocalizedExpenseType = (type: string, fallback?: string): string => {
@@ -269,11 +273,17 @@ export default function Expenses() {
     savingRef.current = true;
     setIsSaving(true);
     try {
+      const amountUSD = m.toUsd(formData.amount, expenseCurrency, currentExpenseDef.rate);
+      const noteSuffix = expenseCurrency !== 'USD'
+        ? ` (${m.roundForCurrency(formData.amount, expenseCurrency)} ${currentExpenseDef.symbol})`
+        : '';
+      const finalNotes = formData.notes ? `${formData.notes}${noteSuffix}` : (noteSuffix.trim() || undefined);
+
       const created = await addExpenseCloud({
         type: formData.type,
         customType: formData.customType,
-        amount: formData.amount,
-        notes: formData.notes,
+        amount: amountUSD,
+        notes: finalNotes,
         date: formData.date,
       });
 
@@ -282,8 +292,8 @@ export default function Expenses() {
         return;
       }
 
-      // ✅ خصم المبلغ من الصندوق تلقائياً (الترابط الجديد)
-      processExpense(formData.amount, formData.type);
+      // ✅ خصم المبلغ من الصندوق تلقائياً بعملة الأساس
+      processExpense(amountUSD, formData.type);
 
       const [expensesData, statsData] = await Promise.all([
         loadExpensesCloud(),
@@ -294,7 +304,7 @@ export default function Expenses() {
       setShowAddDialog(false);
       resetForm();
       toast.success(t('expenses.expenseAdded'));
-      import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_added', `إضافة مصروف (${formData.type}): ${formData.amount}`, { id: created.id, amount: formData.amount, type: formData.type }));
+      import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_added', `إضافة مصروف (${formData.type}): ${amountUSD}`, { id: created.id, amount: amountUSD, type: formData.type }));
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -431,7 +441,7 @@ export default function Expenses() {
       setShowDeleteDialog(false);
       setSelectedExpense(null);
 
-      toast.success(`تم استرداد المصروف وإعادة ${formatCurrency(reversedAmount)} للصندوق`);
+      toast.success(`تم استرداد المصروف وإعادة ${m.fmt(reversedAmount)} للصندوق`);
       import('@/lib/activity-log').then(({ logActivity }) => logActivity('expense_refund', `استرداد وتراجع عن مصروف (${reversedType}): +${reversedAmount}`, { id: reversedId, amount: reversedAmount, type: reversedType }));
     } catch (error) {
       toast.error(t('expenses.reverseError') || 'فشل التراجع عن المصروف');
@@ -539,7 +549,7 @@ export default function Expenses() {
                 {dueExpenses.length} {t('expenses.dueToday')}
               </span>
               <p className="text-[11px] text-muted-foreground font-mono">
-                {t('common.total')}: <span className="font-bold text-foreground">{formatCurrency(dueExpenses.reduce((sum, e) => sum + e.amount, 0))}</span>
+                {t('common.total')}: <span className="font-bold text-foreground">{m.fmt(dueExpenses.reduce((sum, e) => sum + e.amount, 0))}</span>
               </p>
             </div>
           </div>
@@ -562,7 +572,7 @@ export default function Expenses() {
             {t('expenses.thisMonth')}
           </span>
           <span className="text-xs sm:text-sm md:text-lg font-black font-mono text-destructive block mt-0.5 truncate whitespace-nowrap">
-            {formatCurrency(stats.totalThisMonth)}
+            {m.fmt(stats.totalThisMonth)}
           </span>
           <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] md:text-[10px] text-muted-foreground">
             <TrendingDown className="w-3 h-3 text-destructive shrink-0" />
@@ -590,7 +600,7 @@ export default function Expenses() {
             {t('expenses.totalExpenses')}
           </span>
           <span className="text-xs sm:text-sm md:text-lg font-black font-mono text-foreground block mt-0.5 truncate whitespace-nowrap">
-            {formatCurrency(stats.totalExpenses)}
+            {m.fmt(stats.totalExpenses)}
           </span>
           <div className="flex items-center justify-center gap-1 mt-0.5 text-[9px] md:text-[10px] text-muted-foreground">
             <DollarSign className="w-3 h-3 text-info shrink-0" />
@@ -628,7 +638,7 @@ export default function Expenses() {
             {Object.entries(stats.byType).map(([type, amount]) => (
               <div key={type} className="px-2 py-1 bg-muted/60 border border-border/40 rounded-xl text-xs flex items-center gap-1.5">
                 <span className="text-muted-foreground">{getLocalizedExpenseType(type)}:</span>
-                <span className="font-bold font-mono text-foreground whitespace-nowrap">{formatCurrency(amount)}</span>
+                <span className="font-bold font-mono text-foreground whitespace-nowrap">{m.fmt(amount)}</span>
               </div>
             ))}
           </div>
@@ -699,7 +709,7 @@ export default function Expenses() {
                     "text-sm md:text-base font-black font-mono whitespace-nowrap",
                     expense.is_reversed ? "line-through text-muted-foreground" : "text-destructive"
                   )}>
-                    -{formatCurrency(expense.amount)}
+                    -{m.fmt(expense.amount)}
                   </span>
                 </div>
               </div>
@@ -792,10 +802,33 @@ export default function Expenses() {
               </div>
             )}
 
+            {/* Currency Selector */}
+            <div className="flex items-center justify-between bg-muted/30 px-3 py-1.5 rounded-xl border border-border/60">
+              <span className="text-xs font-semibold text-muted-foreground">عملة المصروف:</span>
+              <div className="flex items-center gap-1 bg-background p-0.5 rounded-lg border border-border/60">
+                {m.enabledCurrencies.map((curr) => (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    onClick={() => setExpenseCurrency(curr.code)}
+                    className={cn(
+                      "px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1",
+                      expenseCurrency === curr.code
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span>{curr.symbol}</span>
+                    <span>{curr.code}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
-              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.amount')} ($)</label>
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.amount')} ({currentExpenseDef.symbol})</label>
               <div className="relative">
-                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold font-mono text-muted-foreground">{currentExpenseDef.symbol}</span>
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -805,6 +838,11 @@ export default function Expenses() {
                   className="pr-9 h-10 rounded-xl font-mono text-sm font-bold"
                 />
               </div>
+              {expenseCurrency !== 'USD' && formData.amount > 0 && (
+                <p className="text-[11px] text-muted-foreground font-mono mt-1">
+                  ≈ ${m.toUsd(formData.amount, expenseCurrency, currentExpenseDef.rate).toFixed(2)} USD
+                </p>
+              )}
             </div>
 
             <div>
@@ -1018,7 +1056,7 @@ export default function Expenses() {
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground font-mono">
-                        <span className="font-bold text-foreground">{formatCurrency(expense.amount)}</span> - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
+                        <span className="font-bold text-foreground">{m.fmt(expense.amount)}</span> - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5">
                         <span>{t('expenses.nextDue')}: {expense.nextDueDate}</span>

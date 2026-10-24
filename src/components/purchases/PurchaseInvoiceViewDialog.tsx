@@ -36,6 +36,7 @@ import {
 } from '@/lib/cloud/purchase-invoices-cloud';
 import { useUserRole } from '@/hooks/use-user-role';
 import { formatNumber, formatCurrency } from '@/lib/utils';
+import { useMoney } from '@/hooks/use-money';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { toast } from '@/lib/sonner-bridge';
 import { emitEvent, EVENTS } from '@/lib/events';
@@ -68,6 +69,28 @@ export function PurchaseInvoiceViewDialog({
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editLines, setEditLines] = useState<EditPurchaseInvoiceLine[]>([]);
+  const m = useMoney();
+
+  const invSnap = useMemo(() => {
+    if (!invoice) return undefined;
+    const anyInv = invoice as any;
+    if (anyInv.currency_code || anyInv.currency) {
+      return {
+        currency_code: anyInv.currency_code || anyInv.currency || 'USD',
+        currency_symbol: anyInv.currency_symbol || anyInv.currencySymbol || '$',
+        exchange_rate: Number(anyInv.exchange_rate) || 1,
+        decimals: anyInv.decimals ?? undefined,
+      };
+    }
+    return undefined;
+  }, [invoice]);
+
+  const displayMoney = (val: number) => {
+    if (invSnap) {
+      return m.fmtDoc(val, invSnap);
+    }
+    return m.fmt(val);
+  };
   const [editReason, setEditReason] = useState('تعديل فاتورة مشتريات');
 
   const fetchInvoice = (id: string) => {
@@ -226,8 +249,8 @@ export function PurchaseInvoiceViewDialog({
       })),
       subtotal: grandTotal,
       total: grandTotal,
-      currencySymbol: (invoice as any).currency_symbol || (invoice as any).currencySymbol || '$',
-      currency: (invoice as any).currency || 'USD',
+      currencySymbol: invSnap?.currency_symbol || (invoice as any).currency_symbol || (invoice as any).currencySymbol || m.activeSymbol,
+      currency: invSnap?.currency_code || (invoice as any).currency || m.activeCode,
       paymentType: (invoice.payment_type || 'cash') as InvoiceShareData['paymentType'],
       type: 'purchase',
       notes: invoice.notes,
@@ -362,7 +385,12 @@ export function PurchaseInvoiceViewDialog({
                 <div className="p-2.5 rounded-xl bg-card border border-border text-center">
                   <div className="text-[11px] text-muted-foreground mb-0.5">المجموع الإجمالي</div>
                   <div className="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(currentGrandTotal)}
+                    {displayMoney(currentGrandTotal)}
+                    {invSnap && invSnap.currency_code !== 'USD' && (
+                      <span className="text-xs text-muted-foreground block font-normal font-sans">
+                        (≈ ${currentGrandTotal.toFixed(2)} USD)
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -445,12 +473,12 @@ export function PurchaseInvoiceViewDialog({
                           </div>
                           <div>
                             <span className="text-muted-foreground block text-[10px]">التكلفة:</span>
-                            <span>{formatCurrency(item.cost_price)}</span>
+                            <span>{displayMoney(item.cost_price)}</span>
                           </div>
                           <div className="text-left">
                             <span className="text-muted-foreground block text-[10px]">الإجمالي:</span>
                             <span className="font-bold text-foreground">
-                              {formatCurrency((item as any).total_cost || item.quantity * item.cost_price)}
+                              {displayMoney((item as any).total_cost || item.quantity * item.cost_price)}
                             </span>
                           </div>
                         </div>
@@ -507,11 +535,11 @@ export function PurchaseInvoiceViewDialog({
                                   className="h-8 text-xs font-bold text-center"
                                 />
                               ) : (
-                                <span className="text-muted-foreground">{formatCurrency(item.cost_price)}</span>
+                                <span className="text-muted-foreground">{displayMoney(item.cost_price)}</span>
                               )}
                             </td>
                             <td className="p-2.5 text-left font-bold text-foreground">
-                              {formatCurrency((item as any).total_cost || item.quantity * item.cost_price)}
+                              {displayMoney((item as any).total_cost || item.quantity * item.cost_price)}
                             </td>
                           </tr>
                         ))}

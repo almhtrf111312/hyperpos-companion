@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { cn, toWesternNumerals, formatNumber, formatMoney } from '@/lib/utils';
 import { useCurrency } from '@/hooks/use-currency';
+import { useMoney } from '@/hooks/use-money';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -107,16 +108,26 @@ import { ProductImage } from '@/components/products/ProductImage';
 import { getSignedImageUrl } from '@/lib/image-upload';
 
 export default function Products() {
-  const { currencyCode, currencySymbol, exchangeRate, enabledCurrencies } = useCurrency();
+  const m = useMoney();
+  const currencyCode = m.activeCode;
+  const currencySymbol = m.activeSymbol;
+  const exchangeRate = m.activeRate;
+  const enabledCurrencies = m.enabledCurrencies;
+
+  const parseFormPriceToUsd = (inputVal: string | number | undefined) => {
+    const num = typeof inputVal === 'number' ? inputVal : Number(inputVal) || 0;
+    return m.toUsd(num, m.activeCode, m.activeRate);
+  };
+
   const formatPrice = (usdPrice: number) => {
     const val = usdPrice || 0;
-    if (currencyCode === 'USD') return <>${formatNumber(val, 2)}</>;
-    const localVal = val * exchangeRate;
-    const decimals = currencyCode === 'SYP' ? 0 : 2;
+    if (m.activeCode === 'USD') return <>${formatNumber(val, 2)}</>;
+    const localFormatted = m.fmt(val);
+    const usdEnabled = m.getCurrencyDef('USD').enabled;
     return (
       <>
-        {formatNumber(localVal, decimals)} {currencySymbol}{' '}
-        {enabledCurrencies.USD !== false && (
+        {localFormatted}{' '}
+        {usdEnabled && (
           <span className="text-[0.8em] opacity-60 ml-1">({formatMoney(val, 'USD', 2)})</span>
         )}
       </>
@@ -125,12 +136,12 @@ export default function Products() {
   
   const formatPriceRaw = (usdPrice: number) => {
     const val = usdPrice || 0;
-    if (currencyCode === 'USD') return formatMoney(val, 'USD', 2);
-    const localVal = val * exchangeRate;
-    const decimals = currencyCode === 'SYP' ? 0 : 2;
-    return enabledCurrencies.USD !== false
-      ? `${formatNumber(localVal, decimals)} ${currencySymbol} (${formatMoney(val, 'USD', 2)})`
-      : `${formatNumber(localVal, decimals)} ${currencySymbol}`;
+    if (m.activeCode === 'USD') return formatMoney(val, 'USD', 2);
+    const localFormatted = m.fmt(val);
+    const usdEnabled = m.getCurrencyDef('USD').enabled;
+    return usdEnabled
+      ? `${localFormatted} (${formatMoney(val, 'USD', 2)})`
+      : localFormatted;
   };
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
@@ -976,16 +987,15 @@ export default function Products() {
     // ✅ Offline-First: ضغط الصورة محلياً فقط (بدون انتظار الشبكة)
     const finalImage = await ensureImageCompressed(formData.image);
 
-    // تحويل الأرقام بشكل آمن
-    const activeRate = (currencyCode !== 'USD' && exchangeRate > 0) ? exchangeRate : 1;
-    const numCostPrice = (Number(formData.costPrice) || 0) / activeRate;
-    const numSalePrice = (Number(formData.salePrice) || 0) / activeRate;
-    const numLaborCost = (Number(formData.laborCost) || 0) / activeRate;
+    // تحويل الأرقام بشكل آمن عبر محرك العملات الموحد
+    const numCostPrice = parseFormPriceToUsd(formData.costPrice);
+    const numSalePrice = parseFormPriceToUsd(formData.salePrice);
+    const numLaborCost = parseFormPriceToUsd(formData.laborCost);
     const numQuantity = Number(formData.quantity) || 0;
-    const numWholesalePrice = (Number(formData.wholesalePrice) || 0) / activeRate;
+    const numWholesalePrice = parseFormPriceToUsd(formData.wholesalePrice);
     const numMinStockLevel = Number(formData.minStockLevel) || 1;
     const numConversionFactor = Number(formData.conversionFactor) || 1;
-    const numBulkSalePrice = (Number(formData.bulkSalePrice) || 0) / activeRate;
+    const numBulkSalePrice = parseFormPriceToUsd(formData.bulkSalePrice);
 
     // تحويل الكمية إلى قطع قبل الحفظ - في وضع الفرن، استخدم كمية كبيرة
     const quantityInPieces = noInventory
@@ -1097,16 +1107,15 @@ export default function Products() {
     // ✅ Offline-First: ضغط الصورة محلياً فقط (بدون انتظار الشبكة)
     const finalImage = await ensureImageCompressed(formData.image);
 
-    // تحويل الأرقام بشكل آمن
-    const activeRate = (currencyCode !== 'USD' && exchangeRate > 0) ? exchangeRate : 1;
-    const numCostPrice = (Number(formData.costPrice) || 0) / activeRate;
-    const numSalePrice = (Number(formData.salePrice) || 0) / activeRate;
-    const numLaborCost = (Number(formData.laborCost) || 0) / activeRate;
+    // تحويل الأرقام بشكل آمن عبر محرك العملات الموحد
+    const numCostPrice = parseFormPriceToUsd(formData.costPrice);
+    const numSalePrice = parseFormPriceToUsd(formData.salePrice);
+    const numLaborCost = parseFormPriceToUsd(formData.laborCost);
     const numQuantity = Number(formData.quantity) || 0;
-    const numWholesalePrice = (Number(formData.wholesalePrice) || 0) / activeRate;
+    const numWholesalePrice = parseFormPriceToUsd(formData.wholesalePrice);
     const numMinStockLevel = Number(formData.minStockLevel) || 1;
     const numConversionFactor = Number(formData.conversionFactor) || 1;
-    const numBulkSalePrice = (Number(formData.bulkSalePrice) || 0) / activeRate;
+    const numBulkSalePrice = parseFormPriceToUsd(formData.bulkSalePrice);
 
     // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
     const quantityInPieces = formData.trackByUnit === 'bulk'
@@ -1287,11 +1296,11 @@ export default function Products() {
       ? Math.floor(product.quantity / conversionFactor)
       : product.quantity;
 
-    const activeRate = (currencyCode !== 'USD' && exchangeRate > 0) ? exchangeRate : 1;
-    const roundDecimals = currencyCode === 'SYP' ? 0 : 2;
     const toActiveCurrency = (usdVal: number) => {
-      if (currencyCode === 'USD' || !usdVal) return usdVal || 0;
-      return Number((usdVal * activeRate).toFixed(roundDecimals));
+      if (!usdVal) return 0;
+      if (m.activeCode === 'USD') return usdVal;
+      const converted = m.fromUsd(usdVal, m.activeCode, m.activeRate);
+      return m.roundForCurrency(converted, m.activeCode);
     };
 
     setFormData({

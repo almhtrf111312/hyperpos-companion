@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useLanguage } from '@/hooks/use-language';
+import { useMoney } from '@/hooks/use-money';
 import { toast } from '@/lib/sonner-bridge';
 import {
   ShoppingBag,
@@ -65,6 +66,11 @@ interface ExistingProductOption {
 export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurchaseDialogProps) {
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
+  const m = useMoney();
+  const [inputCurrency, setInputCurrency] = useState<string>(() => m.activeCode);
+  const currentDef = m.getCurrencyDef(inputCurrency);
+  const currentRate = currentDef.rate;
+  const currencySymbol = currentDef.symbol;
 
   // Payment Method: cash (drawer deduction) vs credit (supplier payable)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit'>('cash');
@@ -197,8 +203,10 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     setProductName(prod.name);
     setBarcode(prod.barcode || '');
     setCategory(prod.category || '');
-    setCostPrice(prod.cost_price ? String(prod.cost_price) : '');
-    setSalePrice(prod.sale_price ? String(prod.sale_price) : '');
+    const convertedCost = prod.cost_price ? m.fromUsd(prod.cost_price, inputCurrency, currentRate) : 0;
+    const convertedSale = prod.sale_price ? m.fromUsd(prod.sale_price, inputCurrency, currentRate) : 0;
+    setCostPrice(convertedCost > 0 ? String(m.roundForCurrency(convertedCost, inputCurrency)) : '');
+    setSalePrice(convertedSale > 0 ? String(m.roundForCurrency(convertedSale, inputCurrency)) : '');
     if (prod.min_stock_level !== undefined && prod.min_stock_level !== null) {
       setMinStockLevel(String(prod.min_stock_level));
     }
@@ -231,12 +239,23 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     handleBase64Image(base64);
   };
 
-  // Calculate Subtotals
+  // Calculate Subtotals & USD conversion
   const qtyNum = Math.max(1, Number.parseInt(quantity) || 1);
   const costNum = Number.parseFloat(costPrice) || 0;
   const saleNum = Number.parseFloat(salePrice) || 0;
   const wholesaleNum = Number.parseFloat(wholesalePrice) || 0;
-  const totalCost = costNum * qtyNum;
+  const bulkCostNum = Number.parseFloat(bulkCostPrice) || 0;
+  const bulkSaleNum = Number.parseFloat(bulkSalePrice) || 0;
+
+  // Values in USD for system storage & accounting
+  const costNumUSD = m.toUsd(costNum, inputCurrency, currentRate);
+  const saleNumUSD = saleNum > 0 ? m.toUsd(saleNum, inputCurrency, currentRate) : costNumUSD;
+  const wholesaleNumUSD = wholesaleNum > 0 ? m.toUsd(wholesaleNum, inputCurrency, currentRate) : undefined;
+  const bulkCostNumUSD = bulkCostNum > 0 ? m.toUsd(bulkCostNum, inputCurrency, currentRate) : undefined;
+  const bulkSaleNumUSD = bulkSaleNum > 0 ? m.toUsd(bulkSaleNum, inputCurrency, currentRate) : undefined;
+
+  const totalCostInCurrency = costNum * qtyNum;
+  const totalCost = costNumUSD * qtyNum;
 
   // Submit Handler
   const handleSubmit = async () => {
@@ -262,14 +281,18 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
       addToQueue('quick_purchase', {
         productName: productName.trim(),
         quantity: qtyNum,
-        costPrice: costNum,
+        costPrice: costNumUSD,
         totalCost,
         paymentMethod,
+        currency_code: inputCurrency,
+        exchange_rate: currentRate,
+        currency_symbol: currencySymbol,
+        total_in_currency: totalCostInCurrency,
         imageUrl: imageUrl || undefined,
         barcode: barcode.trim() || undefined,
         category: category || undefined,
-        salePrice: saleNum > 0 ? saleNum : costNum,
-        wholesalePrice: wholesaleNum > 0 ? wholesaleNum : undefined,
+        salePrice: saleNumUSD,
+        wholesalePrice: wholesaleNumUSD,
         minStockLevel: Number.parseInt(minStockLevel) || 5,
         expiryDate: expiryDate || undefined,
         productId: selectedProduct?.id,
@@ -336,9 +359,9 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
         const currentQty = existingProd?.quantity || 0;
         const currentCost = Number(existingProd?.cost_price) || 0;
         const newQty = isNoInventoryMode() ? 99999 : currentQty + qtyNum;
-        const avgCost = newQty > 0 && costNum > 0
-          ? Math.round(((currentQty * currentCost) + (qtyNum * costNum)) / (currentQty + qtyNum) * 100) / 100
-          : costNum;
+        const avgCost = newQty > 0 && costNumUSD > 0
+          ? Math.round(((currentQty * currentCost) + (qtyNum * costNumUSD)) / (currentQty + qtyNum) * 100) / 100
+          : costNumUSD;
 
         const purchaseHistory = Array.isArray(existingProd?.purchase_history)
           ? [...existingProd.purchase_history]
@@ -350,7 +373,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           supplier_name: productName.trim(),
           date: today,
           quantity: qtyNum,
-          cost_price: costNum,
+          cost_price: costNumUSD,
           added_at: new Date().toISOString(),
         });
 
@@ -361,15 +384,15 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           updated_at: new Date().toISOString(),
         };
 
-        if (saleNum > 0) updates.sale_price = saleNum;
+        if (saleNumUSD > 0) updates.sale_price = saleNumUSD;
         if (category) updates.category = category;
         if (barcode.trim()) updates.barcode = barcode.trim();
         if (expiryDate) updates.expiry_date = expiryDate;
         if (imageUrl) updates.image_url = imageUrl;
-        if (wholesaleNum > 0) {
+        if (wholesaleNumUSD !== undefined) {
           updates.custom_fields = {
             ...((selectedProduct?.custom_fields as Record<string, unknown>) || {}),
-            wholesalePrice: wholesaleNum,
+            wholesalePrice: wholesaleNumUSD,
           };
         }
 
@@ -380,9 +403,9 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           name: productName.trim(),
           barcode: barcode.trim(),
           category: category.trim(),
-          costPrice: costNum,
-          salePrice: saleNum > 0 ? saleNum : costNum,
-          wholesalePrice: wholesaleNum > 0 ? wholesaleNum : undefined,
+          costPrice: costNumUSD,
+          salePrice: saleNumUSD,
+          wholesalePrice: wholesaleNumUSD,
           quantity: isNoInventoryMode() ? 99999 : qtyNum,
           minStockLevel: Number.parseInt(minStockLevel) || 5,
           expiryDate: expiryDate || undefined,
@@ -391,8 +414,8 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           bulkUnit,
           smallUnit,
           conversionFactor: Number.parseInt(conversionFactor) || 1,
-          bulkCostPrice: bulkCostPrice ? Number.parseFloat(bulkCostPrice) : undefined,
-          bulkSalePrice: bulkSalePrice ? Number.parseFloat(bulkSalePrice) : undefined,
+          bulkCostPrice: bulkCostNumUSD,
+          bulkSalePrice: bulkSaleNumUSD,
         });
 
         if (createdProduct) {
@@ -432,8 +455,8 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
           barcode: barcode.trim() || null,
           category: category.trim() || null,
           quantity: qtyNum,
-          cost_price: costNum,
-          sale_price: saleNum > 0 ? saleNum : costNum,
+          cost_price: costNumUSD,
+          sale_price: saleNumUSD,
           total_cost: totalCost,
         });
 
@@ -649,6 +672,31 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
               </div>
             </div>
 
+            {/* Currency Selector */}
+            <div className="flex items-center justify-between bg-muted/30 px-3 py-1.5 rounded-lg border border-border/60">
+              <span className="text-xs font-medium text-muted-foreground">
+                عملة إدخال الشراء:
+              </span>
+              <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border border-border/60">
+                {m.enabledCurrencies.map((curr) => (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    onClick={() => setInputCurrency(curr.code)}
+                    className={cn(
+                      "px-2.5 py-0.5 text-xs font-bold rounded transition-all flex items-center gap-1",
+                      inputCurrency === curr.code
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span>{curr.symbol}</span>
+                    <span>{curr.code}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Pricing and Quantities */}
             <div className="p-3 bg-muted/40 border border-border/70 rounded-xl space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -671,7 +719,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 <div className="space-y-1.5">
                   <Label className="text-xs sm:text-sm font-medium flex items-center justify-between">
                     <span>{t('products.costPrice') || 'سعر الشراء (التكلفة)'} *</span>
-                    <span className="text-[10px] text-primary font-mono">$</span>
+                    <span className="text-[10px] text-primary font-mono">{currencySymbol}</span>
                   </Label>
                   <Input
                     type="number"
@@ -683,6 +731,11 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     className="h-10 text-left font-mono font-bold text-base"
                     dir="ltr"
                   />
+                  {inputCurrency !== 'USD' && costPrice && (
+                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
+                      ≈ ${costNumUSD.toFixed(2)} USD
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -691,7 +744,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 <div className="space-y-1.5">
                   <Label className="text-xs sm:text-sm font-medium flex items-center justify-between">
                     <span>{t('products.salePrice') || 'سعر البيع المقترح'}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">$</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{currencySymbol}</span>
                   </Label>
                   <Input
                     type="number"
@@ -703,13 +756,18 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     className="h-10 text-left font-mono"
                     dir="ltr"
                   />
+                  {inputCurrency !== 'USD' && salePrice && (
+                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
+                      ≈ ${saleNumUSD.toFixed(2)} USD
+                    </p>
+                  )}
                 </div>
 
                 {/* Wholesale Price */}
                 <div className="space-y-1.5">
                   <Label className="text-xs sm:text-sm font-medium flex items-center justify-between">
                     <span>{t('products.wholesalePrice') || 'سعر الجملة'}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">$</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{currencySymbol}</span>
                   </Label>
                   <Input
                     type="number"
@@ -721,6 +779,11 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     className="h-10 text-left font-mono"
                     dir="ltr"
                   />
+                  {inputCurrency !== 'USD' && wholesalePrice && (
+                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
+                      ≈ ${(wholesaleNumUSD || 0).toFixed(2)} USD
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -729,9 +792,16 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                 <span className="text-xs text-muted-foreground font-medium">
                   {(t('purchases.totalAmount') || 'إجمالي تكلفة الشراء')}:
                 </span>
-                <span className="text-base font-bold font-mono text-primary">
-                  ${totalCost.toFixed(2)}
-                </span>
+                <div className="text-left font-mono">
+                  <span className="text-base font-bold text-primary">
+                    {m.roundForCurrency(totalCostInCurrency, inputCurrency).toLocaleString()} {currencySymbol}
+                  </span>
+                  {inputCurrency !== 'USD' && (
+                    <span className="text-xs text-muted-foreground block">
+                      ≈ ${totalCost.toFixed(2)} USD
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Payment Method Selector */}
@@ -844,7 +914,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px]">تكلفة الكرتونة ($)</Label>
+                    <Label className="text-[11px]">تكلفة الكرتونة ({currencySymbol})</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -856,7 +926,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px]">سعر بيع الكرتونة ($)</Label>
+                    <Label className="text-[11px]">سعر بيع الكرتونة ({currencySymbol})</Label>
                     <Input
                       type="number"
                       step="0.01"

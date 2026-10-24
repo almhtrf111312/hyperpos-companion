@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/hooks/use-language';
+import { useMoney } from '@/hooks/use-money';
 import { toast } from '@/lib/sonner-bridge';
 import {
   FileText,
@@ -55,20 +56,10 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   const [step, setStep] = useState<Step>('header');
   const [loading, setLoading] = useState(false);
 
-  // عملة المتجر الافتراضية لعرض الإجمالي الموازي
-  const { primaryCurrencyCode, primaryRate, primarySymbol } = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('hyperpos_settings_v1');
-      const parsed = raw ? JSON.parse(raw) : {};
-      const code = parsed?.primaryCurrency || 'USD';
-      const rates = parsed?.exchangeRates;
-      const rate = code === 'TRY' ? (Number(rates?.TRY) || 32) : code === 'SYP' ? (Number(rates?.SYP) || 14500) : 1;
-      const sym = code === 'TRY' ? '₺' : code === 'SYP' ? 'ل.س' : '$';
-      return { primaryCurrencyCode: code, primaryRate: rate, primarySymbol: sym };
-    } catch {
-      return { primaryCurrencyCode: 'USD', primaryRate: 1, primarySymbol: '$' };
-    }
-  }, [open]);
+  const m = useMoney();
+  const primaryCurrencyCode = m.activeCode;
+  const primaryRate = m.activeRate;
+  const primarySymbol = m.activeSymbol;
 
   // Header form state
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -726,9 +717,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                     ${currentInvoice.actual_grand_total?.toFixed(2)} USD
                     {primaryCurrencyCode !== 'USD' && (
                       <span className="text-xs text-muted-foreground font-normal mx-1 font-sans">
-                        (≈ {primaryCurrencyCode === 'SYP' 
-                          ? Math.round((currentInvoice.actual_grand_total || 0) * primaryRate).toLocaleString()
-                          : ((currentInvoice.actual_grand_total || 0) * primaryRate).toFixed(2)} {primarySymbol})
+                        (≈ {m.fmtIn(currentInvoice.actual_grand_total || 0, primaryCurrencyCode)})
                       </span>
                     )}
                   </span>

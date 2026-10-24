@@ -12,6 +12,7 @@ import { getEffectiveFieldsConfig } from '@/lib/product-fields-config';
 import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { useImageUpload } from '@/hooks/use-image-upload';
+import { useMoney } from '@/hooks/use-money';
 
 interface PurchaseInvoiceItemFormProps {
   onAdd: (item: {
@@ -62,39 +63,11 @@ interface ExistingProduct {
 export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInvoiceItemFormProps) {
   const { t } = useLanguage();
   const fieldsConfig = getEffectiveFieldsConfig();
-  // عملة إدخال فاتورة الشراء وأسعار الصرف
-  const [inputCurrency, setInputCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => {
-    try {
-      const raw = localStorage.getItem('hyperpos_settings_v1');
-      if (!raw) return 'USD';
-      const parsed = JSON.parse(raw);
-      return parsed?.primaryCurrency || 'USD';
-    } catch {
-      return 'USD';
-    }
-  });
-
-  const { rates } = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('hyperpos_settings_v1');
-      const parsed = raw ? JSON.parse(raw) : {};
-      const ex = parsed?.exchangeRates;
-      return {
-        rates: {
-          USD: 1,
-          TRY: Number(ex?.TRY) || 32,
-          SYP: Number(ex?.SYP) || 14500,
-        },
-      };
-    } catch {
-      return {
-        rates: { USD: 1, TRY: 32, SYP: 14500 },
-      };
-    }
-  }, []);
-
-  const currentRate = rates[inputCurrency] || 1;
-  const currencySymbols: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'ل.س' };
+  const m = useMoney();
+  const [inputCurrency, setInputCurrency] = useState<string>(() => m.activeCode);
+  const currentDef = m.getCurrencyDef(inputCurrency);
+  const currentRate = currentDef.rate;
+  const currencySymbol = currentDef.symbol;
 
   const [productName, setProductName] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -178,10 +151,10 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     setProductName(product.name);
     setBarcode(product.barcode || '');
     setCategory(product.category || '');
-    const convertedCost = product.cost_price ? (product.cost_price * currentRate) : 0;
-    const convertedSale = product.sale_price ? (product.sale_price * currentRate) : 0;
-    setCostPrice(convertedCost > 0 ? (inputCurrency === 'SYP' ? Math.round(convertedCost).toString() : convertedCost.toFixed(2)) : '');
-    setSalePrice(convertedSale > 0 ? (inputCurrency === 'SYP' ? Math.round(convertedSale).toString() : convertedSale.toFixed(2)) : '');
+    const convertedCost = product.cost_price ? m.fromUsd(product.cost_price, inputCurrency, currentRate) : 0;
+    const convertedSale = product.sale_price ? m.fromUsd(product.sale_price, inputCurrency, currentRate) : 0;
+    setCostPrice(convertedCost > 0 ? String(m.roundForCurrency(convertedCost, inputCurrency)) : '');
+    setSalePrice(convertedSale > 0 ? String(m.roundForCurrency(convertedSale, inputCurrency)) : '');
     setSearchResults([]);
     setShowSearch(false);
   };
@@ -208,29 +181,29 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
     // حساب التكلفة المرجعية بالدولار لضمان دقة المتوسط المرجح للتكلفة (WAC) وحساب الأرباح السحابية
     // cost_price_usd = cost_price_local / exchange_rate
     const costPriceNum = Number.parseFloat(costPrice) || 0;
-    const costPriceUSD = currentRate > 0 ? (costPriceNum / currentRate) : costPriceNum;
+    const costPriceUSD = m.toUsd(costPriceNum, inputCurrency, currentRate);
 
     const salePriceNum = salePrice ? Number.parseFloat(salePrice) : undefined;
-    const salePriceUSD = salePriceNum !== undefined ? (currentRate > 0 ? (salePriceNum / currentRate) : salePriceNum) : undefined;
+    const salePriceUSD = salePriceNum !== undefined ? m.toUsd(salePriceNum, inputCurrency, currentRate) : undefined;
 
     const wholesalePriceNum = wholesalePrice ? Number.parseFloat(wholesalePrice) : undefined;
-    const wholesalePriceUSD = wholesalePriceNum !== undefined ? (currentRate > 0 ? (wholesalePriceNum / currentRate) : wholesalePriceNum) : undefined;
+    const wholesalePriceUSD = wholesalePriceNum !== undefined ? m.toUsd(wholesalePriceNum, inputCurrency, currentRate) : undefined;
 
     const bulkCostPriceNum = bulkCostPrice ? Number.parseFloat(bulkCostPrice) : undefined;
-    const bulkCostPriceUSD = bulkCostPriceNum !== undefined ? (currentRate > 0 ? (bulkCostPriceNum / currentRate) : bulkCostPriceNum) : undefined;
+    const bulkCostPriceUSD = bulkCostPriceNum !== undefined ? m.toUsd(bulkCostPriceNum, inputCurrency, currentRate) : undefined;
 
     const bulkSalePriceNum = bulkSalePrice ? Number.parseFloat(bulkSalePrice) : undefined;
-    const bulkSalePriceUSD = bulkSalePriceNum !== undefined ? (currentRate > 0 ? (bulkSalePriceNum / currentRate) : bulkSalePriceNum) : undefined;
+    const bulkSalePriceUSD = bulkSalePriceNum !== undefined ? m.toUsd(bulkSalePriceNum, inputCurrency, currentRate) : undefined;
 
     onAdd({
       product_name: productName,
       barcode: barcode || undefined,
       category: category || undefined,
       quantity: Number.parseInt(quantity),
-      cost_price: Number.parseFloat(costPriceUSD.toFixed(4)),
-      sale_price: salePriceUSD !== undefined ? Number.parseFloat(salePriceUSD.toFixed(4)) : undefined,
+      cost_price: costPriceUSD,
+      sale_price: salePriceUSD,
       product_id: selectedProduct?.id,
-      wholesale_price: wholesalePriceUSD !== undefined ? Number.parseFloat(wholesalePriceUSD.toFixed(4)) : undefined,
+      wholesale_price: wholesalePriceUSD,
       expiry_date: expiryDate || undefined,
       serial_number: serialNumber || undefined,
       batch_number: batchNumber || undefined,
@@ -371,20 +344,20 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           عملة إدخال الفاتورة:
         </span>
         <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border border-border/60">
-          {(['USD', 'TRY', 'SYP'] as const).map((curr) => (
+          {m.enabledCurrencies.map((curr) => (
             <button
-              key={curr}
+              key={curr.code}
               type="button"
-              onClick={() => setInputCurrency(curr)}
+              onClick={() => setInputCurrency(curr.code)}
               className={cn(
                 "px-2.5 py-0.5 text-xs font-bold rounded transition-all flex items-center gap-1",
-                inputCurrency === curr
+                inputCurrency === curr.code
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <span>{currencySymbols[curr]}</span>
-              <span>{curr}</span>
+              <span>{curr.symbol}</span>
+              <span>{curr.code}</span>
             </button>
           ))}
         </div>
@@ -404,7 +377,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
         </div>
         <div className="space-y-1 sm:space-y-1.5 min-w-0">
           <Label className="text-xs sm:text-sm truncate block">
-            {t('products.costPrice')} ({currencySymbols[inputCurrency]}) *
+            {t('products.costPrice')} ({currencySymbol}) *
           </Label>
           <Input
             type="number"
@@ -415,13 +388,13 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           />
           {inputCurrency !== 'USD' && costPrice && (
             <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
-              ≈ ${( (Number.parseFloat(costPrice) || 0) / currentRate ).toFixed(2)} USD
+              ≈ ${m.toUsd(Number.parseFloat(costPrice) || 0, inputCurrency, currentRate).toFixed(2)} USD
             </p>
           )}
         </div>
         <div className="space-y-1 sm:space-y-1.5 min-w-0">
           <Label className="text-xs sm:text-sm truncate block">
-            {t('products.salePrice')} ({currencySymbols[inputCurrency]})
+            {t('products.salePrice')} ({currencySymbol})
           </Label>
           <Input
             type="number"
@@ -432,7 +405,7 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
           />
           {inputCurrency !== 'USD' && salePrice && (
             <p className="text-[10px] text-muted-foreground font-mono mt-0.5 leading-tight">
-              ≈ ${( (Number.parseFloat(salePrice) || 0) / currentRate ).toFixed(2)} USD
+              ≈ ${m.toUsd(Number.parseFloat(salePrice) || 0, inputCurrency, currentRate).toFixed(2)} USD
             </p>
           )}
         </div>
