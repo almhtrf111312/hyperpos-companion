@@ -55,8 +55,15 @@
 - `README.md`
 - `resources`
 
+## 🚨 MANDATORY AGENT STARTUP PROTOCOL (إلزامي عند كل محادثة جديدة حتى مع «مرحباً»)
+Whenever the user starts a session (even with a greeting like "مرحبا" or a question):
+1. **Pull Latest from GitHub First:** Immediately run a git status/fetch (`git pull origin main` or verify alignment with `origin/main`).
+2. **Greet & Deliver Session Snapshot:** Greet the user in Arabic and provide a direct, concise recap of the latest session (Current version v1.0.72, 10 Improvements Plan completed, and where we stopped).
+3. **Strictly Abide by PROJECT_RULES.md:** Read and enforce all rules in `PROJECT_RULES.md` (USD Base Accounting, Atomic & WAC Reversal, No SQL/RPC without prior consent, `npm run build` exit code 0 before commit/push, Mobile-First responsiveness, and Arabic completion summaries).
+
 ## How Agents Should Work Here (FlowPOS Pro Protocol)
-1. Read .agent/PROJECT_MEMORY.md at the start of any task.
+1. Read `PROJECT_RULES.md` and `.agent/PROJECT_MEMORY.md` at the start of any task.
+
 2. Follow **Spec-Driven Planning** (.agent/rules/01_spec_driven_planning.md): draft spec.md and obtain user confirmation for multi-step tasks.
 3. Enforce **Surgical Editing** (.agent/rules/02_surgical_code_modification.md): targeted edits only; never rewrite entire files; preserve comments, Arabic text, and logging.
 4. Execute **Domain Code Review** (.agent/rules/03_domain_code_review.md): audit offline sync, USD base currency, and platform guards before staging.

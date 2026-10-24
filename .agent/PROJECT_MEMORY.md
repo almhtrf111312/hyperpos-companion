@@ -1,7 +1,7 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-22  
-**Current Version:** v1.0.68  
+**Last Updated:** 2026-10-24  
+**Current Version:** v1.0.72  
 **Repository Branch:** `main`  
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
@@ -69,6 +69,18 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-24 (`721b07c`):** v1.0.72 - Completed The 10 Improvements Plan & Dynamic Notification Theming:
+  1. Default Weekly Invoices: Default filter in `Invoices.tsx` is 'week' for both listing and KPI cards.
+  2. Fixed Products Tabs: 3-column fixed responsive grid with vertical icons on mobile, zero clipping.
+  3. Default UI Scale: First-time scale set to 80% (11.2px) across config, HTML, and CSS.
+  4. Purchases Layout & Atomic Edit: Responsive 2-column buttons, 42rem constrained dialogs, mobile vertical item cards, and atomic `edit_purchase_invoice_atomic` SQL migration with WAC recalculation, negative stock guard, and 'superseded' audit tracking.
+  5. Debts & Multi-Currency Statements: All debt cards and reports formatted with `formatInCurrency` displaying `= X $`, expandable accordion invoice items in customer statements, and share canvas utilizing stored invoice exchange rates.
+  6. Maintenance in Sales Cart: Integrated maintenance capsule trigger right inside `CartPanel.tsx` next to Shopping Cart, removing clutter from header and catalog.
+  7. Services Capsule Buttons: Transformed dropdowns and radio buttons in `Services.tsx` into theme-colored `rounded-full h-9 px-4` capsule button groups.
+  8. Cash Shifts Local Currency & Live USD: Live currency exchange conversion display on start/close dialogs ("يعادل X $"), shifts stored with currency and rate, while base storage remains USD.
+  9. Default Reports Graphical Summary: Default `activeReport = 'sales'` and `viewTab = 'summary'`.
+  10. Consolidated Appearance & Dynamic Toasts: Unified Theme, Fonts, Scale, and Layout under a single draft state with floating FAB save button, and dynamic `hsl(var(--primary))` theming for SmartToast borders, glow, actions, and progress countdown.
+  11. BossPanel User Licenses: Added safe suspension and reactivation for active trial and purchased licenses with confirmation modals, without touching user records.
 * **2026-10-22:** Refined Compact SmartToast & Purged Shockwave Burst Effects:
   * Removed explosion rings, edge flares, `@keyframes lateralShockwave`, and harsh impact audio (`playBurstSound()`) from `SmartToast.tsx` and `src/index.css`.
   * Reduced card footprint from `max-w-[29rem]` (~464px) to `max-w-[22.5rem] sm:max-w-[23.5rem]` (~360px-376px) with zero content or button clipping.
