@@ -374,10 +374,10 @@ export default function Services() {
               key={filter.key}
               onClick={() => setSelectedFilter(filter.key)}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-[colors,box-shadow] shrink-0 cursor-pointer",
+                "rounded-full h-9 px-4 text-xs font-semibold whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer flex items-center justify-center",
                 selectedFilter === filter.key
-                  ? "bg-primary text-primary-foreground shadow-2xs"
-                  : "bg-muted/80 text-muted-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-2xs scale-105"
+                  : "bg-muted text-foreground hover:bg-muted/80"
               )}
             >
               {filter.label}
@@ -630,17 +630,25 @@ export default function Services() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
-                <select
-                  className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
-                  value={formData.deviceType}
-                  onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
-                >
+                <div className="flex flex-wrap gap-2">
                   {deviceTypes.map(type => (
-                    <option key={type.key} value={type.key}>{type.label}</option>
+                    <button
+                      key={type.key}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, deviceType: type.key })}
+                      className={cn(
+                        "rounded-full h-9 px-4 text-xs font-bold transition-all duration-200 cursor-pointer select-none",
+                        formData.deviceType === type.key
+                          ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                          : "bg-muted text-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {type.label}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')}</label>
@@ -742,17 +750,25 @@ export default function Services() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="col-span-2">
                 <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
-                <select
-                  className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-foreground"
-                  value={formData.deviceType}
-                  onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
-                >
+                <div className="flex flex-wrap gap-2">
                   {deviceTypes.map(type => (
-                    <option key={type.key} value={type.key}>{type.label}</option>
+                    <button
+                      key={type.key}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, deviceType: type.key })}
+                      className={cn(
+                        "rounded-full h-9 px-4 text-xs font-bold transition-all duration-200 cursor-pointer select-none",
+                        formData.deviceType === type.key
+                          ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                          : "bg-muted text-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {type.label}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')}</label>
@@ -1043,32 +1059,32 @@ export default function Services() {
                 {/* Payment Type */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">نوع الدفع</label>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setDeliveryData({ ...deliveryData, paymentType: 'cash' })}
                       className={cn(
-                        "flex-1 py-3 px-4 rounded-lg border-2 transition-[colors,border-color] flex items-center justify-center gap-2",
+                        "rounded-full h-9 px-4 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none",
                         deliveryData.paymentType === 'cash'
-                          ? "border-success bg-success/10 text-success"
-                          : "border-border bg-muted text-muted-foreground hover:border-muted-foreground"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-muted text-foreground hover:bg-muted/80"
                       )}
                     >
-                      <DollarSign className="w-5 h-5" />
-                      <span className="font-medium">نقدي</span>
+                      <DollarSign className="w-4 h-4" />
+                      <span>نقدي</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeliveryData({ ...deliveryData, paymentType: 'debt' })}
                       className={cn(
-                        "flex-1 py-3 px-4 rounded-lg border-2 transition-[colors,border-color] flex items-center justify-center gap-2",
+                        "rounded-full h-9 px-4 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none",
                         deliveryData.paymentType === 'debt'
-                          ? "border-warning bg-warning/10 text-warning"
-                          : "border-border bg-muted text-muted-foreground hover:border-muted-foreground"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-muted text-foreground hover:bg-muted/80"
                       )}
                     >
-                      <Clock className="w-5 h-5" />
-                      <span className="font-medium">دين</span>
+                      <Clock className="w-4 h-4" />
+                      <span>دين</span>
                     </button>
                   </div>
                 </div>

@@ -66,6 +66,7 @@ export default function CashShifts() {
   // Dialog states
   const [showStartDialog, setShowStartDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [activeShiftCurrency, setActiveShiftCurrency] = useState<'USD' | 'TRY' | 'SYP'>('USD');
   const [openingUSD, setOpeningUSD] = useState('');
   const [openingTRY, setOpeningTRY] = useState('');
   const [openingSYP, setOpeningSYP] = useState('');
@@ -198,11 +199,12 @@ export default function CashShifts() {
 
     const totalOpeningUSD = Math.round((usd + (tryAmt / exchangeRates.TRY) + (sypAmt / exchangeRates.SYP)) * 100) / 100;
 
+    const activeRate = activeShiftCurrency === 'TRY' ? exchangeRates.TRY : (activeShiftCurrency === 'SYP' ? exchangeRates.SYP : 1);
     openShiftFn(totalOpeningUSD, userId, userName, {
       USD: usd,
       TRY: tryAmt,
       SYP: sypAmt,
-    });
+    }, activeShiftCurrency, activeRate);
     addActivityLog('shift_opened', userId, userName, `${t('cashShifts.startShift')} - ${formatMoney(totalOpeningUSD, 'USD')} (USD: ${formatMoney(usd, 'USD')}, TRY: ${formatMoney(tryAmt, 'TRY')}, SYP: ${formatMoney(sypAmt, 'SYP')})`);
     toast.success(t('cashShifts.shiftOpened'));
 
@@ -257,11 +259,12 @@ export default function CashShifts() {
     setCreateAdjustment(true);
 
     try {
+      const activeRate = activeShiftCurrency === 'TRY' ? exchangeRates.TRY : (activeShiftCurrency === 'SYP' ? exchangeRates.SYP : 1);
       const result = closeShiftFn(totalClosingUSD, adjustmentNote, {
         USD: usd,
         TRY: tryAmt,
         SYP: sypAmt,
-      });
+      }, activeShiftCurrency, activeRate);
 
       if (result) {
         const { discrepancy } = result;
@@ -552,9 +555,11 @@ export default function CashShifts() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="openingTRY" className="text-xs font-semibold">
-                    {metaTRY.name} ({metaTRY.symbol} TRY)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="openingTRY" className="text-xs font-semibold">
+                      {metaTRY.name} ({metaTRY.symbol} TRY)
+                    </Label>
+                  </div>
                   <Input
                     id="openingTRY"
                     type="number"
@@ -565,12 +570,19 @@ export default function CashShifts() {
                     placeholder="0"
                     className="font-mono text-base"
                   />
+                  {parseFloat(openingTRY) > 0 && (
+                    <div className="text-[10px] text-muted-foreground font-mono">
+                      يعادل {((parseFloat(openingTRY) || 0) / exchangeRates.TRY).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.TRY} ₺
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="openingSYP" className="text-xs font-semibold">
-                    {metaSYP.name} ({metaSYP.symbol} SYP)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="openingSYP" className="text-xs font-semibold">
+                      {metaSYP.name} ({metaSYP.symbol} SYP)
+                    </Label>
+                  </div>
                   <Input
                     id="openingSYP"
                     type="number"
@@ -581,6 +593,11 @@ export default function CashShifts() {
                     placeholder="0"
                     className="font-mono text-base"
                   />
+                  {parseFloat(openingSYP) > 0 && (
+                    <div className="text-[10px] text-muted-foreground font-mono">
+                      يعادل {((parseFloat(openingSYP) || 0) / exchangeRates.SYP).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.SYP} ل.س
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -695,6 +712,11 @@ export default function CashShifts() {
                   placeholder="0"
                   className="font-mono text-base"
                 />
+                {parseFloat(closingTRY) > 0 && (
+                  <div className="text-[10.5px] text-muted-foreground font-mono mt-1">
+                    يعادل {((parseFloat(closingTRY) || 0) / exchangeRates.TRY).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.TRY} ₺
+                  </div>
+                )}
               </div>
 
               {/* SYP */}
@@ -717,24 +739,75 @@ export default function CashShifts() {
                   placeholder="0"
                   className="font-mono text-base"
                 />
+                {parseFloat(closingSYP) > 0 && (
+                  <div className="text-[10.5px] text-muted-foreground font-mono mt-1">
+                    يعادل {((parseFloat(closingSYP) || 0) / exchangeRates.SYP).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.SYP} ل.س
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Summary & Discrepancy Preview */}
             {hasAnyClosingInput && (
               <div className="space-y-2">
-                <div className="bg-muted/60 rounded-lg p-3 text-xs space-y-1 border">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>المتوقع الإجمالي (معادلاً بالدولار):</span>
-                    <span className="font-mono font-semibold text-foreground">${shiftStatus.expectedCash.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>الفعلي المعدود (معادلاً بالدولار):</span>
-                    <span className="font-mono font-semibold text-foreground">${totalClosingUSD.toFixed(2)}</span>
-                  </div>
+                {/* Currency toggle pills for closing summary */}
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/50 border">
+                  <span className="text-[11px] text-muted-foreground px-2 font-medium">عرض ملخص الإغلاق بـ:</span>
+                  {(['USD', 'TRY', 'SYP'] as const).map(curr => (
+                    <button
+                      key={curr}
+                      type="button"
+                      onClick={() => setActiveShiftCurrency(curr)}
+                      className={cn(
+                        "rounded-full h-7 px-3 text-xs font-bold transition-all select-none cursor-pointer",
+                        activeShiftCurrency === curr
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {curr === 'USD' ? 'الدولار ($)' : curr === 'TRY' ? 'التركي (₺)' : 'السوري (ل.س)'}
+                    </button>
+                  ))}
                 </div>
 
-                <div className={`rounded-lg p-4 border-2 ${previewDiscrepancy === 0
+                <div className="bg-muted/60 rounded-xl p-3 text-xs space-y-1.5 border">
+                  {(() => {
+                    const rate = activeShiftCurrency === 'TRY' ? exchangeRates.TRY : (activeShiftCurrency === 'SYP' ? exchangeRates.SYP : 1);
+                    const sym = activeShiftCurrency === 'TRY' ? '₺' : (activeShiftCurrency === 'SYP' ? 'ل.س' : '$');
+                    const expInCur = shiftStatus.expectedCash * rate;
+                    const actInCur = totalClosingUSD * rate;
+                    const dec = activeShiftCurrency === 'SYP' ? 0 : 2;
+
+                    return (
+                      <>
+                        <div className="flex justify-between items-center text-muted-foreground">
+                          <span>المتوقع الإجمالي:</span>
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-foreground text-sm">${shiftStatus.expectedCash.toFixed(2)}</span>
+                            {activeShiftCurrency !== 'USD' && (
+                              <span className="block text-[10.5px] font-mono text-muted-foreground">
+                                = {expInCur.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })} {sym}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-muted-foreground pt-1 border-t border-border/40">
+                          <span>الفعلي المعدود:</span>
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-foreground text-sm">${totalClosingUSD.toFixed(2)}</span>
+                            {activeShiftCurrency !== 'USD' && (
+                              <span className="block text-[10.5px] font-mono text-muted-foreground">
+                                = {actInCur.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })} {sym}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div className={`rounded-xl p-4 border-2 ${previewDiscrepancy === 0
                     ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
                     : previewDiscrepancy > 0
                       ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
@@ -764,6 +837,13 @@ export default function CashShifts() {
                     }`}>
                     {previewDiscrepancy > 0 ? '+' : ''}{formatCurrency(previewDiscrepancy, '$')}
                   </div>
+                  {activeShiftCurrency !== 'USD' && (
+                    <div className="text-xs font-mono font-bold text-muted-foreground mt-0.5">
+                      = {previewDiscrepancy > 0 ? '+' : ''}{(
+                        previewDiscrepancy * (activeShiftCurrency === 'TRY' ? exchangeRates.TRY : exchangeRates.SYP)
+                      ).toLocaleString('en-US', { minimumFractionDigits: activeShiftCurrency === 'SYP' ? 0 : 2, maximumFractionDigits: activeShiftCurrency === 'SYP' ? 0 : 2 })} {activeShiftCurrency === 'TRY' ? '₺' : 'ل.س'}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

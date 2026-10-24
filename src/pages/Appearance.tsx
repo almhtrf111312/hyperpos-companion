@@ -29,10 +29,19 @@ export default function Appearance() {
   const savedFontRef = useRef<AppFontId>(currentFont);
   const savedScaleRef = useRef<UIScaleId>(currentScale);
 
+  const getLayoutStorageKey = () => `flowpos_layout_${getPlatformStoragePrefix()}`;
+
+  const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
+    const platformKey = `flowpos_layout_${getPlatformStoragePrefix()}`;
+    return (localStorage.getItem(platformKey) as any) || (localStorage.getItem('hyperpos_dashboard_design_v1') as any) || 'classic';
+  });
+  const savedLayoutRef = useRef<'classic' | 'unified_pro'>(dashboardDesign);
+
   // Draft states for live preview without immediate storage commit
   const [draftTheme, setDraftTheme] = useState<PendingTheme | null>(null);
   const [draftFont, setDraftFont] = useState<AppFontId>(currentFont);
   const [draftScale, setDraftScale] = useState<UIScaleId>(currentScale);
+  const [draftLayout, setDraftLayout] = useState<'classic' | 'unified_pro'>(dashboardDesign);
 
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,27 +56,12 @@ export default function Appearance() {
   );
   const hasFontChanged = draftFont !== savedFontRef.current;
   const hasScaleChanged = draftScale !== savedScaleRef.current;
+  const hasLayoutChanged = draftLayout !== savedLayoutRef.current;
 
-  const hasUnsavedChanges = hasThemeChanged || hasFontChanged || hasScaleChanged;
+  const hasUnsavedChanges = hasThemeChanged || hasFontChanged || hasScaleChanged || hasLayoutChanged;
 
-  const getLayoutStorageKey = () => `flowpos_layout_${getPlatformStoragePrefix()}`;
-
-  const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
-    const platformKey = `flowpos_layout_${getPlatformStoragePrefix()}`;
-    return (localStorage.getItem(platformKey) as any) || (localStorage.getItem('hyperpos_dashboard_design_v1') as any) || 'classic';
-  });
-
-  const handleDesignChange = async (design: 'classic' | 'unified_pro') => {
-    setDashboardDesign(design);
-    const platformKey = getLayoutStorageKey();
-    localStorage.setItem(platformKey, design);
-    localStorage.setItem('hyperpos_dashboard_design_v1', design);
-    window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: design }));
-
-    toast({
-      title: t('common.saved'),
-      description: isRTL ? 'تم تغيير نمط التصميم محلياً لهذه المنصة بنجاح' : 'Layout updated for this platform',
-    });
+  const handleDraftLayoutChange = (design: 'classic' | 'unified_pro') => {
+    setDraftLayout(design);
   };
 
   // Live preview handlers
@@ -123,6 +117,16 @@ export default function Appearance() {
         }
       }
 
+      // 4. Save Layout
+      if (hasLayoutChanged) {
+        setDashboardDesign(draftLayout);
+        savedLayoutRef.current = draftLayout;
+        const platformKey = getLayoutStorageKey();
+        localStorage.setItem(platformKey, draftLayout);
+        localStorage.setItem('hyperpos_dashboard_design_v1', draftLayout);
+        window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: draftLayout }));
+      }
+
       showSmartToast({
         type: 'settings',
         title: t('common.saved') || 'تم الحفظ',
@@ -143,6 +147,7 @@ export default function Appearance() {
     setDraftTheme(null);
     setDraftFont(savedFontRef.current);
     setDraftScale(savedScaleRef.current);
+    setDraftLayout(savedLayoutRef.current);
     setResetSignal((prev) => prev + 1);
   };
 
@@ -219,10 +224,10 @@ export default function Appearance() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => handleDesignChange('classic')}
+                onClick={() => handleDraftLayoutChange('classic')}
                 className={cn(
                   "p-4 rounded-2xl border text-start transition-all duration-200 hover:border-primary/40",
-                  dashboardDesign === 'classic'
+                  draftLayout === 'classic'
                     ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xs"
                     : "border-border/60 bg-muted/20 hover:bg-muted/40"
                 )}
@@ -233,10 +238,10 @@ export default function Appearance() {
 
               <button
                 type="button"
-                onClick={() => handleDesignChange('unified_pro')}
+                onClick={() => handleDraftLayoutChange('unified_pro')}
                 className={cn(
                   "p-4 rounded-2xl border text-start transition-all duration-200 hover:border-primary/40",
-                  dashboardDesign === 'unified_pro'
+                  draftLayout === 'unified_pro'
                     ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xs"
                     : "border-border/60 bg-muted/20 hover:bg-muted/40"
                 )}

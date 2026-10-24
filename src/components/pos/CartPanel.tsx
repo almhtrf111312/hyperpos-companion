@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import {
+  Wrench,
   AlertCircle,
   ShoppingCart,
   Plus,
@@ -64,6 +65,7 @@ import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/cur
 
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
+import { MaintenancePanel } from '@/components/pos/MaintenancePanel';
 
 const isRepairStoreType = () => getCurrentStoreType() === 'repair';
 
@@ -1615,6 +1617,21 @@ export function CartPanel({
                   {cart.length}
                 </span>
               )}
+              {isMaintenanceEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setShowMaintenance(v => !v)}
+                  className={cn(
+                    "text-xs font-bold px-2.5 py-1 rounded-full transition-all duration-200 inline-flex items-center gap-1 cursor-pointer select-none",
+                    showMaintenance
+                      ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                      : "bg-muted hover:bg-muted/80 text-foreground"
+                  )}
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  <span>{t('pos.maintenance') || 'صيانة'}</span>
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {/* مؤشر المزامنة في الخلفية */}
@@ -1780,7 +1797,20 @@ export function CartPanel({
           </div>
         </div>
 
-        {/* Cart Items */}
+        {showMaintenance ? (
+          <div className="flex-1 overflow-y-auto p-2 sm:p-3">
+            <MaintenancePanel
+              currencies={currencies as any}
+              selectedCurrency={selectedCurrency as any}
+              onCurrencyChange={onCurrencyChange as any}
+              onClose={() => setShowMaintenance(false)}
+              isMobile={isMobile}
+              fullWidth={true}
+            />
+          </div>
+        ) : (
+          <>
+          {/* Cart Items */}
         <div className="flex-1 overflow-y-auto px-2.5 py-2 space-y-1 bg-slate-50/50 dark:bg-zinc-950/50">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
@@ -2193,6 +2223,8 @@ export function CartPanel({
             </Button>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Cash Sale Dialog */}

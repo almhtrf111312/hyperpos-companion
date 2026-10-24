@@ -53,72 +53,12 @@ export function POSHeader({
           </h1>
         </div>
 
-        {/* أزرار الوضع على الديسكتوب */}
-        {!isMobile && !hideMaintenance && onModeChange && (
-          <div className="flex items-center p-1 rounded-full bg-slate-100 dark:bg-zinc-900 border border-black/5 dark:border-white/5 shadow-inner ms-2">
-            <button
-              type="button"
-              onClick={() => onModeChange('products')}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 select-none cursor-pointer",
-                activeMode === 'products'
-                  ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm scale-105"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              <span>{tDynamic('products')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onModeChange('maintenance')}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 select-none cursor-pointer",
-                activeMode === 'maintenance'
-                  ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm scale-105"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>{t('pos.maintenance')}</span>
-            </button>
-          </div>
-        )}
+
       </div>
 
       {/* جهة اليسار (RTL): التحكم المدمج للموبايل + اختصارات الديسكتوب */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* تبديل الوضع مدمجاً في الرأس على الموبايل لتوفير مساحة الشاشة */}
-        {isMobile && !hideMaintenance && onModeChange && (
-          <div className="flex items-center p-0.5 rounded-lg bg-muted/60 dark:bg-zinc-900/80 border border-border/40">
-            <button
-              type="button"
-              onClick={() => onModeChange('products')}
-              className={cn(
-                "p-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer",
-                activeMode === 'products'
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title={tDynamic('products')}
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onModeChange('maintenance')}
-              className={cn(
-                "p-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer",
-                activeMode === 'maintenance'
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title={t('pos.maintenance')}
-            >
-              <Wrench className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+
 
         {/* زر اختصارات الكيبورد على الديسكتوب */}
         {!isMobile && <KeyboardShortcutsHelp />}

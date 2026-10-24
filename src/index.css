@@ -1886,9 +1886,9 @@ html, body, #root {
 }
 
 
-/* Base fallback root font-size (100% = 14px) matching DEFAULT_UI_SCALE_ID in src/lib/ui-scale-config.ts */
+/* Base fallback root font-size (80% = 11.2px) matching DEFAULT_UI_SCALE_ID in src/lib/ui-scale-config.ts */
 html {
-  font-size: 14px;
+  font-size: 11.2px;
 }
 
 /* Smart Notification Animations */
@@ -1940,18 +1940,18 @@ html {
 /* Smart Toast Island Custom Styling & Glassmorphism Theme Integration */
 .smart-toast-card {
   background: hsl(var(--card) / 0.96);
-  border: 1px solid hsl(var(--border) / 0.85);
+  border: 1.5px solid hsl(var(--primary) / 0.4) !important;
   color: hsl(var(--card-foreground));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 25px -5px hsl(var(--foreground) / 0.08), 0 8px 10px -6px hsl(var(--foreground) / 0.05);
+  box-shadow: 0 10px 25px -5px hsl(var(--primary) / 0.18), 0 8px 10px -6px hsl(var(--foreground) / 0.05);
 }
 
 .dark .smart-toast-card {
   background: hsl(var(--card) / 0.94);
-  border: 1px solid hsl(var(--border) / 0.75);
+  border: 1.5px solid hsl(var(--primary) / 0.5) !important;
   color: hsl(var(--card-foreground));
-  box-shadow: 0 14px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px hsl(var(--border) / 0.35);
+  box-shadow: 0 14px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px hsl(var(--primary) / 0.35);
 }
 
 /* Glassmorphism Active Theme (.blur-theme) - Pure True Glass with User-Defined Transparency */

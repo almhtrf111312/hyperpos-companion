@@ -107,7 +107,7 @@ export default function Reports() {
   const visibleSections = getVisibleSections(storeType);
 
   const { mode, setMode } = useTheme();
-  const [activeReport, setActiveReport] = useState('unified-dashboard');
+  const [activeReport, setActiveReport] = useState('sales');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [salesViewMode, setSalesViewMode] = useState<'summary' | 'detailed'>('summary');
   const [viewTab, setViewTab] = useState<'summary' | 'detailed' | 'comprehensive'>('summary');

@@ -1139,26 +1139,18 @@ export default function POS() {
             "flex-1 flex flex-col h-full overflow-hidden",
             !isMobile && (isRTL ? "border-l border-border" : "border-r border-border")
           )}>
-            {activeMode === 'products' || hideMaintenanceSection ? (
-              <ProductGrid
-                products={products}
-                categories={categories}
-                searchQuery={searchQuery}
-                selectedCategory={selectedCategory}
-                onSearchChange={handleSearchChange}
-                onCategoryChange={setSelectedCategory}
-                onProductClick={(product, qty) => addToCart(product, 'piece', qty || 1)}
-                onAddToCart={(product, qty) => addToCart(product, 'piece', qty || 1)}
-                onBarcodeScan={handleBarcodeScan}
-                selectedCurrency={selectedCurrency}
-              />
-            ) : (
-              <MaintenancePanel
-                currencies={currencies as any}
-                selectedCurrency={selectedCurrency as any}
-                onCurrencyChange={setSelectedCurrency as any}
-              />
-            )}
+            <ProductGrid
+              products={products}
+              categories={categories}
+              searchQuery={searchQuery}
+              selectedCategory={selectedCategory}
+              onSearchChange={handleSearchChange}
+              onCategoryChange={setSelectedCategory}
+              onProductClick={(product, qty) => addToCart(product, 'piece', qty || 1)}
+              onAddToCart={(product, qty) => addToCart(product, 'piece', qty || 1)}
+              onBarcodeScan={handleBarcodeScan}
+              selectedCurrency={selectedCurrency}
+            />
           </div>
 
           {/* Cart Panel - Desktop Only (not tablet) */}

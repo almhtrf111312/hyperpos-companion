@@ -21,7 +21,10 @@ import { isGuestDemoMode } from '@/lib/demo-data';
    actual_items_count: number;
    actual_total_quantity: number;
    actual_grand_total: number;
-   status: 'draft' | 'reconciled' | 'finalized';
+   status: 'draft' | 'reconciled' | 'finalized' | 'superseded';
+  replaced_by?: string;
+  operation_id?: string;
+  edit_reason?: string;
    notes?: string;
    created_at: string;
    updated_at: string;
@@ -734,5 +737,74 @@ function mergeSyncQueuePurchases(list: PurchaseInvoice[]): PurchaseInvoice[] {
     return pending.length ? [...pending, ...list] : list;
   } catch {
     return list;
+  }
+}
+
+
+export interface EditPurchaseInvoiceLine {
+  product_id?: string;
+  product_name: string;
+  barcode?: string;
+  category?: string;
+  quantity: number;
+  cost_price: number;
+  sale_price?: number;
+}
+
+/**
+ * Atomic server-side purchase invoice editing function.
+ * Reverses old stock, verifies non-negative stock, adds new lines,
+ * recalculates weighted average cost, marks old invoice superseded,
+ * and maintains full audit log and idempotency.
+ */
+export async function editPurchaseInvoiceAtomic(
+  invoiceId: string,
+  newLines: EditPurchaseInvoiceLine[],
+  opId?: string,
+  reason: string = 'تعديل فاتورة شراء'
+): Promise<{ success: boolean; newInvoiceId?: string; error?: string }> {
+  const finalOpId = opId || `edit_pi_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    if (isGuestDemoMode()) {
+      const local = loadPurchaseInvoicesLocally();
+      const orig = local.find(i => i.id === invoiceId);
+      if (!orig) return { success: false, error: 'الفاتورة غير موجودة' };
+      orig.status = 'superseded' as any;
+      const newInv: PurchaseInvoice = {
+        ...orig,
+        id: `demo_pi_${Date.now()}`,
+        invoice_number: `${orig.invoice_number}-REV`,
+        status: orig.status === 'finalized' ? 'finalized' : 'draft',
+        actual_items_count: newLines.length,
+        actual_total_quantity: newLines.reduce((s, l) => s + (l.quantity || 0), 0),
+        actual_grand_total: newLines.reduce((s, l) => s + (l.quantity * l.cost_price || 0), 0),
+        notes: `${orig.notes || ''} [تعديل للفاتورة #${orig.invoice_number}]`,
+        updated_at: new Date().toISOString(),
+      };
+      local.unshift(newInv);
+      savePurchaseInvoicesLocally(local);
+      emitEvent(EVENTS.PURCHASES_UPDATED, null);
+      emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+      return { success: true, newInvoiceId: newInv.id };
+    }
+
+    const { data, error } = await (supabase as any).rpc('edit_purchase_invoice_atomic', {
+      _invoice_id: invoiceId,
+      _new_lines: newLines,
+      _op_id: finalOpId,
+      _reason: reason
+    });
+
+    if (error) {
+      console.error('Error in edit_purchase_invoice_atomic RPC:', error);
+      return { success: false, error: error.message || 'فشل تعديل الفاتورة' };
+    }
+
+    emitEvent(EVENTS.PURCHASES_UPDATED, null);
+    emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+    return { success: true, newInvoiceId: data as string };
+  } catch (err: any) {
+    console.error('Exception in editPurchaseInvoiceAtomic:', err);
+    return { success: false, error: err?.message || 'حدث خطأ أثناء الاتصال بالخادم' };
   }
 }

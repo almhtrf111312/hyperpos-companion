@@ -71,6 +71,8 @@ import {
 } from '@/lib/cloud/customer-stats';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
+import { useCurrency, formatInCurrency } from '@/hooks/use-currency';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { EVENTS } from '@/lib/events';
 import Debts from '@/pages/Debts';
 
@@ -790,6 +792,7 @@ export default function Customers() {
                         paid,
                         remaining,
                         status: remaining <= 0 ? 'fully_paid' : (paid > 0 ? 'partially_paid' : 'due'),
+                        items: inv.items || [],
                       };
                     }),
                     ...customerDebts.filter(d => d.isCashDebt).map(d => ({
@@ -814,44 +817,82 @@ export default function Customers() {
 
                   return (
                     <div className="space-y-2 max-h-72 overflow-y-auto border rounded-xl divide-y">
-                      {statementItems.map((item, idx) => (
-                        <div key={`${item.id}-${idx}`} className="p-3 bg-card hover:bg-muted/40 transition-colors text-xs flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-foreground">{item.id}</span>
-                              <Badge
-                                variant={item.paymentType === 'cash' ? 'default' : 'destructive'}
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {item.type}
-                              </Badge>
-                            </div>
-                            <span className="text-muted-foreground" dir="ltr">
-                              {formatDateTime(new Date(item.date))}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2 pt-1 text-center bg-muted/50 rounded-lg p-1.5">
-                            <div>
-                              <span className="text-[10px] text-muted-foreground block">الإجمالي</span>
-                              <span className="font-bold text-foreground">{formatCurrency(item.total)}</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-muted-foreground block">المدفوع</span>
-                              <span className="font-bold text-success">{formatCurrency(item.paid)}</span>
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-muted-foreground block">المتبقي</span>
-                              <span className={cn(
-                                "font-bold",
-                                item.remaining > 0 ? "text-destructive" : "text-success"
-                              )}>
-                                {formatCurrency(item.remaining)}
+                      {statementItems.map((item, idx) => {
+                        const isExpanded = !!expandedInvoices[item.id];
+                        const hasItems = (item as any).items && (item as any).items.length > 0;
+                        return (
+                          <div key={`${item.id}-${idx}`} className="p-3 bg-card hover:bg-muted/30 transition-colors text-xs flex flex-col gap-1.5">
+                            <div 
+                              className={cn("flex items-center justify-between select-none", hasItems && "cursor-pointer")}
+                              onClick={() => hasItems && toggleInvoiceExpand(item.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-foreground">{item.id}</span>
+                                <Badge
+                                  variant={item.paymentType === 'cash' ? 'default' : 'destructive'}
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  {item.type}
+                                </Badge>
+                                {hasItems && (
+                                  <span className="text-[10px] text-primary flex items-center gap-0.5 font-medium">
+                                    {(item as any).items.length} أصناف
+                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-muted-foreground" dir="ltr">
+                                {formatDateTime(new Date(item.date))}
                               </span>
                             </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-1 text-center bg-muted/50 rounded-lg p-1.5">
+                              <div>
+                                <span className="text-[10px] text-muted-foreground block">الإجمالي</span>
+                                <span className="font-bold text-foreground">{formatInCurrency(item.total, currencyCode, exchangeRate).formatted}</span>
+                                {isNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.total, currencyCode, exchangeRate).usdEquivalent}</span>}
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-muted-foreground block">المدفوع</span>
+                                <span className="font-bold text-success">{formatInCurrency(item.paid, currencyCode, exchangeRate).formatted}</span>
+                                {isNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.paid, currencyCode, exchangeRate).usdEquivalent}</span>}
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-muted-foreground block">المتبقي</span>
+                                <span className={cn(
+                                  "font-bold",
+                                  item.remaining > 0 ? "text-destructive" : "text-success"
+                                )}>
+                                  {formatInCurrency(item.remaining, currencyCode, exchangeRate).formatted}
+                                </span>
+                                {isNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.remaining, currencyCode, exchangeRate).usdEquivalent}</span>}
+                              </div>
+                            </div>
+
+                            {/* Accordion content: Items breakdown */}
+                            {isExpanded && hasItems && (
+                              <div className="mt-2 pt-2 border-t border-border/50 space-y-1.5 bg-muted/30 p-2.5 rounded-lg animate-in fade-in-50 duration-200">
+                                <div className="text-[10px] font-semibold text-muted-foreground flex justify-between border-b border-border/40 pb-1">
+                                  <span>الصنف</span>
+                                  <div className="flex gap-4">
+                                    <span>الكمية × السعر</span>
+                                    <span>الإجمالي</span>
+                                  </div>
+                                </div>
+                                {(item as any).items.map((prod: any, pIdx: number) => (
+                                  <div key={pIdx} className="text-[11px] flex items-center justify-between py-0.5">
+                                    <span className="font-medium text-foreground">{prod.name}</span>
+                                    <div className="flex items-center gap-4 font-mono text-[10.5px]">
+                                      <span className="text-muted-foreground">{prod.quantity} × {formatInCurrency(prod.price, currencyCode, exchangeRate).formatted}</span>
+                                      <span className="font-bold text-foreground">{formatInCurrency((prod.quantity || 1) * (prod.price || 0), currencyCode, exchangeRate).formatted}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })()}

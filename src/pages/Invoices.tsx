@@ -299,9 +299,9 @@ export default function Invoices() {
   const [dateTo, setDateTo] = useState<string>('');
 
   const todayStr = useMemo(() => getLocalDateString(), []);
-  const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilter>('today');
+  const [dateQuickFilter, setDateQuickFilter] = useState<DateQuickFilter>('week');
   const [dateFilter, setDateFilter] = useState<string>(() => getLocalDateString());
-  const [activeKpi, setActiveKpi] = useState<'total' | 'debt' | 'today' | 'profit' | null>('today');
+  const [activeKpi, setActiveKpi] = useState<'total' | 'debt' | 'today' | 'profit' | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);

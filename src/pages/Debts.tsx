@@ -39,7 +39,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from '@/lib/sonner-bridge';
 import { showSmartToast } from '@/hooks/use-smart-toast';
-import { loadDefaultCurrencyCode, loadEnabledCurrencies } from '@/hooks/use-currency';
+import { useCurrency, formatInCurrency, loadDefaultCurrencyCode, loadEnabledCurrencies } from '@/hooks/use-currency';
 import { resolveCurrencyMeta } from '@/lib/currencies';
 import { EVENTS, emitEvent } from '@/lib/events';
 import {
@@ -86,6 +86,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('active');
+  const { currencyCode, currencySymbol, exchangeRate } = useCurrency();
+  const isNonUsd = currencyCode !== 'USD';
 
   // Dialogs
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -339,13 +341,14 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       }
     } catch { }
 
-    // طھط­ط¶ظٹط± ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط´ط§ط±ظƒط©
     const shareData: DebtShareData = {
       customerName: debt.customerName,
       customerPhone: debt.customerPhone,
       totalDebt: debt.totalDebt,
       remainingDebt: debt.remainingDebt,
-      currencySymbol,
+      currencySymbol: currencySymbol || '$',
+      currency: currencyCode,
+      exchangeRate: exchangeRate,
       invoiceId: debt.invoiceId,
       dueDate: debt.dueDate ? new Date(debt.dueDate).toLocaleDateString('ar-SA') : undefined,
     };
@@ -556,19 +559,23 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       <div className="grid grid-cols-4 gap-1.5 text-center select-none">
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('debts.total')}</span>
-          <span className="text-xs font-black text-foreground font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.total)}</span>
+          <span className="text-xs font-black text-foreground font-mono tabular-nums whitespace-nowrap">{formatInCurrency(stats.total, currencyCode, exchangeRate).formatted}</span>
+          {isNonUsd && <span className="text-[8.5px] text-muted-foreground font-mono block">{formatInCurrency(stats.total, currencyCode, exchangeRate).usdEquivalent}</span>}
         </div>
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-destructive font-medium block truncate">{t('debts.remaining')}</span>
-          <span className="text-xs font-black text-destructive font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.remaining)}</span>
+          <span className="text-xs font-black text-destructive font-mono tabular-nums whitespace-nowrap">{formatInCurrency(stats.remaining, currencyCode, exchangeRate).formatted}</span>
+          {isNonUsd && <span className="text-[8.5px] text-muted-foreground font-mono block">{formatInCurrency(stats.remaining, currencyCode, exchangeRate).usdEquivalent}</span>}
         </div>
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">{t('debts.paid')}</span>
-          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.paid)}</span>
+          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums whitespace-nowrap">{formatInCurrency(stats.paid, currencyCode, exchangeRate).formatted}</span>
+          {isNonUsd && <span className="text-[8.5px] text-muted-foreground font-mono block">{formatInCurrency(stats.paid, currencyCode, exchangeRate).usdEquivalent}</span>}
         </div>
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block truncate">{t('debts.overdue')}</span>
-          <span className="text-xs font-black text-orange-600 dark:text-orange-400 font-mono tabular-nums whitespace-nowrap">{formatCurrency(stats.overdue)}</span>
+          <span className="text-xs font-black text-orange-600 dark:text-orange-400 font-mono tabular-nums whitespace-nowrap">{formatInCurrency(stats.overdue, currencyCode, exchangeRate).formatted}</span>
+          {isNonUsd && <span className="text-[8.5px] text-muted-foreground font-mono block">{formatInCurrency(stats.overdue, currencyCode, exchangeRate).usdEquivalent}</span>}
         </div>
       </div>
 
@@ -717,7 +724,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 <div className="mt-2 space-y-1">
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     <span>نسبة السداد: <b className="text-foreground font-mono">{progress}%</b></span>
-                    <span>الأصل: <b className="text-foreground font-mono">{formatCurrency(debt.totalDebt)}</b></span>
+                    <span>الأصل: <b className="text-foreground font-mono">{formatInCurrency(debt.totalDebt, currencyCode, exchangeRate).formatted}</b>{isNonUsd && <span className="text-[9px] text-muted-foreground font-mono mr-1">({formatInCurrency(debt.totalDebt, currencyCode, exchangeRate).usdEquivalent})</span>}</span>
                   </div>
                   <div className="h-1 bg-muted rounded-full overflow-hidden">
                     <div
@@ -731,7 +738,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                 <div className="mt-2.5 pt-2 border-t border-dashed border-border flex items-end justify-between">
                   <div className="text-[10px] text-muted-foreground space-y-0.5">
                     <div className="font-medium">
-                      المسدد: <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatCurrency(debt.totalPaid)}</span>
+                      المسدد: <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatInCurrency(debt.totalPaid, currencyCode, exchangeRate).formatted}</span>{isNonUsd && <span className="text-[9px] text-muted-foreground font-mono mr-1">({formatInCurrency(debt.totalPaid, currencyCode, exchangeRate).usdEquivalent})</span>}
                     </div>
                   </div>
                   <div className="text-left whitespace-nowrap shrink-0">
@@ -740,8 +747,13 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                       "text-base font-black font-mono whitespace-nowrap",
                       debt.remainingDebt > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"
                     )}>
-                      {formatCurrency(debt.remainingDebt)}
+                      {formatInCurrency(debt.remainingDebt, currencyCode, exchangeRate).formatted}
                     </span>
+                    {isNonUsd && (
+                      <span className="text-[9px] text-muted-foreground font-mono block">
+                        {formatInCurrency(debt.remainingDebt, currencyCode, exchangeRate).usdEquivalent}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

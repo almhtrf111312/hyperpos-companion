@@ -150,3 +150,42 @@ export const useCurrency = () => {
     };
   }, [settingsRev]);
 };
+
+
+export interface FormattedCurrencyResult {
+  formatted: string;
+  convertedValue: number;
+  usdEquivalent: string;
+  symbol: string;
+}
+
+export function formatInCurrency(
+  usdAmount: number,
+  currencyCode: 'USD' | 'TRY' | 'SYP' | string = 'USD',
+  customRate?: number,
+  customSymbol?: string
+): FormattedCurrencyResult {
+  const rates = loadExchangeRates();
+  const symbols = loadCurrencySymbols();
+  const code = (currencyCode || 'USD') as 'USD' | 'TRY' | 'SYP';
+
+  const rate = customRate !== undefined ? customRate : (code === 'TRY' ? rates.TRY : code === 'SYP' ? rates.SYP : 1);
+  const symbol = customSymbol || symbols[code] || (code === 'USD' ? '$' : code);
+
+  const convertedValue = (usdAmount || 0) * (rate || 1);
+  const decimals = (rate >= 100 || code === 'SYP') ? 0 : 2;
+
+  const formattedNum = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(convertedValue);
+
+  const formatted = `${formattedNum} ${symbol}`;
+  const usdFormatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(usdAmount || 0);
+  const usdEquivalent = `= ${usdFormatted} $`;
+
+  return { formatted, convertedValue, usdEquivalent, symbol };
+}

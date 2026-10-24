@@ -8,6 +8,7 @@ import { exportToPDF } from '@/lib/pdf-export';
 import { toast } from '@/lib/sonner-bridge';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { useLanguage } from '@/hooks/use-language';
+import { useCurrency, formatInCurrency } from '@/hooks/use-currency';
 
 interface Props {
   dateRange: { from: string; to: string };
@@ -16,6 +17,8 @@ interface Props {
 
 export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
   const { t } = useLanguage();
+  const { currencyCode, exchangeRate } = useCurrency();
+  const isNonUsd = currencyCode !== 'USD';
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -152,12 +155,18 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-red-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(stats.totalRemaining)}</p>
+          <div>
+            <p className="text-2xl font-bold">{formatInCurrency(stats.totalRemaining, currencyCode, exchangeRate).formatted}</p>
+            {isNonUsd && <p className="text-[11px] text-muted-foreground font-mono">{formatInCurrency(stats.totalRemaining, currencyCode, exchangeRate).usdEquivalent}</p>}
+          </div>
           <p className="text-xs text-muted-foreground">{t('debts.remaining') || 'الديون المتبقية'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <CheckCircle className="w-5 h-5 text-green-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(stats.totalPaid)}</p>
+          <div>
+            <p className="text-2xl font-bold text-green-600">{formatInCurrency(stats.totalPaid, currencyCode, exchangeRate).formatted}</p>
+            {isNonUsd && <p className="text-[11px] text-muted-foreground font-mono">{formatInCurrency(stats.totalPaid, currencyCode, exchangeRate).usdEquivalent}</p>}
+          </div>
           <p className="text-xs text-muted-foreground">{t('debts.paid') || 'المدفوع'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
@@ -197,9 +206,18 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
                   <tr key={d.id} className="border-t hover:bg-muted/30">
                     <td className="p-3 font-medium">{d.customerName}</td>
                     <td className="p-3 text-muted-foreground">{d.customerPhone || '-'}</td>
-                    <td className="p-3 text-center">{formatCurrency(d.totalDebt)}</td>
-                    <td className="p-3 text-center text-green-600">{formatCurrency(d.totalPaid)}</td>
-                    <td className="p-3 text-center font-bold text-red-600">{formatCurrency(d.remainingDebt)}</td>
+                    <td className="p-3 text-center">
+                      <div>{formatInCurrency(d.totalDebt, currencyCode, exchangeRate).formatted}</div>
+                      {isNonUsd && <div className="text-[10px] text-muted-foreground font-mono">{formatInCurrency(d.totalDebt, currencyCode, exchangeRate).usdEquivalent}</div>}
+                    </td>
+                    <td className="p-3 text-center text-green-600">
+                      <div>{formatInCurrency(d.totalPaid, currencyCode, exchangeRate).formatted}</div>
+                      {isNonUsd && <div className="text-[10px] text-muted-foreground font-mono">{formatInCurrency(d.totalPaid, currencyCode, exchangeRate).usdEquivalent}</div>}
+                    </td>
+                    <td className="p-3 text-center font-bold text-red-600">
+                      <div>{formatInCurrency(d.remainingDebt, currencyCode, exchangeRate).formatted}</div>
+                      {isNonUsd && <div className="text-[10px] text-muted-foreground font-mono">{formatInCurrency(d.remainingDebt, currencyCode, exchangeRate).usdEquivalent}</div>}
+                    </td>
                     <td className="p-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(d.status)}`}>
                         {statusLabel(d.status)}
@@ -212,9 +230,18 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
               <tfoot className="bg-muted/30 font-bold">
                 <tr>
                   <td className="p-3" colSpan={2}>الإجمالي</td>
-                  <td className="p-3 text-center">{formatCurrency(stats.totalDebt)}</td>
-                  <td className="p-3 text-center text-green-600">{formatCurrency(stats.totalPaid)}</td>
-                  <td className="p-3 text-center text-red-600">{formatCurrency(stats.totalRemaining)}</td>
+                  <td className="p-3 text-center">
+                    <div>{formatInCurrency(stats.totalDebt, currencyCode, exchangeRate).formatted}</div>
+                    {isNonUsd && <div className="text-[10px] text-muted-foreground font-mono">{formatInCurrency(stats.totalDebt, currencyCode, exchangeRate).usdEquivalent}</div>}
+                  </td>
+                  <td className="p-3 text-center text-green-600">
+                    <div>{formatInCurrency(stats.totalPaid, currencyCode, exchangeRate).formatted}</div>
+                    {isNonUsd && <div className="text-[10px] text-muted-foreground font-mono">{formatInCurrency(stats.totalPaid, currencyCode, exchangeRate).usdEquivalent}</div>}
+                  </td>
+                  <td className="p-3 text-center text-red-600">
+                    <div>{formatInCurrency(stats.totalRemaining, currencyCode, exchangeRate).formatted}</div>
+                    {isNonUsd && <div className="text-[10px] text-muted-foreground font-mono">{formatInCurrency(stats.totalRemaining, currencyCode, exchangeRate).usdEquivalent}</div>}
+                  </td>
                   <td className="p-3" colSpan={2}></td>
                 </tr>
               </tfoot>

@@ -59,6 +59,7 @@ export interface DebtStatementCanvasItem {
   paid: number;
   remaining: number;
   status?: string;
+  exchangeRate?: number;
 }
 
 export interface DebtStatementCanvasData {
@@ -69,6 +70,8 @@ export interface DebtStatementCanvasData {
   totalPaid: number;
   totalDebt: number;
   currencySymbol: string;
+  currency?: string;
+  exchangeRate?: number;
   transactions: DebtStatementCanvasItem[];
   dueDate?: string;
   storeName?: string;
@@ -746,11 +749,21 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   const storeLogoUrl = data.storeLogo || storeSettings.logo || '';
   const footerNote = data.footerNote || printSettings.footer || 'نرجو التواصل لتسوية المبلغ المطلوب. شاكرين تعاونكم معنا 🙏';
 
+  const statementCurrency = (data as any).currency || (data as any).currencyCode || 'USD';
+  const statementRate = (data.exchangeRate && data.exchangeRate > 0 && statementCurrency !== 'USD')
+    ? data.exchangeRate
+    : 1;
+  const isConverted = statementRate !== 1;
+
   const rawDebtSymbol = (data.currencySymbol || '').trim();
   const effectiveDebtSymbol = resolveInvoiceCurrencySymbol(
-    (data as any).currency || (data as any).currencyCode,
+    statementCurrency,
     rawDebtSymbol
   );
+
+  const displayTotalPurchases = isConverted ? (data.totalPurchases * statementRate) : data.totalPurchases;
+  const displayTotalPaid = isConverted ? (data.totalPaid * statementRate) : data.totalPaid;
+  const displayTotalDebt = isConverted ? (data.totalDebt * statementRate) : data.totalDebt;
 
   const LOGICAL_WIDTH = 720;
   const HEADER_HEIGHT = 135;
@@ -905,7 +918,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('إجمالي التعاملات', card1X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = '#0284c7';
   ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(data.totalPurchases, effectiveDebtSymbol), card1X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(displayTotalPurchases, effectiveDebtSymbol), card1X + (cardW / 2), summaryCardsY + 52);
 
   // بطاقة 2: إجمالي المسدد
   const card2X = 30 + cardW + 10;
@@ -915,7 +928,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('إجمالي المسدد', card2X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = '#16a34a';
   ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(data.totalPaid, effectiveDebtSymbol), card2X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(displayTotalPaid, effectiveDebtSymbol), card2X + (cardW / 2), summaryCardsY + 52);
 
   // بطاقة 3: الرصيد المتبقي (الديون)
   const card3X = 30;
@@ -925,7 +938,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('الرصيد المتبقي (الديون)', card3X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = data.totalDebt > 0 ? '#dc2626' : '#16a34a';
   ctx.font = `bold 19px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(data.totalDebt, effectiveDebtSymbol), card3X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(displayTotalDebt, effectiveDebtSymbol), card3X + (cardW / 2), summaryCardsY + 52);
 
   // 4. جدول حركات الحساب
   const tableY = summaryCardsY + SUMMARY_CARDS_HEIGHT + 14;

@@ -384,6 +384,8 @@ export interface DebtShareData {
   totalDebt: number;
   remainingDebt: number;
   currencySymbol: string;
+  currency?: string;
+  exchangeRate?: number;
   invoiceId?: string;
   dueDate?: string;
 }
@@ -424,6 +426,8 @@ export async function shareDebt(data: DebtShareData): Promise<boolean> {
       totalPaid: Math.max(0, data.totalDebt - data.remainingDebt),
       totalDebt: data.remainingDebt,
       currencySymbol: data.currencySymbol,
+      currency: data.currency,
+      exchangeRate: data.exchangeRate,
       dueDate: data.dueDate,
       transactions: data.invoiceId ? [{
         id: data.invoiceId,

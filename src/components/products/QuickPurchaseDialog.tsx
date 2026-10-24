@@ -492,10 +492,10 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="w-[calc(100vw-1.25rem)] sm:w-full sm:max-w-lg max-h-[88vh] max-h-[88dvh] overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 text-xs sm:text-sm rounded-2xl"
+          className="w-[min(100vw-1rem,42rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden text-xs sm:text-sm rounded-2xl break-words"
           onPointerDownOutside={(e) => e.preventDefault()}
         >
-          <DialogHeader className="pb-2 border-b">
+          <DialogHeader className="p-3.5 sm:p-5 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <ShoppingBag className="w-5 h-5 text-primary shrink-0" />
               <span>{t('purchases.quickAdd') || 'إضافة مشتريات سريعة'}</span>
@@ -505,7 +505,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3.5 sm:space-y-4 pt-2.5 sm:pt-3">
+          <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
             {/* Existing Product Indicator */}
             {selectedProduct && (
               <div className="flex items-center justify-between p-2.5 bg-primary/10 border border-primary/20 rounded-lg text-xs">
@@ -932,35 +932,36 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2 pt-2 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 h-11 text-sm"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                {t('common.cancel') || 'إلغاء'}
-              </Button>
-              <Button
-                type="button"
-                className="flex-1 h-11 text-sm bg-primary hover:bg-primary/90 font-bold"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {t('common.loading') || 'جارٍ الحفظ...'}
-                  </>
-                ) : (
-                  <>
-                    <Package className="w-4 h-4" />
-                    {selectedProduct ? 'تحديث المخزون والفاتورة' : 'حفظ المنتج وتحديث المخزون'}
-                  </>
-                )}
-              </Button>
-            </div>
+          </div>
+
+          <div className="p-3 sm:p-4 border-t bg-muted/20 shrink-0 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 h-11 text-sm"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              {t('common.cancel') || 'إلغاء'}
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 h-11 text-sm bg-primary hover:bg-primary/90 font-bold"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('common.loading') || 'جارٍ الحفظ...'}
+                </>
+              ) : (
+                <>
+                  <Package className="w-4 h-4" />
+                  {selectedProduct ? 'تحديث المخزون والفاتورة' : 'حفظ المنتج وتحديث المخزون'}
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

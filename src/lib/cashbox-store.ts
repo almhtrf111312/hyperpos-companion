@@ -77,6 +77,8 @@ export interface Shift {
   grossProfitTotal: number;      // إجمالي الربح الإجمالي (المبيعات - التكلفة)
   // ✅ تفصيل النقدية بالوردية حسب العملة
   currencies?: ShiftCurrenciesMap;
+  currency?: string;
+  exchange_rate?: number;
 }
 
 export interface CashboxState {
@@ -178,7 +180,9 @@ export const openShift = (
   openingCash: number,
   userId: string,
   userName: string,
-  currencyOpenings?: { USD?: number; TRY?: number; SYP?: number }
+  currencyOpenings?: { USD?: number; TRY?: number; SYP?: number },
+  primaryCurrency?: string,
+  exchangeRate?: number
 ): Shift => {
   const shifts = loadShifts();
 
@@ -203,6 +207,8 @@ export const openShift = (
     cogsTotal: 0,           // ✅ جديد
     grossProfitTotal: 0,    // ✅ جديد
     currencies: initShiftCurrencies(openingCash, currencyOpenings),
+    currency: primaryCurrency || 'USD',
+    exchange_rate: exchangeRate || 1,
   };
 
   shifts.unshift(newShift);
@@ -261,6 +267,8 @@ export const closeShift = (
   shift.expectedCash = expectedCash;
   shift.discrepancy = discrepancy;
   shift.status = 'closed';
+  if (primaryCurrency) shift.currency = primaryCurrency;
+  if (exchangeRate) shift.exchange_rate = exchangeRate;
 
   // Create adjustment if there's a discrepancy
   if (discrepancy !== 0) {

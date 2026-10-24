@@ -389,12 +389,12 @@ export function SmartToast() {
       case 'cash_sale':
       case 'invoice':
         return {
-          bg: 'bg-emerald-500/10',
-          border: 'border-emerald-500/25',
-          text: 'text-emerald-600 dark:text-emerald-400',
-          dot: 'bg-emerald-500',
-          bar: 'bg-emerald-500',
-          icon: <CheckCircle2 className="w-4 h-4" />,
+          bg: 'bg-primary/10',
+          border: 'border-primary/30',
+          text: 'text-primary',
+          dot: 'bg-primary',
+          bar: 'bg-primary',
+          icon: <CheckCircle2 className="w-4 h-4 text-primary" />,
         };
       case 'debt_sale':
         return {
@@ -407,12 +407,12 @@ export function SmartToast() {
         };
       case 'settings':
         return {
-          bg: 'bg-purple-500/10',
-          border: 'border-purple-500/25',
-          text: 'text-purple-600 dark:text-purple-400',
-          dot: 'bg-purple-500',
-          bar: 'bg-purple-500',
-          icon: <Sliders className="w-4 h-4" />,
+          bg: 'bg-primary/10',
+          border: 'border-primary/30',
+          text: 'text-primary',
+          dot: 'bg-primary',
+          bar: 'bg-primary',
+          icon: <Sliders className="w-4 h-4 text-primary" />,
         };
       case 'refund':
         return {
@@ -425,12 +425,12 @@ export function SmartToast() {
         };
       case 'sync':
         return {
-          bg: 'bg-sky-500/10',
-          border: 'border-sky-500/25',
-          text: 'text-sky-600 dark:text-sky-400',
-          dot: 'bg-sky-500',
-          bar: 'bg-sky-500',
-          icon: <RefreshCw className="w-4 h-4" />,
+          bg: 'bg-primary/10',
+          border: 'border-primary/30',
+          text: 'text-primary',
+          dot: 'bg-primary',
+          bar: 'bg-primary',
+          icon: <RefreshCw className="w-4 h-4 text-primary" />,
         };
       case 'error':
       case 'out_of_stock':

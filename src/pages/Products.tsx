@@ -1439,13 +1439,13 @@ export default function Products() {
         "flex-shrink-0 px-3 md:px-6 pt-3 md:pt-4 pb-1.5 md:pb-2 max-w-full relative z-10",
         isRTL ? "pr-14 md:pr-6" : "pl-14 md:pl-6"
       )}>
-        <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
+        <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-3 gap-1 w-full sm:w-fit sm:min-w-[24rem] border border-border/40 shadow-xs select-none">
           {/* 1. النشطة (يمين في RTL) */}
           <button
             type="button"
             onClick={() => setMainTab('products')}
             className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
+              "rounded-xl p-1.5 sm:px-3.5 sm:py-2 text-[clamp(0.65rem,2.6vw,0.85rem)] font-bold min-w-0 leading-tight whitespace-normal text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-200 select-none cursor-pointer",
               mainTab === 'products'
                 ? "bg-gradient-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -1459,13 +1459,13 @@ export default function Products() {
           <button
             type="button"
             onClick={() => setShowCategoryManager(true)}
-            className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer w-auto flex-shrink-0"
+            className="rounded-xl p-1.5 sm:px-3.5 sm:py-2 text-[clamp(0.65rem,2.6vw,0.85rem)] font-bold min-w-0 leading-tight whitespace-normal text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-200 select-none text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer"
           >
             <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" />
             <span>{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
-          {/* 4. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
+          {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
           <button
             type="button"
             onClick={() => {
@@ -1473,24 +1473,26 @@ export default function Products() {
               loadArchivedData();
             }}
             className={cn(
-              "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0",
+              "rounded-xl p-1.5 sm:px-3.5 sm:py-2 text-[clamp(0.65rem,2.6vw,0.85rem)] font-bold min-w-0 leading-tight whitespace-normal text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-200 select-none cursor-pointer",
               mainTab === 'archive'
                 ? "!bg-red-600 !text-white shadow-xs shadow-red-600/30"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{t('products.archive') || 'الأرشيف'}</span>
-            {mergedArchivedProducts.length > 0 && (
-              <span className={cn(
-                "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none shrink-0",
-                mainTab === 'archive'
-                  ? "bg-white/25 text-white"
-                  : "bg-red-500/15 text-red-600 dark:text-red-400"
-              )}>
-                {mergedArchivedProducts.length}
-              </span>
-            )}
+            <span className="flex items-center gap-1 justify-center">
+              {t('products.archive') || 'الأرشيف'}
+              {mergedArchivedProducts.length > 0 && (
+                <span className={cn(
+                  "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none shrink-0",
+                  mainTab === 'archive'
+                    ? "bg-white/25 text-white"
+                    : "bg-red-500/15 text-red-600 dark:text-red-400"
+                )}>
+                  {mergedArchivedProducts.length}
+                </span>
+              )}
+            </span>
           </button>
         </div>
       </div>

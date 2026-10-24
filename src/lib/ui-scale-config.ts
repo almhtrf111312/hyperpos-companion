@@ -29,8 +29,8 @@ export function getUIScaleStorageKey(): string {
 
 export const UI_SCALE_STORAGE_KEY = 'flowpos_ui_scale';
 export const LEGACY_UI_SCALE_STORAGE_KEY = 'hyperpos_ui_scale';
-export const DEFAULT_UI_SCALE_ID: UIScaleId = '60';
-export const DEFAULT_UI_SCALE_PX = '8.4px';
+export const DEFAULT_UI_SCALE_ID: UIScaleId = '80';
+export const DEFAULT_UI_SCALE_PX = '11.2px';
 export const UI_SCALE_CHANGED_EVENT = 'hyperpos:ui_scale_changed';
 
 /**
