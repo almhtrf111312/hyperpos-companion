@@ -398,7 +398,7 @@ export default function Services() {
       </div>
 
       {/* Compact Stats Strip */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('services.totalRequests')}</span>
           <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
@@ -602,7 +602,7 @@ export default function Services() {
 
       {/* Add Request Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),32rem)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
@@ -725,7 +725,7 @@ export default function Services() {
 
       {/* Edit Request Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),32rem)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-primary" />

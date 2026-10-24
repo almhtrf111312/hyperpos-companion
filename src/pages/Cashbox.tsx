@@ -290,7 +290,7 @@ export default function Cashbox() {
       )}
 
       {/* Compact 4-Metric Grid */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-muted-foreground font-medium block truncate">حالة الوردية</span>
           <span className={cn(

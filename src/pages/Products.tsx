@@ -1510,7 +1510,7 @@ export default function Products() {
       {!noInventory && (
         <div className="flex-shrink-0 px-3 md:px-6 pb-2 md:pb-2.5">
           {mainTab === 'archive' ? (
-            <div className="grid grid-cols-4 gap-1.5 md:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 md:gap-3">
               <button
                 type="button"
                 onClick={() => setArchiveFilter('all')}
@@ -1577,7 +1577,7 @@ export default function Products() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-1.5 md:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 md:gap-3">
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
@@ -2422,10 +2422,17 @@ export default function Products() {
 
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
-          <DialogContent className="w-[calc(100vw-1rem)] md:w-[calc(100vw-2.5rem)] sm:max-w-4xl lg:max-w-5xl max-h-[96vh] top-2 sm:top-4 translate-y-0 p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
-            
+          <DialogContent
+            className="w-[min(calc(100vw-1rem),42rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl"
+            onPointerDownOutside={(e) => {
+              if (formData.name?.trim()) e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              if (formData.name?.trim()) e.preventDefault();
+            }}
+          >
             {/* Premium Header */}
-            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-5 sm:px-6 pt-3.5 pb-2.5 border-b border-border/60">
+            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60">
               <DialogHeader className="space-y-0">
                 <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
                   {t('products.addProductTitle') || 'إضافة منتج جديد'}
@@ -2433,7 +2440,7 @@ export default function Products() {
               </DialogHeader>
             </div>
 
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(96vh-115px)] scrollbar-thin">
+            <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto scrollbar-thin">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
@@ -2943,38 +2950,46 @@ export default function Products() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 pt-6 pb-2 mt-4 bg-transparent">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
-                  onClick={() => {
-                    setShowAddDialog(false);
-                    setImagePreviewBase64('');
-                    clearPersistedState();
-                  }}
-                >
-                  {t('common.cancel') || 'إلغاء'}
-                </Button>
-                <Button
-                  type="button"
-                  className="flex-1 h-12 rounded-2xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-colors cursor-pointer"
-                  onClick={handleAddProduct}
-                >
-                  <Save className="w-4 h-4 ml-2" />
-                  {t('products.saveProduct') || 'حفظ المنتج'}
-                </Button>
-              </div>
+            </div>
+
+            <div className="shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-6 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 h-11 rounded-xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
+                onClick={() => {
+                  setShowAddDialog(false);
+                  setImagePreviewBase64('');
+                  clearPersistedState();
+                }}
+              >
+                {t('common.cancel') || 'إلغاء'}
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 h-11 rounded-xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-colors cursor-pointer"
+                onClick={handleAddProduct}
+              >
+                <Save className="w-4 h-4 ml-2" />
+                {t('products.saveProduct') || 'حفظ المنتج'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) clearPersistedState(); }}>
-          <DialogContent className="w-[calc(100vw-1rem)] md:w-[calc(100vw-2.5rem)] sm:max-w-4xl lg:max-w-5xl max-h-[96vh] top-2 sm:top-4 translate-y-0 p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl" onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
-            
+          <DialogContent
+            className="w-[min(calc(100vw-1rem),42rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl"
+            onPointerDownOutside={(e) => {
+              if (formData.name?.trim()) e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              if (formData.name?.trim()) e.preventDefault();
+            }}
+          >
             {/* Premium Header */}
-            <div className="bg-gradient-to-br from-primary/5 via-background to-background px-5 sm:px-6 pt-3.5 pb-2.5 border-b border-border/60">
+            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60">
               <DialogHeader className="space-y-0">
                 <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
                   {selectedProduct?.archived ? t('products.restoreAndEditProduct') : tDynamic('editProduct')}
@@ -2982,7 +2997,7 @@ export default function Products() {
               </DialogHeader>
             </div>
 
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(96vh-115px)] scrollbar-thin">
+            <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto scrollbar-thin">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
@@ -3466,42 +3481,43 @@ export default function Products() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 pt-6 pb-2 mt-4 bg-transparent">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 h-12 rounded-2xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
-                  onClick={() => {
-                    setShowEditDialog(false);
-                    setImagePreviewBase64('');
-                    clearPersistedState();
-                  }}
-                >
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  type="button"
-                  className={cn(
-                    "flex-1 h-12 rounded-2xl text-sm font-black shadow-md transition-colors cursor-pointer",
-                    selectedProduct?.archived
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
-                      : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
-                  )}
-                  onClick={handleEditProduct}
-                >
-                  {selectedProduct?.archived ? (
-                    <>
-                      <RotateCcw className="w-4 h-4 ml-2" />
-                      {t('products.restoreAndEditProduct')}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 ml-2" />
-                      {t('common.save')}
-                    </>
-                  )}
-                </Button>
-              </div>
+            </div>
+
+            <div className="shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-6 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 h-11 rounded-xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
+                onClick={() => {
+                  setShowEditDialog(false);
+                  setImagePreviewBase64('');
+                  clearPersistedState();
+                }}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                className={cn(
+                  "flex-1 h-11 rounded-xl text-sm font-black shadow-md transition-colors cursor-pointer",
+                  selectedProduct?.archived
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
+                )}
+                onClick={handleEditProduct}
+              >
+                {selectedProduct?.archived ? (
+                  <>
+                    <RotateCcw className="w-4 h-4 ml-2" />
+                    {t('products.restoreAndEditProduct')}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 ml-2" />
+                    {t('common.save')}
+                  </>
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

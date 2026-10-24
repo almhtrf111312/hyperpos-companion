@@ -199,7 +199,7 @@ export default function LibraryMembers() {
         </div>
 
         {/* Compact Stats Strip */}
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5 text-center select-none">
           <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
             <span className="text-[9.5px] text-muted-foreground font-medium block truncate">الأعضاء</span>
             <span className="text-sm font-black text-foreground tabular-nums">{members.length}</span>
@@ -346,7 +346,7 @@ export default function LibraryMembers() {
       <Dialog open={showAddMember || showEditMember} onOpenChange={(open) => {
         if (!open) { setShowAddMember(false); setShowEditMember(false); }
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-4 sm:p-6 overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle>{showEditMember ? 'تعديل العضو' : 'عضو جديد'}</DialogTitle>
           </DialogHeader>
@@ -425,7 +425,7 @@ export default function LibraryMembers() {
 
       {/* Return Loan Dialog */}
       <Dialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),24rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-4 sm:p-6 overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle>إرجاع كتاب</DialogTitle>
           </DialogHeader>

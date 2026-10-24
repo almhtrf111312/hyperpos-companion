@@ -565,7 +565,7 @@ export default function Expenses() {
       )}
 
       {/* Compressed 4-Metric Stats Strip */}
-      <div className="grid grid-cols-4 gap-1.5 md:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 md:gap-3">
         {/* Metric 1: هذا الشهر */}
         <div className="bg-card border border-border rounded-xl md:rounded-2xl p-2 md:p-3 text-center relative overflow-hidden">
           <span className="text-[10px] md:text-xs text-muted-foreground block truncate font-medium">
@@ -756,7 +756,7 @@ export default function Expenses() {
 
       {/* Add Expense Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] rounded-2xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col">
           <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -879,7 +879,7 @@ export default function Expenses() {
 
       {/* Add Recurring Expense Dialog */}
       <Dialog open={showRecurringDialog} onOpenChange={setShowRecurringDialog}>
-        <DialogContent className="flex flex-col max-h-[90vh] sm:max-h-[85vh] w-[95vw] max-w-md p-0 overflow-hidden rounded-3xl border border-border shadow-2xl modal-dot-expand bg-card text-sm">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] rounded-2xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col">
           <div className="shrink-0 p-4 bg-muted/40 border-b border-border flex items-center justify-between">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -1017,7 +1017,7 @@ export default function Expenses() {
 
       {/* Recurring Expenses List Dialog */}
       <Dialog open={showRecurringListDialog} onOpenChange={setShowRecurringListDialog}>
-        <DialogContent className="max-w-lg w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),32rem)] max-h-[calc(100dvh-1.5rem)] rounded-2xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col">
           <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -1132,7 +1132,7 @@ export default function Expenses() {
 
       {/* Edit Recurring Expense Dialog */}
       <Dialog open={showEditRecurringDialog} onOpenChange={setShowEditRecurringDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] rounded-2xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card text-sm flex flex-col">
           <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between shrink-0">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">

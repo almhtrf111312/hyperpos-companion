@@ -1800,16 +1800,15 @@ html.barcode-scanner-active .product-details-dialog * {
   * {
     word-wrap: break-word;
     overflow-wrap: break-word;
-    hyphens: auto;
   }
 
-  /* Better button and input sizing on mobile (excluding switches and checkboxes) */
-  button:not([role="switch"]):not([data-radix-switch-root]),
-  input:not([type="checkbox"]):not([type="radio"]),
-  select,
-  textarea {
-    font-size: 16px !important; /* Prevent zoom on iOS */
-    min-height: 44px; /* Minimum touch target size */
+  [dir="rtl"], [dir="rtl"] * {
+    hyphens: none !important;
+    -webkit-hyphens: none !important;
+  }
+
+  input, select, textarea {
+    font-size: 0.9375rem; /* يتبع مقياس الخط الذي يختاره المستخدم */
   }
 
   /* Improve tab navigation on mobile */
@@ -1827,6 +1826,15 @@ html.barcode-scanner-active .product-details-dialog * {
   /* Prevent horizontal scroll */
   body {
     overflow-x: hidden;
+  }
+}
+
+/* منع زوم iOS Safari فقط على الحقول النصية دون المساس بالأزرار أو أجهزة أندرويد */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: max(16px, 1rem);
+    }
   }
 }
 

@@ -1953,7 +1953,7 @@ export default function Invoices() {
 
             {/* Collapsible Detailed Stats (تظهر عند النقر على خيار التفاصيل من زر المزيد) */}
             {showDetailedStats && (
-              <div className="grid grid-cols-4 gap-1.5 text-center select-none pt-3 mt-3 border-t border-dashed border-border/80">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center select-none pt-3 mt-3 border-t border-dashed border-border/80">
                 <button
                   type="button"
                   onClick={handleKpiTotal}
@@ -2378,8 +2378,8 @@ export default function Invoices() {
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-lg rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] max-h-[92dvh] flex flex-col p-0 border border-border bg-card text-card-foreground shadow-2xl">
-          <DialogHeader className="p-4 pb-3 border-b border-border/50 text-right bg-muted/30">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),38rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
+          <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30">
             <DialogTitle className="flex items-center justify-between text-base font-bold">
               <div className="flex items-center gap-2 text-foreground">
                 <FileText className="w-5 h-5 text-primary" />
@@ -2406,7 +2406,7 @@ export default function Invoices() {
             const totalUsdStr = formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2);
 
             return (
-            <div className="space-y-4 p-5 overflow-y-auto">
+            <div className="flex-1 min-h-0 space-y-4 p-4 sm:p-5 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">{t('invoices.invoiceNumber')}:</span>
@@ -3042,7 +3042,7 @@ export default function Invoices() {
           if (!isSubmittingPayment) setShowDebtPaymentDialog(open);
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),30rem)] max-h-[calc(100dvh-2rem)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Banknote className="w-5 h-5 text-success" />

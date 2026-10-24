@@ -411,7 +411,7 @@ export default function Customers() {
             </Button>
           </div>
           {/* Compact Stats Strip (Compressed 4-Metric Grid saving significant vertical space) */}
-          <div className="grid grid-cols-4 gap-1.5 text-center select-none">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center select-none">
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
               <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('customers.total')}</span>
               <span className="text-sm font-black text-foreground tabular-nums">{stats.total}</span>
@@ -571,15 +571,15 @@ export default function Customers() {
 
       {/* Add Customer Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="sm:max-w-md rounded-3xl modal-dot-expand overflow-hidden bg-card text-card-foreground border border-border shadow-2xl p-0">
-          <DialogHeader className="p-4 pb-3 border-b border-border/50 text-right bg-muted/30">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl">
+          <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30">
             <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Plus className="w-4 h-4 text-primary" />
               <span>{t('customers.addCustomer')}</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">{t('customers.fillRequired')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 p-4">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 p-4">
             <div>
               <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.name')} *</label>
               <Input
@@ -634,14 +634,14 @@ export default function Customers() {
 
       {/* Edit Customer Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md rounded-3xl modal-dot-expand overflow-hidden bg-card text-card-foreground border border-border shadow-2xl p-0">
-          <DialogHeader className="p-4 pb-3 border-b border-border/50 text-right bg-muted/30">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl">
+          <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30">
             <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Edit className="w-4 h-4 text-primary" />
               <span>{t('customers.editCustomer')}</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 p-4">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 p-4">
             <div>
               <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.name')} *</label>
               <Input
@@ -693,8 +693,8 @@ export default function Customers() {
 
       {/* View Customer Dialog - كشف حساب تفصيلي */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="sm:max-w-2xl rounded-3xl modal-dot-expand overflow-hidden max-h-[92vh] flex flex-col p-0 border border-border bg-card text-card-foreground shadow-2xl">
-          <DialogHeader className="p-4 pb-3 border-b border-border/50 text-right bg-muted/30 flex flex-row items-center justify-between">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),42rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
+          <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30 flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
               <User className="w-4 h-4 text-primary" />
               <span>كشف حساب: {selectedCustomer?.name}</span>
@@ -710,7 +710,7 @@ export default function Customers() {
             </Button>
           </DialogHeader>
           {selectedCustomer && (
-            <div className="space-y-4 py-2">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 sm:p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
                   <span className="text-xl font-bold text-primary-foreground">
@@ -742,7 +742,7 @@ export default function Customers() {
                 const totalPaid = Math.max(0, totalPurchases - totalDebt);
 
                 return (
-                  <div className="grid grid-cols-3 gap-2 md:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
                     <div className="bg-muted rounded-xl p-3 text-center">
                       <p className="text-[11px] md:text-xs text-muted-foreground">إجمالي المشتريات</p>
                       <p className="text-base md:text-xl font-bold text-primary">

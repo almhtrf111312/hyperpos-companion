@@ -556,7 +556,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-1.5 text-center select-none">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center select-none">
         <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">
           <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{t('debts.total')}</span>
           <span className="text-xs font-black text-foreground font-mono tabular-nums whitespace-nowrap">{formatInCurrency(stats.total, currencyCode, exchangeRate).formatted}</span>
@@ -764,7 +764,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
       {/* Add Cash Debt Dialog */}
       <Dialog open={showAddDebtDialog} onOpenChange={handleAddDebtDialogChange}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border shadow-2xl modal-dot-expand bg-card">
           <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -854,7 +854,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
           if (!isSubmitting) setShowPaymentDialog(open);
         }}
       >
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border shadow-2xl modal-dot-expand bg-card">
           <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
@@ -1051,7 +1051,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border shadow-2xl modal-dot-expand bg-card">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border shadow-2xl modal-dot-expand bg-card">
           <div className="p-4 bg-muted/40 border-b border-border flex items-center justify-between">
             <DialogHeader className="p-0 space-y-0.5 text-right">
               <DialogTitle className="text-base font-bold flex items-center gap-2">
