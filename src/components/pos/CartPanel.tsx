@@ -62,6 +62,7 @@ import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/prod
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
 import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/currencies';
+import { createCurrencySnapshot, getCurrencyDef, fromUsd, roundForCurrency as roundForCurr } from '@/lib/money-engine';
 
 import { Calculator } from '@/components/ui/Calculator';
 import { isNoInventoryMode, getCurrentStoreType, getVisibleSections } from '@/lib/store-type-config';
@@ -423,7 +424,7 @@ export function CartPanel({
   const total = taxMode === 'gross'
     ? taxableAmount // price already includes tax
     : taxableAmount + taxAmount;
-  const totalInCurrency = roundCurrency(total * selectedCurrency.rate);
+  const totalInCurrency = roundForCurr(fromUsd(total, selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code);
 
   // Active currency object for received amount
   const activeReceivedCurrency = useMemo(() => {
@@ -488,11 +489,8 @@ export function CartPanel({
     invoiceNum?: string,
     customCurrencySymbol?: string
   ) => {
-    const symbolToUse = customCurrencySymbol || (
-      selectedCurrency.code !== 'USD' && selectedCurrency.symbol === '$'
-        ? (selectedCurrency.code === 'TRY' ? '₺' : selectedCurrency.code === 'SYP' ? 'ل.س' : selectedCurrency.code)
-        : selectedCurrency.symbol
-    );
+    const snap = createCurrencySnapshot(selectedCurrency.code, selectedCurrency.rate || activeRate);
+    const symbolToUse = customCurrencySymbol || snap.currency_symbol;
     setLastSale({
       cart: [...cartData],
       customerName: custName,
@@ -774,6 +772,9 @@ export function CartPanel({
       }
 
       // 1. ✅ تسجيل الفاتورة محلياً فوراً وبث التحديث للشاشة (0ms)
+      const cashSnap = createCurrencySnapshot(selectedCurrency.code, activeRate);
+      const exactCashTotalInCurr = roundForCurr(fromUsd(totalSnapshot, cashSnap.currency_code, cashSnap.exchange_rate), cashSnap.currency_code);
+
       const offlineCashInvoice: Invoice = {
         id: invoiceNumber,
         type: 'sale',
@@ -790,17 +791,21 @@ export function CartPanel({
           category: i.category,
         })),
         subtotal,
-        subtotalInCurrency: roundCurrency(totalSnapshot * activeRate),
+        subtotalInCurrency: exactCashTotalInCurr,
         discount: effectiveDiscountAmount,
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate: effectiveTaxRate,
         taxAmount,
         total: totalSnapshot,
-        totalInCurrency: roundCurrency(totalSnapshot * activeRate),
-        currency: selectedCurrency.code,
-        currencySymbol: effectiveCurrencySymbol,
+        totalInCurrency: exactCashTotalInCurr,
+        currency: cashSnap.currency_code,
+        currencySymbol: cashSnap.currency_symbol,
         currencyName: selectedCurrency.name,
-        exchangeRate: activeRate,
+        exchangeRate: cashSnap.exchange_rate,
+        currency_code: cashSnap.currency_code,
+        currency_symbol: cashSnap.currency_symbol,
+        exchange_rate: cashSnap.exchange_rate,
+        decimals: cashSnap.decimals,
         profit: discountedProfit,
         partsCost: totalCOGS,
         paymentType: 'cash',
@@ -838,12 +843,16 @@ export function CartPanel({
           taxRate: effectiveTaxRate,
           taxAmount,
           total: totalSnapshot,
-          totalInCurrency: roundCurrency(totalSnapshot * activeRate),
+          totalInCurrency: exactCashTotalInCurr,
 
-          currency: selectedCurrency.code,
-          currencySymbol: effectiveCurrencySymbol,
+          currency: cashSnap.currency_code,
+          currencySymbol: cashSnap.currency_symbol,
           currencyName: selectedCurrency.name,
-          exchangeRate: activeRate,
+          exchangeRate: cashSnap.exchange_rate,
+          currency_code: cashSnap.currency_code,
+          currency_symbol: cashSnap.currency_symbol,
+          exchange_rate: cashSnap.exchange_rate,
+          decimals: cashSnap.decimals,
           profit: discountedProfit,
           cogs: totalCOGS,
           profitsByCategory: Object.fromEntries(
@@ -1004,26 +1013,10 @@ export function CartPanel({
       ? crypto.randomUUID()
       : `debt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
-    // دقة تحديد رمز العملة الفعلي لضمان عدم تسرب $ إذا كانت العملة غير الدولار
-    const effectiveCurrencySymbol = (() => {
-      if (selectedCurrency.code === 'USD') {
-        return (selectedCurrency.symbol && selectedCurrency.symbol.trim()) || '$';
-      }
-      if (selectedCurrency.symbol && selectedCurrency.symbol.trim() && selectedCurrency.symbol.trim() !== '$') {
-        return selectedCurrency.symbol.trim();
-      }
-      try {
-        const rawSettings = localStorage.getItem('hyperpos_settings_v1');
-        if (rawSettings) {
-          const parsed = JSON.parse(rawSettings);
-          const sym = parsed?.currencySymbols?.[selectedCurrency.code];
-          if (sym && typeof sym === 'string' && sym.trim() && sym.trim() !== '$') {
-            return sym.trim();
-          }
-        }
-      } catch { /* ignore */ }
-      return getCurrencySymbolByCode(selectedCurrency.code);
-    })();
+    const effectiveCurrencySymbol = resolveInvoiceCurrencySymbol(
+      selectedCurrency.code,
+      selectedCurrency.symbol
+    );
 
     // 🚀 توليد رقم الفاتورة وإغلاق نافذة الدفع والسلة فوراً وتفريغ المحتويات
     const invoiceNumber = getNextInvoiceNumber();
@@ -1127,6 +1120,9 @@ export function CartPanel({
           : item.quantity,
       }));
 
+      const debtSnap = createCurrencySnapshot(selectedCurrency.code, selectedCurrency.rate || activeRate || 1);
+      const exactDebtTotalInCurr = roundForCurr(fromUsd(totalSnapshot, debtSnap.currency_code, debtSnap.exchange_rate), debtSnap.currency_code);
+
       // ✅ إضافة فاتورة الدين للطابور فوراً (محلياً - 0ms)
       const bundle = {
         invoiceNumber,
@@ -1141,11 +1137,15 @@ export function CartPanel({
         taxRate: effectiveTaxRate,
         taxAmount,
         total: totalSnapshot,
-        totalInCurrency,
-        currency: selectedCurrency.code,
-        currencySymbol: effectiveCurrencySymbol,
+        totalInCurrency: exactDebtTotalInCurr,
+        currency: debtSnap.currency_code,
+        currencySymbol: debtSnap.currency_symbol,
         currencyName: selectedCurrency.name,
-        exchangeRate: selectedCurrency.rate || activeRate || 1,
+        exchangeRate: debtSnap.exchange_rate,
+        currency_code: debtSnap.currency_code,
+        currency_symbol: debtSnap.currency_symbol,
+        exchange_rate: debtSnap.exchange_rate,
+        decimals: debtSnap.decimals,
         profit: discountedProfit,
         cogs: totalCOGS,
         profitsByCategory: Object.fromEntries(
@@ -1155,6 +1155,8 @@ export function CartPanel({
         warehouseId: stockWarehouseId,
         downPayment: downPaymentSnapshot,
       };
+
+
 
 
       // Validate local stock availability before queuing (unless no-inventory mode)
@@ -1187,17 +1189,21 @@ export function CartPanel({
           category: i.category,
         })),
         subtotal,
-        subtotalInCurrency: totalInCurrency,
+        subtotalInCurrency: exactDebtTotalInCurr,
         discount: discountAmount,
         discountPercentage: discountType === 'percent' ? discount : 0,
         taxRate: effectiveTaxRate,
         taxAmount,
         total: totalSnapshot,
-        totalInCurrency,
-        currency: selectedCurrency.code,
-        currencySymbol: effectiveCurrencySymbol,
+        totalInCurrency: exactDebtTotalInCurr,
+        currency: debtSnap.currency_code,
+        currencySymbol: debtSnap.currency_symbol,
         currencyName: selectedCurrency.name,
-        exchangeRate: selectedCurrency.rate || activeRate || 1,
+        exchangeRate: debtSnap.exchange_rate,
+        currency_code: debtSnap.currency_code,
+        currency_symbol: debtSnap.currency_symbol,
+        exchange_rate: debtSnap.exchange_rate,
+        decimals: debtSnap.decimals,
         profit: discountedProfit,
         partsCost: totalCOGS,
         paymentType: 'debt',

@@ -9,6 +9,7 @@ import { formatNumber } from './utils';
 import { isGuestDemoMode } from './demo-data';
 import { getStoreSettings, getPrintSettings } from './print-utils';
 import { resolveInvoiceCurrencySymbol } from './currencies';
+import { getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
 
 export interface InvoiceCanvasItem {
   name: string;
@@ -37,7 +38,10 @@ export interface InvoiceCanvasData {
   total: number;
   currencySymbol: string;
   currency?: string;
+  currency_code?: string;
+  currency_symbol?: string;
   exchangeRate?: number;
+  exchange_rate?: number;
   totalUSD?: number;
   paymentType: 'cash' | 'debt' | 'split' | string;
   downPayment?: number;
@@ -625,18 +629,10 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   // العملات البديلة إذا كانت مفعلة
   if (printSettings.showAlternativeCurrencies) {
     try {
-      const fullSettings = JSON.parse(localStorage.getItem('hyperpos_settings_v1') || '{}');
-      const rates = fullSettings.exchangeRates || {};
-      const enabled = fullSettings.enabledCurrencies || { USD: true, TRY: true, SYP: true };
-      const symbols = fullSettings.currencySymbols || { USD: '$', TRY: '₺', SYP: 'ل.س' };
-      const names = fullSettings.currencyNames || { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
-
-      const sypRate = Number(rates.SYP || 14500);
-      const tryRate = Number(rates.TRY || 34);
-
-      const invSymbol = effectiveSymbol;
-      const invCurrency = (data.currency || (invSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
-      const invRate = Number(data.exchangeRate) || (rates[invCurrency] ? Number(rates[invCurrency]) : (invCurrency === 'TRY' ? tryRate : (invCurrency === 'SYP' ? sypRate : 1)));
+      const enabledList = getEnabledCurrencies();
+      const rawCode = data.currency_code || data.currency;
+      const invCurrency = (rawCode || (effectiveSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
+      const invRate = Number(data.exchange_rate || data.exchangeRate) || 1;
       
       // 1. حساب المعادل بالدولار الأساسي أولاً
       let baseUSD = Number((data as any).totalUSD);
@@ -644,28 +640,25 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
         if (invRate > 0 && invCurrency !== 'USD') {
           baseUSD = data.total / invRate;
         } else {
-          baseUSD = data.total;
+          baseUSD = toUsd(data.total, invCurrency);
         }
       }
 
       const parts: string[] = [];
 
       // 2. إذا كانت الفاتورة بعملة غير الدولار، إضافة المعادل بالدولار
-      if (invCurrency !== 'USD' && enabled.USD !== false) {
-        parts.push(`المعادل بالدولار: ${symbols.USD || '$'}${formatNumber(baseUSD, 2)}`);
+      if (invCurrency !== 'USD') {
+        const usdDef = enabledList.find(c => c.code === 'USD');
+        if (usdDef && usdDef.isEnabled) {
+          parts.push(`المعادل بالدولار: ${usdDef.symbol}${formatNumber(baseUSD, 2)}`);
+        }
       }
 
       // 3. إضافة كافة العملات المفعلة الأخرى ديناميكياً
-      for (const [code, isEnabled] of Object.entries(enabled)) {
-        const upperCode = code.toUpperCase();
-        if (upperCode === invCurrency || !isEnabled || upperCode === 'USD') continue;
-        const rate = Number(rates[upperCode] || (upperCode === 'TRY' ? tryRate : (upperCode === 'SYP' ? sypRate : 0)));
-        if (rate > 0) {
-          const cName = names[upperCode] || upperCode;
-          const cSymbol = resolveInvoiceCurrencySymbol(upperCode, symbols[upperCode]);
-          const cDecimals = rate >= 100 ? 0 : 2;
-          parts.push(`${cName}: ${formatCanvasPrice(baseUSD * rate, cSymbol, cDecimals)}`);
-        }
+      for (const curr of enabledList) {
+        if (curr.code === invCurrency || !curr.isEnabled || curr.code === 'USD') continue;
+        const altAmount = fromUsd(baseUSD, curr.code);
+        parts.push(`${curr.name}: ${formatCanvasPrice(altAmount, curr.symbol, curr.decimals)}`);
       }
 
       if (parts.length > 0) {

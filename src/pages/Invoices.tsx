@@ -347,14 +347,14 @@ export default function Invoices() {
     enabledCurrencies
   } = useCurrency();
 
-  const [displayCurrencyFilter, setDisplayCurrencyFilter] = useState<'stored' | 'TRY' | 'SYP' | 'USD'>('stored');
+  const [displayCurrencyFilter, setDisplayCurrencyFilter] = useState<'stored' | string>('stored');
 
   // Debt Payment Dialog State
   const [showDebtPaymentDialog, setShowDebtPaymentDialog] = useState(false);
   const [selectedDebtForPayment, setSelectedDebtForPayment] = useState<Debt | null>(null);
-  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => {
+  const [paymentCurrency, setPaymentCurrency] = useState<string>(() => {
     const defaultCurr = loadDefaultCurrencyCode();
-    return (defaultCurr as 'USD' | 'TRY' | 'SYP') || 'USD';
+    return defaultCurr || 'USD';
   });
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -376,6 +376,36 @@ export default function Invoices() {
     return Math.round(selectedDebtForPayment.remainingDebt * currentRate * 100) / 100;
   }, [selectedDebtForPayment, paymentCurrency, currentRate]);
 
+  const availableFilterCurrencies = useMemo(() => {
+    const list: Array<{ code: string; name: string; symbol: string }> = [];
+    const seen = new Set<string>();
+
+    Object.entries(enabledCurrencies).forEach(([code, isEnabled]) => {
+      if (isEnabled && !seen.has(code)) {
+        seen.add(code);
+        list.push({
+          code,
+          name: currencyNames?.[code] || resolveInvoiceCurrencyName(code),
+          symbol: resolveInvoiceCurrencySymbol(code, currencySymbols?.[code]),
+        });
+      }
+    });
+
+    invoices.forEach(inv => {
+      const c = (inv.currency_code || inv.currency || '').trim().toUpperCase();
+      if (c && !seen.has(c)) {
+        seen.add(c);
+        list.push({
+          code: c,
+          name: currencyNames?.[c] || resolveInvoiceCurrencyName(c),
+          symbol: resolveInvoiceCurrencySymbol(c, inv.currency_symbol || inv.currencySymbol || currencySymbols?.[c]),
+        });
+      }
+    });
+
+    return list;
+  }, [enabledCurrencies, currencyNames, currencySymbols, invoices]);
+
   // Helper for computing display financial values for an invoice
   const getInvoiceFinancials = (inv: Invoice, forceStored: boolean = false) => {
     let code: string;
@@ -395,14 +425,21 @@ export default function Invoices() {
       }
     } else {
       // 'stored': استخدام العملة وسعر الصرف والرمز التاريخي المجمد للفاتورة لمنع تشوهها بأي تغيير لاحق
-      const resolved = resolveHistoricalCurrency(inv, {
+      const rawCode = inv.currency_code || inv.currency;
+      const rawRate = typeof inv.exchange_rate === 'number' && inv.exchange_rate > 0 ? inv.exchange_rate : inv.exchangeRate;
+      const rawSymbol = inv.currency_symbol || inv.currencySymbol;
+      const resolved = resolveHistoricalCurrency({
+        currency: rawCode,
+        currencySymbol: rawSymbol,
+        exchangeRate: rawRate,
+      }, {
         currencyCode,
         currencySymbol,
         currencySymbols: currencySymbols as unknown as Record<string, string>,
       });
       code = resolved.code;
       rate = resolved.rate;
-      symbol = resolveInvoiceCurrencySymbol(inv.currency || code, inv.currencySymbol || resolved.symbol);
+      symbol = resolveInvoiceCurrencySymbol(rawCode || code, rawSymbol || resolved.symbol);
     }
 
     const decimals = rate >= 100 ? 0 : 2;
@@ -911,7 +948,7 @@ export default function Invoices() {
     saveRefundMeta(invoice.id, 'full');
     // Snapshot invoice-specific data BEFORE running so notifications reflect this exact invoice
     const invoiceLabel = invoice.id;
-    const refundFin = getInvoiceFinancials(invoice);
+    const refundFin = getInvoiceFinancials(invoice, true);
     const invoiceTotal = refundFin.displayTotal;
     const invoiceCurrencySymbol = refundFin.symbol;
     // Unique toast id per invoice → prevents duplicate stacked notifications on re-triggers
@@ -2367,8 +2404,6 @@ export default function Invoices() {
             const c2Symbol = resolveInvoiceCurrencySymbol('SYP', selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP) : currencySymbols?.SYP);
 
             const totalUsdStr = formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2);
-            const totalC1Str = formatCurrency(baseInvTotal * c1Rate, c1Symbol, c1Rate >= 100 ? 0 : 2);
-            const totalC2Str = formatCurrency(baseInvTotal * c2Rate, c2Symbol, c2Rate >= 100 ? 0 : 2);
 
             return (
             <div className="space-y-4 p-5 overflow-y-auto">
@@ -3045,66 +3080,33 @@ export default function Invoices() {
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t('invoices.receivedCurrency') || 'عملة الدفع المستلمة'}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {enabledCurrencies.USD !== false && (
-                    <button
-                      type="button"
-                      disabled={isSubmittingPayment}
-                      onClick={() => {
-                        setPaymentCurrency('USD');
-                        setPaymentAmountInput('');
-                      }}
-                      className={cn(
-                        "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
-                        isSubmittingPayment && "opacity-50 cursor-not-allowed",
-                        paymentCurrency === 'USD'
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                      )}
-                    >
-                      <span className="text-sm font-bold">💵 {t('currencies.usd')}</span>
-                      <span className="text-xs font-normal opacity-80">(USD)</span>
-                    </button>
-                  )}
-                  {enabledCurrencies.TRY && (
-                    <button
-                      type="button"
-                      disabled={isSubmittingPayment}
-                      onClick={() => {
-                        setPaymentCurrency('TRY');
-                        setPaymentAmountInput('');
-                      }}
-                      className={cn(
-                        "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
-                        isSubmittingPayment && "opacity-50 cursor-not-allowed",
-                        paymentCurrency === 'TRY'
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                      )}
-                    >
-                      <span className="text-sm font-bold">{currencySymbols?.TRY || '₺'} {currencyNames?.TRY || t('currencies.try')}</span>
-                      <span className="text-xs font-normal opacity-80">({currencySymbols?.TRY || 'TRY'})</span>
-                    </button>
-                  )}
-                  {enabledCurrencies.SYP && (
-                    <button
-                      type="button"
-                      disabled={isSubmittingPayment}
-                      onClick={() => {
-                        setPaymentCurrency('SYP');
-                        setPaymentAmountInput('');
-                      }}
-                      className={cn(
-                        "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
-                        isSubmittingPayment && "opacity-50 cursor-not-allowed",
-                        paymentCurrency === 'SYP'
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
-                      )}
-                    >
-                      <span className="text-sm font-bold">{currencySymbols?.SYP || 'ل.س'} {currencyNames?.SYP || t('currencies.syp')}</span>
-                      <span className="text-xs font-normal opacity-80">({currencySymbols?.SYP || 'SYP'})</span>
-                    </button>
-                  )}
+                  {Object.entries(enabledCurrencies).map(([code, isEnabled]) => {
+                    if (!isEnabled) return null;
+                    const isSelected = paymentCurrency === code;
+                    const sym = resolveInvoiceCurrencySymbol(code, currencySymbols?.[code]);
+                    const name = currencyNames?.[code] || resolveInvoiceCurrencyName(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        disabled={isSubmittingPayment}
+                        onClick={() => {
+                          setPaymentCurrency(code);
+                          setPaymentAmountInput('');
+                        }}
+                        className={cn(
+                          "min-h-[4.3rem] p-2 rounded-lg border transition-colors flex flex-col items-center justify-center gap-1 leading-tight text-center",
+                          isSubmittingPayment && "opacity-50 cursor-not-allowed",
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                        )}
+                      >
+                        <span className="text-sm font-bold">{code === 'USD' ? '💵 ' : sym + ' '}{name}</span>
+                        <span className="text-xs font-normal opacity-80">({code})</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
@@ -3515,11 +3517,7 @@ export default function Invoices() {
                   {tx('invoices.asInInvoice', 'العملة الأصلية')}
                 </Button>
 
-                {Object.entries(enabledCurrencies).map(([code, isEnabled]) => {
-                  if (!isEnabled) return null;
-                  const currCode = code as 'USD' | 'TRY' | 'SYP';
-                  const sym = resolveInvoiceCurrencySymbol(currCode, currencySymbols?.[currCode]);
-                  const name = currencyNames?.[currCode] || resolveInvoiceCurrencyName(currCode);
+                {availableFilterCurrencies.map(({ code: currCode, name, symbol: sym }) => {
                   const isSelected = displayCurrencyFilter === currCode;
                   return (
                     <Button

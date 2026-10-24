@@ -1,6 +1,7 @@
 // Invoice Summary Display - Shows currency details and debt information clearly
 import { useLanguage } from '@/hooks/use-language';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
+import { useMoney } from '@/hooks/use-money';
 
 interface InvoiceSummaryProps {
   subtotal: number;
@@ -38,16 +39,20 @@ export function InvoiceSummaryDisplay({
   usdSymbol = '$',
 }: InvoiceSummaryProps) {
   const { t } = useLanguage();
+  const m = useMoney();
 
   const isDebt = paymentType === 'debt' && remainingDebt > 0;
-  const paidInUSD = paidAmount / exchangeRate;
+  const currentDef = m.getCurrencyDef(currencyCode);
+  const paidInUSD = m.toUsd(paidAmount, currencyCode, exchangeRate);
+  const displayDecimals = currentDef.decimals;
+  const resolvedSymbol = currencySymbol || currentDef.symbol;
 
   return (
     <div className="p-4 bg-muted/30 rounded-lg space-y-3 text-sm tabular-nums">
       {/* Subtotal */}
       <div className="flex justify-between">
         <span className="text-muted-foreground">{t('pos.subtotal')}</span>
-        <span>{usdSymbol}{formatNumber(subtotal)}</span>
+        <span>{usdSymbol}{formatNumber(subtotal, 2)}</span>
       </div>
 
       {/* Discount */}
@@ -55,7 +60,7 @@ export function InvoiceSummaryDisplay({
         <div className="flex justify-between text-success">
           <span>{t('invoices.discount') || 'الخصم'}</span>
           <span>
-            -{usdSymbol}{formatNumber(discountAmount)}
+            -{usdSymbol}{formatNumber(discountAmount, 2)}
             {discountType === 'percent' && discount > 0 && (
               <span className="text-xs text-muted-foreground mr-1">({discount}%)</span>
             )}
@@ -69,7 +74,7 @@ export function InvoiceSummaryDisplay({
           <div className="flex justify-between text-success">
             <span>{t('invoices.paidCash') || t('debts.paidAmount') || 'المدفوع نقداً'}</span>
             <span>
-              {currencySymbol}{formatNumber(paidAmount)}
+              {resolvedSymbol}{formatNumber(paidAmount, displayDecimals)}
               {currencyCode !== 'USD' && (
                 <span className="text-xs text-muted-foreground mr-1">
                   ({usdSymbol}{paidInUSD.toFixed(2)})
@@ -80,7 +85,7 @@ export function InvoiceSummaryDisplay({
 
           <div className="flex justify-between text-destructive font-bold">
             <span>{t('invoices.debtRemaining') || 'المتبقي (دين)'}</span>
-            <span>{usdSymbol}{formatNumber(remainingDebt)}</span>
+            <span>{usdSymbol}{formatNumber(remainingDebt, 2)}</span>
           </div>
         </>
       )}
@@ -91,7 +96,7 @@ export function InvoiceSummaryDisplay({
           <hr className="border-border" />
           <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
             <span>{t('invoices.netProfit') || 'صافي الربح'}</span>
-            <span>{usdSymbol}{formatNumber(profit)}</span>
+            <span>{usdSymbol}{formatNumber(profit, 2)}</span>
           </div>
         </>
       )}

@@ -88,12 +88,14 @@ export interface Invoice {
   taxAmount: number;
   total: number;
   currency: string;
+  currency_code?: string;
   currencySymbol?: string;
   currency_symbol?: string;
   currencyName?: string;
   currency_name?: string;
   exchangeRate: number;
   exchange_rate?: number;
+  total_in_currency?: number;
   paymentType: PaymentType;
   status: InvoiceStatus;
   notes?: string;

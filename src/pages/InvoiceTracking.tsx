@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EVENTS } from '@/lib/events';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { loadQueue, QueuedOperation } from '@/lib/sync-queue';
 import { discardStuckOperation, retryStuckOperation } from '@/lib/sync-recovery';
@@ -39,6 +39,9 @@ interface TrackedInvoice {
   customerName: string;
   total: number;
   currency: string;
+  currencySymbol?: string;
+  exchangeRate?: number;
+  totalInCurrency?: number;
   paymentLabel: string;
   createdAt: string;
   progress: number;
@@ -111,7 +114,10 @@ const mapQueueOperation = (
     title: op.type === 'debt_sale_bundle' ? 'فاتورة بيع مؤجل' : 'فاتورة بيع نقدي',
     customerName: String(bundle.customerName || 'عميل'),
     total: num(bundle.total),
-    currency: String(bundle.currency || 'USD'),
+    currency: String(bundle.currency_code || bundle.currency || 'USD'),
+    currencySymbol: bundle.currency_symbol || bundle.currencySymbol,
+    exchangeRate: num(bundle.exchange_rate || bundle.exchangeRate) || 1,
+    totalInCurrency: num(bundle.total_in_currency),
     paymentLabel: op.type === 'debt_sale_bundle' ? 'بيع مؤجل' : 'نقدي',
     createdAt: op.createdAt || op.timestamp,
     progress: state === 'stuck' ? 40 : state === 'syncing' ? 70 : 35,
@@ -126,7 +132,10 @@ const mapCloudInvoice = (invoice: Invoice): TrackedInvoice => ({
   title: `فاتورة ${invoice.id}`,
   customerName: invoice.customerName || 'عميل',
   total: num(invoice.total),
-  currency: invoice.currency || 'USD',
+  currency: invoice.currency_code || invoice.currency || 'USD',
+  currencySymbol: invoice.currency_symbol || invoice.currencySymbol,
+  exchangeRate: num(invoice.exchange_rate || invoice.exchangeRate) || 1,
+  totalInCurrency: num(invoice.total_in_currency),
   paymentLabel: invoice.paymentType === 'debt' ? 'بيع مؤجل' : 'نقدي',
   createdAt: invoice.createdAt,
   progress: 100,
@@ -308,8 +317,17 @@ export default function InvoiceTracking() {
                     <span className="text-muted-foreground text-xs">
                       {new Date(entry.createdAt).toLocaleString('ar-EG', { numberingSystem: 'latn' })}
                     </span>
-                    <span className="font-semibold">
-                      {entry.total.toFixed(2)} {entry.currency}
+                    <span className="font-semibold" dir="ltr">
+                      {(() => {
+                        const hasSnapshot = entry.currency && entry.currency !== 'USD';
+                        const rate = entry.exchangeRate && entry.exchangeRate > 0 ? entry.exchangeRate : 1;
+                        const sym = entry.currencySymbol || entry.currency;
+                        const amt = (typeof entry.totalInCurrency === 'number' && entry.totalInCurrency > 0)
+                          ? entry.totalInCurrency
+                          : (hasSnapshot ? entry.total * rate : entry.total);
+                        const dec = rate >= 100 ? 0 : 2;
+                        return `${formatCurrency(amt, sym, dec)}${hasSnapshot ? ` ($${entry.total.toFixed(2)})` : ''}`;
+                      })()}
                     </span>
                   </div>
 

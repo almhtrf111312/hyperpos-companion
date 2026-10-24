@@ -97,6 +97,7 @@ import { TopProductsReport } from '@/components/reports/TopProductsReport';
 import { SalesDetailedReport } from '@/components/reports/SalesDetailedReport';
 import { StockDiscrepancyReport } from '@/components/reports/StockDiscrepancyReport';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ReportCurrencyBanner } from '@/components/reports/ReportCurrencyBanner';
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -118,6 +119,13 @@ export default function Reports() {
   const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
   const [stockViewMode, setStockViewMode] = useState<'audit' | 'discrepancy'>('audit');
   const [isLoading, setIsLoading] = useState(true);
+  const [, setCurrencyTick] = useState(0);
+
+  useEffect(() => {
+    const handleSettingsUpdated = () => setCurrencyTick(t => t + 1);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, handleSettingsUpdated as EventListener);
+    return () => window.removeEventListener(EVENTS.SETTINGS_UPDATED, handleSettingsUpdated as EventListener);
+  }, []);
 
   // Unified filters state
   const [filters, setFilters] = useState<ReportFilters>({
@@ -2034,6 +2042,9 @@ export default function Reports() {
         <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
           <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
         </div>
+
+        {/* Currency selection banner for reports */}
+        <ReportCurrencyBanner />
 
         {/* Quick Access Pill Row — no horizontal scroll, always 2-per-row in compact layout */}
         <div className="grid grid-cols-2 gap-2">

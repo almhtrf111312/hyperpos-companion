@@ -10,6 +10,7 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { formatNumber, formatCurrency } from './utils';
 import { resolveInvoiceCurrencySymbol } from './currencies';
+import { getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
 import { isGuestDemoMode } from './demo-data';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
@@ -123,7 +124,10 @@ interface PrintableInvoice {
   total: number;
   currencySymbol: string;
   currency?: string;
+  currency_code?: string;
+  currency_symbol?: string;
   exchangeRate?: number;
+  exchange_rate?: number;
   totalUSD?: number;
   paymentType: 'cash' | 'debt';
 }
@@ -349,45 +353,32 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
       ${(() => {
         if (!printSettings.showAlternativeCurrencies) return '';
         try {
-          const fullSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-          const rates = fullSettings.exchangeRates || {};
-          const enabled = fullSettings.enabledCurrencies || { USD: true, TRY: true, SYP: true };
-          const symbols = fullSettings.currencySymbols || { USD: '$', TRY: '₺', SYP: 'ل.س' };
-          const names = fullSettings.currencyNames || { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
-          const sypRate = Number(rates.SYP || 14500);
-          const tryRate = Number(rates.TRY || 34);
+          const enabledList = getEnabledCurrencies();
+          const rawCode = invoice.currency_code || invoice.currency;
+          const invCode = (rawCode || (effectiveSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
+          const invRate = Number(invoice.exchange_rate || invoice.exchangeRate) || 1;
 
-          const invSymbol = effectiveSymbol;
-          const invCode = (invoice.currency || (invSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
-          
           let baseUSD = invoice.totalUSD;
-          if (baseUSD === undefined || baseUSD === null) {
-            if (invoice.exchangeRate && invoice.exchangeRate > 0 && invCode !== 'USD') {
-              baseUSD = invoice.total / invoice.exchangeRate;
-            } else if (invCode === 'TRY' && tryRate > 0) {
-              baseUSD = invoice.total / tryRate;
-            } else if (invCode === 'SYP' && sypRate > 0) {
-              baseUSD = invoice.total / sypRate;
+          if (baseUSD === undefined || baseUSD === null || isNaN(baseUSD) || baseUSD <= 0) {
+            if (invRate > 0 && invCode !== 'USD') {
+              baseUSD = invoice.total / invRate;
             } else {
-              baseUSD = invoice.total;
+              baseUSD = toUsd(invoice.total, invCode);
             }
           }
 
           const parts: string[] = [];
-          if (invCode !== 'USD' && enabled.USD !== false) {
-            parts.push(`المعادل بالدولار: ${symbols.USD || '$'}${formatNumber(baseUSD, 2)}`);
+          if (invCode !== 'USD') {
+            const usdDef = enabledList.find(c => c.code === 'USD');
+            if (usdDef && usdDef.isEnabled) {
+              parts.push(`المعادل بالدولار: ${usdDef.symbol}${formatNumber(baseUSD, 2)}`);
+            }
           }
 
-          for (const [code, isEnabled] of Object.entries(enabled)) {
-            const upperCode = code.toUpperCase();
-            if (upperCode === invCode || !isEnabled || upperCode === 'USD') continue;
-            const rate = Number(rates[upperCode] || (upperCode === 'TRY' ? tryRate : (upperCode === 'SYP' ? sypRate : 0)));
-            if (rate > 0) {
-              const cName = names[upperCode] || upperCode;
-              const cSymbol = resolveInvoiceCurrencySymbol(upperCode, symbols[upperCode]);
-              const cDecimals = rate >= 100 ? 0 : 2;
-              parts.push(`${cName}: ${formatCurrency(baseUSD * rate, cSymbol, cDecimals)}`);
-            }
+          for (const curr of enabledList) {
+            if (curr.code === invCode || !curr.isEnabled || curr.code === 'USD') continue;
+            const altAmount = fromUsd(baseUSD, curr.code);
+            parts.push(`${curr.name}: ${formatAmount(altAmount, curr.code)} ${curr.symbol}`);
           }
 
           if (parts.length === 0) return '';
