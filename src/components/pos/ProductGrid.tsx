@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Search, Barcode, Package, LayoutGrid, Grid3x3, List, AlignJustify } from 'lucide-react';
 import { ProductImage } from '@/components/products/ProductImage';
 import { Input } from '@/components/ui/input';
@@ -52,7 +52,7 @@ interface ProductGridProps {
 
 type ViewMode = 'grid' | 'dense' | 'list' | 'compact';
 
-export function ProductGrid({
+export const ProductGrid = memo(function ProductGrid({
   products,
   categories,
   searchQuery,
@@ -103,14 +103,47 @@ export function ProductGrid({
 
   const noInventory = isNoInventoryMode();
 
-  const filteredProducts = products.filter(product => {
-    if (product.archived) return false;
-    if (!noInventory && product.quantity <= 0) return false;
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.barcode && product.barcode.includes(searchQuery));
-    const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      if (product.archived) return false;
+      if (!noInventory && product.quantity <= 0) return false;
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (product.barcode && product.barcode.includes(searchQuery));
+      const matchesCategory = selectedCategory === t('common.all') || product.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, noInventory, searchQuery, selectedCategory, t]);
+
+  const INITIAL_BATCH_SIZE = 48;
+  const BATCH_INCREMENT = 48;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH_SIZE);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_BATCH_SIZE);
+  }, [searchQuery, selectedCategory, products.length]);
+
+  const visibleProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
+
+  useEffect(() => {
+    if (visibleCount >= filteredProducts.length) return;
+    const target = loadMoreRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + BATCH_INCREMENT, filteredProducts.length));
+        }
+      },
+      { rootMargin: '250px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredProducts.length]);
 
   const handleBarcodeScan = (barcode: string) => {
     // ✅ Don't call setScannerOpen(false) here — onClose callback handles it
@@ -239,7 +272,7 @@ export function ProductGrid({
       <div className="flex-1 p-3 pt-0 md:p-5 overflow-y-auto pb-32">
         {viewMode === 'grid' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5">
-            {filteredProducts.map((product, index) => (
+            {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
@@ -286,7 +319,7 @@ export function ProductGrid({
         {/* Dense View - 3 items side-by-side on mobile, 4-7 on desktop */}
         {viewMode === 'dense' && (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-            {filteredProducts.map((product, index) => (
+            {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
@@ -327,7 +360,7 @@ export function ProductGrid({
         {/* List View */}
         {viewMode === 'list' && (
           <div className="flex flex-col gap-3">
-            {filteredProducts.map((product, index) => (
+            {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
@@ -361,7 +394,7 @@ export function ProductGrid({
         {/* Compact View */}
         {viewMode === 'compact' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {filteredProducts.map((product, index) => (
+            {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
@@ -382,6 +415,12 @@ export function ProductGrid({
                 </div>
               </button>
             ))}
+          </div>
+        )}
+
+        {visibleCount < filteredProducts.length && (
+          <div ref={loadMoreRef} className="h-8 w-full flex items-center justify-center py-2 text-muted-foreground/40 text-xs font-mono">
+            ...
           </div>
         )}
 
@@ -421,4 +460,4 @@ export function ProductGrid({
       )}
     </div>
   );
-}
+});

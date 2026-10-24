@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Sun, Moon, Palette, Check, Blend, Sparkles } from 'lucide-react';
+import { Sun, Moon, Palette, Check, Blend, Sparkles, Zap, Cpu } from 'lucide-react';
+import { usePerformanceMode, PerformanceModePref } from '@/lib/performance-mode';
 import { useTheme, themeColors, ThemeColor, ThemeMode, ThemeStyle } from '@/hooks/use-theme';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ interface ThemeSectionProps {
 export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps) {
   const { mode, color, blurEnabled, transparencyLevel, themeStyle } = useTheme();
   const { t, isRTL } = useLanguage();
+  const { pref: perfPref, effective: effectivePerf, setPref: setPerfPref } = usePerformanceMode();
   
   const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
   const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
@@ -288,7 +290,87 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
         )}
       </div>
 
-      
+      {/* وضع الأداء والسرعة (Lite Mode للأجهزة الضعيفة) */}
+      <div className="pt-4 border-t border-border space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center",
+              effectivePerf === 'lite' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-primary/10 text-primary"
+            )}>
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-medium text-foreground">
+                {isRTL ? 'وضع الأداء والسرعة' : 'Performance Mode'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {isRTL 
+                  ? 'تحسين سرعة الاستجابة على الأجهزة الضعيفة والمتوسطة عبر إيقاف التمويه والرسوميات الثقيلة'
+                  : 'Optimize responsiveness on low-end devices by disabling blur and heavy GPU animations'}
+              </p>
+            </div>
+          </div>
+          <span className={cn(
+            "text-xs px-2.5 py-1 rounded-full font-bold border",
+            effectivePerf === 'lite'
+              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+          )}>
+            {effectivePerf === 'lite' ? (isRTL ? 'وضع خفيف نشط ⚡' : 'Lite Active ⚡') : (isRTL ? 'مؤثرات كاملة ✨' : 'Full Effects ✨')}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+          {[
+            {
+              id: 'auto' as PerformanceModePref,
+              label: isRTL ? 'تلقائي ذكي' : 'Auto Detect',
+              desc: isRTL ? 'يكتشف مواصفات الجهاز تلقائياً' : 'Detects device hardware',
+              icon: Cpu,
+            },
+            {
+              id: 'lite' as PerformanceModePref,
+              label: isRTL ? 'أداء خفيف (Lite)' : 'Lite Performance',
+              desc: isRTL ? 'سرعة فائقة وإلغاء التمويه' : 'Max speed & no blur',
+              icon: Zap,
+            },
+            {
+              id: 'full' as PerformanceModePref,
+              label: isRTL ? 'مؤثرات كاملة' : 'Full Effects',
+              desc: isRTL ? 'شفافية ورسوميات سلسة' : 'Glass blur & full animations',
+              icon: Sparkles,
+            },
+          ].map((item) => {
+            const isSelected = perfPref === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setPerfPref(item.id)}
+                className={cn(
+                  "p-3 rounded-xl border text-start transition-all flex flex-col gap-1.5",
+                  isSelected
+                    ? "border-primary bg-primary/10 shadow-xs"
+                    : "border-border bg-card hover:bg-muted/60 text-muted-foreground"
+                )}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                    <Icon className="w-3.5 h-3.5 text-primary" />
+                    {item.label}
+                  </span>
+                  {isSelected && <Check className="w-4 h-4 text-primary" />}
+                </div>
+                <span className="text-[11px] text-muted-foreground leading-tight">
+                  {item.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

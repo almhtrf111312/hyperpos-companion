@@ -6,6 +6,7 @@ import { restoreLastRouteIfNeeded } from "./lib/last-route";
 import { initializeLanguage } from "./lib/i18n";
 import { applyAppFontToDOM, getStoredAppFont } from "./lib/app-font-config";
 import { applyUIScaleToDOM, getStoredUIScale } from "./lib/ui-scale-config";
+import { initPerformanceMode } from "./lib/performance-mode";
 import App from "./App.tsx";
 import "./index.css";
 import { initErrorRadar, captureError } from "./lib/error-radar";
@@ -13,9 +14,10 @@ import { initErrorRadar, captureError } from "./lib/error-radar";
 // Initialize Error Radar listeners as early as possible
 initErrorRadar();
 
-// Initialize font, scale, and language layout immediately on startup
+// Initialize font, scale, performance mode, and language layout immediately on startup
 applyAppFontToDOM(getStoredAppFont());
 applyUIScaleToDOM(getStoredUIScale());
+initPerformanceMode();
 initializeLanguage();
 
 // Cold-start only: if the WebView opened at "/", put the user back on the last screen.

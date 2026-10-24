@@ -1133,7 +1133,7 @@ button.bg-gradient-primary:active,
   color: hsl(var(--muted-foreground)) !important;
   font-weight: 600;
   border-radius: 0.75rem;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .light [role="tab"]:hover:not([data-state="active"]) {
@@ -1913,7 +1913,7 @@ html {
 /* Dynamic Island Notification Animations */
 
 .dynamic-island-retract {
-  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
   transform: translateY(-50px) scale(0.3, 1.2) !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -2650,5 +2650,35 @@ html {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
     transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Performance & Lite Mode Optimization (Low-End Devices Support)
+   ========================================================================== */
+html[data-perf="lite"] *,
+html[data-perf="lite"] *::before,
+html[data-perf="lite"] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-perf="lite"] .animate-pulse,
+html[data-perf="lite"] .animate-bounce,
+html[data-perf="lite"] .blob-bg,
+html[data-perf="lite"] [class*="animate-[pulse"] {
+  animation: none !important;
+}
+
+html[data-perf="lite"] * {
+  transition-duration: 0.08s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
