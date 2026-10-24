@@ -185,7 +185,7 @@ export default function BossPanel() {
 
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'owner' | 'cashier' | 'code'; id: string; name: string } | null>(null);
-  const [revokeLicenseConfirm, setRevokeLicenseConfirm] = useState<{ userId: string; name: string } | null>(null);
+  const [revokeLicenseConfirm, setRevokeLicenseConfirm] = useState<{ userId: string; name: string; isTrial?: boolean } | null>(null);
   const [isRevokingLicense, setIsRevokingLicense] = useState(false);
   const [isReactivatingLicense, setIsReactivatingLicense] = useState(false);
 
@@ -1241,7 +1241,7 @@ export default function BossPanel() {
   // License issues: owners with expired, revoked, or no license
   const licenseIssueOwners = owners.filter(o => {
     if (o.role === 'boss') return false;
-    return !o.license_expires || new Date(o.license_expires) <= new Date() || o.license_revoked;
+    return !o.license_expires || new Date(o.license_expires) <= new Date() || o.license_revoked || !o.is_active;
   });
 
   if (roleLoading || !isBoss) {
@@ -1450,8 +1450,9 @@ export default function BossPanel() {
                   ) : (
                     filteredOwners.map((owner) => {
                       const daysRemaining = calculateDaysRemaining(owner.license_expires);
-                      const isLicenseValid = owner.license_expires && daysRemaining > 0 && !owner.license_revoked;
                       const isBossUser = owner.role === 'boss';
+                      const isTrial = Boolean(owner.is_trial);
+                      const isLicenseValid = !isBossUser && Boolean(owner.license_expires) && daysRemaining > 0 && !owner.license_revoked && (owner.is_active !== false);
 
                       return (
                         <div key={owner.user_id} className={`relative p-3.5 md:p-4 rounded-2xl space-y-2.5 md:space-y-3 border border-border/60 transition-colors ${
@@ -1476,7 +1477,7 @@ export default function BossPanel() {
                                   <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-[10px] md:text-xs">
                                     ترخيص دائم ∞
                                   </Badge>
-                                ) : owner.license_revoked ? (
+                                ) : (owner.license_revoked || !owner.is_active) ? (
                                   <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
                                     ترخيص موقوف
                                   </Badge>
@@ -1486,11 +1487,16 @@ export default function BossPanel() {
                                   </Badge>
                                 ) : daysRemaining > 0 ? (
                                   <Badge className={`${daysRemaining <= 7 ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'} text-white text-[10px] md:text-xs font-semibold`}>
-                                    متبقي: {daysRemaining} يوم
+                                    متبقي: {daysRemaining} يوم {isTrial ? '(تجريبي)' : ''}
                                   </Badge>
                                 ) : (
                                   <Badge variant="destructive" className="text-[10px] md:text-xs font-semibold">
-                                    منتهي الصلاحية
+                                    منتهي الصلاحية {isTrial ? '(تجريبي)' : ''}
+                                  </Badge>
+                                )}
+                                {isTrial && !isBossUser && (
+                                  <Badge variant="outline" className="text-[10px] md:text-xs font-semibold border-orange-400 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20">
+                                    فترة تجريبية
                                   </Badge>
                                 )}
                                 {owner.license_tier && !isBossUser && (
@@ -1505,7 +1511,7 @@ export default function BossPanel() {
                                   <span
                                     dir="ltr"
                                     title={owner.email}
-                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono"
+                                    className="break-all select-all inline-block text-left font-mono"
                                   >
                                     {owner.email}
                                   </span>
@@ -1590,6 +1596,7 @@ export default function BossPanel() {
                                       onClick={() => setRevokeLicenseConfirm({
                                         userId: owner.user_id,
                                         name: owner.full_name || owner.email || 'هذا المستخدم',
+                                        isTrial: isTrial,
                                       })}
                                       className="text-amber-600 dark:text-amber-500 font-medium cursor-pointer"
                                     >
@@ -1597,7 +1604,7 @@ export default function BossPanel() {
                                       إيقاف الترخيص
                                     </DropdownMenuItem>
                                   )}
-                                  {Boolean(owner.license_expires && owner.license_revoked) && (
+                                  {Boolean(!isBossUser && (owner.license_revoked || !owner.is_active)) && (
                                     <DropdownMenuItem
                                       onClick={() => handleReactivateLicense(owner.user_id)}
                                       className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer"
@@ -1654,11 +1661,11 @@ export default function BossPanel() {
                                 }`}
                               >
                                 <Calendar className="w-3 h-3" />
-                                {owner.license_revoked
+                                {(owner.license_revoked || !owner.is_active)
                                   ? 'ترخيص موقوف'
                                   : daysRemaining > 0
-                                  ? `متبقي: ${daysRemaining} يوم`
-                                  : 'منتهي الصلاحية'}
+                                  ? `متبقي: ${daysRemaining} يوم ${isTrial ? '(تجريبي)' : ''}`
+                                  : `منتهي الصلاحية ${isTrial ? '(تجريبي)' : ''}`}
                               </Badge>
                             )}
                             {isBossUser && (
@@ -2019,20 +2026,40 @@ export default function BossPanel() {
                 ) : (
                   <div className="space-y-3">
                     {licenseIssueOwners.map((owner) => {
-                      const isRevoked = owner.license_revoked;
+                      const isRevoked = Boolean(owner.license_revoked || !owner.is_active);
+                      const hasLicense = Boolean(owner.license_expires);
                       const daysRemaining = calculateDaysRemaining(owner.license_expires);
+                      const isExpired = hasLicense && daysRemaining === 0;
+                      const isTrial = Boolean(owner.is_trial);
 
                       return (
-                        <div key={owner.user_id} className="p-3 rounded-lg border-s-4 border-s-destructive bg-destructive/5 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">{owner.full_name || 'بدون اسم'}</span>
+                        <div
+                          key={owner.user_id}
+                          className="p-3.5 sm:p-4 rounded-xl border-s-4 border-s-destructive bg-destructive/5 space-y-3"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            {/* User details */}
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              {/* Header: Name and Badges */}
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                <span className="font-semibold text-sm sm:text-base break-words text-foreground">
+                                  {owner.full_name || 'بدون اسم'}
+                                </span>
+
+                                {isTrial && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-semibold border-orange-400 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20"
+                                  >
+                                    فترة تجريبية
+                                  </Badge>
+                                )}
+
                                 {isRevoked ? (
                                   <Badge variant="destructive" className="text-[10px] font-semibold">
                                     ترخيص موقوف
                                   </Badge>
-                                ) : !owner.license_expires ? (
+                                ) : !hasLicense ? (
                                   <Badge variant="destructive" className="text-[10px] font-semibold">
                                     بدون ترخيص
                                   </Badge>
@@ -2045,31 +2072,89 @@ export default function BossPanel() {
                                     منتهي الصلاحية
                                   </Badge>
                                 )}
+
+                                {owner.license_tier && (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {owner.license_tier}
+                                  </Badge>
+                                )}
                               </div>
+
+                              {/* Email */}
                               {owner.email && (
-                                <p className="text-xs text-muted-foreground mt-1 min-w-0">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                                  <Mail className="w-3.5 h-3.5 flex-shrink-0" />
                                   <span
                                     dir="ltr"
-                                    title={owner.email}
-                                    className="whitespace-nowrap truncate max-w-[200px] sm:max-w-none inline-block text-left font-mono"
+                                    className="font-mono text-xs break-all select-all text-foreground/90"
                                   >
                                     {owner.email}
                                   </span>
-                                </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 flex-shrink-0"
+                                    onClick={() => copyToClipboard(owner.email!)}
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
                               )}
-                              {owner.license_expires && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {daysRemaining === 0 ? 'انتهى في: ' : 'تاريخ الانتهاء: '}
-                                  {new Date(owner.license_expires).toLocaleDateString('ar-EG')}
-                                </p>
+
+                              {/* Device info */}
+                              {owner.device_id ? (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                                  <Smartphone className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="font-mono text-[11px] bg-background/80 px-1.5 py-0.5 rounded border border-border/50 break-all select-all">
+                                    {owner.device_id}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <Smartphone className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
+                                  <span className="text-[11px] text-muted-foreground">لم يرتبط بجهاز بعد</span>
+                                </div>
+                              )}
+
+                              {/* License status & duration explanation */}
+                              {hasLicense ? (
+                                <div className="flex items-center flex-wrap gap-2 text-xs text-muted-foreground pt-0.5">
+                                  <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="break-words">
+                                    {daysRemaining > 0 ? (
+                                      <>
+                                        <span className="font-medium text-foreground">
+                                          متبقي {daysRemaining} يوم {isTrial ? '(تجريبي)' : ''}
+                                        </span>
+                                        {' — '}
+                                        <span>تاريخ الانتهاء: {new Date(owner.license_expires!).toLocaleDateString('ar-EG')}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="font-medium text-destructive">
+                                          منتهي الصلاحية {isTrial ? '(تجريبي)' : ''}
+                                        </span>
+                                        {' — '}
+                                        <span>تاريخ الانتهاء: {new Date(owner.license_expires!).toLocaleDateString('ar-EG')}</span>
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                                  <span>الحساب مسجل بدون ترخيص فعال</span>
+                                </div>
                               )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
-                              {Boolean(owner.license_expires && isRevoked) && (
+
+                            {/* Actions on phone/desktop */}
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end sm:justify-start flex-shrink-0">
+                              {isRevoked && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-xs text-emerald-600 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                  className="text-xs h-8 text-emerald-600 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                                   onClick={() => handleReactivateLicense(owner.user_id)}
                                   disabled={isReactivatingLicense}
                                 >
@@ -2079,7 +2164,7 @@ export default function BossPanel() {
                               )}
                               <Button
                                 size="sm"
-                                className="text-xs"
+                                className="text-xs h-8"
                                 onClick={() => {
                                   setDirectActivateDialog({ owner });
                                   setDirectActivateDays('90');
@@ -2091,7 +2176,7 @@ export default function BossPanel() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-xs"
+                                className="text-xs h-8"
                                 onClick={() => setActivationDialog({ owner })}
                               >
                                 <Ticket className="w-3 h-3" />
@@ -2100,7 +2185,7 @@ export default function BossPanel() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-xs"
+                                className="text-xs h-8"
                                 onClick={() => {
                                   setEditLicenseDialog({ owner });
                                   setEditLicenseSettings({
@@ -2655,7 +2740,7 @@ export default function BossPanel() {
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-2 text-sm leading-relaxed">
                 <span className="block">
-                  هل أنت متأكد من رغبتك في إيقاف ترخيص المستخدم{' '}
+                  هل أنت متأكد من رغبتك في إيقاف ترخيص {revokeLicenseConfirm?.isTrial ? 'الفترة التجريبية للمستخدم' : 'المستخدم'}{' '}
                   <strong className="text-foreground font-semibold">"{revokeLicenseConfirm?.name}"</strong>؟
                 </span>
                 <span className="block text-xs text-muted-foreground mt-1">
