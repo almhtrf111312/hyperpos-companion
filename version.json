@@ -1,8 +1,14 @@
 {
-  "versionCode": 303,
-  "versionName": "1.0.73",
-  "lastUpdated": "2026-10-24T23:22:11.125Z",
+  "versionCode": 304,
+  "versionName": "1.0.74",
+  "lastUpdated": "2026-10-24T23:59:02.940Z",
   "buildHistory": [
+    {
+      "versionCode": 304,
+      "versionName": "1.0.74",
+      "date": "2026-10-25",
+      "description": "v1.0.74 - تحصين طابور المزامنة وتباين ثيم Xiaomi: توليد stockItems تلقائياً للفواتير العالقة وتفادي انهيار المزامنة الذرية، تزويد stockItems وسعر الصرف عند الإدراج في الطابور المحلي، وفرض التباين العالي للنصوص والأيقونات على أزرار وثيم Xiaomi / HyperOS"
+    },
     {
       "versionCode": 303,
       "versionName": "1.0.73",

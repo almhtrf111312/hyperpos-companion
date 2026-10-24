@@ -70,7 +70,17 @@ function isValidUUID(str: string): boolean {
  */
 function buildRpcItems(bundle: AtomicSaleBundle) {
   const itemById = new Map(bundle.items.map(item => [item.id, item]));
-  return bundle.stockItems.map(stockItem => {
+
+  // ✅ حماية ضد الفواتير التي لا تحتوي stockItems في الحزمة (كالفواتير القادمة من invoices-cloud أو الخدمات)
+  const effectiveStockItems = (bundle.stockItems && Array.isArray(bundle.stockItems) && bundle.stockItems.length > 0)
+    ? bundle.stockItems
+    : bundle.items.map(i => ({
+        productId: i.id,
+        quantity: i.unit === 'bulk' && i.conversionFactor ? i.quantity * i.conversionFactor : i.quantity,
+        productName: i.name,
+      }));
+
+  return effectiveStockItems.map(stockItem => {
     const item = itemById.get(stockItem.productId);
     if (!item) throw new Error(`Missing invoice item for product ${stockItem.productId}`);
 
