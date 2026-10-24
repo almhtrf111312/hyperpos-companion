@@ -40,7 +40,7 @@ export interface ShiftAdjustment {
   createdAt: string;
 }
 
-export type ShiftCurrency = 'USD' | 'TRY' | 'SYP';
+export type ShiftCurrency = 'USD' | 'TRY' | 'SYP' | string;
 
 export interface CurrencyShiftTotals {
   opening: number;
@@ -228,7 +228,9 @@ export const openShift = (
 export const closeShift = (
   closingCash: number,
   notes?: string,
-  currencyCounts?: { USD?: number; TRY?: number; SYP?: number }
+  currencyCounts?: { USD?: number; TRY?: number; SYP?: number },
+  primaryCurrency?: string,
+  exchangeRate?: number
 ): { shift: Shift; discrepancy: number } | null => {
   const shifts = loadShifts();
   const activeIndex = shifts.findIndex(s => s.status === 'open');

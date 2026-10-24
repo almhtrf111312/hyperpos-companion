@@ -221,7 +221,7 @@ export const processDebtPayment = (
   customerId?: string,
   userId?: string,
   userName?: string,
-  currency: 'USD' | 'TRY' | 'SYP' = 'USD',
+  currency: string = 'USD',
   currencyAmount?: number,
   method: 'cash' | 'transfer' = 'cash'
 ): TransactionResult => {

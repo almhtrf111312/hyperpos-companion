@@ -649,14 +649,14 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       // 2. إذا كانت الفاتورة بعملة غير الدولار، إضافة المعادل بالدولار
       if (invCurrency !== 'USD') {
         const usdDef = enabledList.find(c => c.code === 'USD');
-        if (usdDef && usdDef.isEnabled) {
+        if (usdDef && usdDef.enabled) {
           parts.push(`المعادل بالدولار: ${usdDef.symbol}${formatNumber(baseUSD, 2)}`);
         }
       }
 
       // 3. إضافة كافة العملات المفعلة الأخرى ديناميكياً
       for (const curr of enabledList) {
-        if (curr.code === invCurrency || !curr.isEnabled || curr.code === 'USD') continue;
+        if (curr.code === invCurrency || !curr.enabled || curr.code === 'USD') continue;
         const altAmount = fromUsd(baseUSD, curr.code);
         parts.push(`${curr.name}: ${formatCanvasPrice(altAmount, curr.symbol, curr.decimals)}`);
       }

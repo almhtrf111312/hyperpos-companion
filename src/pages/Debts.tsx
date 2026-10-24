@@ -102,7 +102,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
   const deleteGuard = useActionGuard();
   const isSavingRef = useRef(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'TRY' | 'SYP'>(() => loadDefaultCurrencyCode());
+  const [paymentCurrency, setPaymentCurrency] = useState<string>(() => loadDefaultCurrencyCode());
   const [paymentAmountInput, setPaymentAmountInput] = useState<string>('');
   const enabledCurrencies = useMemo(() => loadEnabledCurrencies(), []);
   const [isSubmitting, setIsSubmitting] = useState(false);

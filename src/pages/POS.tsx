@@ -434,9 +434,12 @@ export default function POS() {
     return [t('common.all'), ...localCats];
   });
 
-  const updateProducts = useCallback((items: POSProduct[]) => {
-    memoryPosProductsCache = items;
-    setProducts(items);
+  const updateProducts = useCallback((next: POSProduct[] | ((prev: POSProduct[]) => POSProduct[])) => {
+    setProducts(prev => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      memoryPosProductsCache = resolved;
+      return resolved;
+    });
   }, []);
 
   const updateCategories = useCallback((cats: string[]) => {

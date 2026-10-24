@@ -74,6 +74,7 @@ export interface Invoice {
   warehouseId?: string;
   dueDate?: string;
   currencyName?: string;
+  currencyCode?: string;
   invoiceNumber?: string;
   id: string;
   type: InvoiceType;
@@ -162,6 +163,7 @@ function toInvoice(cloud: CloudInvoice): Invoice {
     total,
     totalInCurrency,
     currency: rawCurrency,
+    currencyCode: rawCurrency,
     currencySymbol,
     paymentType: (cloud.payment_type as PaymentType) || 'cash',
     status: (cloud.status as InvoiceStatus) || 'paid',

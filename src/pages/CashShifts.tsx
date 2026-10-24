@@ -12,7 +12,7 @@ import {
 } from '@/lib/cashbox-store';
 import { EVENTS } from '@/lib/events';
 import { useActionGuard } from '@/hooks/use-action-guard';
-import { formatCurrency, formatMoney, formatDateTime } from '@/lib/utils';
+import { cn, formatCurrency, formatMoney, formatDateTime } from '@/lib/utils';
 import { resolveCurrencyMeta } from '@/lib/currencies';
 import { addActivityLog } from '@/lib/activity-log';
 import { Button } from '@/components/ui/button';

@@ -72,6 +72,7 @@ import {
 import { useUserRole } from '@/hooks/use-user-role';
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, formatInCurrency } from '@/hooks/use-currency';
+import { useMoney } from '@/hooks/use-money';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { EVENTS } from '@/lib/events';
 import Debts from '@/pages/Debts';
@@ -104,6 +105,13 @@ export default function Customers() {
   const [customerInvoices, setCustomerInvoices] = useState<Invoice[]>([]);
   const [customerDebts, setCustomerDebts] = useState<Debt[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
+  const toggleInvoiceExpand = (id: string) =>
+    setExpandedInvoices(prev => ({ ...prev, [id]: !prev[id] }));
+  const money = useMoney();
+  const currencyCode = money.activeCode;
+  const exchangeRate = money.activeRate || 1;
+  const isNonUsd = currencyCode !== 'USD';
 
   // Form state
   const [formData, setFormData] = useState({
@@ -820,6 +828,9 @@ export default function Customers() {
                       {statementItems.map((item, idx) => {
                         const isExpanded = !!expandedInvoices[item.id];
                         const hasItems = (item as any).items && (item as any).items.length > 0;
+                        const itemRate = (item as any).exchangeRate ?? (item as any).exchange_rate ?? exchangeRate;
+                        const itemCode = (item as any).currencyCode ?? (item as any).currency_code ?? currencyCode;
+                        const itemIsNonUsd = itemCode !== 'USD';
                         return (
                           <div key={`${item.id}-${idx}`} className="p-3 bg-card hover:bg-muted/30 transition-colors text-xs flex flex-col gap-1.5">
                             <div 
@@ -849,13 +860,13 @@ export default function Customers() {
                             <div className="grid grid-cols-3 gap-2 pt-1 text-center bg-muted/50 rounded-lg p-1.5">
                               <div>
                                 <span className="text-[10px] text-muted-foreground block">الإجمالي</span>
-                                <span className="font-bold text-foreground">{formatInCurrency(item.total, currencyCode, exchangeRate).formatted}</span>
-                                {isNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.total, currencyCode, exchangeRate).usdEquivalent}</span>}
+                                <span className="font-bold text-foreground">{formatInCurrency(item.total, itemCode, itemRate).formatted}</span>
+                                {itemIsNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.total, itemCode, itemRate).usdEquivalent}</span>}
                               </div>
                               <div>
                                 <span className="text-[10px] text-muted-foreground block">المدفوع</span>
-                                <span className="font-bold text-success">{formatInCurrency(item.paid, currencyCode, exchangeRate).formatted}</span>
-                                {isNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.paid, currencyCode, exchangeRate).usdEquivalent}</span>}
+                                <span className="font-bold text-success">{formatInCurrency(item.paid, itemCode, itemRate).formatted}</span>
+                                {itemIsNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.paid, itemCode, itemRate).usdEquivalent}</span>}
                               </div>
                               <div>
                                 <span className="text-[10px] text-muted-foreground block">المتبقي</span>
@@ -863,9 +874,9 @@ export default function Customers() {
                                   "font-bold",
                                   item.remaining > 0 ? "text-destructive" : "text-success"
                                 )}>
-                                  {formatInCurrency(item.remaining, currencyCode, exchangeRate).formatted}
+                                  {formatInCurrency(item.remaining, itemCode, itemRate).formatted}
                                 </span>
-                                {isNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.remaining, currencyCode, exchangeRate).usdEquivalent}</span>}
+                                {itemIsNonUsd && <span className="text-[9.5px] text-muted-foreground font-mono block">{formatInCurrency(item.remaining, itemCode, itemRate).usdEquivalent}</span>}
                               </div>
                             </div>
 
@@ -883,8 +894,8 @@ export default function Customers() {
                                   <div key={pIdx} className="text-[11px] flex items-center justify-between py-0.5">
                                     <span className="font-medium text-foreground">{prod.name}</span>
                                     <div className="flex items-center gap-4 font-mono text-[10.5px]">
-                                      <span className="text-muted-foreground">{prod.quantity} × {formatInCurrency(prod.price, currencyCode, exchangeRate).formatted}</span>
-                                      <span className="font-bold text-foreground">{formatInCurrency((prod.quantity || 1) * (prod.price || 0), currencyCode, exchangeRate).formatted}</span>
+                                      <span className="text-muted-foreground">{prod.quantity} × {formatInCurrency(prod.price, itemCode, itemRate).formatted}</span>
+                                      <span className="font-bold text-foreground">{formatInCurrency((prod.quantity || 1) * (prod.price || 0), itemCode, itemRate).formatted}</span>
                                     </div>
                                   </div>
                                 ))}

@@ -370,13 +370,13 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
           const parts: string[] = [];
           if (invCode !== 'USD') {
             const usdDef = enabledList.find(c => c.code === 'USD');
-            if (usdDef && usdDef.isEnabled) {
+            if (usdDef && usdDef.enabled) {
               parts.push(`المعادل بالدولار: ${usdDef.symbol}${formatNumber(baseUSD, 2)}`);
             }
           }
 
           for (const curr of enabledList) {
-            if (curr.code === invCode || !curr.isEnabled || curr.code === 'USD') continue;
+            if (curr.code === invCode || !curr.enabled || curr.code === 'USD') continue;
             const altAmount = fromUsd(baseUSD, curr.code);
             parts.push(`${curr.name}: ${formatAmount(altAmount, curr.code)} ${curr.symbol}`);
           }

@@ -392,13 +392,13 @@ export default function Invoices() {
     });
 
     invoices.forEach(inv => {
-      const c = (inv.currency_code || inv.currency || '').trim().toUpperCase();
+      const c = (inv.currencyCode || inv.currency || '').trim().toUpperCase();
       if (c && !seen.has(c)) {
         seen.add(c);
         list.push({
           code: c,
           name: currencyNames?.[c] || resolveInvoiceCurrencyName(c),
-          symbol: resolveInvoiceCurrencySymbol(c, inv.currency_symbol || inv.currencySymbol || currencySymbols?.[c]),
+          symbol: resolveInvoiceCurrencySymbol(c, inv.currencySymbol || currencySymbols?.[c]),
         });
       }
     });
@@ -425,9 +425,9 @@ export default function Invoices() {
       }
     } else {
       // 'stored': استخدام العملة وسعر الصرف والرمز التاريخي المجمد للفاتورة لمنع تشوهها بأي تغيير لاحق
-      const rawCode = inv.currency_code || inv.currency;
-      const rawRate = typeof inv.exchange_rate === 'number' && inv.exchange_rate > 0 ? inv.exchange_rate : inv.exchangeRate;
-      const rawSymbol = inv.currency_symbol || inv.currencySymbol;
+      const rawCode = inv.currencyCode || inv.currency;
+      const rawRate = typeof inv.exchangeRate === 'number' && inv.exchangeRate > 0 ? inv.exchangeRate : 1;
+      const rawSymbol = inv.currencySymbol;
       const resolved = resolveHistoricalCurrency({
         currency: rawCode,
         currencySymbol: rawSymbol,
