@@ -187,9 +187,8 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
           <p className="text-muted-foreground">لا توجد ديون في الفترة المحددة</p>
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <div className="w-full max-w-full overflow-x-auto rounded-2xl border border-border bg-card">
+          <table className="min-w-[620px] w-full text-xs">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-right">العميل</th>
@@ -246,7 +245,6 @@ export function DebtsReport({ dateRange, hideInternalExport = false }: Props) {
                 </tr>
               </tfoot>
             </table>
-          </div>
         </div>
       )}
     </div>

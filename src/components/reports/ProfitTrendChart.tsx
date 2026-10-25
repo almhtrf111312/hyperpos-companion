@@ -154,8 +154,9 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
         </div>
 
         {/* Chart */}
-        <ChartContainer config={chartConfig} className="h-[21.4rem] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="w-full min-w-0 max-w-full overflow-hidden">
+          <ChartContainer config={chartConfig} className="h-[260px] w-full min-w-0 max-w-full">
+            <ResponsiveContainer width="100%" height={260}>
             <LineChart
               data={chartData}
               margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
@@ -217,8 +218,9 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
                 activeDot={{ r: 6 }}
               />
             </LineChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </div>
 
         {/* Additional Stats */}
         <div className="mt-4 pt-4 border-t flex justify-between text-sm text-muted-foreground">

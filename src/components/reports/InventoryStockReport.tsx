@@ -193,7 +193,7 @@ export function InventoryStockReport({ dateRange }: Props) {
             </div>
           </div>
 
-          <Card><CardContent className="p-0">
+          <Card className="w-full max-w-full overflow-hidden"><CardContent className="p-0">
             <div className="divide-y divide-border/40 max-h-[60vh] overflow-y-auto">
               {filtered.slice(0, 200).map(p => (
                 <div key={p.id} className="flex items-center gap-2 p-2.5">
@@ -216,7 +216,7 @@ export function InventoryStockReport({ dateRange }: Props) {
           </CardContent></Card>
 
           {history.length > 0 && (
-            <Card><CardContent className="p-3">
+            <Card className="w-full max-w-full overflow-hidden"><CardContent className="p-3">
               <p className="text-xs font-bold mb-2">عمليات الجرد السابقة</p>
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {history.slice(0, 20).map(h => (
@@ -247,7 +247,7 @@ export function InventoryStockReport({ dateRange }: Props) {
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="ملاحظات الجرد (اختياري)" className="h-16 text-xs" />
           </CardContent></Card>
 
-          <Card><CardContent className="p-0">
+          <Card className="w-full max-w-full overflow-hidden"><CardContent className="p-0">
             <div className="divide-y divide-border/40 max-h-[55vh] overflow-y-auto">
               {filtered.slice(0, 200).map(p => {
                 const expected = p.quantity || 0;

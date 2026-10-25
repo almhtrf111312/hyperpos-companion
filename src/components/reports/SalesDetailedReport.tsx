@@ -226,9 +226,8 @@ export function SalesDetailedReport({
           <p className="text-sm text-muted-foreground">لا توجد فواتير ضمن الفلاتر الحالية</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+        <div className="w-full max-w-full overflow-x-auto rounded-2xl border border-border bg-card">
+          <table className="min-w-[620px] w-full text-xs">
               <thead className="bg-muted/40">
                 <tr>
                   <th className="p-2 text-right">الفاتورة</th>
@@ -265,7 +264,6 @@ export function SalesDetailedReport({
                 </tr>
               </tfoot>
             </table>
-          </div>
           {rows.length > 200 && (
             <p className="text-center text-[10px] text-muted-foreground py-2 border-t border-border/40">
               يعرض أول 200 من {rows.length} • قم بالتصدير لرؤية الكامل

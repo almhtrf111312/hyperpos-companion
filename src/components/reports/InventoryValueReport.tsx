@@ -105,8 +105,8 @@ export function InventoryValueReport({ dateRange }: Props) {
             <Layers className="w-4 h-4 text-primary" />
             <p className="text-xs font-bold">توزيع قيمة العهدة على التصنيفات</p>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="w-full min-w-0 max-w-full overflow-hidden h-64">
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(e) => `${e.name}`} labelLine={false}>
                   {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}

@@ -2037,7 +2037,7 @@ export default function Reports() {
 
   return (
 
-      <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 max-w-4xl mx-auto">
+      <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 w-full max-w-4xl min-w-0 mx-auto overflow-x-hidden">
         {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
         <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
           <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
@@ -2446,7 +2446,9 @@ export default function Reports() {
               />
             ) : viewTab === 'comprehensive' ? (
               <div className="space-y-4">
-                <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
+                <div className="w-full min-w-0 max-w-full overflow-hidden">
+                  <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
+                </div>
                 {reportData.topCustomers.length > 0 && (
                   <div className="bg-card rounded-2xl border border-border/70 p-4 shadow-sm">
                     <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
@@ -2738,7 +2740,9 @@ export default function Reports() {
 
         {/* Profit Trend */}
         {activeReport === 'profits' && (
-          <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
+          <div className="w-full min-w-0 max-w-full overflow-hidden">
+                  <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
+                </div>
         )}
 
         {/* Products */}
@@ -2778,8 +2782,8 @@ export default function Reports() {
           <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
             <h3 className="text-lg font-semibold mb-4">تقرير المخزون</h3>
             {cloudProducts.length > 0 ? (
-              <div className="overflow-x-auto border rounded-lg">
-                <table className="w-full text-sm">
+              <div className="w-full max-w-full overflow-x-auto rounded-2xl border border-border bg-card">
+                <table className="min-w-[620px] w-full text-xs">
                   <thead className="bg-muted">
                     <tr>
                       <th className="p-2 text-right">#</th>

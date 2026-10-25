@@ -359,7 +359,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
             </div>
           </div>
 
-          <div className="h-72 w-full mt-2" dir="ltr">
+          <div className="h-72 w-full min-w-0 max-w-full overflow-hidden mt-2" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={salesTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -404,7 +404,7 @@ export function UnifiedReportsDashboard({ stats, isLoading, onRefresh }: Unified
               <IconPieChart className="w-5 h-5 text-muted-foreground" />
             </div>
 
-            <div className="h-56 w-full" dir="ltr">
+            <div className="h-56 w-full min-w-0 max-w-full overflow-hidden" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={financialDistributionData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                   <XAxis type="number" hide />
