@@ -6,7 +6,7 @@ import { emitEvent } from './events';
 
 const SYNC_HISTORY_KEY = 'sync_history';
 const SYNC_HISTORY_NAMESPACE = 'hp_sync';
-const MAX_HISTORY_ITEMS = 10;
+const MAX_HISTORY_ITEMS = 25;
 
 export type SyncCategory = 'sale' | 'expense' | 'debt' | 'inventory' | 'purchase' | 'sync' | 'system';
 
@@ -33,13 +33,18 @@ export const SYNC_HISTORY_UPDATED = 'syncHistoryUpdated';
 // Operation type labels (Arabic)
 const TYPE_LABELS: Record<string, string> = {
   sale: 'عملية بيع',
+  invoice_create: 'إنشاء فاتورة',
+  invoice_update: 'تعديل فاتورة',
+  invoice_refund: 'استرداد فاتورة',
   expense: 'مصروف',
+  expense_create: 'إضافة مصروف',
+  expense_update: 'تعديل مصروف',
+  expense_delete: 'حذف مصروف',
   debt: 'دين',
   debt_payment: 'سداد دين',
   debt_sale_bundle: 'بيع آجل',
   stock_update: 'تحديث مخزون',
   customer_update: 'تحديث عميل',
-  invoice_create: 'إنشاء فاتورة',
   profit_record: 'تسجيل ربح',
 };
 
@@ -52,6 +57,36 @@ export function formatAccountingSyncLabel(
 ): { title: string; subtitle?: string; category: SyncCategory } {
   const t = (type || '').toLowerCase();
   
+  // Invoice refund
+  if (t === 'invoice_refund' || t.includes('refund')) {
+    let invNum = '';
+    let amount = '';
+    if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {
+      invNum = rawLabelOrPayload.invoiceNumber || rawLabelOrPayload.id || '';
+      amount = rawLabelOrPayload.amountText || (rawLabelOrPayload.totalInCurrency ? `${rawLabelOrPayload.totalInCurrency}` : '');
+    }
+    const shortId = invNum ? `#${String(invNum).replace(/^inv[-_]?/i, '')}` : '';
+    return {
+      title: `تمت مزامنة استرداد فاتورة ${shortId}`.trim(),
+      subtitle: amount ? `المبلغ المسترد: ${amount}` : undefined,
+      category: 'sale'
+    };
+  }
+
+  // Invoice update
+  if (t === 'invoice_update') {
+    let invNum = '';
+    if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {
+      invNum = rawLabelOrPayload.invoiceNumber || rawLabelOrPayload.id || '';
+    }
+    const shortId = invNum ? `#${String(invNum).replace(/^inv[-_]?/i, '')}` : '';
+    return {
+      title: `تمت مزامنة تعديل فاتورة ${shortId}`.trim(),
+      category: 'sale'
+    };
+  }
+
+  // Sales and general invoices
   if (t === 'sale' || t === 'invoice_create' || t.includes('invoice') || t.includes('sale')) {
     let invNum = '';
     let customer = '';
@@ -69,7 +104,35 @@ export function formatAccountingSyncLabel(
     };
   }
 
-  if (t === 'expense' || t.includes('expense')) {
+  // Expense delete
+  if (t === 'expense_delete') {
+    let desc = '';
+    if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {
+      desc = rawLabelOrPayload.name || rawLabelOrPayload.description || '';
+    }
+    return {
+      title: `تمت مزامنة حذف مصروف: ${desc || 'مصروف'}`.trim(),
+      category: 'expense'
+    };
+  }
+
+  // Expense update
+  if (t === 'expense_update') {
+    let desc = '';
+    let amount = '';
+    if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {
+      desc = rawLabelOrPayload.name || rawLabelOrPayload.description || '';
+      amount = rawLabelOrPayload.amountText || (rawLabelOrPayload.amount ? `${rawLabelOrPayload.amount}` : '');
+    }
+    return {
+      title: `تمت مزامنة تعديل مصروف: ${desc || 'مصروف'}`.trim(),
+      subtitle: amount ? `المبلغ المعدل: ${amount}` : undefined,
+      category: 'expense'
+    };
+  }
+
+  // Expense create / general
+  if (t === 'expense' || t === 'expense_create' || t.includes('expense')) {
     let desc = '';
     let amount = '';
     if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {
@@ -77,13 +140,28 @@ export function formatAccountingSyncLabel(
       amount = rawLabelOrPayload.amountText || (rawLabelOrPayload.amount ? `${rawLabelOrPayload.amount}` : '');
     }
     return {
-      title: `تمت مزامنة مصروف: ${desc || 'مصروف تشغيلي'}`.trim(),
+      title: `تمت مزامنة إضافة مصروف: ${desc || 'مصروف تشغيلي'}`.trim(),
       subtitle: amount ? `المدفوع: ${amount}` : undefined,
       category: 'expense'
     };
   }
 
-  if (t === 'debt' || t === 'debt_payment' || t === 'debt_sale_bundle' || t.includes('debt')) {
+  // Debt payment
+  if (t === 'debt_payment') {
+    let party = '';
+    let amount = '';
+    if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {
+      party = rawLabelOrPayload.customerName || rawLabelOrPayload.supplierName || '';
+      amount = rawLabelOrPayload.amountText || (rawLabelOrPayload.amount ? `${rawLabelOrPayload.amount}` : '');
+    }
+    return {
+      title: `تمت مزامنة سداد دين${party ? `: ${party}` : ''}`,
+      subtitle: amount ? `قيمة السداد: ${amount}` : undefined,
+      category: 'debt'
+    };
+  }
+
+  if (t === 'debt' || t === 'debt_sale_bundle' || t.includes('debt')) {
     let party = '';
     let amount = '';
     if (typeof rawLabelOrPayload === 'object' && rawLabelOrPayload !== null) {

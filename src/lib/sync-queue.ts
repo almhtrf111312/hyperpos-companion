@@ -242,7 +242,7 @@ export const addToQueue = (
     setTimeout(mergePendingQueue, 0);
   
   // Track in history for UI display
-  addToHistory(operation.id, type);
+  addToHistory(operation.id, type, undefined, operation.data as any);
   
   console.log(`[SyncQueue] Added operation: ${type}`, operation.id);
 
