@@ -644,7 +644,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                 <span className="text-muted-foreground mx-1 sm:mx-2">|</span>
                 <span className="text-muted-foreground">{t('common.total')}:</span>
                 <span className="font-bold mx-1 text-foreground">
-                  ${currentInvoice.actual_grand_total?.toFixed(2) || '0.00'}
+                  {m.fmt(currentInvoice.actual_grand_total || 0)}
                 </span>
               </div>
               <Button size="sm" onClick={goToFinalize} disabled={invoiceItems.length === 0} className="h-8 text-xs sm:text-sm">
@@ -671,8 +671,8 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                       <tr key={item.id} className="border-t">
                         <td className="p-2">{item.product_name}</td>
                         <td className="p-2 text-center">{item.quantity}</td>
-                        <td className="p-2 text-center">${item.cost_price.toFixed(2)}</td>
-                        <td className="p-2 text-center">${item.total_cost.toFixed(2)}</td>
+                        <td className="p-2 text-center">{m.fmt(item.cost_price)}</td>
+                        <td className="p-2 text-center">{m.fmt(item.total_cost)}</td>
                         <td className="p-2">
                           <Button
                             size="icon"
@@ -744,10 +744,10 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
                 <div>
                   <span className="text-muted-foreground">{t('common.total')}: </span>
                   <span className="font-bold text-primary font-mono">
-                    ${currentInvoice.actual_grand_total?.toFixed(2)} USD
+                    {m.fmt(currentInvoice.actual_grand_total || 0)}
                     {primaryCurrencyCode !== 'USD' && (
                       <span className="text-xs text-muted-foreground font-normal mx-1 font-sans">
-                        (≈ {m.fmtIn(currentInvoice.actual_grand_total || 0, primaryCurrencyCode)})
+                        (${currentInvoice.actual_grand_total?.toFixed(2)} USD)
                       </span>
                     )}
                   </span>
@@ -760,7 +760,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
               {invoiceItems.map((item, index) => (
                 <div key={item.id} className="flex justify-between text-xs py-1">
                   <span>{index + 1}. {item.product_name}</span>
-                  <span className="text-muted-foreground">{item.quantity}×${item.cost_price.toFixed(2)}</span>
+                  <span className="text-muted-foreground">{item.quantity}×{m.fmt(item.cost_price)}</span>
                 </div>
               ))}
             </div>

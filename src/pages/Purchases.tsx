@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { FileText, Plus, Truck, Calendar, DollarSign, Loader2, ShoppingBag, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
+import { useMoney } from '@/hooks/use-money';
 import { formatNumber } from '@/lib/utils';
 import { loadPurchaseInvoicesCloud, PurchaseInvoice } from '@/lib/cloud/purchase-invoices-cloud';
 import { PurchaseInvoiceDialog } from '@/components/products/PurchaseInvoiceDialog';
@@ -13,6 +14,7 @@ import { ar, enUS, tr } from 'date-fns/locale';
 
 export default function Purchases() {
   const { t, language } = useLanguage();
+  const m = useMoney();
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -88,7 +90,7 @@ export default function Purchases() {
                 <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">{t('purchases.totalAmount')}</span>
               </div>
-              <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">${formatNumber(totalPurchases, 2)}</p>
+              <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{m.fmt(totalPurchases)}</p>
             </div>
           </div>
         </div>
@@ -144,7 +146,7 @@ export default function Purchases() {
                   <div className="flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5" />
                     <span className="font-semibold text-foreground">
-                      ${formatNumber(invoice.actual_grand_total || invoice.expected_grand_total, 2)}
+                      {m.fmtDoc(invoice.actual_grand_total || invoice.expected_grand_total, invoice as any)}
                     </span>
                   </div>
                   <span className="text-xs">

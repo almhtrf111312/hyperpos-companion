@@ -1,8 +1,14 @@
 {
-  "versionCode": 326,
-  "versionName": "1.0.96",
-  "lastUpdated": "2026-10-25T09:14:45.052396Z",
+  "versionCode": 327,
+  "versionName": "1.0.97",
+  "lastUpdated": "2026-10-25T09:23:10.440842+00:00",
   "buildHistory": [
+    {
+      "versionCode": 327,
+      "versionName": "1.0.97",
+      "date": "2026-10-25",
+      "description": "v1.0.97 - خطة الإصلاح الشاملة: المرحلة 3 — فواتير المشتريات والمتوسط المرجح للتكلفة (Purchases & WAC Precision)؛ استبدال العملة الثابتة في صفحة المشتريات (Purchases.tsx) ونافذة الفاتورة (PurchaseInvoiceDialog.tsx) بالعملة المحلية النشطة باستخدام محرك useMoney ومحول snapshot، ترقية حساب المتوسط المرجح للتكلفة في السحابة (purchase-invoices-cloud.ts) لاستخدام دقة round8 لمنع بتر التكاليف الكسرية، وإنشاء ترحيل قاعدة بيانات Supabase (20261025120000_wac_high_precision.sql) لترقية دالة receive_stock_wac لتخزين التكلفة بدقة فائقة 6 منازل عشرية"
+    },
     {
       "versionCode": 326,
       "versionName": "1.0.96",

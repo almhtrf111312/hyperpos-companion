@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { isNoInventoryMode } from '@/lib/store-type-config';
+import { round8 } from '@/lib/money-engine';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { getOwnerIdForInsert, getCurrentUserId } from '@/lib/supabase-store';
 import { getPendingOperations } from '@/lib/sync-queue';
@@ -442,7 +443,7 @@ export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
             const oldCost = Number(existingProduct.cost_price) || 0;
             const newQuantity = noInventory ? 99999 : oldQty + item.quantity;
             const avgCost = newQuantity > 0 && item.quantity > 0
-              ? Math.round(((oldQty * oldCost) + (item.quantity * item.cost_price)) / newQuantity * 100) / 100
+              ? round8(((oldQty * oldCost) + (item.quantity * item.cost_price)) / newQuantity)
               : (item.cost_price ?? oldCost);
 
             const purchaseHistory = Array.isArray(existingProduct.purchase_history)
