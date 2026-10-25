@@ -148,101 +148,86 @@ export function NativeCameraPreview({
 
     const modalContent = (
         <div
-            className="fixed inset-0 flex items-center justify-center"
-            style={{
-                zIndex: 99999,
-                background: 'rgba(0,0,0,0.95)',
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label="إغلاق الكاميرا"
-            onClick={handleClose}
-            onKeyDown={(e) => {
-                if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleClose();
-                }
-            }}
+            className="fixed inset-0 z-[100] bg-black flex flex-col justify-between select-none"
+            role="dialog"
+            aria-modal="true"
+            aria-label="معاينة الكاميرا"
         >
-            {/* Modal container — بدون طبقات تمويه */}
-            <div
-                className="relative w-[88vw] max-w-xs max-h-[70vh] rounded-2xl overflow-hidden bg-black shadow-2xl"
-                role="presentation"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-            >
-                {/* Header — خلفية سوداء صلبة بدون gradient */}
-                <div className="flex items-center justify-between px-3 py-2.5 bg-black">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClose}
-                        className="text-white hover:bg-white/20 rounded-full h-8 w-8"
-                    >
-                        <X className="h-5 w-5" />
-                    </Button>
-                    <span className="text-white text-sm font-medium">الكاميرا</span>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleFlip}
-                        className="text-white hover:bg-white/20 rounded-full h-8 w-8"
-                    >
-                        <SwitchCamera className="h-4 w-4" />
-                    </Button>
-                </div>
+            {/* Header: أزرار الإلغاء والتبديل والعنوان */}
+            <div className="flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-sm z-10">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleClose}
+                    className="text-white hover:bg-white/20 rounded-full h-10 w-10 cursor-pointer"
+                    aria-label="إغلاق الكاميرا"
+                >
+                    <X className="h-6 w-6" />
+                </Button>
+                <span className="text-white text-base font-bold">التقاط صورة المنتج</span>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleFlip}
+                    className="text-white hover:bg-white/20 rounded-full h-10 w-10 cursor-pointer"
+                    aria-label="تبديل الكاميرا"
+                >
+                    <SwitchCamera className="h-5 w-5" />
+                </Button>
+            </div>
 
-                {/* Video Feed — بدون أي طبقات فوق الفيديو */}
-                <div className="relative w-full bg-black aspect-[3/4]">
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover"
-                        style={{
-                            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
-                            display: isReady ? 'block' : 'none',
-                        }}
-                    />
+            {/* Video Feed Area: يملأ المساحة بالكامل مع الحفاظ على النسبة والتمركز */}
+            <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden bg-black">
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full max-w-lg object-contain md:object-cover"
+                    style={{
+                        transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                        display: isReady ? 'block' : 'none',
+                    }}
+                />
 
-                    {/* Loading overlay — يختفي فوراً عند جاهزية الكاميرا */}
-                    {!isReady && !error && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
-                            <Loader2 className="h-8 w-8 text-white animate-spin" />
-                            <span className="text-white/70 text-xs">جارٍ تشغيل الكاميرا...</span>
-                        </div>
-                    )}
+                {/* Loading overlay */}
+                {!isReady && !error && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
+                        <Loader2 className="h-10 w-10 text-white animate-spin" />
+                        <span className="text-white/80 text-sm font-medium">جارٍ تشغيل الكاميرا...</span>
+                    </div>
+                )}
 
-                    {/* Error overlay */}
-                    {error && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-black">
-                            <p className="text-white text-sm mb-3">{error}</p>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleClose}
-                                className="text-white border-white hover:bg-white/20"
-                            >
-                                إغلاق
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                {/* Error overlay */}
+                {error && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/90">
+                        <p className="text-white text-sm mb-4 max-w-xs">{error}</p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleClose}
+                            className="text-white border-white hover:bg-white/20 rounded-xl"
+                        >
+                            إغلاق
+                        </Button>
+                    </div>
+                )}
+            </div>
 
-                {/* Capture Button — بدون backdrop-blur */}
-                <div className="flex justify-center py-4 bg-black">
-                    <button
-                        onClick={handleCapture}
-                        disabled={isCapturing || !isReady}
-                        className="size-14 rounded-full border-4 border-white bg-white/20 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-40"
-                    >
-                        {isCapturing
-                            ? <Loader2 className="h-6 w-6 text-white animate-spin" />
-                            : <Camera className="h-6 w-6 text-white" />
-                        }
-                    </button>
-                </div>
+            {/* Bottom Controls: زر الالتقاط الرئيسي */}
+            <div className="flex justify-center items-center py-6 pb-8 bg-black/80 backdrop-blur-sm z-10">
+                <button
+                    type="button"
+                    onClick={handleCapture}
+                    disabled={isCapturing || !isReady}
+                    className="size-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/30 active:scale-90 transition-transform flex items-center justify-center disabled:opacity-40 cursor-pointer shadow-lg"
+                    aria-label="التقاط"
+                >
+                    {isCapturing
+                        ? <Loader2 className="h-7 w-7 text-white animate-spin" />
+                        : <Camera className="h-7 w-7 text-white" />
+                    }
+                </button>
             </div>
         </div>
     );

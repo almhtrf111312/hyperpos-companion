@@ -1470,7 +1470,14 @@ export default function Products() {
 
   if (activeView !== 'list') {
     return (
-      <div className="min-h-[100dvh] bg-background flex flex-col pb-24 animate-in fade-in-50 duration-150 relative" dir={isRTL ? 'rtl' : 'ltr'}>
+      <>
+        <div
+          className={cn(
+            "min-h-[100dvh] bg-background flex flex-col pb-24 animate-in fade-in-50 duration-150 relative",
+            showInlineCamera && "hidden"
+          )}
+          dir={isRTL ? 'rtl' : 'ltr'}
+        >
         {/* هيدر ثابت علوي رائع */}
         <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 py-3 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
@@ -2085,6 +2092,16 @@ export default function Products() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Native Camera Preview — خارج الحاوية المخفية عبر Portal لضمان الظهور والعمل المطلق */}
+      <NativeCameraPreview
+        isOpen={showInlineCamera}
+        onClose={closeInlineCamera}
+        onCapture={handleInlineCaptured}
+        maxSize={400}
+        quality={40}
+      />
+    </>
     );
   }
 
