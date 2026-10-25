@@ -29,6 +29,7 @@ export const EVENTS = {
   WAREHOUSES_UPDATED: 'hyperpos:warehouses-updated',
   STOCK_TRANSFERS_UPDATED: 'hyperpos:stock-transfers-updated',
   STORE_TYPE_CHANGED: 'hyperpos:store-type-changed',
+  THEME_CHANGED: 'hyperpos:theme-changed',
   PURCHASES_UPDATED: 'hyperpos:purchases-updated',
   // Silent Non-Blocking App Refresh Event (Pull to Refresh & Realtime Updates)
   APP_REFRESH: 'hyperpos:app-refresh',

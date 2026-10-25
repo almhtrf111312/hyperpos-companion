@@ -537,6 +537,14 @@ export function buildCloudStorePayload(
   const mergedSync: Record<string, unknown> = {
     ...(existingCloudSync || {}),
     updatedAt: settings.updatedAt || Date.now(),
+    appearanceProfile: {
+      theme: (typeof window !== 'undefined' ? localStorage.getItem('hyperpos_theme') : null) || 'dark',
+      fullTheme: (typeof window !== 'undefined' ? localStorage.getItem('hyperpos_theme_v1') : null) || 'emerald',
+      appFont: settings.appFont || 'cairo',
+      uiScale: settings.uiScale || 'normal',
+      layoutMode: (typeof window !== 'undefined' ? localStorage.getItem('flowpos_layout_mode') : null) || 'compact',
+      updatedAt: Date.now(),
+    },
     primaryCurrency: settings.primaryCurrency,
     enabledCurrencies: settings.enabledCurrencies,
     currencyNames: settings.currencyNames,
@@ -585,6 +593,24 @@ export function buildCloudStorePayload(
   };
 }
 
+
+export const applyCloudStoreSettings = (cloudSettings: any) => {
+  if (typeof window === 'undefined' || !cloudSettings) return;
+  const profile = cloudSettings?.sync_settings?.appearanceProfile;
+  if (profile) {
+    if (profile.theme) localStorage.setItem('hyperpos_theme', profile.theme);
+    if (profile.fullTheme) localStorage.setItem('hyperpos_theme_v1', profile.fullTheme);
+    if (profile.layoutMode) localStorage.setItem('flowpos_layout_mode', profile.layoutMode);
+    if (profile.appFont && isValidAppFontId(profile.appFont)) {
+      applyAppFontToDOM(profile.appFont);
+    }
+    if (profile.uiScale && isValidUIScaleId(profile.uiScale)) {
+      applyUIScaleToDOM(profile.uiScale);
+    }
+    emitEvent(EVENTS.THEME_CHANGED);
+  }
+};
+
 export type StoreSettingsSaveStatus = 'synced' | 'queued' | 'saved_locally';
 
 export interface SaveSettingsResult {
@@ -617,6 +643,7 @@ export async function pullStoreSettingsWithGuard(): Promise<UnifiedStoreSettings
     // إذا كانت جلسة محلية جديدة دون طابع زمني أو كان السحابي أحدث
     if (!localUpdatedAt || cloudUpdatedAt > localUpdatedAt) {
       console.log(`[StoreSettingsSync] Adopting cloud settings (cloud: ${cloudUpdatedAt}, local: ${localUpdatedAt})`);
+      applyCloudStoreSettings(cloudSettings);
       const merged = mergeStoreSettings(localSettings, cloudSettings);
       merged.updatedAt = cloudUpdatedAt || Date.now();
       applySettingsToRuntime(merged);

@@ -104,7 +104,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { getLocalizedUnit as localizeProductUnit } from '@/lib/product-units';
 import { useCamera } from '@/hooks/use-camera';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
-import { isNoInventoryMode, getCurrentStoreType } from '@/lib/store-type-config';
+import { isNoInventoryMode, getCurrentStoreType, getVisibleSections } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
 import { getSignedImageUrl } from '@/lib/image-upload';
 
@@ -146,7 +146,8 @@ export default function Products() {
   };
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuth();
-  const { t, tDynamic, isRTL, language } = useLanguage();
+  const { t, tDynamic, storeType, isRTL, language } = useLanguage();
+  const visible = getVisibleSections(storeType);
   const { isBoss, isAdmin, isCashier } = useUserRole();
   const noInventory = isNoInventoryMode();
   const isRestaurant = getCurrentStoreType() === 'restaurant';
@@ -2448,7 +2449,7 @@ export default function Products() {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
-                  {t('products.addProductTitle') || 'إضافة منتج جديد'}
+                  {tDynamic('addProduct') || t('products.addProductTitle') || 'إضافة منتج جديد'}
                 </DialogTitle>
               </div>
               <Button
@@ -3029,7 +3030,7 @@ export default function Products() {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
-                  {selectedProduct?.archived ? t('products.restoreAndEditProduct') : tDynamic('editProduct')}
+                  {selectedProduct?.archived ? t('products.restoreAndEditProduct') : (tDynamic('editProduct') || 'تعديل الصنف')}
                 </DialogTitle>
               </div>
               <Button

@@ -1,8 +1,14 @@
 {
-  "versionCode": 309,
-  "versionName": "1.0.79",
-  "lastUpdated": "2026-10-25T00:53:20.842Z",
+  "versionCode": 310,
+  "versionName": "1.0.80",
+  "lastUpdated": "2026-10-25T00:57:26.952Z",
   "buildHistory": [
+    {
+      "versionCode": 310,
+      "versionName": "1.0.80",
+      "date": "2026-10-25",
+      "description": "v1.0.80 - النموذج الثاني وتجهيز الدمج النهائي: تكييف شاشة المنتجات ديناميكياً مع نوع النشاط التجاري (Store Type Terminology & Sections)، المزامنة السحابية الشاملة لإعدادات المظهر والثيم (Cloud Appearance Profile)، وتفريغ وعزل كاش الجلسات والبيانات المحلية ومجموعات IndexedDB عند تسجيل الدخول والخروج"
+    },
     {
       "versionCode": 309,
       "versionName": "1.0.79",

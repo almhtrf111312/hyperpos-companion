@@ -208,6 +208,56 @@ const getCachedSession = (): { user: User | null; session: Session | null } => {
   return { user: null, session: null };
 };
 
+
+// ✅ تفريغ شامل للبيانات المحلية وعزل الحسابات (Local Storage + IndexedDB + Cloud Caches)
+const clearAllUserSessionCaches = async () => {
+  try {
+    // 1. مسح جميع المفاتيح المحلية التابعة للنظام
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('hyperpos_') || key.startsWith('flowpos_'))) {
+        // استثناء إعدادات اللغة والثيم والحساب المحفوظة الضرورية
+        if (
+          key !== 'hyperpos_language' &&
+          key !== 'hyperpos_theme' &&
+          key !== 'hyperpos_stay_logged_in' &&
+          key !== 'hyperpos_setup_complete' &&
+          key !== 'hyperpos_privacy_accepted' &&
+          key !== 'hyperpos_privacy_version'
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    console.log(`[Auth] Cleared ${keysToRemove.length} storage keys`);
+
+    // 2. تفريغ IndexedDB للمنتجات والصور
+    try {
+      const { clearProductsIDB } = await import('@/lib/indexeddb-cache');
+      await clearProductsIDB();
+      if (typeof window !== 'undefined' && window.indexedDB) {
+        window.indexedDB.deleteDatabase('flowpos_images_cache');
+      }
+      console.log('[Auth] Cleared IndexedDB and image cache');
+    } catch (err) {
+      console.warn('[Auth] Cache cleanup error:', err);
+    }
+
+    // 3. إبطال كاش الذاكرة
+    try {
+      const { invalidateAllCaches } = await import('@/lib/cloud');
+      invalidateAllCaches();
+      console.log('[Auth] Invalidated all memory caches');
+    } catch (err) {
+      console.warn('[Auth] Failed to invalidate memory caches:', err);
+    }
+  } catch (ex) {
+    console.warn('[Auth] Exception in clearAllUserSessionCaches:', ex);
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [cachedInitial] = useState(() => getCachedSession());
   const [user, setUser] = useState<User | null>(() => cachedInitial.user);
@@ -594,36 +644,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // ✅ مسح شامل للبيانات المحلية لمنع تسرب بيانات الحساب السابق
       if (data.user) {
-        // 1. مسح localStorage (ما عدا اللغة والثيم)
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('hyperpos_') && 
-              key !== 'hyperpos_language' && 
-              key !== 'hyperpos_theme' &&
-              key !== 'hyperpos_stay_logged_in' &&
-              key !== 'hyperpos_session_cache' &&
-              key !== 'hyperpos_setup_complete' &&
-              key !== 'hyperpos_privacy_accepted' &&
-              key !== 'hyperpos_privacy_version' &&
-              key !== 'hyperpos_recurring_expenses_v1') {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        console.log(`[Auth] Cleared ${keysToRemove.length} localStorage keys on sign-in`);
-
-        // 2. مسح IndexedDB (كاش المنتجات)
-        import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
-          clearProductsIDB();
-          console.log('[Auth] Cleared IndexedDB products cache on sign-in');
-        });
-
-        // 3. إبطال كاش الذاكرة للـ cloud stores
-        import('@/lib/cloud').then(({ invalidateAllCaches }) => {
-          invalidateAllCaches();
-          console.log('[Auth] Invalidated all cloud caches on sign-in');
-        });
+        await clearAllUserSessionCaches();
       }
       
       return { 
@@ -723,35 +744,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore storage errors
     }
     
-    // Clear all user-specific localStorage data
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('hyperpos_') && 
-          key !== 'hyperpos_language' && 
-          key !== 'hyperpos_theme' &&
-          key !== 'hyperpos_last_user_id' &&
-          key !== 'hyperpos_setup_complete' &&
-          key !== 'hyperpos_privacy_accepted' &&
-          key !== 'hyperpos_privacy_version' &&
-          key !== 'hyperpos_recurring_expenses_v1') {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-
-    // ✅ مسح IndexedDB وكاش الذاكرة عند تسجيل الخروج
-    try {
-      const { clearProductsIDB } = await import('@/lib/indexeddb-cache');
-      await clearProductsIDB();
-      console.log('[Auth] Cleared IndexedDB on sign-out');
-    } catch (e) { console.warn('[Auth] Failed to clear IDB:', e); }
-
-    try {
-      const { invalidateAllCaches } = await import('@/lib/cloud');
-      invalidateAllCaches();
-      console.log('[Auth] Invalidated cloud caches on sign-out');
-    } catch (e) { console.warn('[Auth] Failed to invalidate caches:', e); }
+    // ✅ مسح شامل للبيانات المحلية وكاش الجلسة عند تسجيل الخروج
+    await clearAllUserSessionCaches();
 
     await supabase.auth.signOut();
     setUser(null);
