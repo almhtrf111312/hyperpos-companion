@@ -5,7 +5,7 @@
 import { getCurrentUserId } from './supabase-store';
 import { emitEvent, EVENTS } from './events';
 import { roundCurrency, addCurrency, subtractCurrency } from './utils';
-import { getEnabledCurrencies } from './money-engine';
+import { getEnabledCurrencies, roundForCurrency, fromUsd } from './money-engine';
 
 // المفاتيح القديمة (للتوافق مع البيانات المخزنة سابقاً — تُقرأ كـ fallback)
 const LEGACY_CASHBOX_KEY = 'hyperpos_cashbox_v1';
@@ -167,7 +167,7 @@ export const initShiftCurrencies = (
   enabled.forEach(curr => {
     if (curr.code !== 'USD') {
       map[curr.code] = {
-        opening: roundCurrency(currencyOpenings?.[curr.code] ?? 0),
+        opening: roundForCurrency(currencyOpenings?.[curr.code] ?? 0, curr.code),
         sales: 0,
         expenses: 0,
         deposits: 0,
@@ -180,7 +180,7 @@ export const initShiftCurrencies = (
     Object.keys(currencyOpenings).forEach(code => {
       if (!map[code]) {
         map[code] = {
-          opening: roundCurrency(currencyOpenings[code] ?? 0),
+          opening: roundForCurrency(currencyOpenings[code] ?? 0, code),
           sales: 0,
           expenses: 0,
           deposits: 0,
@@ -325,7 +325,7 @@ export const updateCashboxBalance = (
   currencyAmount?: number
 ): void => {
   const roundedAmount = roundCurrency(amount);
-  const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
+  const roundedCurrAmount = currencyAmount !== undefined ? roundForCurrency(currencyAmount, currency) : roundForCurrency(fromUsd(amount, currency), currency);
   const state = loadCashboxState();
 
   // تحديث رصيد الصندوق (بالدولار الأساسي)
@@ -352,23 +352,23 @@ export const updateCashboxBalance = (
     switch (type) {
       case 'sale':
         shift.salesTotal = addCurrency(shift.salesTotal, roundedAmount);
-        currMap.sales = addCurrency(currMap.sales, roundedCurrAmount);
+        currMap.sales = roundForCurrency(currMap.sales + roundedCurrAmount, currency);
         break;
       case 'refund':
         shift.salesTotal = Math.max(0, subtractCurrency(shift.salesTotal, roundedAmount));
-        currMap.sales = Math.max(0, subtractCurrency(currMap.sales, roundedCurrAmount));
+        currMap.sales = Math.max(0, roundForCurrency(currMap.sales - roundedCurrAmount, currency));
         break;
       case 'expense':
         shift.expensesTotal = addCurrency(shift.expensesTotal, roundedAmount);
-        currMap.expenses = addCurrency(currMap.expenses, roundedCurrAmount);
+        currMap.expenses = roundForCurrency(currMap.expenses + roundedCurrAmount, currency);
         break;
       case 'deposit':
         shift.depositsTotal = addCurrency(shift.depositsTotal, roundedAmount);
-        currMap.deposits = addCurrency(currMap.deposits, roundedCurrAmount);
+        currMap.deposits = roundForCurrency(currMap.deposits + roundedCurrAmount, currency);
         break;
       case 'withdrawal':
         shift.withdrawalsTotal = addCurrency(shift.withdrawalsTotal, roundedAmount);
-        currMap.withdrawals = addCurrency(currMap.withdrawals, roundedCurrAmount);
+        currMap.withdrawals = roundForCurrency(currMap.withdrawals + roundedCurrAmount, currency);
         break;
     }
     shift.currencies[currency] = currMap;

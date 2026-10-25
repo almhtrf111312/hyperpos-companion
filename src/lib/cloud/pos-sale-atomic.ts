@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { emitEvent, EVENTS } from '@/lib/events';
 import { invalidateInvoicesCache } from './invoices-cloud';
 import { isGuestDemoMode } from '@/lib/demo-data';
+import { round8 } from '@/lib/money-engine';
 
 type LooseSupabase = SupabaseClient<any, 'public', any>;
 const sb = supabase as unknown as LooseSupabase;
@@ -95,15 +96,16 @@ function buildRpcItems(bundle: AtomicSaleBundle) {
     }
     const productId = stockItem.productId;
 
+    const lineTotalUSD = round8(item.total ?? (item.price * item.quantity));
     return {
       product_id: productId,
       product_name: item.name,
       quantity,
-      unit_price: item.price,
-      cost_price: item.costPrice || 0,
-      amount_original: item.total ?? item.price * item.quantity,
-      amount_usd: item.total ?? item.price * item.quantity,
-      profit: item.profit || 0,
+      unit_price: round8(item.price),
+      cost_price: round8(item.costPrice || 0),
+      amount_original: lineTotalUSD,
+      amount_usd: lineTotalUSD,
+      profit: round8(item.profit || 0),
       unit: item.unit || 'piece',
       conversion_factor: item.conversionFactor || 1,
     };
@@ -144,13 +146,13 @@ export async function processPosSaleAtomic(
       _payment_type: paymentType,
       _customer_name: bundle.customerName,
       _customer_phone: bundle.customerPhone || '',
-      _subtotal: bundle.subtotal,
-      _discount: bundle.discount,
+      _subtotal: round8(bundle.subtotal),
+      _discount: round8(bundle.discount),
       _discount_percentage: bundle.discountPercentage || 0,
       _tax_rate: bundle.taxRate || 0,
-      _tax_amount: bundle.taxAmount || 0,
-      _total: bundle.total,
-      _profit: bundle.profit,
+      _tax_amount: round8(bundle.taxAmount || 0),
+      _total: round8(bundle.total),
+      _profit: round8(bundle.profit),
       _currency: bundle.currency,
       _warehouse_id: (bundle.warehouseId && isValidUUID(bundle.warehouseId)) ? bundle.warehouseId : null,
       _items: rpcItems,

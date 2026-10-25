@@ -16,6 +16,7 @@ const sb = supabase as unknown as LooseSupabase;
 import { emitEvent, EVENTS } from '../events';
 import { isGuestDemoMode } from '../demo-data';
 import { roundCurrency, addCurrency, subtractCurrency, formatMoney } from '../utils';
+import { roundForCurrency, fromUsd, round8 } from '../money-engine';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { logActivity, diffFields } from '../activity-log';
 import { resolveHistoricalCurrency } from '../currencies';
@@ -142,10 +143,10 @@ function toInvoice(cloud: CloudInvoice): Invoice {
   const isForeign = rawCurrency !== 'USD' && exchangeRate > 0;
   
   const total = Number(cloud.total) || 0;
-  const totalInCurrency = isForeign ? roundCurrency(total * exchangeRate) : total;
-  const subtotalInCurrency = isForeign ? roundCurrency(subtotal * exchangeRate) : subtotal;
+  const totalInCurrency = isForeign ? roundForCurrency(fromUsd(total, rawCurrency, exchangeRate), rawCurrency) : total;
+  const subtotalInCurrency = isForeign ? roundForCurrency(fromUsd(subtotal, rawCurrency, exchangeRate), rawCurrency) : subtotal;
   const debtRemaining = Number(cloud.debt_remaining) || 0;
-  const debtRemainingInCurrency = isForeign ? roundCurrency(debtRemaining * exchangeRate) : debtRemaining;
+  const debtRemainingInCurrency = isForeign ? roundForCurrency(fromUsd(debtRemaining, rawCurrency, exchangeRate), rawCurrency) : debtRemaining;
 
   return {
     id: cloud.invoice_number || cloud.id,
@@ -482,7 +483,7 @@ const fetchInvoicesFromCloud = async (userId: string): Promise<Invoice[]> => {
             name: item.product_name as string,
             price: Number(item.unit_price) || 0,
             quantity: qty,
-            total: Number(item.amount_original) || 0,
+            total: Number(item.amount_usd ?? item.amount_original) || 0,
             costPrice: Number(item.cost_price) || 0,
             profit: Number(item.profit) || 0,
             refunded: qty <= 0,
@@ -630,10 +631,11 @@ export const addInvoiceCloud = async (
         product_id: item.id || null,
         product_name: item.name,
         quantity: item.quantity,
-        unit_price: Math.round((item.price || 0) * 100) / 100,
-        cost_price: Math.round((item.costPrice || 0) * 100) / 100,
-        amount_original: Math.round((item.total || 0) * 100) / 100,
-        profit: Math.round((item.profit || 0) * 100) / 100,
+        unit_price: round8(Number(item.price) || 0),
+        cost_price: round8(Number(item.costPrice) || 0),
+        amount_original: round8(Number(item.total) || 0),
+        amount_usd: round8(Number(item.total) || 0),
+        profit: round8(Number(item.profit) || 0),
       }));
 
       await sb.from('invoice_items').insert(itemsToInsert);

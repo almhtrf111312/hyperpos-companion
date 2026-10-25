@@ -313,6 +313,25 @@ export function round8(usd: number): number {
   return Math.round((num + Number.EPSILON) * 1e8) / 1e8;
 }
 
+export function preciseAdd(...amounts: number[]): number {
+  const sum = amounts.reduce((acc, val) => acc + (Number(val) || 0), 0);
+  return round8(sum);
+}
+
+export function preciseSubtract(a: number, b: number): number {
+  return round8((Number(a) || 0) - (Number(b) || 0));
+}
+
+export function preciseMultiply(amount: number, multiplier: number): number {
+  return round8((Number(amount) || 0) * (Number(multiplier) || 0));
+}
+
+export function preciseDivide(amount: number, divisor: number): number {
+  const d = Number(divisor);
+  if (!d || !Number.isFinite(d)) return 0;
+  return round8((Number(amount) || 0) / d);
+}
+
 export function roundForCurrency(amount: number, code?: string | null, decimalsOverride?: number): number {
   const num = Number(amount);
   if (!Number.isFinite(num)) return 0;

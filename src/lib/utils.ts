@@ -1,8 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getDisplayCurrency, getCurrencySymbolByCode, getActiveStoreCurrency, formatReportAmount } from "./currencies";
-import { toUsd, fromUsd, round8, getActiveCurrencyDef, roundForCurrency } from "./money-engine";
-export { getActiveStoreCurrency, formatReportAmount, toUsd, fromUsd, round8 };
+import { toUsd, fromUsd, round8, getActiveCurrencyDef, roundForCurrency, preciseAdd, preciseSubtract, preciseMultiply, preciseDivide } from "./money-engine";
+export { getActiveStoreCurrency, formatReportAmount, toUsd, fromUsd, round8, roundForCurrency, preciseAdd, preciseSubtract, preciseMultiply, preciseDivide };
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
