@@ -383,7 +383,7 @@ export function CartPanel({
       // ❌ تم إزالة الربح التلقائي - لا إضافة نسبة مئوية
     }
 
-    return roundCurrency(price);
+    return price;
   };
 
   const subtotal = roundCurrency(
@@ -1921,14 +1921,19 @@ export function CartPanel({
                 <div className="flex items-center gap-1 shrink-0 text-left">
                   {onUpdateItemPrice && (
                     <EditablePrice
-                      value={getItemPrice(item)}
-                      onChange={(newPrice) => onUpdateItemPrice(item.id, newPrice, item.unit)}
-                      className="w-12 h-6 text-[10px] text-center bg-muted/30 border border-border/60 p-0.5 rounded-md"
+                      value={roundForCurr(fromUsd(getItemPrice(item), selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code)}
+                      onChange={(newPriceInCurr) => {
+                        // تحويل السعر المعدل من عملة السلة إلى الدولار الأساسي بدقة
+                        const newUsdPrice = selectedCurrency.code === 'USD' 
+                          ? newPriceInCurr 
+                          : newPriceInCurr / (selectedCurrency.rate || 1);
+                        onUpdateItemPrice(item.id, newUsdPrice, item.unit);
+                      }}
+                      className="w-14 h-6 text-[10px] text-center bg-muted/30 border border-border/60 p-0.5 rounded-md font-bold"
                     />
                   )}
-                  {/* استبدال الـ $ الثابت برمز العملة المختارة ومعدل الصرف */}
                   <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[3.4rem] text-left", wholesaleMode ? "text-warning" : "text-primary")}>
-                    {selectedCurrency.symbol}{formatNumber(getItemPrice(item) * item.quantity * (selectedCurrency.rate || 1))}
+                    {selectedCurrency.symbol}{formatNumber(roundForCurr(fromUsd(getItemPrice(item) * item.quantity, selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code))}
                   </span>
                 </div>
               </div>

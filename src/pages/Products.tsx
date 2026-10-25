@@ -1451,14 +1451,22 @@ export default function Products() {
     setShowAddDialog(true);
   }, [categoryOptions, t]);
 
-  const handleCloseForm = useCallback(() => {
-    if (formData.name?.trim()) {
-      if (!window.confirm('هل تريد إلغاء التعديلات والخروج؟')) return;
-    }
+  // حالة نافذة تأكيد الإلغاء
+  const [showCancelConfirmDialog, setShowCancelConfirmDialog] = useState(false);
+
+  const closeFormDirectly = useCallback(() => {
     setActiveView('list');
     setImagePreviewBase64('');
     clearPersistedState();
-  }, [formData.name, clearPersistedState]);
+  }, [clearPersistedState]);
+
+  const handleCloseForm = useCallback(() => {
+    if (formData.name?.trim()) {
+      setShowCancelConfirmDialog(true);
+      return;
+    }
+    closeFormDirectly();
+  }, [formData.name, closeFormDirectly]);
 
   const handleSaveProductSubmit = useCallback(() => {
     if (activeView === 'add') {
@@ -1478,38 +1486,20 @@ export default function Products() {
           )}
           dir={isRTL ? 'rtl' : 'ltr'}
         >
-        {/* هيدر ثابت علوي رائع */}
+        {/* الهيدر العلوي المطور: بدون أزرار رجوع أو إلغاء علوية مشتتة */}
         <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 py-3 flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCloseForm}
-              className="rounded-xl h-9 w-9 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowRight className="w-5 h-5 rtl:rotate-0 ltr:rotate-180" />
-            </Button>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-foreground">
-                {activeView === 'add'
-                  ? (tDynamic('addProduct') || 'إضافة منتج جديد')
-                  : (selectedProduct?.archived
-                      ? (t('products.restoreAndEditProduct') || 'استرجاع وتعديل المنتج')
-                      : (tDynamic('editProduct') ? `${tDynamic('editProduct')}: ${formData.name || ''}` : `${t('common.edit')}: ${formData.name || ''}`))}
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                {activeView === 'add' ? 'أدخل تفاصيل وبيانات المنتج والمخزون' : 'تحديث أسعار وكميات وبيانات المنتج'}
-              </p>
-            </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-black text-foreground">
+              {activeView === 'add'
+                ? (tDynamic('addProduct') || 'إضافة منتج جديد')
+                : (selectedProduct?.archived
+                    ? (t('products.restoreAndEditProduct') || 'استرجاع وتعديل المنتج')
+                    : (tDynamic('editProduct') ? `${tDynamic('editProduct')}: ${formData.name || ''}` : `${t('common.edit')}: ${formData.name || ''}`))}
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              {activeView === 'add' ? 'أدخل تفاصيل وبيانات المنتج والمخزون' : 'تحديث أسعار وكميات وبيانات المنتج'}
+            </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCloseForm}
-            className="text-xs text-muted-foreground hover:text-destructive"
-          >
-            {t('common.cancel') || 'إلغاء'}
-          </Button>
         </div>
 
         {/* جسم النموذج الكامل بدون قيود النوافذ */}
@@ -2078,6 +2068,34 @@ export default function Products() {
             setScannerOpen(false);
           }}
         />
+
+        {/* نافذة تأكيد إلغاء التعديلات والخروج */}
+        <AlertDialog open={showCancelConfirmDialog} onOpenChange={setShowCancelConfirmDialog}>
+          <AlertDialogContent className="max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base font-black text-foreground">
+                إلغاء التعديلات والخروج؟
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground">
+                هل أنت متأكد من رغبتك في إلغاء التعديلات؟ لن يتم حفظ التغييرات التي قمت بها.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row-reverse gap-2 mt-4">
+              <AlertDialogCancel className="rounded-xl h-10 font-bold">
+                البقاء ومتابعة التعديل
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowCancelConfirmDialog(false);
+                  closeFormDirectly();
+                }}
+                className="rounded-xl h-10 font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                نعم، تراجع وخروج
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* معاينة صورة المنتج داخل النموذج */}
         <Dialog open={!!previewImageUrl} onOpenChange={() => setPreviewImageUrl(null)}>
@@ -2676,10 +2694,14 @@ export default function Products() {
                           <span className="text-muted-foreground/70 text-[10px]">{t('products.stock') || 'المخزون'}:</span>
                           <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
                           <span className="text-muted-foreground/70 text-[10px] font-sans">
-                            {product.conversionFactor && product.conversionFactor > 1
-                              ? getLocalizedUnit(product.bulkUnit, true)
-                              : getLocalizedUnit(product.smallUnit, false)}
+                            {getLocalizedUnit(product.smallUnit, false)}
                           </span>
+                          {product.conversionFactor && product.conversionFactor > 1 && (
+                            <span className="text-[10px] text-muted-foreground/80 font-normal">
+                              ({Math.floor(product.quantity / product.conversionFactor)} {getLocalizedUnit(product.bulkUnit, true)}
+                              {product.quantity % product.conversionFactor > 0 && ` + ${product.quantity % product.conversionFactor} ${getLocalizedUnit(product.smallUnit, false)}`})
+                            </span>
+                          )}
                           {(() => {
                             const custodyQty = getCustodyQuantity(product.id);
                             const breakdown = getCustodyBreakdown(product.id);
@@ -2785,10 +2807,14 @@ export default function Products() {
                             <span className="text-muted-foreground/70 text-[10px]">{t('products.stock') || 'المخزون'}:</span>
                             <span className="font-mono text-foreground font-black text-xs">{product.quantity}</span>
                             <span className="bg-muted text-muted-foreground text-[9px] px-1 py-0.2 rounded font-bold">
-                              {product.conversionFactor && product.conversionFactor > 1
-                                ? getLocalizedUnit(product.bulkUnit, true)
-                                : getLocalizedUnit(product.smallUnit, false)}
+                              {getLocalizedUnit(product.smallUnit, false)}
                             </span>
+                            {product.conversionFactor && product.conversionFactor > 1 && (
+                              <span className="text-[10px] text-muted-foreground/80 font-normal">
+                                ({Math.floor(product.quantity / product.conversionFactor)} {getLocalizedUnit(product.bulkUnit, true)}
+                                {product.quantity % product.conversionFactor > 0 && ` + ${product.quantity % product.conversionFactor} ${getLocalizedUnit(product.smallUnit, false)}`})
+                              </span>
+                            )}
                             {(() => {
                               const custodyQty = getCustodyQuantity(product.id);
                               const breakdown = getCustodyBreakdown(product.id);
@@ -2935,10 +2961,14 @@ export default function Products() {
                           <span>{t('products.stock') || 'المخزون'}:</span>
                           <span className="font-mono text-sm text-foreground font-black">{product.quantity}</span>
                           <span className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-md font-bold">
-                            {product.conversionFactor && product.conversionFactor > 1
-                              ? getLocalizedUnit(product.bulkUnit, true)
-                              : getLocalizedUnit(product.smallUnit, false)}
+                            {getLocalizedUnit(product.smallUnit, false)}
                           </span>
+                          {product.conversionFactor && product.conversionFactor > 1 && (
+                            <span className="text-[10px] text-muted-foreground/80 font-normal">
+                              ({Math.floor(product.quantity / product.conversionFactor)} {getLocalizedUnit(product.bulkUnit, true)}
+                              {product.quantity % product.conversionFactor > 0 && ` + ${product.quantity % product.conversionFactor} ${getLocalizedUnit(product.smallUnit, false)}`})
+                            </span>
+                          )}
                           {(() => {
                             const custodyQty = getCustodyQuantity(product.id);
                             const breakdown = getCustodyBreakdown(product.id);
@@ -3070,9 +3100,15 @@ export default function Products() {
                           ? "bg-destructive/10 text-destructive border-destructive/20"
                           : "bg-card border-border/70 text-muted-foreground"
                       )}>
-                        <span className="text-[9px] font-bold block">{profit >= 0 ? (t('products.profit') || "الربح") : (t('products.loss') || "الخسارة")}</span>
+                        <span className="text-[9px] font-bold block">
+                          {profit >= 0 ? (t('products.profit') || "الربح") : (t('products.loss') || "الخسارة")}
+                        </span>
                         <span className="text-xs font-black font-mono">
-                          {profit > 0 ? `+${formatMoney(profit, undefined, 2)}` : profit < 0 ? `-${formatMoney(Math.abs(profit), undefined, 2)}` : formatMoney(0, undefined, 2)}
+                          {profit > 0 
+                            ? `+${formatPriceRaw(profit)}` 
+                            : profit < 0 
+                            ? `-${formatPriceRaw(Math.abs(profit))}` 
+                            : formatPriceRaw(0)}
                         </span>
                       </div>
                     </div>
