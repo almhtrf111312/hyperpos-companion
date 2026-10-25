@@ -29,6 +29,8 @@ export interface RecurringExpense {
   type: ExpenseType;
   customType?: string;
   amount: number;
+  currency?: string;
+  exchangeRate?: number;
   notes?: string;
   interval: RecurringInterval;
   intervalDays: number;
@@ -63,6 +65,8 @@ export function addRecurringExpense(data: {
   type: ExpenseType;
   customType?: string;
   amount: number;
+  currency?: string;
+  exchangeRate?: number;
   notes?: string;
   intervalDays: number;
   startDate: string;
@@ -77,6 +81,8 @@ export function addRecurringExpense(data: {
     type: data.type,
     customType: data.customType,
     amount: data.amount,
+    currency: data.currency,
+    exchangeRate: data.exchangeRate,
     notes: data.notes,
     interval: intervalInfo.interval,
     intervalDays: data.intervalDays,

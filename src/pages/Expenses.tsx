@@ -89,7 +89,8 @@ import { toLocalDateString } from '@/lib/date-utils';
 export default function Expenses() {
   const m = useMoney();
   const [expenseCurrency, setExpenseCurrency] = useState<string>(() => m.activeCode);
-  const currentExpenseDef = m.getCurrencyDef(expenseCurrency);
+  const selectedCurrencyDef = m.enabledCurrencies.find(c => c.code === expenseCurrency) || m.getCurrencyDef(expenseCurrency);
+  const currentExpenseDef = selectedCurrencyDef;
   const { t, isRTL } = useLanguage();
 
   const getLocalizedExpenseType = (type: string, fallback?: string): string => {
@@ -142,6 +143,7 @@ export default function Expenses() {
     type: 'wages' as ExpenseType,
     customType: '',
     amount: 0,
+    currency: m.activeCode,
     intervalDays: 30,
     notes: '',
     autoPay: false,
@@ -166,12 +168,16 @@ export default function Expenses() {
     type: 'wages' as ExpenseType,
     customType: '',
     amount: 0,
+    currency: m.activeCode,
     intervalDays: 30,
     startDate: toLocalDateString(new Date()),
     notes: '',
     payImmediately: false,
     autoPay: false,
   });
+
+  const recurringCurrencyDef = m.enabledCurrencies.find(c => c.code === (recurringForm.currency || m.activeCode)) || m.getCurrencyDef(recurringForm.currency || m.activeCode);
+  const editRecurringCurrencyDef = m.enabledCurrencies.find(c => c.code === (editRecurringForm.currency || m.activeCode)) || m.getCurrencyDef(editRecurringForm.currency || m.activeCode);
 
   // Load expenses and recurring expenses from cloud
   useEffect(() => {
@@ -248,6 +254,7 @@ export default function Expenses() {
       type: 'wages',
       customType: '',
       amount: 0,
+      currency: m.activeCode,
       intervalDays: 30,
       startDate: toLocalDateString(new Date()),
       notes: '',
@@ -273,9 +280,9 @@ export default function Expenses() {
     savingRef.current = true;
     setIsSaving(true);
     try {
-      const amountUSD = m.toUsd(formData.amount, expenseCurrency, currentExpenseDef.rate);
+      const amountUSD = m.toUsd(formData.amount, expenseCurrency, selectedCurrencyDef.rate);
       const noteSuffix = expenseCurrency !== 'USD'
-        ? ` (${m.roundForCurrency(formData.amount, expenseCurrency)} ${currentExpenseDef.symbol})`
+        ? ` (${m.roundForCurrency(formData.amount, expenseCurrency)} ${selectedCurrencyDef.symbol})`
         : '';
       const finalNotes = formData.notes ? `${formData.notes}${noteSuffix}` : (noteSuffix.trim() || undefined);
 
@@ -317,15 +324,27 @@ export default function Expenses() {
       return;
     }
 
+    const curr = recurringForm.currency || m.activeCode;
+    const currDef = m.enabledCurrencies.find(c => c.code === curr) || m.getCurrencyDef(curr);
+    const amountUSD = m.toUsd(recurringForm.amount, curr, currDef.rate);
+    const currencySuffix = curr !== 'USD'
+      ? ` (${m.roundForCurrency(recurringForm.amount, curr)} ${currDef.symbol})`
+      : '';
+    const finalNotes = recurringForm.notes
+      ? `${recurringForm.notes}${currencySuffix}`
+      : (currencySuffix.trim() || undefined);
+
     try {
       const newExpense = await addRecurringExpenseCloud({
         name: recurringForm.name,
         type: recurringForm.type,
         customType: recurringForm.customType,
-        amount: recurringForm.amount,
+        amount: amountUSD,
+        currency: curr,
+        exchangeRate: currDef.rate,
         intervalDays: recurringForm.intervalDays,
         startDate: recurringForm.startDate,
-        notes: recurringForm.notes,
+        notes: finalNotes,
         autoPay: recurringForm.autoPay,
       });
 
@@ -334,12 +353,12 @@ export default function Expenses() {
         await addExpenseCloud({
           type: recurringForm.type,
           customType: recurringForm.customType || recurringForm.name,
-          amount: recurringForm.amount,
-          notes: `${recurringForm.name} - دفعة سداد فوري لمصروف ثابت`,
+          amount: amountUSD,
+          notes: `${recurringForm.name} - دفعة سداد فوري لمصروف ثابت${currencySuffix}`,
           date: todayStr,
         });
 
-        processExpense(recurringForm.amount, recurringForm.type);
+        processExpense(amountUSD, recurringForm.type);
 
         const nextDate = new Date(recurringForm.startDate || todayStr);
         nextDate.setDate(nextDate.getDate() + (recurringForm.intervalDays || 30));
@@ -371,13 +390,21 @@ export default function Expenses() {
 
   const handleOpenEditRecurring = (expense: RecurringExpense) => {
     setEditingRecurring(expense);
+    const curr = expense.currency || 'USD';
+    const currDef = m.enabledCurrencies.find(c => c.code === curr) || m.getCurrencyDef(curr);
+    const effectiveRate = expense.exchangeRate || currDef.rate;
+    const displayAmount = curr !== 'USD'
+      ? m.roundForCurrency(m.fromUsd(expense.amount, curr, effectiveRate), curr)
+      : expense.amount;
+
     setEditRecurringForm({
       name: expense.name,
       type: expense.type,
       customType: expense.customType || '',
-      amount: expense.amount,
+      amount: displayAmount,
+      currency: curr,
       intervalDays: expense.intervalDays,
-      notes: expense.notes || '',
+      notes: expense.notes ? expense.notes.replace(/\s*\[CURRENCY:[^\]]+\]/g, '').replace(/\s*\([^)]*([₺$]|ل\.س|ج\.م|ر\.س|د\.إ|د\.ع|د\.أ|ل\.ل|د\.ك|ر\.ق|د\.ب|ر\.ع)[^)]*\)/g, '').trim() : '',
       autoPay: expense.autoPay ?? false,
     });
     setShowEditRecurringDialog(true);
@@ -391,16 +418,28 @@ export default function Expenses() {
     }
 
     const intervalInfo = recurringIntervals.find(i => i.value === editRecurringForm.intervalDays) || recurringIntervals[1];
+    const curr = editRecurringForm.currency || m.activeCode;
+    const currDef = m.enabledCurrencies.find(c => c.code === curr) || m.getCurrencyDef(curr);
+    const amountUSD = m.toUsd(editRecurringForm.amount, curr, currDef.rate);
+    const currencySuffix = curr !== 'USD'
+      ? ` (${m.roundForCurrency(editRecurringForm.amount, curr)} ${currDef.symbol})`
+      : '';
+    const cleanNotes = editRecurringForm.notes ? editRecurringForm.notes.replace(/\s*\[CURRENCY:[^\]]+\]/g, '').replace(/\s*\([^)]*([₺$]|ل\.س|ج\.م|ر\.س|د\.إ|د\.ع|د\.أ|ل\.ل|د\.ك|ر\.ق|د\.ب|ر\.ع)[^)]*\)/g, '').trim() : '';
+    const finalNotes = cleanNotes
+      ? (currencySuffix ? `${cleanNotes}${currencySuffix}` : cleanNotes)
+      : (currencySuffix.trim() || undefined);
 
     try {
       await updateRecurringExpenseCloud(editingRecurring.id, {
         name: editRecurringForm.name,
         type: editRecurringForm.type,
         customType: editRecurringForm.customType,
-        amount: editRecurringForm.amount,
+        amount: amountUSD,
+        currency: curr,
+        exchangeRate: currDef.rate,
         interval: intervalInfo.interval,
         intervalDays: editRecurringForm.intervalDays,
-        notes: editRecurringForm.notes,
+        notes: finalNotes,
         autoPay: editRecurringForm.autoPay,
       });
 
@@ -923,16 +962,51 @@ export default function Expenses() {
               </Select>
             </div>
 
+            {/* Currency Selector for Recurring Expense */}
+            <div className="flex items-center justify-between bg-muted/30 px-3 py-1.5 rounded-xl border border-border/60">
+              <span className="text-xs font-semibold text-muted-foreground">عملة المصروف:</span>
+              <div className="flex items-center gap-1 bg-background p-0.5 rounded-lg border border-border/60">
+                {m.enabledCurrencies.map((curr) => (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    onClick={() => setRecurringForm({ ...recurringForm, currency: curr.code })}
+                    className={cn(
+                      "px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1",
+                      (recurringForm.currency || m.activeCode) === curr.code
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span>{curr.symbol}</span>
+                    <span>{curr.code}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
-              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.amount')} ($)</label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={recurringForm.amount || ''}
-                onChange={(e) => setRecurringForm({ ...recurringForm, amount: Number(e.target.value) })}
-                min="0"
-                className="h-10 rounded-xl font-mono text-sm font-bold"
-              />
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">
+                {t('expenses.amount')} ({recurringCurrencyDef.symbol})
+              </label>
+              <div className="relative">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold font-mono text-muted-foreground">
+                  {recurringCurrencyDef.symbol}
+                </span>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={recurringForm.amount || ''}
+                  onChange={(e) => setRecurringForm({ ...recurringForm, amount: Number(e.target.value) })}
+                  min="0"
+                  className="pr-9 h-10 rounded-xl font-mono text-sm font-bold"
+                />
+              </div>
+              {(recurringForm.currency || m.activeCode) !== 'USD' && recurringForm.amount > 0 && (
+                <p className="text-[11px] text-muted-foreground font-mono mt-1">
+                  ≈ ${m.toUsd(recurringForm.amount, recurringForm.currency || m.activeCode, recurringCurrencyDef.rate).toFixed(2)} USD
+                </p>
+              )}
             </div>
 
             <div>
@@ -1056,7 +1130,7 @@ export default function Expenses() {
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground font-mono">
-                        <span className="font-bold text-foreground">{m.fmt(expense.amount)}</span> - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
+                        <span className="font-bold text-foreground">{expense.currency && expense.currency !== 'USD' && expense.exchangeRate ? `${m.roundForCurrency(m.fromUsd(expense.amount, expense.currency, expense.exchangeRate), expense.currency)} ${expense.currency} (≈ ${m.fmt(expense.amount)})` : m.fmt(expense.amount)}</span> - {t('expenses.every')} {expense.intervalDays} {t('expenses.days')}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5">
                         <span>{t('expenses.nextDue')}: {expense.nextDueDate}</span>
@@ -1176,16 +1250,51 @@ export default function Expenses() {
               </Select>
             </div>
 
+            {/* Currency Selector for Editing Recurring Expense */}
+            <div className="flex items-center justify-between bg-muted/30 px-3 py-1.5 rounded-xl border border-border/60">
+              <span className="text-xs font-semibold text-muted-foreground">عملة المصروف:</span>
+              <div className="flex items-center gap-1 bg-background p-0.5 rounded-lg border border-border/60">
+                {m.enabledCurrencies.map((curr) => (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    onClick={() => setEditRecurringForm({ ...editRecurringForm, currency: curr.code })}
+                    className={cn(
+                      "px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1",
+                      (editRecurringForm.currency || m.activeCode) === curr.code
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span>{curr.symbol}</span>
+                    <span>{curr.code}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
-              <label className="text-xs font-semibold mb-1 block text-muted-foreground">{t('expenses.amount')} ($)</label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={editRecurringForm.amount || ''}
-                onChange={(e) => setEditRecurringForm({ ...editRecurringForm, amount: Number(e.target.value) })}
-                min="0"
-                className="h-10 rounded-xl font-mono text-sm font-bold"
-              />
+              <label className="text-xs font-semibold mb-1 block text-muted-foreground">
+                {t('expenses.amount')} ({editRecurringCurrencyDef.symbol})
+              </label>
+              <div className="relative">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold font-mono text-muted-foreground">
+                  {editRecurringCurrencyDef.symbol}
+                </span>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={editRecurringForm.amount || ''}
+                  onChange={(e) => setEditRecurringForm({ ...editRecurringForm, amount: Number(e.target.value) })}
+                  min="0"
+                  className="pr-9 h-10 rounded-xl font-mono text-sm font-bold"
+                />
+              </div>
+              {(editRecurringForm.currency || m.activeCode) !== 'USD' && editRecurringForm.amount > 0 && (
+                <p className="text-[11px] text-muted-foreground font-mono mt-1">
+                  ≈ ${m.toUsd(editRecurringForm.amount, editRecurringForm.currency || m.activeCode, editRecurringCurrencyDef.rate).toFixed(2)} USD
+                </p>
+              )}
             </div>
 
             <div>
@@ -1255,7 +1364,7 @@ export default function Expenses() {
               <span>{t('expenses.confirmPayExpense')}</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground pt-2">
-              {t('expenses.payExpenseConfirm').replace('{name}', selectedRecurring?.name || '').replace('{amount}', formatNumber(selectedRecurring?.amount || 0))}
+              {t('expenses.payExpenseConfirm').replace('{name}', selectedRecurring?.name || '').replace('{amount}', selectedRecurring ? m.fmt(selectedRecurring.amount) : '0')}
               <span className="block mt-2 font-medium text-emerald-600 dark:text-emerald-400">
                 💰 {t('expenses.confirmDeductFromCashbox')}
               </span>

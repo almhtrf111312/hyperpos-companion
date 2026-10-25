@@ -50,6 +50,8 @@ export function toRecurringExpense(row: any): RecurringExpense {
     type: (row.expense_type as ExpenseType) || 'other',
     customType: row.custom_type || undefined,
     amount: Number(row.amount) || 0,
+    currency: row.currency || (typeof row.notes === 'string' ? row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)?.[1] : undefined),
+    exchangeRate: row.exchange_rate ? Number(row.exchange_rate) : (typeof row.notes === 'string' && row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)?.[2] ? Number(row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)[2]) : undefined),
     notes: row.notes || undefined,
     interval: (row.interval as RecurringInterval) || 'monthly',
     intervalDays: Number(row.interval_days) || 30,
@@ -205,6 +207,8 @@ export const addRecurringExpenseCloud = async (data: {
   type: ExpenseType;
   customType?: string;
   amount: number;
+  currency?: string;
+  exchangeRate?: number;
   notes?: string;
   intervalDays: number;
   startDate: string;
@@ -222,6 +226,8 @@ export const addRecurringExpenseCloud = async (data: {
     type: data.type,
     customType: data.customType,
     amount: data.amount,
+    currency: data.currency,
+    exchangeRate: data.exchangeRate,
     notes: data.notes,
     interval: intervalInfo.interval,
     intervalDays: data.intervalDays,
@@ -230,6 +236,14 @@ export const addRecurringExpenseCloud = async (data: {
     isActive: true,
     createdAt: nowIso,
   };
+
+  let cloudNotes = data.notes || null;
+  if (data.currency && data.currency !== 'USD') {
+    const tag = `[CURRENCY:${data.currency}:${data.exchangeRate || 1}]`;
+    if (!cloudNotes?.includes('[CURRENCY:')) {
+      cloudNotes = cloudNotes ? `${cloudNotes} ${tag}` : tag;
+    }
+  }
 
   const payload = {
     id: newId,
@@ -243,7 +257,7 @@ export const addRecurringExpenseCloud = async (data: {
     interval_days: data.intervalDays,
     next_due_date: data.startDate,
     auto_pay: data.autoPay ?? false,
-    notes: data.notes || null,
+    notes: cloudNotes,
     is_active: true,
     created_at: nowIso,
   };
@@ -307,7 +321,17 @@ export const updateRecurringExpenseCloud = async (
   if (updates.nextDueDate !== undefined) payload.next_due_date = updates.nextDueDate;
   if (updates.lastPaidDate !== undefined) payload.last_paid_date = updates.lastPaidDate;
   if (updates.autoPay !== undefined) payload.auto_pay = updates.autoPay;
-  if (updates.notes !== undefined) payload.notes = updates.notes;
+  if (updates.notes !== undefined || updates.currency !== undefined || updates.exchangeRate !== undefined) {
+    let baseNotes = updates.notes !== undefined ? updates.notes : (existing.notes || '');
+    baseNotes = baseNotes?.replace(/\s*\[CURRENCY:[^\]]+\]/g, '').trim() || '';
+    const effectiveCurr = updates.currency || existing.currency;
+    const effectiveRate = updates.exchangeRate || existing.exchangeRate || 1;
+    if (effectiveCurr && effectiveCurr !== 'USD') {
+      payload.notes = baseNotes ? `${baseNotes} [CURRENCY:${effectiveCurr}:${effectiveRate}]` : `[CURRENCY:${effectiveCurr}:${effectiveRate}]`;
+    } else {
+      payload.notes = baseNotes || null;
+    }
+  }
   if (updates.isActive !== undefined) payload.is_active = updates.isActive;
   payload.updated_at = new Date().toISOString();
 
