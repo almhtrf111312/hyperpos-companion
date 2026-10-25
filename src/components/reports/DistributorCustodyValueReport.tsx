@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { loadWarehousesCloud, loadWarehouseStockCloud } from '@/lib/cloud/warehouses-cloud';
 import { loadProductsCloud, Product } from '@/lib/cloud/products-cloud';
 import { useLanguage } from '@/hooks/use-language';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatReportAmount } from '@/lib/utils';
 import { toast } from '@/lib/sonner-bridge';
 
 interface DistributorCustodyValue {
@@ -247,7 +247,7 @@ export function DistributorCustodyValueReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">
-              {formatCurrency(summary.totalCostValue)}
+              {formatReportAmount(summary.totalCostValue)}
             </div>
           </CardContent>
         </Card>
@@ -261,7 +261,7 @@ export function DistributorCustodyValueReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {formatCurrency(summary.totalSaleValue)}
+              {formatReportAmount(summary.totalSaleValue)}
             </div>
           </CardContent>
         </Card>
@@ -275,7 +275,7 @@ export function DistributorCustodyValueReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(summary.totalPotentialProfit)}
+              {formatReportAmount(summary.totalPotentialProfit)}
             </div>
           </CardContent>
         </Card>
@@ -316,13 +316,13 @@ export function DistributorCustodyValueReport() {
                       <TableCell className="text-center">{distributor.totalProducts}</TableCell>
                       <TableCell className="text-center">{distributor.totalQuantity}</TableCell>
                       <TableCell className="text-center text-amber-600 font-medium">
-                        {formatCurrency(distributor.totalCostValue)}
+                        {formatReportAmount(distributor.totalCostValue)}
                       </TableCell>
                       <TableCell className="text-center text-primary font-semibold">
-                        {formatCurrency(distributor.totalSaleValue)}
+                        {formatReportAmount(distributor.totalSaleValue)}
                       </TableCell>
                       <TableCell className="text-center text-green-600 font-semibold">
-                        {formatCurrency(distributor.potentialProfit)}
+                        {formatReportAmount(distributor.potentialProfit)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Button
@@ -359,10 +359,10 @@ export function DistributorCustodyValueReport() {
                                     <TableCell className="font-medium">{product.productName}</TableCell>
                                     <TableCell className="text-center text-muted-foreground">{product.unit}</TableCell>
                                     <TableCell className="text-center">{product.quantity}</TableCell>
-                                    <TableCell className="text-center">{formatCurrency(product.costPrice)}</TableCell>
-                                    <TableCell className="text-center">{formatCurrency(product.salePrice)}</TableCell>
-                                    <TableCell className="text-center text-amber-600">{formatCurrency(product.costValue)}</TableCell>
-                                    <TableCell className="text-center text-primary">{formatCurrency(product.saleValue)}</TableCell>
+                                    <TableCell className="text-center">{formatReportAmount(product.costPrice)}</TableCell>
+                                    <TableCell className="text-center">{formatReportAmount(product.salePrice)}</TableCell>
+                                    <TableCell className="text-center text-amber-600">{formatReportAmount(product.costValue)}</TableCell>
+                                    <TableCell className="text-center text-primary">{formatReportAmount(product.saleValue)}</TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>

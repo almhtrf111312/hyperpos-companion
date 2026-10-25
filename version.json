@@ -1,8 +1,14 @@
 {
-  "versionCode": 328,
-  "versionName": "1.0.98",
-  "lastUpdated": "2026-10-25T09:34:13.513145+00:00",
+  "versionCode": 329,
+  "versionName": "1.0.99",
+  "lastUpdated": "2026-10-25T09:44:44.281609+00:00",
   "buildHistory": [
+    {
+      "versionCode": 329,
+      "versionName": "1.0.99",
+      "date": "2026-10-25",
+      "description": "v1.0.99 - خطة الإصلاح الشاملة: المرحلة 5 — التقارير المالية وتدقيق الأرباح المحققة والمعلقة (Financial Reports & Profit Auditing)؛ توحيد جميع عناصر وبطاقات وجداول التقارير والرسوم البيانية وملفات التصدير PDF في (Reports.tsx) وكافة التقارير الفرعية (CashierPerformanceReport, DistributorCustodyValueReport, MaintenanceReport, ProductMovementReport, ProfitTrendChart, PurchaseInvoicesReport, TopProductsReport) لتمرير المبالغ عبر formatReportAmount بدلاً من formatCurrency لضمان تحويلها ومطابقتها لعملة التقرير، وحماية احتساب الأرباح في تقارير المبيعات وتقارير الشركاء بحيث لا تُحسب أرباح فواتير الديون كأرباح محققة إلا بنسبة ما تم سداده فعلياً مع بقاء الأرباح غير المحصلة كأرباح معلقة"
+    },
     {
       "versionCode": 328,
       "versionName": "1.0.98",

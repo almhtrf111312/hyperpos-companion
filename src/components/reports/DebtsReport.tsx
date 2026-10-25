@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FileText, Download, AlertTriangle, CheckCircle, Clock, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { loadDebtsCloud, Debt } from '@/lib/cloud/debts-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';

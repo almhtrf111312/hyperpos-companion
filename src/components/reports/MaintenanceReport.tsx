@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { FileText, Download, Wrench, DollarSign, TrendingUp, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
+import { formatReportAmount } from '@/lib/utils';
 import { Invoice } from '@/lib/cloud/invoices-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
@@ -125,12 +125,12 @@ export function MaintenanceReport({ dateRange, invoices, isLoading, hideInternal
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-blue-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(stats.totalRevenue)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.totalRevenue') || 'إجمالي الإيرادات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <TrendingUp className="w-5 h-5 text-green-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(stats.totalProfit)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(stats.totalProfit)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.netProfit') || 'صافي الربح'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
@@ -166,9 +166,9 @@ export function MaintenanceReport({ dateRange, invoices, isLoading, hideInternal
                     <td className="p-3 text-muted-foreground">{i + 1}</td>
                     <td className="p-3 font-medium">{inv.customerName}</td>
                     <td className="p-3 text-muted-foreground max-w-[14.3rem] truncate">{inv.serviceDescription || '-'}</td>
-                    <td className="p-3 text-center">{formatCurrency(inv.total)}</td>
-                    <td className="p-3 text-center text-red-500">{formatCurrency(inv.partsCost || 0)}</td>
-                    <td className="p-3 text-center text-green-600 font-medium">{formatCurrency(inv.profit || 0)}</td>
+                    <td className="p-3 text-center">{formatReportAmount(inv.total)}</td>
+                    <td className="p-3 text-center text-red-500">{formatReportAmount(inv.partsCost || 0)}</td>
+                    <td className="p-3 text-center text-green-600 font-medium">{formatReportAmount(inv.profit || 0)}</td>
                     <td className="p-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs ${inv.paymentType === 'cash' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}`}>
                         {inv.paymentType === 'cash' ? 'نقدي' : 'آجل'}
@@ -181,9 +181,9 @@ export function MaintenanceReport({ dateRange, invoices, isLoading, hideInternal
               <tfoot className="bg-muted/30 font-bold">
                 <tr>
                   <td className="p-3" colSpan={3}>الإجمالي</td>
-                  <td className="p-3 text-center">{formatCurrency(stats.totalRevenue)}</td>
-                  <td className="p-3 text-center text-red-500">{formatCurrency(stats.totalPartsCost)}</td>
-                  <td className="p-3 text-center text-green-600">{formatCurrency(stats.totalProfit)}</td>
+                  <td className="p-3 text-center">{formatReportAmount(stats.totalRevenue)}</td>
+                  <td className="p-3 text-center text-red-500">{formatReportAmount(stats.totalPartsCost)}</td>
+                  <td className="p-3 text-center text-green-600">{formatReportAmount(stats.totalProfit)}</td>
                   <td className="p-3" colSpan={2}></td>
                 </tr>
               </tfoot>

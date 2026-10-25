@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { loadInvoicesCloud, type Invoice } from '@/lib/cloud/invoices-cloud';
 import { loadProductsLocalFirst, type Product } from '@/lib/cloud/products-cloud';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
-import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { formatReportAmount, formatNumber, cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 
 interface Props { dateRange: { from: string; to: string } }
@@ -129,12 +129,12 @@ export function TopProductsReport({ dateRange }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate">{r.name}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {t('reports.quantityLabel') || 'كمية'}: {formatNumber(r.qty)} • {t('reports.revenueLabel') || 'إيراد'}: {formatCurrency(r.revenue)}
+                      {t('reports.quantityLabel') || 'كمية'}: {formatNumber(r.qty)} • {t('reports.revenueLabel') || 'إيراد'}: {formatReportAmount(r.revenue)}
                     </p>
                   </div>
                   <div className="text-left shrink-0">
                     <p className={cn('text-xs font-bold', r.profit >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                      {formatCurrency(r.profit)}
+                      {formatReportAmount(r.profit)}
                     </p>
                     <p className="text-[10px] text-muted-foreground">{margin.toFixed(1)}%</p>
                   </div>

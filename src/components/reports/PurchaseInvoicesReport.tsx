@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FileText, Download, Package, DollarSign, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatReportAmount, formatNumber } from '@/lib/utils';
 import { loadPurchaseInvoicesCloud, PurchaseInvoice } from '@/lib/cloud/purchase-invoices-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
@@ -126,7 +126,7 @@ export function PurchaseInvoicesReport({ dateRange, hideInternalExport = false }
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-blue-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(stats.total)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(stats.total)}</p>
           <p className="text-xs text-muted-foreground">{t('invoices.total') || 'الإجمالي الفعلي'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
@@ -168,7 +168,7 @@ export function PurchaseInvoicesReport({ dateRange, hideInternalExport = false }
                     <td className="p-3 text-center">{inv.invoice_date}</td>
                     <td className="p-3 text-center">{inv.actual_items_count}</td>
                     <td className="p-3 text-center">{inv.actual_total_quantity}</td>
-                    <td className="p-3 text-center font-medium">{formatCurrency(inv.actual_grand_total || 0)}</td>
+                    <td className="p-3 text-center font-medium">{formatReportAmount(inv.actual_grand_total || 0)}</td>
                     <td className="p-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         inv.status === 'finalized' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
@@ -184,7 +184,7 @@ export function PurchaseInvoicesReport({ dateRange, hideInternalExport = false }
               <tfoot className="bg-muted/30 font-bold">
                 <tr>
                   <td className="p-3" colSpan={5}>الإجمالي</td>
-                  <td className="p-3 text-center">{formatCurrency(stats.total)}</td>
+                  <td className="p-3 text-center">{formatReportAmount(stats.total)}</td>
                   <td className="p-3"></td>
                 </tr>
               </tfoot>

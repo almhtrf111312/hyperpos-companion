@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { loadProductsLocalFirst, refreshProductsFromCloud, type Product } from '@/lib/cloud/products-cloud';
 import { loadInvoicesCloud, type Invoice } from '@/lib/cloud/invoices-cloud';
 import { listStockDamages, type StockDamage } from '@/lib/cloud/stock-damages-cloud';
-import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { formatReportAmount, formatNumber, cn } from '@/lib/utils';
 import { exportGenericToExcel, exportGenericToPDF } from '@/lib/reports/dataset-builder';
 import { toast } from '@/lib/sonner-bridge';
 import { useLanguage } from '@/hooks/use-language';
@@ -238,7 +238,7 @@ export function ProductMovementReport({ dateRange }: Props) {
             </div>
             <div className="flex items-center justify-between text-xs mt-1.5">
               <span className="text-muted-foreground">الربح المحقق:</span>
-              <span className="font-bold text-primary">{formatCurrency(summary.profit)}</span>
+              <span className="font-bold text-primary">{formatReportAmount(summary.profit)}</span>
             </div>
           </CardContent></Card>
 
@@ -259,7 +259,7 @@ export function ProductMovementReport({ dateRange }: Props) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-xs font-semibold truncate">{meta.label} • {formatNumber(m.qty)}</p>
-                          <p className="text-xs font-bold whitespace-nowrap">{formatCurrency(m.total)}</p>
+                          <p className="text-xs font-bold whitespace-nowrap">{formatReportAmount(m.total)}</p>
                         </div>
                         <div className="flex items-center justify-between gap-2 mt-0.5">
                           <p className="text-[10px] text-muted-foreground truncate">{m.reference}{m.cashier ? ` • ${m.cashier}` : ''}</p>

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { FileText, Download, Users, DollarSign, TrendingUp, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatReportAmount, formatNumber } from '@/lib/utils';
 import { Invoice } from '@/lib/cloud/invoices-cloud';
 import { exportToExcel } from '@/lib/excel-export';
 import { exportToPDF } from '@/lib/pdf-export';
@@ -138,12 +138,12 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <DollarSign className="w-5 h-5 text-green-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(totalSales)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(totalSales)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.totalSales') || 'إجمالي المبيعات'}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <TrendingUp className="w-5 h-5 text-emerald-500 mb-2" />
-          <p className="text-2xl font-bold">{formatCurrency(totalProfit)}</p>
+          <p className="text-2xl font-bold">{formatReportAmount(totalProfit)}</p>
           <p className="text-xs text-muted-foreground">{t('reports.totalProfit') || 'إجمالي الأرباح'}</p>
         </div>
       </div>
@@ -174,11 +174,11 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
                     <td className="p-3 text-muted-foreground">{i + 1}</td>
                     <td className="p-3 font-medium">{c.name}</td>
                     <td className="p-3 text-center">{c.invoiceCount}</td>
-                    <td className="p-3 text-center font-medium">{formatCurrency(c.totalSales)}</td>
-                    <td className="p-3 text-center text-green-600">{formatCurrency(c.totalProfit)}</td>
-                    <td className="p-3 text-center">{formatCurrency(c.invoiceCount > 0 ? c.totalSales / c.invoiceCount : 0)}</td>
-                    <td className="p-3 text-center">{formatCurrency(c.cashSales)}</td>
-                    <td className="p-3 text-center text-amber-600">{formatCurrency(c.debtSales)}</td>
+                    <td className="p-3 text-center font-medium">{formatReportAmount(c.totalSales)}</td>
+                    <td className="p-3 text-center text-green-600">{formatReportAmount(c.totalProfit)}</td>
+                    <td className="p-3 text-center">{formatReportAmount(c.invoiceCount > 0 ? c.totalSales / c.invoiceCount : 0)}</td>
+                    <td className="p-3 text-center">{formatReportAmount(c.cashSales)}</td>
+                    <td className="p-3 text-center text-amber-600">{formatReportAmount(c.debtSales)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -186,8 +186,8 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
                 <tr>
                   <td className="p-3" colSpan={2}>{t('invoices.total') || 'الإجمالي'}</td>
                   <td className="p-3 text-center">{totalInvoices}</td>
-                  <td className="p-3 text-center">{formatCurrency(totalSales)}</td>
-                  <td className="p-3 text-center text-green-600">{formatCurrency(totalProfit)}</td>
+                  <td className="p-3 text-center">{formatReportAmount(totalSales)}</td>
+                  <td className="p-3 text-center text-green-600">{formatReportAmount(totalProfit)}</td>
                   <td className="p-3" colSpan={3}></td>
                 </tr>
               </tfoot>
@@ -211,7 +211,7 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
                       style={{ width: `${(c.totalSales / maxSales) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs font-semibold w-20 text-left">{formatCurrency(c.totalSales)}</span>
+                  <span className="text-xs font-semibold w-20 text-left">{formatReportAmount(c.totalSales)}</span>
                 </div>
               );
             })}

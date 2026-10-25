@@ -44,7 +44,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
-import { cn, formatNumber, formatCurrency, formatMoney, formatReportAmount } from '@/lib/utils';
+import { cn, formatNumber, formatMoney, formatReportAmount } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/sonner-bridge';
 import { useTheme } from '@/hooks/use-theme';
@@ -424,13 +424,21 @@ export default function Reports() {
       const invTotal = Number(inv.total || 0);
       const { profit, discount } = getInvoiceCalculatedMetrics(inv);
       totalSales += invTotal;
-      totalProfit += profit;
       totalDiscount += discount;
+
+      // حماية الأرباح المحققة: الديون غير المسددة لا تُحسب كأرباح محققة إلا بما تم سداده فعلياً
+      const isUnpaidDebt = inv.paymentType === 'debt' && inv.status !== 'paid';
+      const paidRatio = isUnpaidDebt
+        ? (invTotal > 0 ? Math.min(1, Math.max(0, Number(inv.debtPaid || 0) / invTotal)) : 0)
+        : 1;
+      const realizedProfit = profit * paidRatio;
+
+      totalProfit += realizedProfit;
 
       const date = toLocalDateString(inv.createdAt);
       if (!dailySalesMap[date]) dailySalesMap[date] = { sales: 0, profit: 0, orders: 0, discount: 0 };
       dailySalesMap[date].sales += invTotal;
-      dailySalesMap[date].profit += profit;
+      dailySalesMap[date].profit += realizedProfit;
       dailySalesMap[date].orders += 1;
       dailySalesMap[date].discount += discount;
     });
@@ -498,7 +506,7 @@ export default function Reports() {
     const partnerProfitData = filteredPartners.map(partner => {
       const filteredProfitHistory = (partner.profitHistory || []).filter(record => {
         const recordDate = toLocalDateString(record.createdAt);
-        return isDateInRange(recordDate, dateRange.from, dateRange.to);
+        return isDateInRange(recordDate, dateRange.from, dateRange.to) && !record.isDebt;
       });
       const totalProfitInPeriod = filteredProfitHistory.reduce((sum, r) => sum + r.amount, 0);
 
@@ -1030,7 +1038,7 @@ export default function Reports() {
         return [
           {
             icon: FileText,
-            value: formatCurrency(totalPurch),
+            value: formatReportAmount(totalPurch),
             label: t('reports.totalPurchases'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1054,7 +1062,7 @@ export default function Reports() {
           },
           {
             icon: Clock,
-            value: formatCurrency(avgPurch),
+            value: formatReportAmount(avgPurch),
             label: t('reports.avgPurchaseInvoice'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1072,7 +1080,7 @@ export default function Reports() {
         return [
           {
             icon: Receipt,
-            value: formatCurrency(totExp),
+            value: formatReportAmount(totExp),
             label: t('reports.totalExpenses'),
             color: 'text-destructive',
             bg: 'bg-destructive/10',
@@ -1092,11 +1100,11 @@ export default function Reports() {
             label: t('reports.largestExpenseItem'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
-            subtext: topExp ? `بقيمة: ${formatCurrency(topExp.amount)}` : 'لا توجد مصاريف',
+            subtext: topExp ? `بقيمة: ${formatReportAmount(topExp.amount)}` : 'لا توجد مصاريف',
           },
           {
             icon: Calendar,
-            value: formatCurrency(avgDailyExp),
+            value: formatReportAmount(avgDailyExp),
             label: t('reports.avgDailyExpense'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1110,7 +1118,7 @@ export default function Reports() {
         return [
           {
             icon: TrendingUp,
-            value: formatCurrency(partnerReportData.summary.totalProfitInPeriod),
+            value: formatReportAmount(partnerReportData.summary.totalProfitInPeriod),
             label: t('reports.partnersProfitInPeriod'),
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
@@ -1118,7 +1126,7 @@ export default function Reports() {
           },
           {
             icon: Wallet,
-            value: formatCurrency(partnerReportData.summary.totalCurrentBalance),
+            value: formatReportAmount(partnerReportData.summary.totalCurrentBalance),
             label: t('reports.totalDueBalance'),
             color: 'text-primary',
             bg: 'bg-primary/10',
@@ -1126,7 +1134,7 @@ export default function Reports() {
           },
           {
             icon: Banknote,
-            value: formatCurrency(partnerReportData.summary.totalWithdrawnInPeriod),
+            value: formatReportAmount(partnerReportData.summary.totalWithdrawnInPeriod),
             label: t('reports.withdrawnInPeriod'),
             color: 'text-amber-600',
             bg: 'bg-amber-500/10',
@@ -1387,8 +1395,8 @@ export default function Reports() {
               barcode: p.barcode || '-',
               category: p.category || 'عام',
               quantity: p.quantity || 0,
-              costPrice: formatCurrency(p.costPrice || 0),
-              totalValue: formatCurrency((p.quantity || 0) * (p.costPrice || 0)),
+              costPrice: formatReportAmount(p.costPrice || 0),
+              totalValue: formatReportAmount((p.quantity || 0) * (p.costPrice || 0)),
             })),
             fileName: `inventory-audit-${dateRange.from}.pdf`,
           });
@@ -1417,8 +1425,8 @@ export default function Reports() {
               invoiceNumber: p.invoice_number || p.id,
               supplierName: p.supplier_name || 'مورد عام',
               date: toLocalDateString(p.created_at || p.invoice_date),
-              expectedTotal: formatCurrency(p.expected_grand_total || 0),
-              actualTotal: formatCurrency(p.actual_grand_total || p.expected_grand_total || 0),
+              expectedTotal: formatReportAmount(p.expected_grand_total || 0),
+              actualTotal: formatReportAmount(p.actual_grand_total || p.expected_grand_total || 0),
               itemsCount: p.actual_items_count || p.expected_items_count || 0,
               status: p.status === 'finalized' ? 'معتمدة ومكتملة' : p.status === 'reconciled' ? 'تمت المطابقة' : 'مسودة',
             })),
@@ -1500,9 +1508,9 @@ export default function Reports() {
             data: Array.from(cashierMap.entries()).map(([name, data]) => ({
               name,
               count: data.count,
-              sales: formatCurrency(data.total),
-              avg: formatCurrency(data.count > 0 ? data.total / data.count : 0),
-              profit: formatCurrency(data.profit),
+              sales: formatReportAmount(data.total),
+              avg: formatReportAmount(data.count > 0 ? data.total / data.count : 0),
+              profit: formatReportAmount(data.profit),
             })),
             fileName: `cashier-performance-${dateRange.from}.pdf`,
           });
@@ -1530,8 +1538,8 @@ export default function Reports() {
               id: inv.id,
               customer: inv.customerName || 'عميل نقدي',
               date: toLocalDateString(inv.createdAt),
-              total: formatCurrency(inv.total),
-              profit: formatCurrency(inv.profit || 0),
+              total: formatReportAmount(inv.total),
+              profit: formatReportAmount(inv.profit || 0),
               payment: inv.paymentType,
             })),
             fileName: `maintenance-report-${dateRange.from}.pdf`,
@@ -1559,8 +1567,8 @@ export default function Reports() {
               rank: idx + 1,
               name: p.name,
               sales: `${p.sales} قطعة`,
-              revenue: formatCurrency(p.revenue),
-              profit: formatCurrency(p.profit),
+              revenue: formatReportAmount(p.revenue),
+              profit: formatReportAmount(p.profit),
             })),
             fileName: `${activeReport}-${dateRange.from}.pdf`,
           });
@@ -1583,7 +1591,7 @@ export default function Reports() {
             ],
             data: salesInRange.map(d => ({
               date: d.date,
-              sales: formatCurrency(d.sales),
+              sales: formatReportAmount(d.sales),
               orders: d.orders,
             })),
             fileName: `daily-closing-${dateRange.from}.pdf`,
@@ -2460,7 +2468,7 @@ export default function Reports() {
                         <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/30">
                           <span className="text-xs font-bold text-foreground">{cust.name}</span>
                           <div className="text-left">
-                            <span className="text-xs font-black text-primary">{formatCurrency(cust.total)}</span>
+                            <span className="text-xs font-black text-primary">{formatReportAmount(cust.total)}</span>
                             <span className="text-[10px] text-muted-foreground mr-2">({cust.orders} طلب)</span>
                           </div>
                         </div>
@@ -2588,9 +2596,9 @@ export default function Reports() {
                                 </div>
                               </div>
                               <div className="text-left">
-                                <p className="text-xs sm:text-sm font-black text-foreground">{formatCurrency(product.revenue)}</p>
+                                <p className="text-xs sm:text-sm font-black text-foreground">{formatReportAmount(product.revenue)}</p>
                                 <p className="text-[11px] font-semibold text-emerald-600 mt-0.5">
-                                  ربح: {formatCurrency(product.profit)}
+                                  ربح: {formatReportAmount(product.profit)}
                                 </p>
                               </div>
                             </div>
@@ -2764,7 +2772,7 @@ export default function Reports() {
                         <span className="font-medium text-sm">{product.name}</span>
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-sm text-foreground">{formatCurrency(product.revenue)}</p>
+                        <p className="font-bold text-sm text-foreground">{formatReportAmount(product.revenue)}</p>
                         <p className="text-[10px] text-muted-foreground">{product.sales} {t('reports.pieces')}</p>
                       </div>
                     </div>
@@ -2810,9 +2818,9 @@ export default function Reports() {
                           <td className="p-2 text-center font-mono text-xs">{p.barcode || '-'}</td>
                           <td className="p-2 text-center text-xs">{p.category || '-'}</td>
                           <td className="p-2 text-center">{p.quantity}</td>
-                          <td className="p-2 text-center">{formatCurrency(p.costPrice || 0)}</td>
-                          <td className="p-2 text-center">{formatCurrency(p.salePrice || 0)}</td>
-                          <td className="p-2 text-center font-medium">{formatCurrency((p.salePrice || 0) * (p.quantity || 0))}</td>
+                          <td className="p-2 text-center">{formatReportAmount(p.costPrice || 0)}</td>
+                          <td className="p-2 text-center">{formatReportAmount(p.salePrice || 0)}</td>
+                          <td className="p-2 text-center font-medium">{formatReportAmount((p.salePrice || 0) * (p.quantity || 0))}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -2918,7 +2926,7 @@ export default function Reports() {
                         <span className="font-medium text-sm">{customer.name}</span>
                       </div>
                       <div className="text-left">
-                        <p className="font-bold text-sm text-foreground">{formatCurrency(customer.total)}</p>
+                        <p className="font-bold text-sm text-foreground">{formatReportAmount(customer.total)}</p>
                         <p className="text-[10px] text-muted-foreground">{customer.orders} {t('reports.order')}</p>
                       </div>
                     </div>
@@ -2969,7 +2977,7 @@ export default function Reports() {
                               <div className="h-full bg-gradient-to-l from-primary to-primary/60 rounded-lg transition-[width] duration-500" style={{ width: `${(cat.amount / maxCatProfit) * 100}%` }} />
                             </div>
                             <div className="text-left w-28">
-                              <p className="text-sm font-semibold">{formatCurrency(cat.amount)}</p>
+                              <p className="text-sm font-semibold">{formatReportAmount(cat.amount)}</p>
                               <p className="text-xs text-muted-foreground">{cat.count} عملية</p>
                             </div>
                           </div>
@@ -2992,7 +3000,7 @@ export default function Reports() {
                         </div>
                       </div>
                       <div className="text-left">
-                        <p className="text-lg font-bold text-green-600">{formatCurrency(partner.totalProfitInPeriod)}</p>
+                        <p className="text-lg font-bold text-green-600">{formatReportAmount(partner.totalProfitInPeriod)}</p>
                         <p className="text-xs text-muted-foreground">أرباح الفترة</p>
                       </div>
                     </div>
@@ -3000,19 +3008,19 @@ export default function Reports() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
-                        <p className="text-lg font-bold text-foreground">{formatCurrency(partner.currentBalance)}</p>
+                        <p className="text-lg font-bold text-foreground">{formatReportAmount(partner.currentBalance)}</p>
                       </div>
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">رأس المال</p>
-                        <p className="text-lg font-bold text-foreground">{formatCurrency(partner.currentCapital)}</p>
+                        <p className="text-lg font-bold text-foreground">{formatReportAmount(partner.currentCapital)}</p>
                       </div>
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">أرباح معلقة</p>
-                        <p className="text-lg font-bold text-amber-600">{formatCurrency(partner.pendingProfit)}</p>
+                        <p className="text-lg font-bold text-amber-600">{formatReportAmount(partner.pendingProfit)}</p>
                       </div>
                       <div className="bg-muted rounded-lg p-3">
                         <p className="text-xs text-muted-foreground">المسحوب في الفترة</p>
-                        <p className="text-lg font-bold text-foreground">{formatCurrency(partner.totalWithdrawnInPeriod)}</p>
+                        <p className="text-lg font-bold text-foreground">{formatReportAmount(partner.totalWithdrawnInPeriod)}</p>
                       </div>
                     </div>
 
@@ -3022,7 +3030,7 @@ export default function Reports() {
                         <div className="flex flex-wrap gap-2">
                           {partner.profitByCategory.slice(0, 5).map((cat, idx) => (
                             <span key={idx} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                              {cat.categoryName}: {formatCurrency(cat.amount)}
+                              {cat.categoryName}: {formatReportAmount(cat.amount)}
                             </span>
                           ))}
                         </div>
@@ -3041,7 +3049,7 @@ export default function Reports() {
                                 <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                                   <div className="h-full bg-green-500/70 rounded transition-[width] duration-500" style={{ width: `${(day.amount / maxDayProfit) * 100}%` }} />
                                 </div>
-                                <span className="text-xs font-semibold w-20 text-left">{formatCurrency(day.amount)}</span>
+                                <span className="text-xs font-semibold w-20 text-left">{formatReportAmount(day.amount)}</span>
                               </div>
                             );
                           })}
@@ -3084,7 +3092,7 @@ export default function Reports() {
                             <div className="h-full bg-gradient-to-l from-destructive to-destructive/60 rounded-lg transition-[width] duration-500" style={{ width: `${(type.amount / maxAmount) * 100}%` }} />
                           </div>
                           <div className="text-left w-28">
-                            <p className="text-sm font-semibold">{formatCurrency(type.amount)}</p>
+                            <p className="text-sm font-semibold">{formatReportAmount(type.amount)}</p>
                             <p className="text-xs text-muted-foreground">{type.count} مصروف</p>
                           </div>
                         </div>
@@ -3107,7 +3115,7 @@ export default function Reports() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <p className="text-lg font-bold text-destructive">{formatCurrency(partner.amount)}</p>
+                            <p className="text-lg font-bold text-destructive">{formatReportAmount(partner.amount)}</p>
                             <Button variant="ghost" size="icon" className="text-green-600 hover:text-green-700" onClick={() => handleShareExpenseReport(partner.name)}>
                               <MessageCircle className="w-5 h-5" />
                             </Button>
@@ -3133,7 +3141,7 @@ export default function Reports() {
                             <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
                               <div className="h-full bg-destructive/60 rounded-lg transition-[width] duration-500" style={{ width: `${(day.amount / maxDaily) * 100}%` }} />
                             </div>
-                            <span className="text-sm font-semibold w-24 text-left">{formatCurrency(day.amount)}</span>
+                            <span className="text-sm font-semibold w-24 text-left">{formatReportAmount(day.amount)}</span>
                           </div>
                         );
                       })}
@@ -3156,7 +3164,7 @@ export default function Reports() {
                           </div>
                         </div>
                         <div className="text-left">
-                          <p className="font-bold text-destructive">-{formatCurrency(expense.amount)}</p>
+                          <p className="font-bold text-destructive">-{formatReportAmount(expense.amount)}</p>
                           <p className="text-xs text-muted-foreground">{expense.distributions.length} شريك</p>
                         </div>
                       </div>

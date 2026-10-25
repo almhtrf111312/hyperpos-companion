@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tool
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDailyProfitStats } from '@/lib/profits-store';
-import { formatCurrency } from '@/lib/utils';
+import { formatReportAmount } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -130,25 +130,25 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
           <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">{t('products.totalSalesLabel')}</p>
             <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-              {formatCurrency(summary.totalSales)}
+              {formatReportAmount(summary.totalSales)}
             </p>
           </div>
           <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">{t('products.grossProfitLabel')}</p>
             <p className="text-lg font-bold text-green-600 dark:text-green-400">
-              {formatCurrency(summary.totalGrossProfit)}
+              {formatReportAmount(summary.totalGrossProfit)}
             </p>
           </div>
           <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">{t('products.expensesLabel')}</p>
             <p className="text-lg font-bold text-red-600 dark:text-red-400">
-              {formatCurrency(summary.totalExpenses)}
+              {formatReportAmount(summary.totalExpenses)}
             </p>
           </div>
           <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">{t('products.netProfitLabel')}</p>
             <p className={`text-lg font-bold ${summary.totalNetProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600'}`}>
-              {formatCurrency(summary.totalNetProfit)}
+              {formatReportAmount(summary.totalNetProfit)}
             </p>
           </div>
         </div>
@@ -174,7 +174,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
                 axisLine={false}
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(value) => formatCurrency(Number(value), undefined, 0)}
+                tickFormatter={(value) => formatReportAmount(Number(value))}
               />
               <ChartTooltip
                 content={
@@ -187,7 +187,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
                         sales: t('products.totalSalesLabel'),
                         expenses: t('products.expensesLabel'),
                       };
-                      return [formatCurrency(Number(value)), labels[name as string] || name];
+                      return [formatReportAmount(Number(value)), labels[name as string] || name];
                     }}
                   />
                 }
@@ -224,7 +224,7 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
 
         {/* Additional Stats */}
         <div className="mt-4 pt-4 border-t flex justify-between text-sm text-muted-foreground">
-          <span>{t('products.avgDailyProfit')}: <strong className="text-foreground">{formatCurrency(summary.avgDailyProfit)}</strong></span>
+          <span>{t('products.avgDailyProfit')}: <strong className="text-foreground">{formatReportAmount(summary.avgDailyProfit)}</strong></span>
           <span>{t('products.profitMargin')}: <strong className="text-foreground">{summary.profitMargin.toFixed(1)}%</strong></span>
         </div>
       </CardContent>
