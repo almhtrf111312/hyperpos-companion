@@ -2355,8 +2355,8 @@ export default function Reports() {
           })}
         </div>
 
-        {/* View Mode Segmented Controls — compact and bounded */}
-        <div className="grid grid-cols-3 gap-1.5 w-full">
+        {/* View Mode Segmented Controls — unified capsule style */}
+        <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-3 gap-1 w-full border border-border/40 shadow-xs select-none">
           <button
             type="button"
             onClick={() => {
@@ -2364,10 +2364,10 @@ export default function Reports() {
               handleSwitchView('summary');
             }}
             className={cn(
-              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-colors text-center select-none shadow-sm whitespace-normal",
+              "rounded-xl py-2 px-1 text-xs font-bold leading-tight transition-all duration-200 text-center select-none cursor-pointer flex items-center justify-center whitespace-normal",
               activeReport === 'sales' && viewTab === 'summary'
-                ? "bg-primary text-primary-foreground border-primary shadow-md"
-                : "bg-card text-muted-foreground border-border hover:text-foreground"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             {t('reports.chartSummary')}
@@ -2379,10 +2379,10 @@ export default function Reports() {
               handleSwitchView('detailed');
             }}
             className={cn(
-              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-colors text-center select-none shadow-sm whitespace-normal",
+              "rounded-xl py-2 px-1 text-xs font-bold leading-tight transition-all duration-200 text-center select-none cursor-pointer flex items-center justify-center whitespace-normal",
               activeReport === 'sales' && viewTab === 'detailed'
-                ? "bg-primary text-primary-foreground border-primary shadow-md"
-                : "bg-card text-muted-foreground border-border hover:text-foreground"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             {t('reports.invoicesStatement')}
@@ -2394,10 +2394,10 @@ export default function Reports() {
               handleSwitchView('comprehensive');
             }}
             className={cn(
-              "py-2 px-1 rounded-full border text-[11px] font-semibold leading-tight transition-colors text-center select-none shadow-sm whitespace-normal",
+              "rounded-xl py-2 px-1 text-xs font-bold leading-tight transition-all duration-200 text-center select-none cursor-pointer flex items-center justify-center whitespace-normal",
               activeReport === 'sales' && viewTab === 'comprehensive'
-                ? "bg-primary text-primary-foreground border-primary shadow-md"
-                : "bg-card text-muted-foreground border-border hover:text-foreground"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
             {t('reports.comprehensiveView')}

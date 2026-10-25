@@ -137,8 +137,8 @@ export default function Appearance() {
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto pb-28 pt-14 md:pt-4 space-y-5">
-      {/* شريط تبويبات الإعدادات (المظهر والثيم، الخطوط، حجم الواجهة، والتخطيط) */}
-      <div className="grid grid-cols-3 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
+      {/* شريط تبويبات الإعدادات (المظهر والثيم، الخطوط، حجم الواجهة، والتخطيط) — كبسولة موحدة */}
+      <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-3 gap-1 border border-border/40 shadow-xs select-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -148,14 +148,14 @@ export default function Appearance() {
               type="button"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center justify-center gap-2 py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 select-none min-h-12 overflow-visible",
+                "flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none cursor-pointer min-h-11",
                 isActive
-                  ? "bg-card text-foreground shadow-sm border border-border/50 ring-1 ring-border/20"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/60"
               )}
             >
-              <Icon className="w-4 h-4 text-primary shrink-0" />
-              <span className="whitespace-nowrap leading-relaxed py-0.5 overflow-visible">{tab.label}</span>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="whitespace-nowrap leading-relaxed py-0.5">{tab.label}</span>
             </button>
           );
         })}

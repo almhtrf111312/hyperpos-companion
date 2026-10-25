@@ -100,15 +100,16 @@ export function ArchiveSection() {
         </Button>
       </div>
 
-      {/* Main Tabs */}
-      <div className="flex gap-2 border-b border-border/60 pb-2">
+      {/* Main Tabs — Unified Capsule */}
+      <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none">
         <button
+          type="button"
           onClick={() => setActiveTab('general')}
           className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors",
+            "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold flex items-center gap-2 transition-all duration-200 select-none cursor-pointer shrink-0",
             activeTab === 'general'
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground bg-muted/40"
+              ? "bg-gradient-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/60"
           )}
         >
           <Package className="w-4 h-4 shrink-0" />
@@ -118,12 +119,13 @@ export function ArchiveSection() {
           </span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('notifications')}
           className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors",
+            "rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold flex items-center gap-2 transition-all duration-200 select-none cursor-pointer shrink-0",
             activeTab === 'notifications'
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground bg-muted/40"
+              ? "bg-gradient-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/60"
           )}
         >
           <Bell className="w-4 h-4 shrink-0" />

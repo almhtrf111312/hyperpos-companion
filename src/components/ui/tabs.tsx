@@ -19,7 +19,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "flex max-w-full overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-none min-h-11 items-center justify-start rounded-2xl border border-border bg-muted/70 p-1 text-muted-foreground shadow-sm min-w-0 select-none",
+      "flex max-w-full overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-none min-h-11 items-center justify-start rounded-2xl border border-border/40 bg-muted/60 p-1 text-muted-foreground shadow-xs min-w-0 select-none gap-1",
       className,
     )}
     {...props}
@@ -34,7 +34,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex h-full items-center justify-center whitespace-nowrap rounded-xl px-3.5 py-1.5 text-sm font-semibold leading-[var(--app-button-line-height,1.4)] ring-offset-background transition-[background-color,color,box-shadow] duration-150 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none",
+      "inline-flex h-full items-center justify-center whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold leading-[var(--app-button-line-height,1.4)] ring-offset-background transition-all duration-200 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer gap-1.5 shrink-0",
       className,
     )}
     {...props}

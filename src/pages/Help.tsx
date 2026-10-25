@@ -106,19 +106,19 @@ export default function HelpPage() {
           }
         />
 
-        {/* Modern 2-Button Segmented Navigation Tabs */}
-        <div className="bg-card p-1 rounded-xl border border-border flex items-center gap-1">
+        {/* Modern 2-Button Segmented Navigation Tabs — Unified Capsule */}
+        <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-2 gap-1 border border-border/40 shadow-xs select-none w-full sm:w-fit sm:min-w-[20rem]">
           <button
             type="button"
             onClick={() => setActiveTab('features')}
             className={cn(
-              "flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 select-none",
+              "rounded-xl py-2 px-3 text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 select-none cursor-pointer",
               activeTab === 'features'
-                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
             <span>{isAr ? 'ميزات النظام' : 'Features'}</span>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-background/30 text-current">{displayFeatures.length}</Badge>
           </button>
@@ -127,13 +127,13 @@ export default function HelpPage() {
             type="button"
             onClick={() => setActiveTab('faq')}
             className={cn(
-              "flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 select-none",
+              "rounded-xl py-2 px-3 text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 select-none cursor-pointer",
               activeTab === 'faq'
-                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-gradient-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             )}
           >
-            <HelpCircle className="w-3.5 h-3.5" />
+            <HelpCircle className="w-3.5 h-3.5 shrink-0" />
             <span>{isAr ? 'الأسئلة الشائعة' : 'FAQs'}</span>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-background/30 text-current">{faqs.length}</Badge>
           </button>
