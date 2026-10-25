@@ -340,11 +340,11 @@ export function fromUsd(usdAmount: number, code?: string | null, rateOverride?: 
   const num = Number(usdAmount);
   if (!Number.isFinite(num) || num === 0) return 0;
   const normalized = normalizeCurrencyCode(code || getMoneyState().activeCode);
-  if (normalized === 'USD') return num;
+  if (normalized === 'USD') return round8(num);
   const def = getCurrencyDef(normalized);
   const rate = Number(rateOverride) > 0 ? Number(rateOverride) : def.rate;
-  if (!Number.isFinite(rate) || rate <= 0) return num;
-  return num * rate;
+  if (!Number.isFinite(rate) || rate <= 0) return round8(num);
+  return round8(num * rate);
 }
 
 export function formatAmount(

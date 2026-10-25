@@ -1,7 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getDisplayCurrency, getCurrencySymbolByCode, getActiveStoreCurrency, formatReportAmount } from "./currencies";
-export { getActiveStoreCurrency, formatReportAmount };
+import { toUsd, fromUsd, round8, getActiveCurrencyDef, roundForCurrency } from "./money-engine";
+export { getActiveStoreCurrency, formatReportAmount, toUsd, fromUsd, round8 };
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -52,7 +53,9 @@ export function formatNumber(num: number, decimals: number = 3): string {
     maximumFractionDigits: decimals,
     useGrouping: true,
   });
-  return formatter.format(roundCurrency(num));
+  const factor = Math.pow(10, decimals);
+  const rounded = Math.round((Number(num || 0) + Number.EPSILON) * factor) / factor;
+  return formatter.format(rounded);
 }
 
 // Format currency with Western numerals - uses Intl.NumberFormat for Android WebView compatibility
@@ -67,7 +70,9 @@ export function formatCurrency(amount: number, symbol?: string, decimals: number
     maximumFractionDigits: decimals,
     useGrouping: true,
   });
-  const formatted = formatter.format(roundCurrency(amount));
+  const factor = Math.pow(10, decimals);
+  const rounded = Math.round((Number(amount || 0) + Number.EPSILON) * factor) / factor;
+  const formatted = formatter.format(rounded);
   const cleanSymbol = (effectiveSymbol || '').trim();
 
   // علامات العملات الغربية تسبق الرقم ($46, €46, £46)
@@ -80,9 +85,22 @@ export function formatCurrency(amount: number, symbol?: string, decimals: number
 }
 
 // Format money with correct symbol from currencyCode or default display currency
-export function formatMoney(amount: number, currencyCode?: string, decimals: number = 2): string {
-  const sym = currencyCode ? getCurrencySymbolByCode(currencyCode) : getActiveStoreCurrency().symbol;
-  return formatCurrency(amount, sym, decimals);
+export function formatMoney(amount: number, currencyCode?: string, decimals?: number): string {
+  if (currencyCode) {
+    const sym = getCurrencySymbolByCode(currencyCode);
+    return formatCurrency(amount, sym, decimals ?? 2);
+  }
+  return formatUsdAsActive(amount, decimals);
+}
+
+/**
+ * Format base USD amount into the active store currency using the active exchange rate.
+ */
+export function formatUsdAsActive(usdAmount: number, decimals?: number): string {
+  const active = getActiveCurrencyDef();
+  const converted = fromUsd(usdAmount, active.code, active.rate);
+  const dec = typeof decimals === 'number' ? decimals : active.decimals;
+  return formatCurrency(converted, active.symbol, dec);
 }
 
 // Convert Arabic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)
