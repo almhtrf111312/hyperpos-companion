@@ -1,8 +1,14 @@
 {
-  "versionCode": 316,
-  "versionName": "1.0.86",
-  "lastUpdated": "2026-10-25T07:57:59.727Z",
+  "versionCode": 317,
+  "versionName": "1.0.87",
+  "lastUpdated": "2026-10-25T08:02:56.068Z",
   "buildHistory": [
+    {
+      "versionCode": 317,
+      "versionName": "1.0.87",
+      "date": "2026-10-25",
+      "description": "v1.0.87 - المرحلة 5: المصاريف (Expenses Header Fixed Add Button)؛ إضافة زر رئيسي ثابت لإضافة المصروف داخل ترويسة الصفحة بجانب البحث والفلاتر لمنع اختفائه عند التمرير مع الإبقاء على الزر العائم كخيار وصول سريع إضافي"
+    },
     {
       "versionCode": 316,
       "versionName": "1.0.86",

@@ -85,6 +85,7 @@ import { emitEvent, EVENTS } from '@/lib/events';
 import { useLanguage } from '@/hooks/use-language';
 import { processExpense, reverseExpenseTransaction, restoreExpenseCash } from '@/lib/unified-transactions';
 import { toLocalDateString } from '@/lib/date-utils';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function Expenses() {
   const m = useMoney();
@@ -261,6 +262,11 @@ export default function Expenses() {
       payImmediately: false,
       autoPay: false,
     });
+  };
+
+  const setShowAddExpense = (open: boolean) => {
+    if (open) resetForm();
+    setShowAddDialog(open);
   };
 
   const handleAddExpense = async () => {
@@ -562,6 +568,18 @@ export default function Expenses() {
 
   return (
     <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3 overflow-x-hidden relative min-h-screen">
+      {/* Top Header with Fixed Add Button */}
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <PageHeader title={t('expenses.title')} className="mb-0 md:mb-0 min-h-0" />
+        <Button 
+          onClick={() => setShowAddExpense(true)}
+          className="h-10 px-4 rounded-xl gap-2 bg-primary text-primary-foreground font-bold shadow-md cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{t('expenses.addExpense') || 'إضافة مصروف'}</span>
+        </Button>
+      </div>
+
       {/* Top Search with Smart Mobile Clearance */}
       <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
         <div className="relative flex-1">
