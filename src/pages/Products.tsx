@@ -203,9 +203,18 @@ export default function Products() {
   const [restockQuantity, setRestockQuantity] = useState<string>('10');
   const [isRestocking, setIsRestocking] = useState(false);
 
-  // Dialogs
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  // Unified View & Form state (Full-Screen View)
+  const [activeView, setActiveView] = useState<'list' | 'add' | 'edit'>('list');
+  const showAddDialog = activeView === 'add';
+  const showEditDialog = activeView === 'edit';
+  const setShowAddDialog = useCallback((open: boolean) => {
+    setActiveView(open ? 'add' : 'list');
+    if (open) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+  const setShowEditDialog = useCallback((open: boolean) => {
+    setActiveView(open ? 'edit' : 'list');
+    if (open) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -1442,6 +1451,643 @@ export default function Products() {
     setShowAddDialog(true);
   }, [categoryOptions, t]);
 
+  const handleCloseForm = useCallback(() => {
+    if (formData.name?.trim()) {
+      if (!window.confirm('هل تريد إلغاء التعديلات والخروج؟')) return;
+    }
+    setActiveView('list');
+    setImagePreviewBase64('');
+    clearPersistedState();
+  }, [formData.name, clearPersistedState]);
+
+  const handleSaveProductSubmit = useCallback(() => {
+    if (activeView === 'add') {
+      handleAddProduct();
+    } else if (activeView === 'edit') {
+      handleEditProduct();
+    }
+  }, [activeView, handleAddProduct, handleEditProduct]);
+
+  if (activeView !== 'list') {
+    return (
+      <div className="min-h-[100dvh] bg-background flex flex-col pb-24 animate-in fade-in-50 duration-150 relative" dir={isRTL ? 'rtl' : 'ltr'}>
+        {/* هيدر ثابت علوي رائع */}
+        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 py-3 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCloseForm}
+              className="rounded-xl h-9 w-9 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowRight className="w-5 h-5 rtl:rotate-0 ltr:rotate-180" />
+            </Button>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-foreground">
+                {activeView === 'add'
+                  ? (tDynamic('addProduct') || 'إضافة منتج جديد')
+                  : (selectedProduct?.archived
+                      ? (t('products.restoreAndEditProduct') || 'استرجاع وتعديل المنتج')
+                      : (tDynamic('editProduct') ? `${tDynamic('editProduct')}: ${formData.name || ''}` : `${t('common.edit')}: ${formData.name || ''}`))}
+              </h2>
+              <p className="text-[11px] text-muted-foreground">
+                {activeView === 'add' ? 'أدخل تفاصيل وبيانات المنتج والمخزون' : 'تحديث أسعار وكميات وبيانات المنتج'}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCloseForm}
+            className="text-xs text-muted-foreground hover:text-destructive"
+          >
+            {t('common.cancel') || 'إلغاء'}
+          </Button>
+        </div>
+
+        {/* جسم النموذج الكامل بدون قيود النوافذ */}
+        <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
+                  <Input
+                    placeholder={t('products.exampleName')}
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                {!noInventory && !isRestaurant && (
+                  <>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={t('products.exampleBarcode')}
+                          value={formData.barcode}
+                          onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
+                        />
+                        <Button variant="outline" size="icon" onClick={() => {
+                          setScanTarget('barcode1');
+                          setScannerOpen(true);
+                        }}>
+                          <Barcode className="w-4 h-4" />
+                        </Button>
+                        {!showBarcode2 && (
+                          <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Barcode 2 */}
+                    {showBarcode2 && (
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t('products.exampleBarcode')}
+                            value={formData.barcode2}
+                            onChange={(e) => setFormData(prev => ({ ...prev, barcode2: e.target.value }))}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setScanTarget('barcode2');
+                            setScannerOpen(true);
+                          }}>
+                            <Barcode className="w-4 h-4" />
+                          </Button>
+                          {!showBarcode3 && (
+                            <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setFormData(prev => ({ ...prev, barcode2: '' }));
+                            setShowBarcode2(false);
+                          }} className="text-destructive">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Barcode 3 */}
+                    {showBarcode3 && (
+                      <div className="sm:col-span-2">
+                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t('products.exampleBarcode')}
+                            value={formData.barcode3}
+                            onChange={(e) => setFormData(prev => ({ ...prev, barcode3: e.target.value }))}
+                          />
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setScanTarget('barcode3');
+                            setScannerOpen(true);
+                          }}>
+                            <Barcode className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setFormData(prev => ({ ...prev, barcode3: '' }));
+                            setShowBarcode3(false);
+                          }} className="text-destructive">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Variant Label */}
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.variantLabel')}</label>
+                      <Input
+                        placeholder={t('products.variantPlaceholder')}
+                        value={formData.variantLabel}
+                        onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">{t('products.variantHint')}</p>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
+                  <select
+                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                    value={formData.category}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  >
+                    {categoryOptions.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                {!noInventory && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.quantity ?? ''}
+                      onChange={(e) => handleNumericChange('quantity', e.target.value)}
+                      onBlur={() => handleNumericBlur('quantity', 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                )}
+                {(!noInventory || isRepairMode) && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? `${t('products.pieceCost')} (${currencySymbol})` : `${t('products.costPrice')} (${currencySymbol})`}</label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.costPrice ?? ''}
+                      onChange={(e) => handleNumericChange('costPrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('costPrice', 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                )}
+                {isRepairMode && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.laborCost')} ({currencySymbol})</label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.laborCost ?? ''}
+                      onChange={(e) => handleNumericChange('laborCost', e.target.value)}
+                      onBlur={() => handleNumericBlur('laborCost', 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">{t('products.laborCostHint')}</p>
+                  </div>
+                )}
+                {!isRepairMode && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ({currencySymbol})</label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.salePrice ?? ''}
+                      onChange={(e) => handleNumericChange('salePrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('salePrice', 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                )}
+
+                {/* Unit Settings Collapsible */}
+                {!noInventory && (
+                  <div className="sm:col-span-2">
+                    <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between" type="button">
+                          <span className="flex items-center gap-2">
+                            <Boxes className="w-4 h-4" />
+                            {t('products.unitSettings')}
+                          </span>
+                          <span className="text-xs text-foreground/80">
+                            {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
+                          </span>
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3">
+                        <UnitSettingsTab
+                          data={{
+                            bulkUnit: formData.bulkUnit,
+                            smallUnit: formData.smallUnit,
+                            conversionFactor: Number(formData.conversionFactor) || 1,
+                            bulkCostPrice: Number(formData.bulkCostPrice) || 0,
+                            bulkSalePrice: Number(formData.bulkSalePrice) || 0,
+                            trackByUnit: formData.trackByUnit,
+                          }}
+                          onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
+                          quantityInPieces={formData.trackByUnit === 'bulk'
+                            ? (Number(formData.quantity) || 0) * (Number(formData.conversionFactor) || 1)
+                            : (Number(formData.quantity) || 0)}
+                          pieceCostPrice={Number(formData.costPrice) || 0}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                )}
+
+                {/* Dynamic Fields based on store type (Fix #16) */}
+                {fieldsConfig.expiryDate && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
+                    <DatePicker
+                      value={formData.expiryDate}
+                      onChange={(date) => setFormData(prev => ({ ...prev, expiryDate: date }))}
+                      placeholder={t('products.selectExpiryDate')}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.batchNumber && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.batchNumber')}</label>
+                    <Input
+                      placeholder={t('products.batchNumber')}
+                      value={formData.batchNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.serialNumber && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
+                    <Input
+                      placeholder={t('products.exampleSerial')}
+                      value={formData.serialNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.warranty && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.warranty')}</label>
+                    <Input
+                      placeholder={t('products.exampleWarranty')}
+                      value={formData.warranty}
+                      onChange={(e) => setFormData(prev => ({ ...prev, warranty: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ({currencySymbol})</label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="0"
+                      value={formData.wholesalePrice ?? ''}
+                      onChange={(e) => handleNumericChange('wholesalePrice', e.target.value)}
+                      onBlur={() => handleNumericBlur('wholesalePrice', 0)}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.sizeColor && (
+                  <>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', '44', '46'].map(s => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
+                              const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
+                              setFormData(prev => ({ ...prev, size: updated.join(', ') }));
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                              formData.size?.split(',').map(x => x.trim()).includes(s)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <Input
+                        placeholder={t('products.exampleSize')}
+                        value={formData.size}
+                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value }))}
+                        className="text-xs"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {[
+                          { name: 'أسود', hex: '#000' }, { name: 'أبيض', hex: '#fff' }, { name: 'أحمر', hex: '#ef4444' },
+                          { name: 'أزرق', hex: '#3b82f6' }, { name: 'أخضر', hex: '#22c55e' }, { name: 'رمادي', hex: '#6b7280' },
+                          { name: 'بني', hex: '#92400e' }, { name: 'بيج', hex: '#d4a76a' }, { name: 'كحلي', hex: '#1e3a5f' },
+                        ].map(c => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
+                              const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
+                              setFormData(prev => ({ ...prev, color: updated.join(', ') }));
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-colors",
+                              formData.color?.split(',').map(x => x.trim()).includes(c.name)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            <span className="w-3 h-3 rounded-full border border-border/50 flex-shrink-0" style={{ backgroundColor: c.hex }} />
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                      <Input
+                        placeholder={t('products.exampleColor')}
+                        value={formData.color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                        className="text-xs"
+                      />
+                    </div>
+                  </>
+                )}
+                {fieldsConfig.weight && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.weight')}</label>
+                    <Input
+                      placeholder={t('products.weight')}
+                      value={formData.weight}
+                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.fabricType && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.fabricType')}</label>
+                    <Input
+                      placeholder={t('products.fabricType')}
+                      value={formData.fabricType}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fabricType: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.tableNumber && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.tableNumber')}</label>
+                    <Input
+                      placeholder={t('products.tableNumber')}
+                      value={formData.tableNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tableNumber: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.orderNotes && (
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.orderNotes')}</label>
+                    <Input
+                      placeholder={t('products.orderNotes')}
+                      value={formData.orderNotes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, orderNotes: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.author && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.author')}</label>
+                    <Input
+                      placeholder={t('products.author')}
+                      value={formData.author}
+                      onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.publisher && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.publisher')}</label>
+                    <Input
+                      placeholder={t('products.publisher')}
+                      value={formData.publisher}
+                      onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {fieldsConfig.minStockLevel && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">{t('products.minStock')}</label>
+                    <Input
+                      type="number"
+                      dir="ltr"
+                      className="text-right"
+                      placeholder="5"
+                      value={formData.minStockLevel || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, minStockLevel: Number(e.target.value) }))}
+                    />
+                  </div>
+                )}
+                {/* Custom Fields */}
+                {customFields.map((field) => (
+                  <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
+                    <label className="text-sm font-medium mb-1.5 block">
+                      {field.name} {field.required && '*'}
+                    </label>
+                    {field.type === 'select' && field.options ? (
+                      <select
+                        className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
+                        value={customFieldValues[field.id] || ''}
+                        onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
+                      >
+                        <option value="">{t('maintenance.select')}</option>
+                        {field.options.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        placeholder={field.placeholder || ''}
+                        value={customFieldValues[field.id] || ''}
+                        onChange={(e) => setCustomFieldValues({
+                          ...customFieldValues,
+                          [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
+                        })}
+                      />
+                    )}
+                  </div>
+                ))}
+                <div className="sm:col-span-2">
+                  <label className="text-sm font-medium mb-1.5 block">{t('products.productImage')}</label>
+                  <div className="flex flex-col gap-3">
+                    {(imagePreviewBase64 || formData.image) ? (
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
+                        if (imagePreviewBase64) openImagePreview(imagePreviewBase64);
+                        else if (formData.image) openImagePreview(formData.image);
+                      }}>
+                        {imagePreviewBase64 ? (
+                          <img
+                            src={imagePreviewBase64}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ProductImage
+                            imageUrl={formData.image}
+                            alt="Preview"
+                            className="w-24 h-24 rounded-lg"
+                            iconClassName="w-6 h-6"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Search className="w-5 h-5 text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, image: '' })); setImagePreviewBase64(''); setImageLoadError(false); }}
+                          className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                        <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full min-h-12"
+                        onClick={handleCameraCapture}
+                        disabled={isCameraLoading}
+                      >
+                        {isCameraLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                        {t('products.captureImage')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full min-h-12"
+                        onClick={handleGallerySelect}
+                        disabled={isCameraLoading}
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        {t('products.chooseImage')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+        {/* شريط الإجراءات السفلي الثابت للراحة القصوى */}
+        <div className="sticky bottom-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/80 p-3 sm:px-6 flex items-center gap-3 max-w-4xl w-full mx-auto shadow-lg">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 h-11 rounded-xl font-bold cursor-pointer"
+            onClick={handleCloseForm}
+          >
+            {t('common.cancel') || 'إلغاء'}
+          </Button>
+          <Button
+            type="button"
+            disabled={isSaving}
+            className={cn(
+              "flex-[2] h-11 rounded-xl font-bold shadow-md transition-all cursor-pointer",
+              selectedProduct?.archived && activeView === 'edit'
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
+                : "bg-primary text-primary-foreground hover:opacity-95"
+            )}
+            onClick={handleSaveProductSubmit}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin ml-2" />
+            ) : (selectedProduct?.archived && activeView === 'edit' ? (
+              <RotateCcw className="w-4 h-4 ml-2" />
+            ) : (
+              <Save className="w-4 h-4 ml-2" />
+            ))}
+            {activeView === 'add'
+              ? (t('products.saveProduct') || 'حفظ وإضافة المنتج')
+              : (selectedProduct?.archived
+                  ? (t('products.restoreAndEditProduct') || 'استرجاع وحفظ التعديلات')
+                  : (t('common.save') || 'حفظ التعديلات'))}
+          </Button>
+        </div>
+
+        {/* قارئ الباركود عند تشغيله داخل النموذج */}
+        <BarcodeScanner
+          isOpen={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onScan={(barcode) => {
+            if (scanTarget === 'barcode1' || scanTarget === 'form') {
+              setFormData(prev => ({ ...prev, barcode }));
+            } else if (scanTarget === 'barcode2') {
+              setFormData(prev => ({ ...prev, barcode2: barcode }));
+              setShowBarcode2(true);
+            } else if (scanTarget === 'barcode3') {
+              setFormData(prev => ({ ...prev, barcode3: barcode }));
+              setShowBarcode3(true);
+            }
+            setScannerOpen(false);
+          }}
+        />
+
+        {/* معاينة صورة المنتج داخل النموذج */}
+        <Dialog open={!!previewImageUrl} onOpenChange={() => setPreviewImageUrl(null)}>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 sm:p-4 flex flex-col items-center justify-center">
+            {previewImageUrl && (
+              <img
+                src={previewImageUrl}
+                alt="معاينة"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background relative selection:bg-primary/20">
 
@@ -2422,1156 +3068,6 @@ export default function Products() {
         </div>
       )}
 
-        {/* Add Product Dialog */}
-        <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
-          <DialogContent
-            className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),46rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden shadow-2xl bg-background"
-            onPointerDownOutside={(e) => {
-              if (formData.name?.trim()) e.preventDefault();
-            }}
-            onEscapeKeyDown={(e) => {
-              if (formData.name?.trim()) e.preventDefault();
-            }}
-          >
-            {/* Responsive Header */}
-            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowAddDialog(false);
-                    setImagePreviewBase64('');
-                    clearPersistedState();
-                  }}
-                  className="rounded-full h-8 w-8 sm:hidden"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
-                  {tDynamic('addProduct') || t('products.addProductTitle') || 'إضافة منتج جديد'}
-                </DialogTitle>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setImagePreviewBase64('');
-                  clearPersistedState();
-                }}
-                className="text-xs text-muted-foreground"
-              >
-                {t('common.cancel') || 'إلغاء'}
-              </Button>
-            </div>
-
-            <div className="flex-1 min-h-0 p-4 sm:p-6 pb-28 sm:pb-6 overflow-y-auto scrollbar-thin">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
-                  <Input
-                    placeholder={t('products.exampleName')}
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                {!noInventory && !isRestaurant && (
-                  <>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder={t('products.exampleBarcode')}
-                          value={formData.barcode}
-                          onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
-                        />
-                        <Button variant="outline" size="icon" onClick={() => {
-                          setScanTarget('barcode1');
-                          setScannerOpen(true);
-                        }}>
-                          <Barcode className="w-4 h-4" />
-                        </Button>
-                        {!showBarcode2 && (
-                          <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {/* Barcode 2 */}
-                    {showBarcode2 && (
-                      <div className="sm:col-span-2">
-                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder={t('products.exampleBarcode')}
-                            value={formData.barcode2}
-                            onChange={(e) => setFormData(prev => ({ ...prev, barcode2: e.target.value }))}
-                          />
-                          <Button variant="outline" size="icon" onClick={() => {
-                            setScanTarget('barcode2');
-                            setScannerOpen(true);
-                          }}>
-                            <Barcode className="w-4 h-4" />
-                          </Button>
-                          {!showBarcode3 && (
-                            <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData(prev => ({ ...prev, barcode2: '' }));
-                            setShowBarcode2(false);
-                          }} className="text-destructive">
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    {/* Barcode 3 */}
-                    {showBarcode3 && (
-                      <div className="sm:col-span-2">
-                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder={t('products.exampleBarcode')}
-                            value={formData.barcode3}
-                            onChange={(e) => setFormData(prev => ({ ...prev, barcode3: e.target.value }))}
-                          />
-                          <Button variant="outline" size="icon" onClick={() => {
-                            setScanTarget('barcode3');
-                            setScannerOpen(true);
-                          }}>
-                            <Barcode className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData(prev => ({ ...prev, barcode3: '' }));
-                            setShowBarcode3(false);
-                          }} className="text-destructive">
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    {/* Variant Label */}
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.variantLabel')}</label>
-                      <Input
-                        placeholder={t('products.variantPlaceholder')}
-                        value={formData.variantLabel}
-                        onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">{t('products.variantHint')}</p>
-                    </div>
-                  </>
-                )}
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
-                  <select
-                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  >
-                    {categoryOptions.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                {!noInventory && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="0"
-                      value={formData.quantity ?? ''}
-                      onChange={(e) => handleNumericChange('quantity', e.target.value)}
-                      onBlur={() => handleNumericBlur('quantity', 0)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                )}
-                {(!noInventory || isRepairMode) && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{isRepairMode ? `${t('products.pieceCost')} (${currencySymbol})` : `${t('products.costPrice')} (${currencySymbol})`}</label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="0"
-                      value={formData.costPrice ?? ''}
-                      onChange={(e) => handleNumericChange('costPrice', e.target.value)}
-                      onBlur={() => handleNumericBlur('costPrice', 0)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                )}
-                {isRepairMode && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.laborCost')} ({currencySymbol})</label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="0"
-                      value={formData.laborCost ?? ''}
-                      onChange={(e) => handleNumericChange('laborCost', e.target.value)}
-                      onBlur={() => handleNumericBlur('laborCost', 0)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">{t('products.laborCostHint')}</p>
-                  </div>
-                )}
-                {!isRepairMode && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ({currencySymbol})</label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="0"
-                      value={formData.salePrice ?? ''}
-                      onChange={(e) => handleNumericChange('salePrice', e.target.value)}
-                      onBlur={() => handleNumericBlur('salePrice', 0)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                )}
-
-                {/* Unit Settings Collapsible */}
-                {!noInventory && (
-                  <div className="sm:col-span-2">
-                    <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between" type="button">
-                          <span className="flex items-center gap-2">
-                            <Boxes className="w-4 h-4" />
-                            {t('products.unitSettings')}
-                          </span>
-                          <span className="text-xs text-foreground/80">
-                            {showUnitSettings ? t('products.hideLbl') : t('products.showLbl')}
-                          </span>
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3">
-                        <UnitSettingsTab
-                          data={{
-                            bulkUnit: formData.bulkUnit,
-                            smallUnit: formData.smallUnit,
-                            conversionFactor: Number(formData.conversionFactor) || 1,
-                            bulkCostPrice: Number(formData.bulkCostPrice) || 0,
-                            bulkSalePrice: Number(formData.bulkSalePrice) || 0,
-                            trackByUnit: formData.trackByUnit,
-                          }}
-                          onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                          quantityInPieces={formData.trackByUnit === 'bulk'
-                            ? (Number(formData.quantity) || 0) * (Number(formData.conversionFactor) || 1)
-                            : (Number(formData.quantity) || 0)}
-                          pieceCostPrice={Number(formData.costPrice) || 0}
-                        />
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                )}
-
-                {/* Dynamic Fields based on store type (Fix #16) */}
-                {fieldsConfig.expiryDate && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
-                    <DatePicker
-                      value={formData.expiryDate}
-                      onChange={(date) => setFormData(prev => ({ ...prev, expiryDate: date }))}
-                      placeholder={t('products.selectExpiryDate')}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.batchNumber && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.batchNumber')}</label>
-                    <Input
-                      placeholder={t('products.batchNumber')}
-                      value={formData.batchNumber}
-                      onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.serialNumber && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
-                    <Input
-                      placeholder={t('products.exampleSerial')}
-                      value={formData.serialNumber}
-                      onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.warranty && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.warranty')}</label>
-                    <Input
-                      placeholder={t('products.exampleWarranty')}
-                      value={formData.warranty}
-                      onChange={(e) => setFormData(prev => ({ ...prev, warranty: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ({currencySymbol})</label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="0"
-                      value={formData.wholesalePrice ?? ''}
-                      onChange={(e) => handleNumericChange('wholesalePrice', e.target.value)}
-                      onBlur={() => handleNumericBlur('wholesalePrice', 0)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.sizeColor && (
-                  <>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', '44', '46'].map(s => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => {
-                              const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
-                              const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
-                              setFormData(prev => ({ ...prev, size: updated.join(', ') }));
-                            }}
-                            className={cn(
-                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
-                              formData.size?.split(',').map(x => x.trim()).includes(s)
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                            )}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        placeholder={t('products.exampleSize')}
-                        value={formData.size}
-                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value }))}
-                        className="text-xs"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {[
-                          { name: 'أسود', hex: '#000' }, { name: 'أبيض', hex: '#fff' }, { name: 'أحمر', hex: '#ef4444' },
-                          { name: 'أزرق', hex: '#3b82f6' }, { name: 'أخضر', hex: '#22c55e' }, { name: 'رمادي', hex: '#6b7280' },
-                          { name: 'بني', hex: '#92400e' }, { name: 'بيج', hex: '#d4a76a' }, { name: 'كحلي', hex: '#1e3a5f' },
-                        ].map(c => (
-                          <button
-                            key={c.name}
-                            type="button"
-                            onClick={() => {
-                              const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
-                              const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
-                              setFormData(prev => ({ ...prev, color: updated.join(', ') }));
-                            }}
-                            className={cn(
-                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-colors",
-                              formData.color?.split(',').map(x => x.trim()).includes(c.name)
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                            )}
-                          >
-                            <span className="w-3 h-3 rounded-full border border-border/50 flex-shrink-0" style={{ backgroundColor: c.hex }} />
-                            {c.name}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        placeholder={t('products.exampleColor')}
-                        value={formData.color}
-                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                        className="text-xs"
-                      />
-                    </div>
-                  </>
-                )}
-                {fieldsConfig.weight && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.weight')}</label>
-                    <Input
-                      placeholder={t('products.weight')}
-                      value={formData.weight}
-                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.fabricType && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.fabricType')}</label>
-                    <Input
-                      placeholder={t('products.fabricType')}
-                      value={formData.fabricType}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fabricType: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.tableNumber && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.tableNumber')}</label>
-                    <Input
-                      placeholder={t('products.tableNumber')}
-                      value={formData.tableNumber}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tableNumber: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.orderNotes && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.orderNotes')}</label>
-                    <Input
-                      placeholder={t('products.orderNotes')}
-                      value={formData.orderNotes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, orderNotes: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.author && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.author')}</label>
-                    <Input
-                      placeholder={t('products.author')}
-                      value={formData.author}
-                      onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.publisher && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.publisher')}</label>
-                    <Input
-                      placeholder={t('products.publisher')}
-                      value={formData.publisher}
-                      onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.minStockLevel && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.minStock')}</label>
-                    <Input
-                      type="number"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="5"
-                      value={formData.minStockLevel || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, minStockLevel: Number(e.target.value) }))}
-                    />
-                  </div>
-                )}
-                {/* Custom Fields */}
-                {customFields.map((field) => (
-                  <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
-                    <label className="text-sm font-medium mb-1.5 block">
-                      {field.name} {field.required && '*'}
-                    </label>
-                    {field.type === 'select' && field.options ? (
-                      <select
-                        className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
-                        value={customFieldValues[field.id] || ''}
-                        onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
-                      >
-                        <option value="">{t('maintenance.select')}</option>
-                        {field.options.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        type={field.type === 'number' ? 'number' : 'text'}
-                        placeholder={field.placeholder || ''}
-                        value={customFieldValues[field.id] || ''}
-                        onChange={(e) => setCustomFieldValues({
-                          ...customFieldValues,
-                          [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
-                        })}
-                      />
-                    )}
-                  </div>
-                ))}
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.productImage')}</label>
-                  <div className="flex flex-col gap-3">
-                    {(imagePreviewBase64 || formData.image) ? (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
-                        if (imagePreviewBase64) openImagePreview(imagePreviewBase64);
-                        else if (formData.image) openImagePreview(formData.image);
-                      }}>
-                        {imagePreviewBase64 ? (
-                          <img
-                            src={imagePreviewBase64}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ProductImage
-                            imageUrl={formData.image}
-                            alt="Preview"
-                            className="w-24 h-24 rounded-lg"
-                            iconClassName="w-6 h-6"
-                          />
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Search className="w-5 h-5 text-white" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, image: '' })); setImagePreviewBase64(''); setImageLoadError(false); }}
-                          className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                        <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full min-h-12"
-                        onClick={handleCameraCapture}
-                        disabled={isCameraLoading}
-                      >
-                        {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Camera className="w-4 h-4" />
-                        )}
-                        {t('products.captureImage')}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full min-h-12"
-                        onClick={handleGallerySelect}
-                        disabled={isCameraLoading}
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                        {t('products.chooseImage')}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="sticky bottom-0 border-t bg-card/95 backdrop-blur-md px-4 py-3 sm:px-6 flex items-center gap-3 shrink-0 shadow-lg">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 h-11 rounded-xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
-                onClick={() => {
-                  setShowAddDialog(false);
-                  setImagePreviewBase64('');
-                  clearPersistedState();
-                }}
-              >
-                {t('common.cancel') || 'إلغاء'}
-              </Button>
-              <Button
-                type="button"
-                className="flex-[2] h-11 rounded-xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-colors cursor-pointer"
-                onClick={handleAddProduct}
-              >
-                <Save className="w-4 h-4 ml-2" />
-                {t('products.saveProduct') || 'حفظ المنتج'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Product Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) clearPersistedState(); }}>
-          <DialogContent
-            className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),46rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden shadow-2xl bg-background"
-            onPointerDownOutside={(e) => {
-              if (formData.name?.trim()) e.preventDefault();
-            }}
-            onEscapeKeyDown={(e) => {
-              if (formData.name?.trim()) e.preventDefault();
-            }}
-          >
-            {/* Responsive Header */}
-            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowEditDialog(false);
-                    setImagePreviewBase64('');
-                    clearPersistedState();
-                  }}
-                  className="rounded-full h-8 w-8 sm:hidden"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-                <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
-                  {selectedProduct?.archived ? t('products.restoreAndEditProduct') : (tDynamic('editProduct') || 'تعديل الصنف')}
-                </DialogTitle>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowEditDialog(false);
-                  setImagePreviewBase64('');
-                  clearPersistedState();
-                }}
-                className="text-xs text-muted-foreground"
-              >
-                {t('common.cancel') || 'إلغاء'}
-              </Button>
-            </div>
-
-            <div className="flex-1 min-h-0 p-4 sm:p-6 pb-28 sm:pb-6 overflow-y-auto scrollbar-thin">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                {!isRestaurant && (
-                  <>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 1</label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={formData.barcode}
-                          onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
-                        />
-                        <Button variant="outline" size="icon" onClick={() => {
-                          setScanTarget('barcode1');
-                          setScannerOpen(true);
-                        }}>
-                          <Barcode className="w-4 h-4" />
-                        </Button>
-                        {!showBarcode2 && (
-                          <Button variant="ghost" size="icon" onClick={() => setShowBarcode2(true)} title={t('products.addSecondBarcode')}>
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {/* Barcode 2 */}
-                    {showBarcode2 && (
-                      <div className="sm:col-span-2">
-                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 2</label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder={t('products.exampleBarcode')}
-                            value={formData.barcode2}
-                            onChange={(e) => setFormData(prev => ({ ...prev, barcode2: e.target.value }))}
-                          />
-                          <Button variant="outline" size="icon" onClick={() => {
-                            setScanTarget('barcode2');
-                            setScannerOpen(true);
-                          }}>
-                            <Barcode className="w-4 h-4" />
-                          </Button>
-                          {!showBarcode3 && (
-                            <Button variant="ghost" size="icon" onClick={() => setShowBarcode3(true)} title={t('products.addThirdBarcode')}>
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData(prev => ({ ...prev, barcode2: '' }));
-                            setShowBarcode2(false);
-                          }} className="text-destructive">
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    {/* Barcode 3 */}
-                    {showBarcode3 && (
-                      <div className="sm:col-span-2">
-                        <label className="text-sm font-medium mb-1.5 block">{t('products.barcode')} 3</label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder={t('products.exampleBarcode')}
-                            value={formData.barcode3}
-                            onChange={(e) => setFormData(prev => ({ ...prev, barcode3: e.target.value }))}
-                          />
-                          <Button variant="outline" size="icon" onClick={() => {
-                            setScanTarget('barcode3');
-                            setScannerOpen(true);
-                          }}>
-                            <Barcode className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setFormData(prev => ({ ...prev, barcode3: '' }));
-                            setShowBarcode3(false);
-                          }} className="text-destructive">
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-                {/* Variant Label */}
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.variantLabel')}</label>
-                  <Input
-                    placeholder={t('products.variantPlaceholder')}
-                    value={formData.variantLabel}
-                    onChange={(e) => setFormData(prev => ({ ...prev, variantLabel: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{t('products.variantHint')}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.category')}</label>
-                  <select
-                    className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  >
-                    {categoryOptions.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.quantity')}</label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.quantity ?? ''}
-                    onChange={(e) => handleNumericChange('quantity', e.target.value)}
-                    onBlur={() => handleNumericBlur('quantity', 0)}
-                    onFocus={(e) => e.target.select()}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.costPrice')} ({currencySymbol})</label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.costPrice ?? ''}
-                    onChange={(e) => handleNumericChange('costPrice', e.target.value)}
-                    onBlur={() => handleNumericBlur('costPrice', 0)}
-                    onFocus={(e) => e.target.select()}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.salePrice')} ({currencySymbol})</label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="0"
-                    value={formData.salePrice ?? ''}
-                    onChange={(e) => handleNumericChange('salePrice', e.target.value)}
-                    onBlur={() => handleNumericBlur('salePrice', 0)}
-                    onFocus={(e) => e.target.select()}
-                  />
-                </div>
-
-                {/* Unit Settings Collapsible */}
-                <div className="sm:col-span-2">
-                  <Collapsible open={showUnitSettings} onOpenChange={setShowUnitSettings}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between" type="button">
-                        <span className="flex items-center gap-2">
-                          <Boxes className="w-4 h-4" />
-                          {t('products.unitSettings')}
-                        </span>
-                        <span className="text-xs text-foreground/80">
-                          {showUnitSettings ? t('common.hide') : t('common.show')}
-                        </span>
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3">
-                      <UnitSettingsTab
-                        data={{
-                          bulkUnit: formData.bulkUnit,
-                          smallUnit: formData.smallUnit,
-                          conversionFactor: Number(formData.conversionFactor) || 1,
-                          bulkCostPrice: Number(formData.bulkCostPrice) || 0,
-                          bulkSalePrice: Number(formData.bulkSalePrice) || 0,
-                          trackByUnit: formData.trackByUnit,
-                        }}
-                        onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))}
-                        quantityInPieces={formData.trackByUnit === 'bulk'
-                          ? (Number(formData.quantity) || 0) * (Number(formData.conversionFactor) || 1)
-                          : (Number(formData.quantity) || 0)}
-                        pieceCostPrice={Number(formData.costPrice) || 0}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-
-                {/* Dynamic Fields */}
-                {fieldsConfig.expiryDate && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.expiryDate')}</label>
-                    <DatePicker
-                      value={formData.expiryDate}
-                      onChange={(date) => setFormData(prev => ({ ...prev, expiryDate: date }))}
-                      placeholder={t('products.selectExpiryDate')}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.batchNumber && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.batchNumber')}</label>
-                    <Input
-                      placeholder={t('products.batchNumber')}
-                      value={formData.batchNumber}
-                      onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.serialNumber && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.serialNumber')}</label>
-                    <Input
-                      placeholder={t('products.exampleSerial')}
-                      value={formData.serialNumber}
-                      onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.warranty && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.warranty')}</label>
-                    <Input
-                      placeholder={t('products.exampleWarranty')}
-                      value={formData.warranty}
-                      onChange={(e) => setFormData(prev => ({ ...prev, warranty: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {(fieldsConfig.wholesalePrice || (Number(formData.wholesalePrice) || 0) > 0) && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.wholesalePrice')} ({currencySymbol})</label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="0"
-                      value={formData.wholesalePrice ?? ''}
-                      onChange={(e) => handleNumericChange('wholesalePrice', e.target.value)}
-                      onBlur={() => handleNumericBlur('wholesalePrice', 0)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.sizeColor && (
-                  <>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.size')}</label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', '44', '46'].map(s => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => {
-                              const sizes = formData.size ? formData.size.split(',').map(x => x.trim()).filter(Boolean) : [];
-                              const updated = sizes.includes(s) ? sizes.filter(x => x !== s) : [...sizes, s];
-                              setFormData(prev => ({ ...prev, size: updated.join(', ') }));
-                            }}
-                            className={cn(
-                              "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
-                              formData.size?.split(',').map(x => x.trim()).includes(s)
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                            )}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        placeholder={t('products.exampleSize')}
-                        value={formData.size}
-                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value }))}
-                        className="text-xs"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-sm font-medium mb-1.5 block">{t('products.color')}</label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {[
-                          { name: 'أسود', hex: '#000' }, { name: 'أبيض', hex: '#fff' }, { name: 'أحمر', hex: '#ef4444' },
-                          { name: 'أزرق', hex: '#3b82f6' }, { name: 'أخضر', hex: '#22c55e' }, { name: 'رمادي', hex: '#6b7280' },
-                          { name: 'بني', hex: '#92400e' }, { name: 'بيج', hex: '#d4a76a' }, { name: 'كحلي', hex: '#1e3a5f' },
-                        ].map(c => (
-                          <button
-                            key={c.name}
-                            type="button"
-                            onClick={() => {
-                              const colors = formData.color ? formData.color.split(',').map(x => x.trim()).filter(Boolean) : [];
-                              const updated = colors.includes(c.name) ? colors.filter(x => x !== c.name) : [...colors, c.name];
-                              setFormData(prev => ({ ...prev, color: updated.join(', ') }));
-                            }}
-                            className={cn(
-                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border transition-colors",
-                              formData.color?.split(',').map(x => x.trim()).includes(c.name)
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted text-muted-foreground border-border hover:border-primary/50"
-                            )}
-                          >
-                            <span className="w-3 h-3 rounded-full border border-border/50 flex-shrink-0" style={{ backgroundColor: c.hex }} />
-                            {c.name}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        placeholder={t('products.exampleColor')}
-                        value={formData.color}
-                        onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                        className="text-xs"
-                      />
-                    </div>
-                  </>
-                )}
-                {fieldsConfig.weight && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.weight')}</label>
-                    <Input
-                      placeholder={t('products.weight')}
-                      value={formData.weight}
-                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.fabricType && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.fabricType')}</label>
-                    <Input
-                      placeholder={t('products.fabricType')}
-                      value={formData.fabricType}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fabricType: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.tableNumber && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.tableNumber')}</label>
-                    <Input
-                      placeholder={t('products.tableNumber')}
-                      value={formData.tableNumber}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tableNumber: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.orderNotes && (
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.orderNotes')}</label>
-                    <Input
-                      placeholder={t('products.orderNotes')}
-                      value={formData.orderNotes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, orderNotes: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.author && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.author')}</label>
-                    <Input
-                      placeholder={t('products.author')}
-                      value={formData.author}
-                      onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.publisher && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.publisher')}</label>
-                    <Input
-                      placeholder={t('products.publisher')}
-                      value={formData.publisher}
-                      onChange={(e) => setFormData(prev => ({ ...prev, publisher: e.target.value }))}
-                    />
-                  </div>
-                )}
-                {fieldsConfig.minStockLevel && (
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">{t('products.minStock')}</label>
-                    <Input
-                      type="number"
-                      dir="ltr"
-                      className="text-right"
-                      placeholder="5"
-                      value={formData.minStockLevel || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, minStockLevel: Number(e.target.value) }))}
-                    />
-                  </div>
-                )}
-
-                {/* Custom Fields in Edit Dialog */}
-                {customFields.map((field) => (
-                  <div key={field.id} className={field.type === 'text' ? 'sm:col-span-2' : ''}>
-                    <label className="text-sm font-medium mb-1.5 block">
-                      {field.name} {field.required && '*'}
-                    </label>
-                    {field.type === 'select' && field.options ? (
-                      <select
-                        className="w-full h-10 px-3 rounded-md bg-muted border-0 text-foreground"
-                        value={customFieldValues[field.id] || ''}
-                        onChange={(e) => setCustomFieldValues({ ...customFieldValues, [field.id]: e.target.value })}
-                      >
-                        <option value="">اختر...</option>
-                        {field.options.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        type={field.type === 'number' ? 'number' : 'text'}
-                        placeholder={field.placeholder || ''}
-                        value={customFieldValues[field.id] || ''}
-                        onChange={(e) => setCustomFieldValues({
-                          ...customFieldValues,
-                          [field.id]: field.type === 'number' ? Number(e.target.value) : e.target.value
-                        })}
-                      />
-                    )}
-                  </div>
-                ))}
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-medium mb-1.5 block">{t('products.productImage')}</label>
-                  <div className="flex flex-col gap-3">
-                    {(imagePreviewBase64 || formData.image) ? (
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border group cursor-pointer" onClick={() => {
-                        if (imagePreviewBase64) openImagePreview(imagePreviewBase64);
-                        else if (formData.image) openImagePreview(formData.image);
-                      }}>
-                        {imagePreviewBase64 ? (
-                          <img
-                            src={imagePreviewBase64}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ProductImage
-                            imageUrl={formData.image}
-                            alt="Preview"
-                            className="w-24 h-24 rounded-lg"
-                            iconClassName="w-6 h-6"
-                          />
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Search className="w-5 h-5 text-white" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, image: '' })); setImagePreviewBase64(''); setImageLoadError(false); }}
-                          className="absolute top-1 right-1 p-1 bg-destructive/90 rounded-full text-white"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
-                        <ImageIcon className="w-10 h-10 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full min-h-12"
-                        onClick={handleCameraCapture}
-                        disabled={isCameraLoading}
-                      >
-                        {isCameraLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Camera className="w-4 h-4" />
-                        )}
-                        {t('products.captureImage')}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full min-h-12"
-                        onClick={handleGallerySelect}
-                        disabled={isCameraLoading}
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                        {t('products.chooseImage')}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="sticky bottom-0 border-t bg-card/95 backdrop-blur-md px-4 py-3 sm:px-6 flex items-center gap-3 shrink-0 shadow-lg">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 h-11 rounded-xl text-sm font-bold border-border/80 hover:bg-muted/60 transition-colors cursor-pointer shadow-xs"
-                onClick={() => {
-                  setShowEditDialog(false);
-                  setImagePreviewBase64('');
-                  clearPersistedState();
-                }}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type="button"
-                className={cn(
-                  "flex-[2] h-11 rounded-xl text-sm font-black shadow-md transition-colors cursor-pointer",
-                  selectedProduct?.archived
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
-                    : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
-                )}
-                onClick={handleEditProduct}
-              >
-                {selectedProduct?.archived ? (
-                  <>
-                    <RotateCcw className="w-4 h-4 ml-2" />
-                    {t('products.restoreAndEditProduct')}
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 ml-2" />
-                    {t('common.save')}
-                  </>
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Delete Confirmation */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
@@ -3684,7 +3180,7 @@ export default function Products() {
 
         {/* Quick Restock Dialog */}
         <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
-          <DialogContent className="w-[min(calc(100vw-1rem),30rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-background">
+          <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[90dvh] flex flex-col p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-card">
             <DialogHeader className="p-4 border-b border-border/60 shrink-0 bg-muted/20">
               <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Boxes className="w-5 h-5 text-emerald-600" />

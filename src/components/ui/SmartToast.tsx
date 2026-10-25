@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Printer,
   Share2,
+  X,
 } from 'lucide-react';
 import { useSmartToastListener, hideSmartToast, SmartToastData } from '@/hooks/use-smart-toast';
 import { cn } from '@/lib/utils';
@@ -107,6 +108,7 @@ export interface ParsedToastDetails {
 function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
   const type = toast.type || 'success';
   let cat: ParsedToastDetails['category'] = 'general';
+  const str = `${typeof toast.title === 'string' ? toast.title : ''} ${typeof toast.subtitle === 'string' ? toast.subtitle : ''} ${typeof toast.description === 'string' ? toast.description : ''} ${toast.operation || ''}`.toLowerCase();
 
   if (type === 'cash_sale') cat = 'cash_sale';
   else if (type === 'debt_sale') cat = 'debt_sale';
@@ -116,7 +118,6 @@ function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
   else if (type === 'error') cat = 'error';
   else if (type === 'warning') cat = 'warning';
   else {
-    const str = `${typeof toast.title === 'string' ? toast.title : ''} ${typeof toast.subtitle === 'string' ? toast.subtitle : ''} ${typeof toast.description === 'string' ? toast.description : ''} ${toast.operation || ''}`.toLowerCase();
     if (str.includes('سلة') || str.includes('cart') || str.includes('sepet')) cat = 'cart';
     else if (str.includes('آجل') || str.includes('دين') || str.includes('ذمم') || str.includes('سداد') || str.includes('debt') || str.includes('borç') || str.includes('veresiye')) cat = 'debt_sale';
     else if (str.includes('فاتورة') || str.includes('بيع') || str.includes('sale') || str.includes('invoice') || str.includes('satış') || str.includes('kasa')) cat = 'cash_sale';
@@ -132,13 +133,46 @@ function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
 
   const invoiceNum = toast.invoiceNumber || (typeof toast.subtitle === 'string' && toast.subtitle.startsWith('#') ? toast.subtitle.replace(/^#/, '') : undefined);
 
+  // استخراج وتنسيق التفاصيل الحقيقية للعملية
+  let formattedItemName = toast.itemName;
+  let formattedDescription = toast.description;
+  const formattedPrice = toast.price ? String(toast.price) : undefined;
+
+  // 1. إضافة أو تعديل منتج
+  if (str.includes('إضافة منتج') || str.includes('تم حفظ المنتج') || str.includes('إضافة الصنف') || toast.operation === 'product_added') {
+    if (!formattedItemName && toast.description && typeof toast.description === 'string' && !toast.description.includes('نجاح')) {
+      formattedItemName = `📦 ${toast.description}`;
+      formattedDescription = undefined;
+    } else if (formattedItemName) {
+      formattedItemName = `📦 ${formattedItemName}`;
+    }
+  } else if (str.includes('تعديل منتج') || str.includes('تحديث بيانات') || str.includes('تعديل الصنف') || toast.operation === 'product_updated') {
+    if (!formattedItemName && toast.description && typeof toast.description === 'string') {
+      formattedItemName = `✏️ تم تحديث بيانات ${toast.description}`;
+      formattedDescription = undefined;
+    } else if (formattedItemName) {
+      formattedItemName = `✏️ تم تحديث بيانات ${formattedItemName}`;
+    }
+  } else if (cat === 'sync' || str.includes('مزامنة')) {
+    if (!formattedDescription && !formattedItemName) {
+      formattedItemName = '☁️ تم التزامن مع السحابة بنجاح';
+    } else if (formattedDescription && typeof formattedDescription === 'string') {
+      formattedItemName = `☁️ ${formattedDescription}`;
+      formattedDescription = undefined;
+    }
+  } else if (cat === 'cash_sale' || cat === 'debt_sale' || str.includes('فاتورة')) {
+    if (invoiceNum && !formattedItemName && !formattedDescription) {
+      formattedItemName = `🧾 فاتورة #${invoiceNum}`;
+    }
+  }
+
   return {
     operationName: toast.title || toast.operation || 'إشعار النظام',
     category: cat,
-    itemName: toast.itemName,
+    itemName: formattedItemName,
     isMultiple: toast.isMultiple !== undefined ? toast.isMultiple : (toast.itemCount !== undefined ? toast.itemCount > 1 : false),
     itemCount: toast.itemCount,
-    price: toast.price ? String(toast.price) : undefined,
+    price: formattedPrice,
     stockQuantity: toast.stockQuantity,
     invoiceNumber: invoiceNum,
     note: typeof toast.subtitle === 'string' && !toast.subtitle.startsWith('#') ? toast.subtitle : undefined,
@@ -146,7 +180,7 @@ function resolveToastDetails(toast: SmartToastData): ParsedToastDetails {
     primaryValue: toast.primaryValue,
     secondaryLabel: toast.secondaryLabel,
     secondaryValue: toast.secondaryValue,
-    description: toast.description,
+    description: formattedDescription,
     pillText: toast.pillText,
     statusBadge: toast.statusBadge,
   };
@@ -507,7 +541,7 @@ export function SmartToast() {
       <div
         className={cn(
           "smart-toast-card pointer-events-auto cursor-grab active:cursor-grabbing overflow-hidden transform-gpu select-none touch-none",
-          "w-full max-w-[22.5rem] sm:max-w-[23.5rem] rounded-2xl",
+          "w-full max-w-[21rem] sm:max-w-[22rem] rounded-2xl shadow-xl border border-border/80 bg-card/95 backdrop-blur-xl",
           animPhase === 'entering' && "transition-all duration-100 ease-out",
           animPhase === 'expanded' && "transition-all duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
           animPhase === 'retracting' && "dynamic-island-retract",
@@ -526,217 +560,96 @@ export function SmartToast() {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
-        {/* مقبض السحب المرئي العلوي اللطيف */}
-        <div className="pt-1.5 pb-0.5 flex justify-center">
-          <div className="w-7 h-1 rounded-full bg-muted-foreground/25" />
-        </div>
-
-        {/* محتوى الإشعار المباشر مع كامل التفاصيل دون قص */}
-        <div className="px-3 pb-2 pt-0.5 space-y-1.5">
-          {/* سطر الرأس: أيقونة العملية + عنوان العملية + كبسولة الحالة / مؤشر التجميد + زر الإغلاق */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {/* أيقونة العملية */}
-              <div className={cn("w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 relative", config.bg, config.border, config.text)}>
-                {config.icon}
-                <span className={cn("absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full pulse-dot", config.dot)} />
-              </div>
-
-              {/* اسم العملية ورقم الفاتورة وحالة التجميد أو الوقت */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs font-bold text-card-foreground truncate leading-tight tracking-tight">
-                    {details.operationName}
-                  </h4>
-                  {details.invoiceNumber && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-muted font-mono font-bold text-muted-foreground border border-border/40 shrink-0">
-                      #{details.invoiceNumber}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {isPaused ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 dark:text-amber-400">
-                      <span>⏸</span> مُجمّد للقراءة
-                    </span>
-                  ) : details.statusBadge ? (
-                    <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                      {details.statusBadge}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      {toast.time || 'الآن'}
-                    </span>
-                  )}
-                  {details.category === 'cash_sale' && !details.statusBadge && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
-                      معتمدة
-                    </span>
-                  )}
-                </div>
-              </div>
+        {/* محتوى الإشعار المدمج المباشر بدون أسطر فارغة */}
+        <div className="px-3 py-2 flex items-center justify-between gap-2.5">
+          {/* الأيقونة + العنوان والتفاصيل في سطرين مدمجين */}
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className={cn("w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 relative", config.bg, config.border, config.text)}>
+              {config.icon}
             </div>
 
-            {/* زر إغلاق صريح وناعم */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                retractNotification();
-              }}
-              className="w-6 h-6 rounded-lg bg-muted/60 hover:bg-muted text-muted-foreground hover:text-card-foreground flex items-center justify-center transition active:scale-90 border border-border/40 shrink-0"
-              title="إغلاق"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* كتلة تفاصيل العملية المباشرة */}
-          <div className="p-2 rounded-xl bg-muted/30 border border-border/50 space-y-1 text-xs">
-            {/* الأسطر الأساسية المعرّفة (primaryLabel / primaryValue) */}
-            {(details.primaryLabel || details.primaryValue) && (
-              <div className="flex items-center justify-between gap-2">
-                {details.primaryLabel && (
-                  <span className="text-[11px] text-muted-foreground font-medium shrink-0">
-                    {details.primaryLabel}:
-                  </span>
-                )}
-                <span className="font-bold text-card-foreground text-xs truncate" title={typeof details.primaryValue === 'string' ? details.primaryValue : undefined}>
-                  {details.primaryValue}
-                </span>
-              </div>
-            )}
-
-            {/* الأسطر الثانوية (secondaryLabel / secondaryValue) */}
-            {(details.secondaryLabel || details.secondaryValue) && (
-              <div className="flex items-center justify-between gap-2">
-                {details.secondaryLabel && (
-                  <span className="text-[11px] text-muted-foreground font-medium shrink-0">
-                    {details.secondaryLabel}:
-                  </span>
-                )}
-                <span className="font-medium text-card-foreground/90 text-xs truncate">
-                  {details.secondaryValue}
-                </span>
-              </div>
-            )}
-
-            {/* سطر القطعة إذا لم يُعرض كـ primary */}
-            {!details.primaryValue && details.isMultiple ? (
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-bold text-[11px]">
-                  <span>📦</span>
-                  <span>{getCurrentLanguage() === 'en' ? 'Multiple items' : 'وحدات متعددة'}</span>
-                  {details.itemCount && (
-                    <span className="font-mono text-[10px] opacity-80">
-                      ({details.itemCount} {getCurrentLanguage() === 'en' ? (details.itemCount > 1 ? 'pcs' : 'pc') : 'قطع'})
-                    </span>
-                  )}
-                </span>
-                {details.price && (
-                  <span className="font-mono font-extrabold text-xs text-card-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
-                    {details.price}
+            <div className="min-w-0 flex-1">
+              {/* السطر الأول: العملية ورقم الفاتورة */}
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs font-black text-foreground truncate">
+                  {details.operationName}
+                </h4>
+                {details.invoiceNumber && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-muted font-mono font-bold text-muted-foreground shrink-0 border border-border/40">
+                    #{details.invoiceNumber}
                   </span>
                 )}
               </div>
-            ) : !details.primaryValue && details.itemName ? (
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <span className="text-[11px] text-muted-foreground shrink-0 font-medium">القطعة:</span>
-                  <span className="font-bold text-card-foreground text-xs truncate" title={details.itemName}>
+
+              {/* السطر الثاني: التفاصيل الحقيقية للعملية (القطعة / السعر / الحالة) */}
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate mt-0.5">
+                {details.itemName ? (
+                  <span className="font-semibold text-foreground/90 truncate">
                     {details.itemName}
                   </span>
-                </div>
+                ) : details.description ? (
+                  <span className="truncate">{details.description}</span>
+                ) : (
+                  <span>{details.statusBadge || 'تمت العملية بنجاح'}</span>
+                )}
+
                 {details.price && (
-                  <span className="font-mono font-extrabold text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0">
-                    {details.price}
+                  <span className="font-mono font-bold text-primary shrink-0 mr-auto">
+                    ({details.price})
                   </span>
                 )}
               </div>
-            ) : null}
-
-            {/* نص الوصف العام (description) للإشعارات العامة */}
-            {details.description && (
-              <div className="text-[11px] text-card-foreground/90 leading-snug font-medium">
-                {details.description}
-              </div>
-            )}
-
-            {/* سطر الكبسولة البارزة (pillText) أو السعر الصريح مع الملاحظة */}
-            <div className="flex items-center justify-between gap-2 pt-0.5">
-              {details.note ? (
-                <span className="text-[10px] text-muted-foreground truncate leading-relaxed">
-                  {details.note}
-                </span>
-              ) : <div />}
-              {details.pillText ? (
-                <div className={cn("px-2 py-0.5 rounded-lg font-bold text-[11px] shrink-0 border", config.bg, config.border, config.text)}>
-                  {details.pillText}
-                </div>
-              ) : details.price && !details.itemName && !details.isMultiple ? (
-                <div className="font-mono font-black text-xs text-primary tracking-tight">
-                  {details.price}
-                </div>
-              ) : null}
             </div>
-
-            {/* سطر المخزون (لتنبيهات المخزون الحرج أو نفاد المخزون) */}
-            {details.stockQuantity !== undefined && (
-              <div className="flex items-center justify-between gap-2 pt-0.5 border-t border-border/25">
-                <span className="text-[10px] text-muted-foreground font-medium">المخزون المتوفر:</span>
-                <span
-                  className={cn(
-                    "font-mono font-bold text-[10px] px-1.5 py-0.5 rounded border",
-                    details.stockQuantity === 0
-                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                  )}
-                >
-                  {details.stockQuantity === 0 ? 'نفد بالكامل (0)' : `${details.stockQuantity} قطعة فقط`}
-                </span>
-              </div>
-            )}
           </div>
 
-          {/* أزرار الإجراءات المتكاملة (طباعة / مشاركة) إن وُجدت */}
-          {(toast.primaryAction || toast.secondaryAction) && (
-            <div className="flex items-center gap-2 pt-1 border-t border-border/30">
-              {toast.primaryAction && (
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toast.primaryAction?.onClick();
-                    retractNotification();
-                  }}
-                  className="flex-1 py-1 px-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition active:scale-95 shadow-sm flex items-center justify-center gap-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5 shrink-0" />
-                  <span>{toast.primaryAction.label}</span>
-                </button>
-              )}
-              {toast.secondaryAction && (
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toast.secondaryAction?.onClick();
-                    retractNotification();
-                  }}
-                  className="flex-1 py-1 px-2.5 rounded-lg bg-muted/80 hover:bg-muted text-card-foreground font-bold text-xs transition active:scale-95 border border-border/40 flex items-center justify-center gap-1.5"
-                >
-                  <Share2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>{toast.secondaryAction.label}</span>
-                </button>
-              )}
-            </div>
-          )}
+          {/* زر إغلاق أنيق وصغير */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              retractNotification();
+            }}
+            className="w-5 h-5 rounded-md text-muted-foreground hover:text-foreground flex items-center justify-center shrink-0 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
+
+        {/* أزرار الإجراءات المتكاملة (طباعة / مشاركة) إن وُجدت */}
+        {(toast.primaryAction || toast.secondaryAction) && (
+          <div className="px-3 pb-2 pt-0 flex items-center gap-2">
+            {toast.primaryAction && (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toast.primaryAction?.onClick();
+                  retractNotification();
+                }}
+                className="flex-1 py-1 px-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition active:scale-95 shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5 shrink-0" />
+                <span>{toast.primaryAction.label}</span>
+              </button>
+            )}
+            {toast.secondaryAction && (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toast.secondaryAction?.onClick();
+                  retractNotification();
+                }}
+                className="flex-1 py-1 px-2.5 rounded-lg bg-muted hover:bg-muted/80 text-card-foreground font-bold text-xs transition active:scale-95 border border-border/40 flex items-center justify-center gap-1.5"
+              >
+                <Share2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{toast.secondaryAction.label}</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* شريط المؤقت الزمني للإغلاق التلقائي (يتجمد فوراً عند وضع اليد أو المؤشر) */}
         <div className="h-0.5 bg-muted/50 w-full overflow-hidden">
