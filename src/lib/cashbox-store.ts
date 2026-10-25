@@ -5,6 +5,7 @@
 import { getCurrentUserId } from './supabase-store';
 import { emitEvent, EVENTS } from './events';
 import { roundCurrency, addCurrency, subtractCurrency } from './utils';
+import { getEnabledCurrencies } from './money-engine';
 
 // المفاتيح القديمة (للتوافق مع البيانات المخزنة سابقاً — تُقرأ كـ fallback)
 const LEGACY_CASHBOX_KEY = 'hyperpos_cashbox_v1';
@@ -147,40 +148,57 @@ export const getActiveShift = (): Shift | null => {
   return shifts.find(s => s.status === 'open') || null;
 };
 
-// Helper to initialize multi-currency shift totals
+// Helper to initialize multi-currency shift totals dynamically
 export const initShiftCurrencies = (
   openingUSD: number = 0,
-  currencyOpenings?: { USD?: number; TRY?: number; SYP?: number }
-): ShiftCurrenciesMap => ({
-  USD: {
-    opening: roundCurrency(currencyOpenings?.USD ?? openingUSD),
+  currencyOpenings?: Record<string, number | undefined>
+): ShiftCurrenciesMap => {
+  const map: ShiftCurrenciesMap = {};
+  const enabled = getEnabledCurrencies();
+
+  map['USD'] = {
+    opening: roundCurrency(currencyOpenings?.['USD'] ?? openingUSD),
     sales: 0,
     expenses: 0,
     deposits: 0,
     withdrawals: 0,
-  },
-  TRY: {
-    opening: roundCurrency(currencyOpenings?.TRY ?? 0),
-    sales: 0,
-    expenses: 0,
-    deposits: 0,
-    withdrawals: 0,
-  },
-  SYP: {
-    opening: roundCurrency(currencyOpenings?.SYP ?? 0),
-    sales: 0,
-    expenses: 0,
-    deposits: 0,
-    withdrawals: 0,
-  },
-});
+  };
+
+  enabled.forEach(curr => {
+    if (curr.code !== 'USD') {
+      map[curr.code] = {
+        opening: roundCurrency(currencyOpenings?.[curr.code] ?? 0),
+        sales: 0,
+        expenses: 0,
+        deposits: 0,
+        withdrawals: 0,
+      };
+    }
+  });
+
+  if (currencyOpenings) {
+    Object.keys(currencyOpenings).forEach(code => {
+      if (!map[code]) {
+        map[code] = {
+          opening: roundCurrency(currencyOpenings[code] ?? 0),
+          sales: 0,
+          expenses: 0,
+          deposits: 0,
+          withdrawals: 0,
+        };
+      }
+    });
+  }
+
+  return map;
+};
 
 // Open a new shift
 export const openShift = (
   openingCash: number,
   userId: string,
   userName: string,
-  currencyOpenings?: { USD?: number; TRY?: number; SYP?: number },
+  currencyOpenings?: Record<string, number | undefined>,
   primaryCurrency?: string,
   exchangeRate?: number
 ): Shift => {
@@ -228,7 +246,7 @@ export const openShift = (
 export const closeShift = (
   closingCash: number,
   notes?: string,
-  currencyCounts?: { USD?: number; TRY?: number; SYP?: number },
+  currencyCounts?: Record<string, number | undefined>,
   primaryCurrency?: string,
   exchangeRate?: number
 ): { shift: Shift; discrepancy: number } | null => {
@@ -253,7 +271,7 @@ export const closeShift = (
     shift.currencies = initShiftCurrencies(shift.openingCash);
   }
 
-  (['USD', 'TRY', 'SYP'] as const).forEach(code => {
+  Object.keys(shift.currencies).forEach(code => {
     const c = shift.currencies![code];
     if (c) {
       c.expected = roundCurrency(c.opening + c.sales + c.deposits - c.expenses - c.withdrawals);

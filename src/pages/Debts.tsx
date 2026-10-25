@@ -70,6 +70,7 @@ import {
 import { addActivityLog } from '@/lib/activity-log';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
+import { useMoney } from '@/hooks/use-money';
 import { processDebtPayment } from '@/lib/unified-transactions';
 import { shareDebt, DebtShareData } from '@/lib/native-share';
 
@@ -82,6 +83,7 @@ interface DebtsProps {
 export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsProps) {
   const { user, profile } = useAuth();
   const { t } = useLanguage();
+  const m = useMoney();
   const [searchParams, setSearchParams] = useSearchParams();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -252,41 +254,33 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     getDebtsStatsCloud().then(setStats);
   }, [debts]);
 
-  const metaUSD = useMemo(() => resolveCurrencyMeta('USD'), []);
-  const metaTRY = useMemo(() => resolveCurrencyMeta('TRY'), []);
-  const metaSYP = useMemo(() => resolveCurrencyMeta('SYP'), []);
+  const availableCurrencies = m.enabledCurrencies;
+  const currentDef = m.getCurrencyDef(paymentCurrency);
+  const currentRate = paymentCurrency === 'USD' ? 1 : (currentDef.rate > 0 ? currentDef.rate : 1);
 
-  const exchangeRates = useMemo(() => ({
-    TRY: metaTRY.rate > 0 ? metaTRY.rate : 32,
-    SYP: metaSYP.rate > 0 ? metaSYP.rate : 14500,
-  }), [metaTRY.rate, metaSYP.rate]);
+  const currencySymbols = useMemo(() => {
+    const map: Record<string, string> = {};
+    availableCurrencies.forEach(c => { map[c.code] = c.symbol; });
+    return map;
+  }, [availableCurrencies]);
 
-  const currencySymbols = useMemo(() => ({
-    USD: metaUSD.symbol,
-    TRY: metaTRY.symbol,
-    SYP: metaSYP.symbol,
-  }), [metaUSD.symbol, metaTRY.symbol, metaSYP.symbol]);
-
-  const currencyNames = useMemo(() => ({
-    USD: metaUSD.name,
-    TRY: metaTRY.name,
-    SYP: metaSYP.name,
-  }), [metaUSD.name, metaTRY.name, metaSYP.name]);
-
-  const currentRate = paymentCurrency === 'USD' ? 1 : exchangeRates[paymentCurrency];
+  const currencyNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    availableCurrencies.forEach(c => { map[c.code] = c.name; });
+    return map;
+  }, [availableCurrencies]);
 
   const amountUSD = useMemo(() => {
     const val = parseFloat(paymentAmountInput) || 0;
     if (val <= 0) return 0;
-    if (paymentCurrency === 'USD') return Math.round(val * 100) / 100;
-    return Math.round((val / currentRate) * 100) / 100;
-  }, [paymentAmountInput, paymentCurrency, currentRate]);
+    return m.toUsd(val, paymentCurrency, currentRate);
+  }, [paymentAmountInput, paymentCurrency, currentRate, m]);
 
   const maxInCurrency = useMemo(() => {
     if (!selectedDebt) return 0;
-    if (paymentCurrency === 'USD') return selectedDebt.remainingDebt;
-    return Math.round(selectedDebt.remainingDebt * currentRate * 100) / 100;
-  }, [selectedDebt, paymentCurrency, currentRate]);
+    const raw = m.fromUsd(selectedDebt.remainingDebt, paymentCurrency, currentRate);
+    return m.roundForCurrency(raw, paymentCurrency);
+  }, [selectedDebt, paymentCurrency, currentRate, m]);
 
   const openPaymentDialog = async (debt: Debt) => {
     // ✅ منع تسديد دين مرتبط بفاتورة مستردة
@@ -895,67 +889,28 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
               {/* اختيار عملة السداد */}
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">عملة الدفع المستلمة</label>
-                <div className="flex gap-2">
-                  {enabledCurrencies.USD !== false && (
+                <div className="flex gap-2 flex-wrap">
+                  {availableCurrencies.map((curr) => (
                     <button
+                      key={curr.code}
                       type="button"
                       disabled={isSubmitting}
                       onClick={() => {
-                        setPaymentCurrency('USD');
+                        setPaymentCurrency(curr.code);
                         setPaymentAmountInput('');
                       }}
                       className={cn(
-                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
+                        "flex-1 min-w-[5rem] min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
                         isSubmitting && "opacity-50 cursor-not-allowed",
-                        paymentCurrency === 'USD'
+                        paymentCurrency === curr.code
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
                       )}
                     >
-                      <span className="text-xs font-bold">💵 {currencyNames.USD}</span>
-                      <span className="text-[10px] opacity-80">({currencySymbols.USD})</span>
+                      <span className="text-xs font-bold">{curr.symbol} {curr.name}</span>
+                      <span className="text-[10px] opacity-80">({curr.code})</span>
                     </button>
-                  )}
-                  {enabledCurrencies.TRY && (
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => {
-                        setPaymentCurrency('TRY');
-                        setPaymentAmountInput('');
-                      }}
-                      className={cn(
-                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
-                        isSubmitting && "opacity-50 cursor-not-allowed",
-                        paymentCurrency === 'TRY'
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                      )}
-                    >
-                      <span className="text-xs font-bold">{currencySymbols.TRY} {currencyNames.TRY}</span>
-                      <span className="text-[10px] opacity-80">(TRY)</span>
-                    </button>
-                  )}
-                  {enabledCurrencies.SYP && (
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => {
-                        setPaymentCurrency('SYP');
-                        setPaymentAmountInput('');
-                      }}
-                      className={cn(
-                        "flex-1 min-h-[3.7rem] p-2 rounded-xl border transition-colors flex flex-col items-center justify-center gap-0.5 leading-tight text-center",
-                        isSubmitting && "opacity-50 cursor-not-allowed",
-                        paymentCurrency === 'SYP'
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
-                      )}
-                    >
-                      <span className="text-xs font-bold">{currencySymbols.SYP} {currencyNames.SYP}</span>
-                      <span className="text-[10px] opacity-80">(SYP)</span>
-                    </button>
-                  )}
+                  ))}
                 </div>
                 {paymentCurrency !== 'USD' && (
                   <p className="text-[11px] text-muted-foreground mt-1.5 px-1 flex items-center justify-between">
@@ -1004,7 +959,7 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
                     disabled={isSubmitting}
                     onClick={() => setPaymentAmountInput(String(maxInCurrency))}
                   >
-                    {t('debts.payFull')} ({maxInCurrency} {paymentCurrency})
+                    {t('debts.payFull')} ({maxInCurrency} {currencySymbols[paymentCurrency] || paymentCurrency})
                   </Button>
                   <Button
                     variant="outline"
