@@ -1,8 +1,14 @@
 {
-  "versionCode": 321,
-  "versionName": "1.0.91",
-  "lastUpdated": "2026-10-25T08:31:00.000Z",
+  "versionCode": 322,
+  "versionName": "1.0.92",
+  "lastUpdated": "2026-10-25T08:38:30.000Z",
   "buildHistory": [
+    {
+      "versionCode": 322,
+      "versionName": "1.0.92",
+      "date": "2026-10-25",
+      "description": "v1.0.92 - المرحلة 9: الإعدادات — إضافة نمط العرض الشبكي المصغر والقائمة (Compact Grid & List View Layout Switcher)؛ إضافة محول ديناميكي للأوضاع (Grid / List) بجانب شريط البحث السريع في شاشة الإعدادات (Settings.tsx) مع حفظ تفضيل المستخدم في localStorage، وتوفير عرض قائمة منظم ومفصل مع سهم توجيهي مخصص لاتجاه الواجهة (RTL/LTR) إلى جانب العرض الشبكي المصغر"
+    },
     {
       "versionCode": 321,
       "versionName": "1.0.91",

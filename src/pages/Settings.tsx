@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Coins, Undo2, Smartphone, UserCheck, Users, ArrowLeft, ArrowRight, Sparkles, ShoppingCart, SlidersHorizontal } from 'lucide-react';
+import { Coins, Undo2, Smartphone, UserCheck, Users, ArrowLeft, ArrowRight, Sparkles, ShoppingCart, SlidersHorizontal, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NOTIFICATION_EVENT_GROUPS, getDefaultNotificationEvents } from '@/lib/notification-events-config';
 import Partners from '@/pages/Partners';
 import { ArchiveSection } from '@/components/settings/ArchiveSection';
@@ -242,6 +242,22 @@ export default function Settings() {
 
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [settingsLayout, setSettingsLayout] = useState<'grid' | 'list'>(() => {
+    try {
+      return (localStorage.getItem('settings_layout_mode') as 'grid' | 'list') || 'grid';
+    } catch {
+      return 'grid';
+    }
+  });
+
+  const handleLayoutChange = (mode: 'grid' | 'list') => {
+    setSettingsLayout(mode);
+    try {
+      localStorage.setItem('settings_layout_mode', mode);
+    } catch {
+      // ignore storage errors
+    }
+  };
   const setActiveTab = (tabId: string | null) => {
     if (tabId) {
       setSearchParams({ tab: tabId });
@@ -3479,27 +3495,61 @@ export default function Settings() {
             subtitle={t('settings.subtitle')}
           />
 
-          {/* Instant Search Bar */}
-          <div className="relative mb-3.5">
-            <Search className="w-4 h-4 text-muted-foreground absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <Input
-              type="text"
-              id="settingsSearchInput"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isRTL ? "بحث سريع في الإعدادات، التراخيص، العملات..." : "Search settings, licenses, currencies..."}
-              className="bg-card border border-border/80 rounded-2xl h-10 ps-10 pe-9 text-xs font-semibold placeholder:text-muted-foreground/60 shadow-2xs focus-visible:ring-primary/20"
-            />
-            {searchQuery && (
+          {/* Instant Search Bar & Layout Switcher */}
+          <div className="flex items-center gap-2 mb-3.5">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-muted-foreground absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Input
+                type="text"
+                id="settingsSearchInput"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={isRTL ? "بحث سريع في الإعدادات، التراخيص، العملات..." : "Search settings, licenses, currencies..."}
+                className="bg-card border border-border/80 rounded-2xl h-10 ps-10 pe-9 text-xs font-semibold placeholder:text-muted-foreground/60 shadow-2xs focus-visible:ring-primary/20"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                  title={isRTL ? "مسح البحث" : "Clear search"}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Layout Toggle Buttons */}
+            <div className="flex items-center bg-muted/60 p-1 rounded-2xl border border-border/70 shrink-0 h-10 gap-0.5">
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
-                title={isRTL ? "مسح البحث" : "Clear search"}
+                onClick={() => handleLayoutChange('grid')}
+                className={cn(
+                  "p-1.5 rounded-xl transition-all",
+                  settingsLayout === 'grid'
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title={isRTL ? "عرض شبكي" : "Grid View"}
+                aria-label={isRTL ? "عرض شبكي" : "Grid View"}
               >
-                <X className="w-4 h-4" />
+                <LayoutGrid className="w-4 h-4" />
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => handleLayoutChange('list')}
+                className={cn(
+                  "p-1.5 rounded-xl transition-all",
+                  settingsLayout === 'list'
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title={isRTL ? "عرض قائمة" : "List View"}
+                aria-label={isRTL ? "عرض قائمة" : "List View"}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {(() => {
@@ -3620,7 +3670,7 @@ export default function Settings() {
               );
             }
 
-                        return (
+                        return settingsLayout === 'grid' ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
                 {filteredTabs.map(tab => {
                   const colors = getTabColorClasses(tab.color, tab.danger);
@@ -3651,6 +3701,49 @@ export default function Settings() {
                           {tab.badge}
                         </span>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredTabs.map(tab => {
+                  const colors = getTabColorClasses(tab.color, tab.danger);
+                  return (
+                    <div
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "bg-card border border-border/80 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 hover:border-primary/50 hover:shadow-sm active:scale-[0.99] transition-[transform,box-shadow,border-color] duration-150 cursor-pointer group",
+                        tab.danger && "hover:border-destructive/60"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0 border group-hover:scale-105 transition-transform", colors.bg)}>
+                          <tab.icon className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs md:text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                              {tab.label}
+                            </span>
+                            {tab.badge && (
+                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0", colors.badge)}>
+                                {tab.badge}
+                              </span>
+                            )}
+                          </div>
+                          {tab.description && (
+                            <p className="text-[11px] text-muted-foreground font-medium truncate mt-0.5">
+                              {tab.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-muted-foreground/50 group-hover:text-primary transition-colors">
+                        {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </div>
                     </div>
                   );
                 })}
