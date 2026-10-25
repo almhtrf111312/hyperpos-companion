@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Palette, Type, Maximize2, LayoutGrid, Save, Undo2, Loader2, Sparkles } from 'lucide-react';
+import { Palette, Type, Maximize2, Save, Undo2, Loader2 } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
 import { UIScaleSelector } from '@/components/settings/UIScaleSelector';
 import { FontSelector } from '@/components/settings/FontSelector';
@@ -11,11 +11,11 @@ import { useAppFont } from '@/hooks/use-app-font';
 import { useUIScale } from '@/hooks/use-ui-scale';
 import { toast } from '@/hooks/use-toast';
 import { showSmartToast } from '@/hooks/use-smart-toast';
-import { getPlatformStoragePrefix, applyAppFontToDOM, AppFontId } from '@/lib/app-font-config';
+import { applyAppFontToDOM, AppFontId } from '@/lib/app-font-config';
 import { applyUIScaleToDOM, UIScaleId } from '@/lib/ui-scale-config';
 import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 
-export type AppearanceTab = 'theme' | 'fonts' | 'scale' | 'layout';
+export type AppearanceTab = 'theme' | 'fonts' | 'scale';
 
 export default function Appearance() {
   const { t, isRTL } = useLanguage();
@@ -29,19 +29,10 @@ export default function Appearance() {
   const savedFontRef = useRef<AppFontId>(currentFont);
   const savedScaleRef = useRef<UIScaleId>(currentScale);
 
-  const getLayoutStorageKey = () => `flowpos_layout_${getPlatformStoragePrefix()}`;
-
-  const [dashboardDesign, setDashboardDesign] = useState<'classic' | 'unified_pro'>(() => {
-    const platformKey = `flowpos_layout_${getPlatformStoragePrefix()}`;
-    return (localStorage.getItem(platformKey) as any) || (localStorage.getItem('hyperpos_dashboard_design_v1') as any) || 'classic';
-  });
-  const savedLayoutRef = useRef<'classic' | 'unified_pro'>(dashboardDesign);
-
   // Draft states for live preview without immediate storage commit
   const [draftTheme, setDraftTheme] = useState<PendingTheme | null>(null);
   const [draftFont, setDraftFont] = useState<AppFontId>(currentFont);
   const [draftScale, setDraftScale] = useState<UIScaleId>(currentScale);
-  const [draftLayout, setDraftLayout] = useState<'classic' | 'unified_pro'>(dashboardDesign);
 
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,13 +47,8 @@ export default function Appearance() {
   );
   const hasFontChanged = draftFont !== savedFontRef.current;
   const hasScaleChanged = draftScale !== savedScaleRef.current;
-  const hasLayoutChanged = draftLayout !== savedLayoutRef.current;
 
-  const hasUnsavedChanges = hasThemeChanged || hasFontChanged || hasScaleChanged || hasLayoutChanged;
-
-  const handleDraftLayoutChange = (design: 'classic' | 'unified_pro') => {
-    setDraftLayout(design);
-  };
+  const hasUnsavedChanges = hasThemeChanged || hasFontChanged || hasScaleChanged;
 
   // Live preview handlers
   const handleDraftFontChange = (newFont: AppFontId) => {
@@ -117,15 +103,7 @@ export default function Appearance() {
         }
       }
 
-      // 4. Save Layout
-      if (hasLayoutChanged) {
-        setDashboardDesign(draftLayout);
-        savedLayoutRef.current = draftLayout;
-        const platformKey = getLayoutStorageKey();
-        localStorage.setItem(platformKey, draftLayout);
-        localStorage.setItem('hyperpos_dashboard_design_v1', draftLayout);
-        window.dispatchEvent(new CustomEvent('hyperpos:design-changed', { detail: draftLayout }));
-      }
+
 
       showSmartToast({
         type: 'settings',
@@ -147,22 +125,20 @@ export default function Appearance() {
     setDraftTheme(null);
     setDraftFont(savedFontRef.current);
     setDraftScale(savedScaleRef.current);
-    setDraftLayout(savedLayoutRef.current);
     setResetSignal((prev) => prev + 1);
   };
 
   // Navigation tabs
   const tabs = [
-    { id: 'theme' as AppearanceTab, label: isRTL ? 'المظهر والثيم' : 'Theme & Style', icon: Palette },
+    { id: 'theme' as AppearanceTab, label: isRTL ? 'المظهر العام' : 'Appearance & Theme', icon: Palette },
     { id: 'fonts' as AppearanceTab, label: t('appearance.fonts'), icon: Type },
     { id: 'scale' as AppearanceTab, label: t('appearance.uiScale'), icon: Maximize2 },
-    { id: 'layout' as AppearanceTab, label: t('appearance.layout'), icon: LayoutGrid },
   ];
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto pb-28 pt-14 md:pt-4 space-y-5">
       {/* شريط تبويبات الإعدادات (المظهر والثيم، الخطوط، حجم الواجهة، والتخطيط) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
+      <div className="grid grid-cols-3 gap-2 p-1.5 bg-muted/70 dark:bg-zinc-900/80 rounded-2xl border border-border/60 shadow-xs overflow-visible">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -215,46 +191,7 @@ export default function Appearance() {
           />
         )}
 
-        {activeTab === 'layout' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground">{t('appearance.dashboardDesignTitle')}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('appearance.dashboardDesignDesc')}</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleDraftLayoutChange('classic')}
-                className={cn(
-                  "p-4 rounded-2xl border text-start transition-all duration-200 hover:border-primary/40",
-                  draftLayout === 'classic'
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xs"
-                    : "border-border/60 bg-muted/20 hover:bg-muted/40"
-                )}
-              >
-                <div className="font-bold text-sm text-foreground">{t('appearance.classicStyle')}</div>
-                <div className="text-xs text-muted-foreground mt-1">{t('appearance.classicDesc')}</div>
-              </button>
 
-              <button
-                type="button"
-                onClick={() => handleDraftLayoutChange('unified_pro')}
-                className={cn(
-                  "p-4 rounded-2xl border text-start transition-all duration-200 hover:border-primary/40",
-                  draftLayout === 'unified_pro'
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-xs"
-                    : "border-border/60 bg-muted/20 hover:bg-muted/40"
-                )}
-              >
-                <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>{t('appearance.unifiedProStyle')}</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">{t('appearance.unifiedProDesc')}</div>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* الشريط/الزر العائم الحصري عند حدوث أي تعديل غير محفوظ في السمة أو الخط أو الحجم */}
