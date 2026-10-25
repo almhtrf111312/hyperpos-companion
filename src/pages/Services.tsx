@@ -123,7 +123,7 @@ const getDeviceTypes = (t: (key: string) => string) => [
 ];
 
 export default function Services() {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const { user, profile } = useAuth();
   const statusConfig = getStatusConfig(t);
   const filterOptions = getFilterOptions(t);
@@ -138,9 +138,18 @@ export default function Services() {
     saveServices(requests);
   }, [requests]);
 
-  // Dialogs
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  // Dialogs & Views
+  const [activeView, setActiveView] = useState<'list' | 'add' | 'edit'>('list');
+  const showAddDialog = activeView === 'add';
+  const showEditDialog = activeView === 'edit';
+  const setShowAddDialog = (open: boolean) => {
+    setActiveView(open ? 'add' : 'list');
+    if (open) window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const setShowEditDialog = (open: boolean) => {
+    setActiveView(open ? 'edit' : 'list');
+    if (open) window.scrollTo({ top: 0, behavior: 'instant' });
+  };
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
@@ -363,6 +372,174 @@ export default function Services() {
     setSelectedRequest(request);
     setShowDeleteDialog(true);
   };
+
+  if (activeView !== 'list') {
+    const isEdit = activeView === 'edit';
+    return (
+      <div
+        className="min-h-[100dvh] bg-background flex flex-col pb-24 animate-in fade-in-50 duration-150 relative"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        {/* الترويسة العلوية الثابتة مع مراعاة زر القائمة الجانبية للموبايل */}
+        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 py-3 rtl:pr-14 ltr:pl-14 md:rtl:pr-6 md:ltr:pl-6 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              {isEdit ? <Edit className="w-4 h-4" /> : <Wrench className="w-4 h-4" />}
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-foreground">
+                {isEdit ? t('services.editRequest') : t('services.addNewRequest')}
+              </h2>
+              <p className="text-[11px] text-muted-foreground">
+                {isEdit ? 'تحديث بيانات وتشخيص طلب الصيانة' : t('services.addNewRequestDesc')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* جسم النموذج الكامل المتجاوب */}
+        <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-2xs">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.customerName')} *</label>
+              <Input
+                placeholder={t('services.customerNamePlaceholder')}
+                value={formData.customerName}
+                onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                className="h-11 rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.phoneNumber')} *</label>
+              <Input
+                placeholder={t('services.phonePlaceholder')}
+                value={formData.customerPhone}
+                onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
+                className="h-11 rounded-xl"
+                dir="ltr"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
+              <div className="flex flex-wrap gap-2">
+                {deviceTypes.map(type => (
+                  <button
+                    key={type.key}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, deviceType: type.key })}
+                    className={cn(
+                      "rounded-full h-10 px-4 text-xs font-bold transition-all duration-200 cursor-pointer select-none",
+                      formData.deviceType === type.key
+                        ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                        : "bg-muted text-foreground hover:bg-muted/80"
+                    )}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')} *</label>
+              <Input
+                placeholder={t('services.deviceModelPlaceholder')}
+                value={formData.deviceModel}
+                onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium mb-1.5 block">{t('services.issue')} *</label>
+              <Input
+                placeholder={t('services.issuePlaceholder')}
+                value={formData.issue}
+                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium mb-1.5 block">
+                {isEdit ? t('services.diagnosis') : t('services.initialDiagnosis')}
+              </label>
+              <Input
+                placeholder={t('services.initialDiagnosisPlaceholder')}
+                value={formData.diagnosis}
+                onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.expectedCostLabel')}</label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={formData.estimatedCost || ''}
+                onChange={(e) => setFormData({ ...formData, estimatedCost: Number(e.target.value) })}
+                className="h-11 rounded-xl font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
+              <DatePicker
+                value={formData.estimatedDate}
+                onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
+                placeholder={t('services.selectDeliveryDate')}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.responsibleTech')}</label>
+              <Input
+                placeholder={t('services.techNamePlaceholder')}
+                value={formData.technician}
+                onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
+                className="h-11 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">{t('services.notes')}</label>
+              <Input
+                placeholder={t('services.notesPlaceholder')}
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="h-11 rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* شريط الإجراءات السفلي الثابت */}
+        <div className="sticky bottom-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/80 p-3 sm:px-6 flex items-center gap-3 max-w-4xl w-full mx-auto shadow-lg">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 h-11 rounded-xl font-bold cursor-pointer"
+            onClick={() => {
+              setActiveView('list');
+              setSelectedRequest(null);
+            }}
+          >
+            {t('services.cancel')}
+          </Button>
+          <Button
+            type="button"
+            className="flex-[2] h-11 rounded-xl font-bold bg-primary text-primary-foreground hover:opacity-95 shadow-md gap-2 cursor-pointer"
+            onClick={isEdit ? handleEditRequest : handleAddRequest}
+          >
+            <Save className="w-4 h-4" />
+            <span>{isEdit ? t('services.saveChanges') : t('services.addRequest')}</span>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
@@ -613,243 +790,6 @@ export default function Services() {
           );
         })}
       </div>
-
-      {/* Add Request Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="w-[min(calc(100vw-1.5rem),32rem)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary" />
-              {t('services.addNewRequest')}
-            </DialogTitle>
-            <DialogDescription>{t('services.addNewRequestDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.customerName')}</label>
-                <Input
-                  placeholder={t('services.customerNamePlaceholder')}
-                  value={formData.customerName}
-                  onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.phoneNumber')}</label>
-                <Input
-                  placeholder={t('services.phonePlaceholder')}
-                  value={formData.customerPhone}
-                  onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {deviceTypes.map(type => (
-                    <button
-                      key={type.key}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, deviceType: type.key })}
-                      className={cn(
-                        "rounded-full h-9 px-4 text-xs font-bold transition-all duration-200 cursor-pointer select-none",
-                        formData.deviceType === type.key
-                          ? "bg-primary text-primary-foreground shadow-xs scale-105"
-                          : "bg-muted text-foreground hover:bg-muted/80"
-                      )}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')}</label>
-                <Input
-                  placeholder={t('services.deviceModelPlaceholder')}
-                  value={formData.deviceModel}
-                  onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.issue')} *</label>
-              <Input
-                placeholder={t('services.issuePlaceholder')}
-                value={formData.issue}
-                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.initialDiagnosis')}</label>
-              <Input
-                placeholder={t('services.initialDiagnosisPlaceholder')}
-                value={formData.diagnosis}
-                onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedCostLabel')}</label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={formData.estimatedCost || ''}
-                  onChange={(e) => setFormData({ ...formData, estimatedCost: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
-                <DatePicker
-                  value={formData.estimatedDate}
-                  onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
-                  placeholder={t('services.selectDeliveryDate')}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.responsibleTech')}</label>
-              <Input
-                placeholder={t('services.techNamePlaceholder')}
-                value={formData.technician}
-                onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.notes')}</label>
-              <Input
-                placeholder={t('services.notesPlaceholder')}
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              />
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setShowAddDialog(false)}>
-                {t('services.cancel')}
-              </Button>
-              <Button className="flex-1" onClick={handleAddRequest}>
-                <Save className="w-4 h-4" />
-                {t('services.addRequest')}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Request Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="w-[min(calc(100vw-1.5rem),32rem)] max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit className="w-5 h-5 text-primary" />
-              {t('services.editRequest')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.customerName')}</label>
-                <Input
-                  value={formData.customerName}
-                  onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.phoneNumber')}</label>
-                <Input
-                  value={formData.customerPhone}
-                  onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceType')}</label>
-                <div className="flex flex-wrap gap-2">
-                  {deviceTypes.map(type => (
-                    <button
-                      key={type.key}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, deviceType: type.key })}
-                      className={cn(
-                        "rounded-full h-9 px-4 text-xs font-bold transition-all duration-200 cursor-pointer select-none",
-                        formData.deviceType === type.key
-                          ? "bg-primary text-primary-foreground shadow-xs scale-105"
-                          : "bg-muted text-foreground hover:bg-muted/80"
-                      )}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.deviceModel')}</label>
-                <Input
-                  value={formData.deviceModel}
-                  onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.issue')} *</label>
-              <Input
-                value={formData.issue}
-                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.diagnosis')}</label>
-              <Input
-                value={formData.diagnosis}
-                onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedCostLabel')}</label>
-                <Input
-                  type="number"
-                  value={formData.estimatedCost || ''}
-                  onChange={(e) => setFormData({ ...formData, estimatedCost: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">{t('services.expectedDelivery')}</label>
-                <DatePicker
-                  value={formData.estimatedDate}
-                  onChange={(date) => setFormData({ ...formData, estimatedDate: date })}
-                  placeholder={t('services.selectDeliveryDate')}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.responsibleTech')}</label>
-              <Input
-                value={formData.technician}
-                onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('services.notes')}</label>
-              <Input
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              />
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
-                {t('services.cancel')}
-              </Button>
-              <Button className="flex-1" onClick={handleEditRequest}>
-                <Save className="w-4 h-4" />
-                {t('services.saveChanges')}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* View Request Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
