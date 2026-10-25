@@ -1,8 +1,14 @@
 {
-  "versionCode": 322,
-  "versionName": "1.0.92",
-  "lastUpdated": "2026-10-25T08:38:30.000Z",
+  "versionCode": 323,
+  "versionName": "1.0.93",
+  "lastUpdated": "2026-10-25T08:43:15.199Z",
   "buildHistory": [
+    {
+      "versionCode": 323,
+      "versionName": "1.0.93",
+      "date": "2026-10-25",
+      "description": "v1.0.93 - شاشات البداية والأذونات عند الحاجة (On-Demand App Permissions)؛ إيقاف أي فحص أو طلب للأذونات صامتاً عند إقلاع التطبيق عبر حذف الاستدعاء التلقائي في App.tsx، إعادة هيكلة خطاف الأذونات (use-app-permissions.tsx) ليطلب إذن الكاميرا أو الإشعارات فقط عند استدعائه يدوياً (On-Demand) عند الحاجة الفعلية، وتأكيد مقاس الواجهة الافتراضي 100% (وسط/قياسي 14px) وشاشتي الشروط والدخول الأصلية (Native Login & Privacy Screen)"
+    },
     {
       "versionCode": 322,
       "versionName": "1.0.92",

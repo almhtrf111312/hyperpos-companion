@@ -33,7 +33,6 @@ import { hideSplashScreen } from "./lib/splash-screen";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
-import { useAppPermissions } from "./hooks/use-app-permissions";
 import { PrivacyPolicyScreen, usePrivacyAccepted } from "./components/PrivacyPolicyScreen";
 import POS from "./pages/POS";
 import Login from "./pages/Login";
@@ -119,8 +118,6 @@ const AppContent = () => {
   const isDebugClick = searchParams.get('debugclick') === '1';
   const isReset = searchParams.get('reset') === '1';
 
-  // Request camera and storage permissions early on native platforms
-  useAppPermissions();
 
   // License expiration reminder toasts
   useLicenseReminder();
