@@ -82,6 +82,24 @@ export default function CashShifts() {
   const metaTRY = useMemo(() => resolveCurrencyMeta('TRY'), []);
   const metaSYP = useMemo(() => resolveCurrencyMeta('SYP'), []);
 
+  const currencySymbols = useMemo(() => ({
+    USD: metaUSD.symbol || '$',
+    TRY: metaTRY.symbol || '₺',
+    SYP: metaSYP.symbol || 'ل.س',
+    c1: metaUSD.symbol || '$',
+    c2: metaTRY.symbol || '₺',
+    c3: metaSYP.symbol || 'ل.س',
+  }), [metaUSD.symbol, metaTRY.symbol, metaSYP.symbol]);
+
+  const currencyNames = useMemo(() => ({
+    USD: metaUSD.name || 'الدولار الأمريكي',
+    TRY: metaTRY.name || 'العملة الثانية',
+    SYP: metaSYP.name || 'العملة الثالثة',
+    c1: metaUSD.name || 'الدولار الأمريكي',
+    c2: metaTRY.name || 'العملة الثانية',
+    c3: metaSYP.name || 'العملة الثالثة',
+  }), [metaUSD.name, metaTRY.name, metaSYP.name]);
+
   const currencySettings = useMemo(() => {
     try {
       const raw = localStorage.getItem('hyperpos_settings_v1');
@@ -104,7 +122,20 @@ export default function CashShifts() {
   const exchangeRates = useMemo(() => ({
     TRY: metaTRY.rate > 0 ? metaTRY.rate : 32,
     SYP: metaSYP.rate > 0 ? metaSYP.rate : 14500,
+    c2: metaTRY.rate > 0 ? metaTRY.rate : 32,
+    c3: metaSYP.rate > 0 ? metaSYP.rate : 14500,
   }), [metaTRY.rate, metaSYP.rate]);
+
+  // Convenient aliases for dynamic currency input
+  const openingC2 = openingTRY;
+  const setOpeningC2 = setOpeningTRY;
+  const openingC3 = openingSYP;
+  const setOpeningC3 = setOpeningSYP;
+
+  const closingC2 = closingTRY;
+  const setClosingC2 = setClosingTRY;
+  const closingC3 = closingSYP;
+  const setClosingC3 = setClosingSYP;
 
   // Multi-currency details of active shift
   const openShiftCurrencies = useMemo(() => {
@@ -375,7 +406,7 @@ export default function CashShifts() {
                     تفصيل النقدية بالدرج حسب العملة:
                   </span>
                   <span className="text-xs text-muted-foreground font-normal">
-                    (أسعار الصرف: 1$ = {exchangeRates.TRY} {metaTRY.symbol} | 1$ = {exchangeRates.SYP} {metaSYP.symbol})
+                    (أسعار الصرف: 1$ = {exchangeRates.c2} {currencySymbols.c2} | 1$ = {exchangeRates.c3} {currencySymbols.c3})
                   </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -556,46 +587,46 @@ export default function CashShifts() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="openingTRY" className="text-xs font-semibold">
-                      {metaTRY.name} ({metaTRY.symbol} TRY)
+                    <Label htmlFor="openingC2" className="text-xs font-semibold">
+                      {currencyNames.c2 || 'العملة الثانية'} ({currencySymbols.c2})
                     </Label>
                   </div>
                   <Input
-                    id="openingTRY"
+                    id="openingC2"
                     type="number"
                     min="0"
                     step="1"
-                    value={openingTRY}
-                    onChange={(e) => setOpeningTRY(e.target.value)}
-                    placeholder="0"
+                    value={openingC2}
+                    onChange={(e) => setOpeningC2(e.target.value)}
+                    placeholder={`0 ${currencySymbols.c2}`}
                     className="font-mono text-base"
                   />
-                  {parseFloat(openingTRY) > 0 && (
+                  {parseFloat(openingC2) > 0 && (
                     <div className="text-[10px] text-muted-foreground font-mono">
-                      يعادل {((parseFloat(openingTRY) || 0) / exchangeRates.TRY).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.TRY} ₺
+                      يعادل {((parseFloat(openingC2) || 0) / exchangeRates.c2).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.c2} {currencySymbols.c2}
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="openingSYP" className="text-xs font-semibold">
-                      {metaSYP.name} ({metaSYP.symbol} SYP)
+                    <Label htmlFor="openingC3" className="text-xs font-semibold">
+                      {currencyNames.c3 || 'العملة الثالثة'} ({currencySymbols.c3})
                     </Label>
                   </div>
                   <Input
-                    id="openingSYP"
+                    id="openingC3"
                     type="number"
                     min="0"
-                    step="500"
-                    value={openingSYP}
-                    onChange={(e) => setOpeningSYP(e.target.value)}
-                    placeholder="0"
+                    step={exchangeRates.c3 >= 1000 ? "500" : "1"}
+                    value={openingC3}
+                    onChange={(e) => setOpeningC3(e.target.value)}
+                    placeholder={`0 ${currencySymbols.c3}`}
                     className="font-mono text-base"
                   />
-                  {parseFloat(openingSYP) > 0 && (
+                  {parseFloat(openingC3) > 0 && (
                     <div className="text-[10px] text-muted-foreground font-mono">
-                      يعادل {((parseFloat(openingSYP) || 0) / exchangeRates.SYP).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.SYP} ل.س
+                      يعادل {((parseFloat(openingC3) || 0) / exchangeRates.c3).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.c3} {currencySymbols.c3}
                     </div>
                   )}
                 </div>
@@ -616,7 +647,7 @@ export default function CashShifts() {
 
             <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground flex justify-between items-center">
               <span><strong>{t('cashShifts.employee')}:</strong> {userName}</span>
-              <span className="text-[11px] opacity-75">1$ = {exchangeRates.TRY} {metaTRY.symbol} | {exchangeRates.SYP} {metaSYP.symbol}</span>
+              <span className="text-[11px] opacity-75">1$ = {exchangeRates.c2} {currencySymbols.c2} | 1$ = {exchangeRates.c3} {currencySymbols.c3}</span>
             </div>
           </div>
 
@@ -692,56 +723,56 @@ export default function CashShifts() {
                 />
               </div>
 
-              {/* TRY */}
+              {/* Currency 2 */}
               <div className="p-3 rounded-lg border bg-background space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
-                  <Label htmlFor="closingTRY" className="font-semibold flex items-center gap-1 text-amber-600">
-                    <Banknote className="w-3.5 h-3.5" /> {metaTRY.name} ({metaTRY.symbol} TRY)
+                  <Label htmlFor="closingC2" className="font-semibold flex items-center gap-1 text-amber-600">
+                    <Banknote className="w-3.5 h-3.5" /> {currencyNames.c2 || 'العملة الثانية'} ({currencySymbols.c2})
                   </Label>
                   <span className="text-muted-foreground">
-                    المتوقع: <strong className="text-foreground font-mono">{metaTRY.symbol}{openShiftCurrencies?.TRY.expected.toLocaleString() ?? '0'}</strong>
+                    المتوقع: <strong className="text-foreground font-mono">{openShiftCurrencies?.TRY.expected.toLocaleString() ?? '0'} {currencySymbols.c2}</strong>
                   </span>
                 </div>
                 <Input
-                  id="closingTRY"
+                  id="closingC2"
                   type="number"
                   min="0"
                   step="1"
-                  value={closingTRY}
-                  onChange={(e) => setClosingTRY(e.target.value)}
-                  placeholder="0"
+                  value={closingC2}
+                  onChange={(e) => setClosingC2(e.target.value)}
+                  placeholder={`0 ${currencySymbols.c2}`}
                   className="font-mono text-base"
                 />
-                {parseFloat(closingTRY) > 0 && (
+                {parseFloat(closingC2) > 0 && (
                   <div className="text-[10.5px] text-muted-foreground font-mono mt-1">
-                    يعادل {((parseFloat(closingTRY) || 0) / exchangeRates.TRY).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.TRY} ₺
+                    يعادل {((parseFloat(closingC2) || 0) / exchangeRates.c2).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.c2} {currencySymbols.c2}
                   </div>
                 )}
               </div>
 
-              {/* SYP */}
+              {/* Currency 3 */}
               <div className="p-3 rounded-lg border bg-background space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
-                  <Label htmlFor="closingSYP" className="font-semibold flex items-center gap-1 text-emerald-600">
-                    <Banknote className="w-3.5 h-3.5" /> {metaSYP.name} ({metaSYP.symbol} SYP)
+                  <Label htmlFor="closingC3" className="font-semibold flex items-center gap-1 text-emerald-600">
+                    <Banknote className="w-3.5 h-3.5" /> {currencyNames.c3 || 'العملة الثالثة'} ({currencySymbols.c3})
                   </Label>
                   <span className="text-muted-foreground">
-                    المتوقع: <strong className="text-foreground font-mono">{openShiftCurrencies?.SYP.expected.toLocaleString() ?? '0'} {metaSYP.symbol}</strong>
+                    المتوقع: <strong className="text-foreground font-mono">{openShiftCurrencies?.SYP.expected.toLocaleString() ?? '0'} {currencySymbols.c3}</strong>
                   </span>
                 </div>
                 <Input
-                  id="closingSYP"
+                  id="closingC3"
                   type="number"
                   min="0"
-                  step="500"
-                  value={closingSYP}
-                  onChange={(e) => setClosingSYP(e.target.value)}
-                  placeholder="0"
+                  step={exchangeRates.c3 >= 1000 ? "500" : "1"}
+                  value={closingC3}
+                  onChange={(e) => setClosingC3(e.target.value)}
+                  placeholder={`0 ${currencySymbols.c3}`}
                   className="font-mono text-base"
                 />
-                {parseFloat(closingSYP) > 0 && (
+                {parseFloat(closingC3) > 0 && (
                   <div className="text-[10.5px] text-muted-foreground font-mono mt-1">
-                    يعادل {((parseFloat(closingSYP) || 0) / exchangeRates.SYP).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.SYP} ل.س
+                    يعادل {((parseFloat(closingC3) || 0) / exchangeRates.c3).toFixed(2)} $ — سعر الصرف 1$ = {exchangeRates.c3} {currencySymbols.c3}
                   </div>
                 )}
               </div>
@@ -753,30 +784,37 @@ export default function CashShifts() {
                 {/* Currency toggle pills for closing summary */}
                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/50 border">
                   <span className="text-[11px] text-muted-foreground px-2 font-medium">عرض ملخص الإغلاق بـ:</span>
-                  {(['USD', 'TRY', 'SYP'] as const).map(curr => (
-                    <button
-                      key={curr}
-                      type="button"
-                      onClick={() => setActiveShiftCurrency(curr)}
-                      className={cn(
-                        "rounded-full h-7 px-3 text-xs font-bold transition-all select-none cursor-pointer",
-                        activeShiftCurrency === curr
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "bg-muted text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {curr === 'USD' ? 'الدولار ($)' : curr === 'TRY' ? 'التركي (₺)' : 'السوري (ل.س)'}
-                    </button>
-                  ))}
+                  {(['USD', 'TRY', 'SYP'] as const).map(curr => {
+                    const label = curr === 'USD'
+                      ? `${currencyNames.USD} (${currencySymbols.USD})`
+                      : curr === 'TRY'
+                        ? `${currencyNames.c2} (${currencySymbols.c2})`
+                        : `${currencyNames.c3} (${currencySymbols.c3})`;
+                    return (
+                      <button
+                        key={curr}
+                        type="button"
+                        onClick={() => setActiveShiftCurrency(curr)}
+                        className={cn(
+                          "rounded-full h-7 px-3 text-xs font-bold transition-all select-none cursor-pointer",
+                          activeShiftCurrency === curr
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="bg-muted/60 rounded-xl p-3 text-xs space-y-1.5 border">
                   {(() => {
-                    const rate = activeShiftCurrency === 'TRY' ? exchangeRates.TRY : (activeShiftCurrency === 'SYP' ? exchangeRates.SYP : 1);
-                    const sym = activeShiftCurrency === 'TRY' ? '₺' : (activeShiftCurrency === 'SYP' ? 'ل.س' : '$');
+                    const rate = activeShiftCurrency === 'TRY' ? exchangeRates.c2 : (activeShiftCurrency === 'SYP' ? exchangeRates.c3 : 1);
+                    const sym = activeShiftCurrency === 'TRY' ? currencySymbols.c2 : (activeShiftCurrency === 'SYP' ? currencySymbols.c3 : currencySymbols.USD);
                     const expInCur = shiftStatus.expectedCash * rate;
                     const actInCur = totalClosingUSD * rate;
-                    const dec = activeShiftCurrency === 'SYP' ? 0 : 2;
+                    const dec = (activeShiftCurrency === 'SYP' || rate >= 100) ? 0 : 2;
 
                     return (
                       <>
@@ -840,8 +878,8 @@ export default function CashShifts() {
                   {activeShiftCurrency !== 'USD' && (
                     <div className="text-xs font-mono font-bold text-muted-foreground mt-0.5">
                       = {previewDiscrepancy > 0 ? '+' : ''}{(
-                        previewDiscrepancy * (activeShiftCurrency === 'TRY' ? exchangeRates.TRY : exchangeRates.SYP)
-                      ).toLocaleString('en-US', { minimumFractionDigits: activeShiftCurrency === 'SYP' ? 0 : 2, maximumFractionDigits: activeShiftCurrency === 'SYP' ? 0 : 2 })} {activeShiftCurrency === 'TRY' ? '₺' : 'ل.س'}
+                        previewDiscrepancy * (activeShiftCurrency === 'TRY' ? exchangeRates.c2 : (activeShiftCurrency === 'SYP' ? exchangeRates.c3 : 1))
+                      ).toLocaleString('en-US', { minimumFractionDigits: (activeShiftCurrency === 'SYP' || (activeShiftCurrency === 'TRY' && exchangeRates.c2 >= 100)) ? 0 : 2, maximumFractionDigits: (activeShiftCurrency === 'SYP' || (activeShiftCurrency === 'TRY' && exchangeRates.c2 >= 100)) ? 0 : 2 })} {activeShiftCurrency === 'TRY' ? currencySymbols.c2 : (activeShiftCurrency === 'SYP' ? currencySymbols.c3 : currencySymbols.USD)}
                     </div>
                   )}
                 </div>
