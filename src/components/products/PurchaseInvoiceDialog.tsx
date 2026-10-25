@@ -475,7 +475,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),50rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden shadow-2xl bg-background">
+      <DialogContent className="w-[95vw] max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-border bg-card shadow-2xl">
         
         {/* Responsive Header */}
         <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background border-b border-border/50">

@@ -516,7 +516,7 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),46rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden text-xs sm:text-sm shadow-2xl break-words bg-background"
+          className="w-[95vw] max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-border bg-card shadow-2xl"
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-md shrink-0">
