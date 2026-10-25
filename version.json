@@ -1,8 +1,14 @@
 {
-  "versionCode": 310,
-  "versionName": "1.0.80",
-  "lastUpdated": "2026-10-25T00:57:26.952Z",
+  "versionCode": 311,
+  "versionName": "1.0.81",
+  "lastUpdated": "2026-10-25T01:09:14.439Z",
   "buildHistory": [
+    {
+      "versionCode": 311,
+      "versionName": "1.0.81",
+      "date": "2026-10-25",
+      "description": "v1.0.81 - محرك التحويل إلى Native صاروخي (Ultra-Fast Native Feel Engine): تطبيق الركائز المعمارية الخمس؛ حاوية التبويبات الدائمة (NativeTabHost & KeepAliveTab) مع التسريع الرسومي GPU (contentVisibility & contain)، محرك الكاش الدائم (NativeSWRCache) بـ RAM + LocalStorage فورية في 0ms، هوك البيانات فائق السرعة (useFastNativeData) للتحديث الصامت بالخلفية، التحميل الاستباقي لكافة الحزم والمسارات الرئيسية (Eager Bundle Pre-warming) في وقت خمول المعالج، والنوافذ اللحظية بدون تأخير (Instant Zero-Lag Modals) بارتفاع 100dvh وتسريع ثلاثي الأبعاد"
+    },
     {
       "versionCode": 310,
       "versionName": "1.0.80",

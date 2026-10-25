@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.0.81",
+    "date": "2026-10-25",
+    "changes": [
+      "v1.0.81 - محرك التحويل إلى Native صاروخي (Ultra-Fast Native Feel Engine): تطبيق الركائز المعمارية الخمس؛ حاوية التبويبات الدائمة (NativeTabHost & KeepAliveTab) مع التسريع الرسومي GPU (contentVisibility & contain)، محرك الكاش الدائم (NativeSWRCache) بـ RAM + LocalStorage فورية في 0ms، هوك البيانات فائق السرعة (useFastNativeData) للتحديث الصامت بالخلفية، التحميل الاستباقي لكافة الحزم والمسارات الرئيسية (Eager Bundle Pre-warming) في وقت خمول المعالج، والنوافذ اللحظية بدون تأخير (Instant Zero-Lag Modals) بارتفاع 100dvh وتسريع ثلاثي الأبعاد"
+    ]
+  },
+  {
     "version": "1.0.80",
     "date": "2026-10-25",
     "changes": [

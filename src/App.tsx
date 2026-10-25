@@ -5,6 +5,7 @@ import { HashRouter, Routes, Route, useSearchParams, useNavigate, useLocation, O
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { MainLayout } from "./components/layout/MainLayout";
+import { NativeTabHost } from "./components/layout/NativeTabKeepAlive";
 import { NotificationsProvider } from "./hooks/use-notifications";
 import { AuthProvider } from "./hooks/use-auth";
 import { LanguageProvider } from "./hooks/use-language";
@@ -124,20 +125,36 @@ const AppContent = () => {
   // License expiration reminder toasts
   useLicenseReminder();
 
-  // Preload most frequently accessed heavy pages in the background after startup idle
+  // Eager Bundle Pre-warming during idle time (Native Feel Pillar 4)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const preload = () => {
-        import("./pages/Products").catch(() => {});
-        import("./pages/Invoices").catch(() => {});
-      };
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(preload);
+    const warmUpRoutes = () => {
+      const targets = [
+        () => import("./pages/POS"),
+        () => import("./pages/Products"),
+        () => import("./pages/Invoices"),
+        () => import("./pages/Purchases"),
+        () => import("./pages/Services"),
+        () => import("./pages/Expenses"),
+        () => import("./pages/Settings"),
+        () => import("./pages/Appearance"),
+        () => import("./pages/Customers"),
+        () => import("./pages/Reports"),
+      ];
+
+      targets.forEach(loader => {
+        try {
+          loader().catch(() => {});
+        } catch {}
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(warmUpRoutes, { timeout: 1500 });
       } else {
-        preload();
+        setTimeout(warmUpRoutes, 800);
       }
-    }, 2500);
-    return () => clearTimeout(timer);
+    }
   }, []);
 
   // Privacy policy acceptance
@@ -424,33 +441,34 @@ const PageFallback = () => (
         <Route path="/help" element={<ProtectedRoute><FeatureErrorBoundary featureName="المساعدة والدعم"><Help /></FeatureErrorBoundary></ProtectedRoute>} />
         <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><FeatureErrorBoundary featureName="لوحة الإدارة"><BossPanel /></FeatureErrorBoundary></RoleGuard></ProtectedRoute>} />
 
-        {/* Protected routes wrapped by a single persistent MainLayout */}
-        <Route element={<ProtectedRoute><MainLayout><Outlet /></MainLayout></ProtectedRoute>}>
-          {/* Cashier accessible */}
-          <Route path="/customers" element={<FeatureErrorBoundary featureName="العملاء والديون"><Customers /></FeatureErrorBoundary>} />
-          <Route path="/customers/*" element={<FeatureErrorBoundary featureName="العملاء والديون"><Customers /></FeatureErrorBoundary>} />
+        {/* Protected routes wrapped by a single persistent MainLayout with NativeTabHost Keep-Alive */}
+        <Route element={<ProtectedRoute><MainLayout><NativeTabHost /></MainLayout></ProtectedRoute>}>
+          {/* Non-keepalive routes handled by Outlet */}
           <Route path="/debts" element={<DebtsRedirect />} />
-          <Route path="/invoices" element={<FeatureErrorBoundary featureName="سجل الفواتير"><Invoices /></FeatureErrorBoundary>} />
+          <Route path="/partners" element={<RoleGuard allowedRoles={['boss', 'admin']}><PartnersRedirect /></RoleGuard>} />
+          <Route path="/dashboard" element={<Navigate to="/reports" replace />} />
           <Route path="/invoice-tracking" element={<FeatureErrorBoundary featureName="تتبع الفواتير"><InvoiceTracking /></FeatureErrorBoundary>} />
-          <Route path="/services" element={<FeatureErrorBoundary featureName="الخدمات"><Services /></FeatureErrorBoundary>} />
-          <Route path="/services/*" element={<FeatureErrorBoundary featureName="الخدمات"><Services /></FeatureErrorBoundary>} />
-          <Route path="/expenses" element={<FeatureErrorBoundary featureName="المصاريف"><Expenses /></FeatureErrorBoundary>} />
           <Route path="/cash-shifts" element={<FeatureErrorBoundary featureName="ورديات الصندوق"><CashShifts /></FeatureErrorBoundary>} />
-          <Route path="/appearance" element={<FeatureErrorBoundary featureName="المظهر"><Appearance /></FeatureErrorBoundary>} />
           <Route path="/library" element={<FeatureErrorBoundary featureName="المكتبة"><LibraryMembers /></FeatureErrorBoundary>} />
           <Route path="/contact" element={<FeatureErrorBoundary featureName="تواصل مع المطور"><ContactDeveloper /></FeatureErrorBoundary>} />
-
-          {/* Admin/Boss only */}
-          <Route path="/dashboard" element={<Navigate to="/reports" replace />} />
-          <Route path="/products" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="إدارة المنتجات"><Products /></FeatureErrorBoundary></RoleGuard>} />
-          <Route path="/products/*" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="إدارة المنتجات"><Products /></FeatureErrorBoundary></RoleGuard>} />
-          <Route path="/purchases" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="فواتير الشراء"><Purchases /></FeatureErrorBoundary></RoleGuard>} />
-          <Route path="/partners" element={<RoleGuard allowedRoles={['boss', 'admin']}><PartnersRedirect /></RoleGuard>} />
           {/* FROZEN: warehouses & stock transfer disabled — redirect home */}
           <Route path="/warehouses" element={<Navigate to="/" replace />} />
           <Route path="/stock-transfer" element={<Navigate to="/" replace />} />
-          <Route path="/reports" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="التقارير"><Reports /></FeatureErrorBoundary></RoleGuard>} />
-          <Route path="/settings" element={<RoleGuard allowedRoles={['boss', 'admin']}><FeatureErrorBoundary featureName="الإعدادات"><Settings /></FeatureErrorBoundary></RoleGuard>} />
+
+          {/* Keep-alive routes placeholders so react-router matches the URL without 404 */}
+          <Route path="/customers" element={null} />
+          <Route path="/customers/*" element={null} />
+          <Route path="/invoices" element={null} />
+          <Route path="/services" element={null} />
+          <Route path="/services/*" element={null} />
+          <Route path="/expenses" element={null} />
+          <Route path="/appearance" element={null} />
+          <Route path="/products" element={null} />
+          <Route path="/products/*" element={null} />
+          <Route path="/purchases" element={null} />
+          <Route path="/reports" element={null} />
+          <Route path="/settings" element={null} />
+          <Route path="/settings/*" element={null} />
         </Route>
 
         <Route path="*" element={<FeatureErrorBoundary featureName="الصفحة غير موجودة"><NotFound /></FeatureErrorBoundary>} />
