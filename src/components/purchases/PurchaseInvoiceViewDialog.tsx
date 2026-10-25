@@ -275,8 +275,8 @@ export function PurchaseInvoiceViewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(100vw-1rem,42rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden text-xs sm:text-sm rounded-2xl break-words">
-        {/* Fixed Header */}
-        <DialogHeader className="p-3.5 sm:p-5 pb-3 border-b shrink-0">
+        {/* Fixed Header — مع إزاحة pe-12 sm:pe-14 لمنع تراكب زر X فوق زر الحذف */}
+        <DialogHeader className="p-3.5 sm:p-5 pb-3 pe-12 sm:pe-14 border-b shrink-0">
           <DialogTitle className="flex items-center justify-between gap-2 text-base sm:text-lg">
             <div className="flex items-center gap-2 min-w-0">
               <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">

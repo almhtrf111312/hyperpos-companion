@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -52,7 +53,7 @@ interface PurchaseInvoiceDialogProps {
 type Step = 'header' | 'items' | 'finalize';
 
 export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: PurchaseInvoiceDialogProps) {
-  const { t } = useLanguage();
+  const { t, isRTL } = useLanguage();
   const [step, setStep] = useState<Step>('header');
   const [loading, setLoading] = useState(false);
 
@@ -472,376 +473,391 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
     handleInvoiceBase64(base64);
   };
 
-  return (
+  if (!open) return null;
+
+  return createPortal(
     <>
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg sm:max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-border bg-card shadow-2xl">
-        
-        {/* Responsive Header */}
-        <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background border-b border-border/50">
-          <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleOpenChange(false)}
-                className="rounded-full h-8 w-8 sm:hidden"
-              >
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-xl flex items-center justify-center ring-1 ring-primary/20">
-                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                </div>
-                <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
+      <div
+        className={cn(
+          "fixed inset-0 z-50 h-[100dvh] w-full bg-background flex flex-col overflow-hidden animate-in fade-in-50 duration-150",
+          showCameraPreview && "hidden"
+        )}
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        {/* 1. الترويسة العلوية الثابتة (Full-Screen Sticky Header) */}
+        <div className="shrink-0 bg-card/95 backdrop-blur-md border-b border-border/80 px-4 py-3 sm:px-6 shadow-xs z-40">
+          <div className="max-w-4xl w-full mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/10 rounded-xl flex items-center justify-center ring-1 ring-primary/20 shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-foreground truncate">
                   {t('purchaseInvoice.title')}
-                </DialogTitle>
+                </h2>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {step === 'header'
+                    ? 'الخطوة 1: بيانات المورد ورقم الفاتورة'
+                    : step === 'items'
+                    ? 'الخطوة 2: إدخال أصناف وكميات الفاتورة'
+                    : 'الخطوة 3: مراجعة واعتماد الفاتورة بالمخزون'}
+                </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleOpenChange(false)}
-              className="text-xs text-muted-foreground"
-            >
-              {t('common.cancel')}
-            </Button>
-          </div>
 
-          {/* Step Indicator */}
-          <div className="flex items-center gap-2 px-4 pb-3 sm:px-6 sm:pb-4 overflow-x-auto">
-            <div className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300",
-              step === 'header' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
-            )}>
-              <span className={cn(
-                "w-4 h-4 rounded-full flex items-center justify-center text-[10px]",
-                step === 'header' ? "bg-primary-foreground/20" : "bg-background/80"
-              )}>1</span>
-              {t('purchaseInvoice.headerStep')}
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
-            <div className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300",
-              step === 'items' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
-            )}>
-              <span className={cn(
-                "w-4 h-4 rounded-full flex items-center justify-center text-[10px]",
-                step === 'items' ? "bg-primary-foreground/20" : "bg-background/80"
-              )}>2</span>
-              {t('purchaseInvoice.itemsStep')}
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
-            <div className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300",
-              step === 'finalize' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
-            )}>
-              <span className={cn(
-                "w-4 h-4 rounded-full flex items-center justify-center text-[10px]",
-                step === 'finalize' ? "bg-primary-foreground/20" : "bg-background/80"
-              )}>3</span>
-              {t('purchases.finalize')}
+            {/* مؤشر المراحل المتجاوب */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+              <div className={cn(
+                "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 transition-all",
+                step === 'header' ? "bg-primary text-primary-foreground shadow-xs" : "bg-muted text-muted-foreground"
+              )}>
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-black/15">1</span>
+                <span className="hidden sm:inline">{t('purchaseInvoice.headerStep')}</span>
+              </div>
+              <div className={cn(
+                "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 transition-all",
+                step === 'items' ? "bg-primary text-primary-foreground shadow-xs" : "bg-muted text-muted-foreground"
+              )}>
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-black/15">2</span>
+                <span className="hidden sm:inline">{t('purchaseInvoice.itemsStep')}</span>
+              </div>
+              <div className={cn(
+                "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 transition-all",
+                step === 'finalize' ? "bg-primary text-primary-foreground shadow-xs" : "bg-muted text-muted-foreground"
+              )}>
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] bg-black/15">3</span>
+                <span className="hidden sm:inline">{t('purchases.finalize')}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 p-4 sm:p-6 pb-28 sm:pb-6 overflow-y-auto scrollbar-thin">
+        {/* 2. جسم الشاشة الكاملة القابل للتمرير */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-w-4xl w-full mx-auto p-4 sm:p-6 pb-28 space-y-5">
+            {/* Step 1: Header */}
+            {step === 'header' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-card p-4 sm:p-6 rounded-2xl border border-border shadow-2xs">
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <Hash className="w-4 h-4 text-primary" />
+                    {t('purchaseInvoice.invoiceNumber')} *
+                  </Label>
+                  <Input
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    placeholder="INV-2024-001"
+                    className="h-11 rounded-xl"
+                  />
+                </div>
 
-        {/* Step 1: Header */}
-        {step === 'header' && (
-          <div className="space-y-3">
-            {/* Invoice Number */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1 text-sm">
-                <Hash className="w-4 h-4" />
-                {t('purchaseInvoice.invoiceNumber')} *
-              </Label>
-              <Input
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-                placeholder="INV-2024-001"
-                className="h-10"
-              />
-            </div>
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <User className="w-4 h-4 text-primary" />
+                    {t('purchaseInvoice.supplierName')} *
+                  </Label>
+                  <Input
+                    value={supplierName}
+                    onChange={(e) => setSupplierName(e.target.value)}
+                    placeholder={t('purchaseInvoice.supplierNamePlaceholder')}
+                    className="h-11 rounded-xl"
+                  />
+                </div>
 
-            {/* Supplier Name */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1 text-sm">
-                <User className="w-4 h-4" />
-                {t('purchaseInvoice.supplierName')} *
-              </Label>
-              <Input
-                value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
-                placeholder={t('purchaseInvoice.supplierNamePlaceholder')}
-                className="h-10"
-              />
-            </div>
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <Building className="w-4 h-4 text-primary" />
+                    {t('purchaseInvoice.supplierCompany')}
+                  </Label>
+                  <Input
+                    value={supplierCompany}
+                    onChange={(e) => setSupplierCompany(e.target.value)}
+                    placeholder={t('purchaseInvoice.supplierCompanyPlaceholder')}
+                    className="h-11 rounded-xl"
+                  />
+                </div>
 
-            {/* Supplier Company */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1 text-sm">
-                <Building className="w-4 h-4" />
-                {t('purchaseInvoice.supplierCompany')}
-              </Label>
-              <Input
-                value={supplierCompany}
-                onChange={(e) => setSupplierCompany(e.target.value)}
-                placeholder={t('purchaseInvoice.supplierCompanyPlaceholder')}
-                className="h-10"
-              />
-            </div>
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    {t('purchases.invoiceDate')}
+                  </Label>
+                  <Input
+                    type="date"
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    className="h-11 rounded-xl"
+                  />
+                </div>
 
-            {/* Invoice Date */}
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1 text-sm">
-                <Calendar className="w-4 h-4" />
-                {t('purchases.invoiceDate')}
-              </Label>
-              <Input
-                type="date"
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
-                className="h-10"
-              />
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-1.5">
-              <Label className="text-sm">{t('common.notes')}</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('purchaseInvoice.notesPlaceholder')}
-                rows={2}
-                className="resize-none"
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold" onClick={() => handleOpenChange(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button className="flex-[2] h-11 rounded-xl text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={handleCreateInvoice} disabled={loading}>
-                {loading ? t('common.loading') : t('common.next')}
-                <ArrowLeft className="w-4 h-4 rtl:rotate-180 mr-1" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Items */}
-        {step === 'items' && currentInvoice && (
-          <div className="space-y-4">
-            {/* Progress indicator */}
-            <div className="p-2.5 sm:p-3 bg-muted rounded-lg flex flex-wrap items-center justify-between gap-2">
-              <div className="text-xs sm:text-sm">
-                <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}:</span>
-                <span className="font-bold mx-1 text-foreground">
-                  {invoiceItems.length}
-                </span>
-                <span className="text-muted-foreground mx-1 sm:mx-2">|</span>
-                <span className="text-muted-foreground">{t('common.total')}:</span>
-                <span className="font-bold mx-1 text-foreground">
-                  {m.fmt(currentInvoice.actual_grand_total || 0)}
-                </span>
-              </div>
-              <Button size="sm" onClick={goToFinalize} disabled={invoiceItems.length === 0} className="h-8 text-xs sm:text-sm">
-                {t('purchases.finalize')}
-                <ArrowLeft className="w-3.5 h-3.5 rtl:rotate-180" />
-              </Button>
-            </div>
-
-            {/* Items list */}
-            {invoiceItems.length > 0 && (
-              <div className="border rounded-lg overflow-x-auto max-w-full">
-                <table className="w-full text-xs sm:text-sm min-w-[21.4rem]">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="p-2 text-right">{t('products.name')}</th>
-                      <th className="p-2 text-center">{t('products.quantity')}</th>
-                      <th className="p-2 text-center">{t('products.costPrice')}</th>
-                      <th className="p-2 text-center">{t('common.total')}</th>
-                      <th className="p-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceItems.map((item) => (
-                      <tr key={item.id} className="border-t">
-                        <td className="p-2">{item.product_name}</td>
-                        <td className="p-2 text-center">{item.quantity}</td>
-                        <td className="p-2 text-center">{m.fmt(item.cost_price)}</td>
-                        <td className="p-2 text-center">{m.fmt(item.total_cost)}</td>
-                        <td className="p-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-destructive"
-                            onClick={() => handleDeleteItem(item.id)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="sm:col-span-2 space-y-1.5">
+                  <Label className="text-sm font-medium">{t('common.notes')}</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={t('purchaseInvoice.notesPlaceholder')}
+                    rows={3}
+                    className="resize-none rounded-xl"
+                  />
+                </div>
               </div>
             )}
 
-            {/* Item Form */}
-            {showItemForm && (
-              <PurchaseInvoiceItemForm
-                onAdd={handleAddItem}
-                onClose={() => setShowItemForm(false)}
-                loading={loading}
-              />
-            )}
+            {/* Step 2: Items */}
+            {step === 'items' && currentInvoice && (
+              <div className="space-y-4">
+                <div className="p-3 sm:p-4 bg-card border border-border rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                  <div className="text-xs sm:text-sm">
+                    <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}:</span>
+                    <span className="font-bold mx-1 text-foreground">{invoiceItems.length}</span>
+                    <span className="text-muted-foreground mx-2">|</span>
+                    <span className="text-muted-foreground">{t('common.total')}:</span>
+                    <span className="font-bold mx-1 text-primary font-mono">
+                      {m.fmt(currentInvoice.actual_grand_total || 0)}
+                    </span>
+                  </div>
+                  {!showItemForm && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowItemForm(true)}
+                      className="h-9 rounded-xl text-xs font-bold gap-1"
+                    >
+                      <Plus className="w-4 h-4 text-primary" />
+                      {t('purchaseInvoice.addAnotherItem')}
+                    </Button>
+                  )}
+                </div>
 
-            {!showItemForm && (
-              <div className="flex gap-2 pt-2">
-                <Button
-                  className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold"
-                  variant="outline"
-                  onClick={() => setShowItemForm(true)}
-                >
-                  <Plus className="w-4 h-4 ml-1" />
-                  {t('purchaseInvoice.addAnotherItem')}
-                </Button>
-                <Button
-                  className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-                  onClick={goToFinalize}
-                  disabled={invoiceItems.length === 0}
-                >
-                  {t('purchases.finalize')}
-                  <ArrowLeft className="w-4 h-4 rtl:rotate-180 mr-1" />
-                </Button>
+                {invoiceItems.length > 0 && (
+                  <div className="border border-border rounded-2xl overflow-x-auto max-w-full bg-card shadow-2xs">
+                    <table className="w-full text-xs sm:text-sm min-w-[21.4rem]">
+                      <thead className="bg-muted/70">
+                        <tr>
+                          <th className="p-2.5 text-right">{t('products.name')}</th>
+                          <th className="p-2.5 text-center">{t('products.quantity')}</th>
+                          <th className="p-2.5 text-center">{t('products.costPrice')}</th>
+                          <th className="p-2.5 text-center">{t('common.total')}</th>
+                          <th className="p-2.5 w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoiceItems.map((item) => (
+                          <tr key={item.id} className="border-t border-border/60">
+                            <td className="p-2.5 font-medium">{item.product_name}</td>
+                            <td className="p-2.5 text-center font-mono">{item.quantity}</td>
+                            <td className="p-2.5 text-center font-mono">{m.fmt(item.cost_price)}</td>
+                            <td className="p-2.5 text-center font-bold font-mono">{m.fmt(item.total_cost)}</td>
+                            <td className="p-2.5 text-center">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
+                                onClick={() => handleDeleteItem(item.id)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {showItemForm && (
+                  <PurchaseInvoiceItemForm
+                    onAdd={handleAddItem}
+                    onClose={() => setShowItemForm(false)}
+                    loading={loading}
+                  />
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Step 3: Finalize with Image */}
-        {step === 'finalize' && currentInvoice && (
-          <div className="space-y-4">
-            {/* Summary */}
-            <div className="p-4 bg-muted/50 rounded-lg border space-y-2">
-              <h3 className="font-semibold text-sm">{t('purchases.invoiceSummary')}</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">{t('purchaseInvoice.supplierName')}: </span>
-                  <span className="font-medium">{currentInvoice.supplier_name}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">{t('purchaseInvoice.invoiceNumber')}: </span>
-                  <span className="font-medium">#{currentInvoice.invoice_number}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">{t('purchaseInvoice.itemsAdded')}: </span>
-                  <span className="font-medium">{invoiceItems.length}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">{t('common.total')}: </span>
-                  <span className="font-bold text-primary font-mono">
-                    {m.fmt(currentInvoice.actual_grand_total || 0)}
-                    {primaryCurrencyCode !== 'USD' && (
-                      <span className="text-xs text-muted-foreground font-normal mx-1 font-sans">
-                        (${currentInvoice.actual_grand_total?.toFixed(2)} USD)
+            {/* Step 3: Finalize with Image */}
+            {step === 'finalize' && currentInvoice && (
+              <div className="space-y-4">
+                <div className="p-4 bg-card rounded-2xl border border-border space-y-3 shadow-2xs">
+                  <h3 className="font-bold text-sm text-foreground">{t('purchases.invoiceSummary')}</h3>
+                  <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
+                    <div className="p-2.5 rounded-xl bg-muted/40">
+                      <span className="text-muted-foreground block text-[11px]">{t('purchaseInvoice.supplierName')}</span>
+                      <span className="font-bold text-foreground">{currentInvoice.supplier_name}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40">
+                      <span className="text-muted-foreground block text-[11px]">{t('purchaseInvoice.invoiceNumber')}</span>
+                      <span className="font-bold font-mono text-foreground">#{currentInvoice.invoice_number}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40">
+                      <span className="text-muted-foreground block text-[11px]">{t('purchaseInvoice.itemsAdded')}</span>
+                      <span className="font-bold text-foreground">{invoiceItems.length}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                      <span className="text-muted-foreground block text-[11px]">{t('common.total')}</span>
+                      <span className="font-black text-primary font-mono">
+                        {m.fmt(currentInvoice.actual_grand_total || 0)}
+                        {primaryCurrencyCode !== 'USD' && (
+                          <span className="text-[11px] text-muted-foreground font-normal block font-sans">
+                            (${currentInvoice.actual_grand_total?.toFixed(2)} USD)
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Items list */}
-            <div className="border rounded-lg p-3 max-h-32 overflow-y-auto">
-              {invoiceItems.map((item, index) => (
-                <div key={item.id} className="flex justify-between text-xs py-1">
-                  <span>{index + 1}. {item.product_name}</span>
-                  <span className="text-muted-foreground">{item.quantity}×{m.fmt(item.cost_price)}</span>
+                <div className="border border-border bg-card rounded-2xl p-3.5 max-h-48 overflow-y-auto space-y-1.5">
+                  {invoiceItems.map((item, index) => (
+                    <div key={item.id} className="flex justify-between items-center text-xs sm:text-sm py-1.5 border-b last:border-b-0 border-border/50">
+                      <span className="font-medium">{index + 1}. {item.product_name}</span>
+                      <span className="text-muted-foreground font-mono">{item.quantity} × {m.fmt(item.cost_price)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Invoice Image Upload */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t('purchases.receiptPhoto')}</Label>
-              {invoiceImagePreview ? (
-                <div className="relative">
-                  <img src={invoiceImagePreview} alt="Invoice" className="w-full h-40 object-cover rounded-lg border" />
-                  {invoiceImgStatus === 'syncing' && (
-                    <div className="absolute top-2 left-2 bg-black/60 rounded-full p-1">
-                      <Loader2 className="w-3 h-3 text-white animate-spin" />
+                {/* Invoice Image Upload */}
+                <div className="p-4 bg-card rounded-2xl border border-border space-y-3">
+                  <Label className="text-sm font-bold block">{t('purchases.receiptPhoto')}</Label>
+                  {invoiceImagePreview ? (
+                    <div className="relative">
+                      <img src={invoiceImagePreview} alt="Invoice" className="w-full h-48 object-contain bg-muted/30 rounded-xl border" />
+                      {invoiceImgStatus === 'syncing' && (
+                        <div className="absolute top-2 left-2 bg-black/60 rounded-full p-1.5">
+                          <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="absolute top-2 right-2 h-8 text-xs px-3 rounded-xl"
+                        onClick={clearInvoiceImage}
+                      >
+                        {t('common.delete')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 rounded-xl font-bold gap-2"
+                        onClick={handleCameraCapture}
+                      >
+                        <Camera className="w-4 h-4 text-primary" />
+                        {t('purchases.camera')}
+                      </Button>
+                      <label className="w-full">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full h-12 rounded-xl font-bold gap-2"
+                          asChild
+                        >
+                          <span>
+                            <ImageIcon className="w-4 h-4 text-primary" />
+                            {t('purchases.gallery')}
+                          </span>
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                      </label>
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="absolute top-2 right-2 h-7 text-xs px-2"
-                    onClick={clearInvoiceImage}
-                  >
-                    {t('common.delete')}
-                  </Button>
                 </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={handleCameraCapture}
-                  >
-                    <Camera className="w-4 h-4" />
-                    {t('purchases.camera')}
-                  </Button>
-                  <label className="flex-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      asChild
-                    >
-                      <span>
-                        <ImageIcon className="w-4 h-4" />
-                        {t('purchases.gallery')}
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold" onClick={backToItems} disabled={loading}>
-                <ArrowRight className="w-4 h-4 ml-1" />
-                {t('common.back')}
-              </Button>
-              <Button className="flex-[2] h-11 rounded-xl text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={handleFinalize} disabled={loading}>
-                {loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}
-                <Check className="w-4 h-4 mr-1" />
-              </Button>
-            </div>
+              </div>
+            )}
           </div>
-        )}
         </div>
-      </DialogContent>
-    </Dialog>
-    <NativeCameraPreview
-      isOpen={showCameraPreview}
-      onClose={() => setShowCameraPreview(false)}
-      onCapture={handleCameraCaptured}
-      maxSize={400}
-      quality={40}
-    />
-    </>
+
+        {/* 3. شريط الأزرار السفلي الثابت والموحد للموبايل (Sticky Bottom Action Bar) */}
+        <div className="shrink-0 sticky bottom-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/80 p-3 sm:px-6 shadow-lg">
+          <div className="max-w-4xl w-full mx-auto flex items-center gap-3">
+            {step === 'header' && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-11 rounded-xl font-bold text-xs sm:text-sm"
+                  onClick={() => handleOpenChange(false)}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-[2] h-11 rounded-xl font-bold text-xs sm:text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-md gap-1.5"
+                  onClick={handleCreateInvoice}
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  <span>{loading ? t('common.loading') : t('common.next')}</span>
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                </Button>
+              </>
+            )}
+
+            {step === 'items' && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-11 rounded-xl font-bold text-xs sm:text-sm"
+                  onClick={() => handleOpenChange(false)}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-[2] h-11 rounded-xl font-bold text-xs sm:text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-md gap-1.5"
+                  onClick={goToFinalize}
+                  disabled={invoiceItems.length === 0 || loading}
+                >
+                  <span>{t('purchases.finalize')} ({invoiceItems.length})</span>
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                </Button>
+              </>
+            )}
+
+            {step === 'finalize' && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 h-11 rounded-xl font-bold text-xs sm:text-sm gap-1.5"
+                  onClick={backToItems}
+                  disabled={loading}
+                >
+                  <ArrowRight className="w-4 h-4" />
+                  <span>{t('common.back')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-[2] h-11 rounded-xl font-bold text-xs sm:text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-md gap-1.5"
+                  onClick={handleFinalize}
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>{loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}</span>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <NativeCameraPreview
+        isOpen={showCameraPreview}
+        onClose={() => setShowCameraPreview(false)}
+        onCapture={handleCameraCaptured}
+        maxSize={400}
+        quality={40}
+      />
+    </>,
+    document.body
   );
 }

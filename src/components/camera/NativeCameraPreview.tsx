@@ -137,7 +137,9 @@ export function NativeCameraPreview({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
-    const handleClose = useCallback(() => {
+    const handleClose = useCallback((e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        e?.preventDefault();
         stopStream();
         onClose();
     }, [stopStream, onClose]);
@@ -152,6 +154,8 @@ export function NativeCameraPreview({
             role="dialog"
             aria-modal="true"
             aria-label="معاينة الكاميرا"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
         >
             {/* Header: أزرار الإلغاء والتبديل والعنوان */}
             <div className="flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-sm z-10">

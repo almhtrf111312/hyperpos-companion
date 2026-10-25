@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.2",
+    "date": "2026-10-25",
+    "changes": [
+      "v1.1.2 - المرحلتان 3 و4: إصلاح أزرار عرض الفاتورة والتحويل إلى شاشة كاملة متكاملة (Purchase Invoices UI & Full-Screen Flow)؛ إضافة هامش أمان pe-12 sm:pe-14 في ترويسة عرض فاتورة المشتريات (src/components/purchases/PurchaseInvoiceViewDialog.tsx) لمنع تراكب زر الإغلاق (X) فوق زر الحذف، حماية أحداث النقر والإلغاء (stopPropagation & preventDefault) في معاينة الكاميرا (src/components/camera/NativeCameraPreview.tsx) لمنع إغلاق الفاتورة بالخطأ، وإعادة هيكلة إنشاء فاتورة المشتريات (src/components/products/PurchaseInvoiceDialog.tsx) إلى شاشة كاملة (Full-Screen View عبر createPortal إلى document.body) مجهزة بترويسة ثابتة وشريط أزرار سفلي متوازن ومراعاة كاملة للكاميرا والأجهزة المحمولة"
+    ]
+  },
+  {
     "version": "1.1.1",
     "date": "2026-10-25",
     "changes": [
