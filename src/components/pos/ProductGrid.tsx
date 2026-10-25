@@ -271,7 +271,7 @@ export const ProductGrid = memo(function ProductGrid({
       {/* Grid Content */}
       <div className="flex-1 p-3 pt-0 md:p-5 overflow-y-auto pb-32">
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 md:gap-3.5">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
             {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
@@ -281,15 +281,15 @@ export const ProductGrid = memo(function ProductGrid({
               >
                 {/* الصورة بإطار متناسق واحتواء كامل مع شارة المخزون العلوية */}
                 <div className="w-full aspect-[4/3] bg-muted/20 p-1 relative overflow-hidden shrink-0 flex items-center justify-center">
-                  {/* شارة الكمية: مثبتة بأقصى الزاوية بخلفية زجاجية معتمة تضمن الوضوح في كل الثيمات */}
-                  <div className="absolute z-10 top-1 rtl:left-1 rtl:right-auto ltr:right-1 ltr:left-auto bg-black/75 dark:bg-black/85 backdrop-blur-md border border-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white shadow-sm select-none pointer-events-none [&_*]:text-white">
-                    <DualUnitDisplayCompact
-                      totalPieces={product.quantity}
-                      conversionFactor={product.conversionFactor || 1}
-                      bulkUnit={product.bulkUnit}
-                      smallUnit={product.smallUnit}
-                    />
-                  </div>
+                  <span 
+                    className={cn(
+                      "absolute top-2 start-2 px-1.5 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-tight shadow-sm transition-all z-10",
+                      "bg-background/90 text-foreground border border-border/80 backdrop-blur-md",
+                      "dark:bg-black/75 dark:text-white dark:border-white/10"
+                    )}
+                  >
+                    {product.quantity} {t('pos.piece') || 'قطعة'}
+                  </span>
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
@@ -327,14 +327,15 @@ export const ProductGrid = memo(function ProductGrid({
                 style={{ animationDelay: `${index * 15}ms` }}
               >
                 <div className="w-full aspect-square bg-muted/20 p-1 rounded-lg overflow-hidden mb-1.5 relative flex items-center justify-center">
-                  <div className="absolute z-10 top-1 rtl:left-1 rtl:right-auto ltr:right-1 ltr:left-auto bg-black/75 dark:bg-black/85 backdrop-blur-md border border-white/20 text-[9px] font-bold px-1 py-0.5 rounded text-white shadow-sm select-none pointer-events-none [&_*]:text-white">
-                    <DualUnitDisplayCompact
-                      totalPieces={product.quantity}
-                      conversionFactor={product.conversionFactor || 1}
-                      bulkUnit={product.bulkUnit}
-                      smallUnit={product.smallUnit}
-                    />
-                  </div>
+                  <span 
+                    className={cn(
+                      "absolute top-2 start-2 px-1.5 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-tight shadow-sm transition-all z-10",
+                      "bg-background/90 text-foreground border border-border/80 backdrop-blur-md",
+                      "dark:bg-black/75 dark:text-white dark:border-white/10"
+                    )}
+                  >
+                    {product.quantity} {t('pos.piece') || 'قطعة'}
+                  </span>
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}

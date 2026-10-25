@@ -1,8 +1,14 @@
 {
-  "versionCode": 312,
-  "versionName": "1.0.82",
-  "lastUpdated": "2026-10-25T01:50:24.324Z",
+  "versionCode": 313,
+  "versionName": "1.0.83",
+  "lastUpdated": "2026-10-25T07:42:49.604Z",
   "buildHistory": [
+    {
+      "versionCode": 313,
+      "versionName": "1.0.83",
+      "date": "2026-10-25",
+      "description": "v1.0.83 - تطوير شبكة نقطة البيع (POS Grid Enhancements): ترقية شارة الكمية لتصبح متكيفة مع الوضعين الليلي والنهاري بخلفية شبه شفافة معزولة عن الحواف لتباين فائق (Adaptive Quantity Badge)، واعتماد عرض شبكي ثلاثي متناسق للهواتف المحمولة (3-Column Mobile Product Grid) لاستغلال مساحة الشاشة وزيادة سرعة البيع"
+    },
     {
       "versionCode": 312,
       "versionName": "1.0.82",
