@@ -366,23 +366,15 @@ export default function Services() {
 
   return (
     <div className="p-2.5 sm:p-4 md:p-6 pt-2 sm:pt-3 space-y-3">
-      {/* Top Filter Bar + New Request Button with Mobile Clearance */}
+      {/* Top Action Header with Mobile Clearance */}
       <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-1">
-          {filterOptions.map((filter) => (
-            <button
-              key={filter.key}
-              onClick={() => setSelectedFilter(filter.key)}
-              className={cn(
-                "rounded-full h-9 px-4 text-xs font-semibold whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer flex items-center justify-center",
-                selectedFilter === filter.key
-                  ? "bg-primary text-primary-foreground shadow-2xs scale-105"
-                  : "bg-muted text-foreground hover:bg-muted/80"
-              )}
-            >
-              {filter.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Wrench className="w-4 h-4" />
+          </div>
+          <h2 className="text-sm sm:text-base font-bold text-foreground">
+            {t('services.title') || 'إدارة الصيانة'}
+          </h2>
         </div>
         <Button
           className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5 shrink-0 transition-[colors,box-shadow] cursor-pointer"
@@ -395,6 +387,28 @@ export default function Services() {
           <span className="hidden sm:inline">{t('services.newRequest')}</span>
           <span className="sm:hidden">{t('common.add') || 'طلب جديد'}</span>
         </Button>
+      </div>
+
+      {/* استبدال الحاوية الأفقية القديمة بشبكة أزرار متجاوبة سطرين */}
+      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 p-1 bg-muted/50 rounded-2xl border border-border/60">
+        {filterOptions.map((filter) => {
+          const isSelected = selectedFilter === filter.key;
+          return (
+            <button
+              key={filter.key}
+              type="button"
+              onClick={() => setSelectedFilter(filter.key)}
+              className={cn(
+                "h-9 px-2 text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-150 flex items-center justify-center text-center truncate",
+                isSelected
+                  ? "bg-primary text-primary-foreground shadow-xs font-extrabold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+              )}
+            >
+              <span className="truncate">{filter.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Compact Stats Strip */}

@@ -1,8 +1,14 @@
 {
-  "versionCode": 305,
-  "versionName": "1.0.75",
-  "lastUpdated": "2026-10-25T00:27:22.702Z",
+  "versionCode": 306,
+  "versionName": "1.0.76",
+  "lastUpdated": "2026-10-25T00:32:00.734Z",
   "buildHistory": [
+    {
+      "versionCode": 306,
+      "versionName": "1.0.76",
+      "date": "2026-10-25",
+      "description": "v1.0.76 - المرحلة الثانية: تطوير شريط تصفية حالات الصيانة (Services) إلى شبكة أزرار متجاوبة سطرين (2-Row Responsive Grid) تأخذ عرض الشاشة بالكامل بدون تمرير أفقي أو اقتطاع للنصوص"
+    },
     {
       "versionCode": 305,
       "versionName": "1.0.75",
