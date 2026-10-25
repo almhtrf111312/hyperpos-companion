@@ -220,6 +220,30 @@ const loadInvoicesFromLocalCache = (): Invoice[] | null => {
 };
 
 /**
+ * قراءة مباشرة وفورية للفواتير من الكاش المحلي (الذاكرة RAM أو localStorage) مع دمج طابور المزامنة بشكل متزامن وبدون انتظار
+ * تضمن ظهور الفواتير فوراً 0ms في أول رندر لشاشة الفواتير (Instant-Render SWR)
+ */
+export const loadCachedInvoicesSync = (): Invoice[] => {
+  try {
+    if (invoicesCache && Array.isArray(invoicesCache) && invoicesCache.length > 0) {
+      return mergeSyncQueueInvoices(invoicesCache);
+    }
+    const local = loadInvoicesFromLocalCache();
+    if (local && Array.isArray(local) && local.length > 0) {
+      invoicesCache = local;
+      return mergeSyncQueueInvoices(local);
+    }
+    const queueOnly = mergeSyncQueueInvoices([]);
+    if (queueOnly.length > 0) {
+      return queueOnly;
+    }
+  } catch (e) {
+    console.warn('[InvoicesCloud] loadCachedInvoicesSync error:', e);
+  }
+  return [];
+};
+
+/**
  * تسجيل فاتورة بيع منفذة محلياً فوراً في كاش الفواتير وذاكرة الجهاز وإطلاق حدث التحديث
  * يضمن ظهور الفاتورة للمستخدم في شاشة الفواتير بسرعة 0ms حتى في حالة عدم توفر الإنترنت
  */

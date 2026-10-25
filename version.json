@@ -1,8 +1,14 @@
 {
-  "versionCode": 313,
-  "versionName": "1.0.83",
-  "lastUpdated": "2026-10-25T07:42:49.604Z",
+  "versionCode": 314,
+  "versionName": "1.0.84",
+  "lastUpdated": "2026-10-25T07:49:08.446Z",
   "buildHistory": [
+    {
+      "versionCode": 314,
+      "versionName": "1.0.84",
+      "date": "2026-10-25",
+      "description": "v1.0.84 - المرحلة 2: الفواتير (Invoices Instant-Render SWR)؛ التحميل الفوري من الكاش المحلي (RAM و LocalStorage) بسرعة 0ms دون تفريغ الشاشة أو وميض الـ Skeleton Loader عند الدخول، مع إطلاق التحقق وإعادة المزامنة السحابية الصامتة في الخلفية (Background Revalidation) وتحديث القائمة والإحصائيات بسلاسة وثبات"
+    },
     {
       "versionCode": 313,
       "versionName": "1.0.83",

@@ -84,6 +84,7 @@ import { getCurrencySymbolByCode, resolveHistoricalCurrency, resolveInvoiceCurre
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
+  loadCachedInvoicesSync,
   invalidateInvoicesCache,
   deleteInvoiceCloud,
   refundInvoiceCloud,
@@ -285,10 +286,12 @@ export default function Invoices() {
 
   const navigate = useNavigate();
   const [activeMainTab, setActiveMainTab] = useState<'sales' | 'purchases'>('sales');
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    return loadCachedInvoicesSync(); // قراءة مباشرة من localStorage بدون انتظار
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => invoices.length === 0);
   const [filterType, setFilterType] = useState<'all' | InvoiceType | 'shipping'>('all');
   const [filterPayment, setFilterPayment] = useState<'all' | 'cash' | 'debt' | 'card'>('all');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
@@ -633,40 +636,39 @@ export default function Invoices() {
   const pendingUpdateRef = useRef(false);
   const isRefreshingRef = useRef(false);
 
-  const loadData = useCallback(async (isSilent = false) => {
-    if (isRefreshingRef.current) return;
-    isRefreshingRef.current = true;
-    if (!isSilent) {
-      setIsLoading(true);
-    }
-    try {
-      const [invoicesData, statsData] = await Promise.all([
-        loadInvoicesCloud(),
-        getInvoiceStatsCloud()
-      ]);
-      setInvoices(invoicesData);
-      setStats(statsData);
-
-      // تحديث بيانات الفاتورة المحددة بصمت إذا كانت معروضة دون إغلاق النافذة
-      if (selectedInvoiceRef.current) {
-        const currentId = selectedInvoiceRef.current.id;
-        const freshSelected = invoicesData.find(i => i.id === currentId);
-        if (freshSelected) {
-          setSelectedInvoice(freshSelected);
-        }
-      }
-    } catch (err) {
-      console.warn('[Invoices] Error loading invoices:', err);
-    } finally {
-      if (!isSilent) {
-        setIsLoading(false);
-      }
-      isRefreshingRef.current = false;
-    }
-  }, []);
-
+  // إطلاق التحديث السحابي في الخلفية (Background Revalidation) مع تحديث القائمة دون اهتزاز
   useEffect(() => {
-    loadData(false);
+    let isMounted = true;
+    async function fetchFreshInvoices() {
+      if (isRefreshingRef.current) return;
+      isRefreshingRef.current = true;
+      try {
+        const [fresh, statsData] = await Promise.all([
+          loadInvoicesCloud(),
+          getInvoiceStatsCloud().catch(() => null)
+        ]);
+        if (isMounted && fresh && fresh.length > 0) {
+          setInvoices(fresh);
+        }
+        if (isMounted && statsData) {
+          setStats(statsData);
+        }
+        if (isMounted && selectedInvoiceRef.current && fresh) {
+          const currentId = selectedInvoiceRef.current.id;
+          const freshSelected = fresh.find(i => i.id === currentId);
+          if (freshSelected) {
+            setSelectedInvoice(freshSelected);
+          }
+        }
+      } catch (err) {
+        console.warn('[Invoices] Error fetching fresh invoices:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+        isRefreshingRef.current = false;
+      }
+    }
+
+    fetchFreshInvoices();
 
     const handleUpdate = () => {
       // 🛡️ إذا كانت هناك نافذة تفاعلية مفتوحة (عرض، مشاركة، استرداد، سداد)، نؤجل التحديث حتى تغلق
@@ -674,27 +676,33 @@ export default function Invoices() {
         pendingUpdateRef.current = true;
         return;
       }
-      // 🚀 تحديث صامت في الخلفية دائماً عند وصول أحداث التحديث لمنع وميض الشاشة أو {t('invoices.reset') || 'تصفير'} التمرير
-      loadData(true);
+      // 🚀 تحديث صامت في الخلفية دائماً عند وصول أحداث التحديث لمنع وميض الشاشة أو تصفير التمرير
+      fetchFreshInvoices();
     };
 
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.APP_REFRESH, handleUpdate);
 
     return () => {
+      isMounted = false;
       window.removeEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
       window.removeEventListener(EVENTS.APP_REFRESH, handleUpdate);
     };
-  }, [loadData]);
+  }, []);
 
   // تنفيذ أي تحديث مؤجل بمجرد إغلاق كافة النوافذ المنبثقة
   useEffect(() => {
     const isAnyOpen = showViewDialog || showShareSheet || showRefundDialog || showDebtPaymentDialog;
     if (!isAnyOpen && pendingUpdateRef.current) {
       pendingUpdateRef.current = false;
-      loadData(true);
+      loadInvoicesCloud().then(fresh => {
+        if (fresh && fresh.length > 0) setInvoices(fresh);
+      }).catch(() => {});
+      getInvoiceStatsCloud().then(statsData => {
+        if (statsData) setStats(statsData);
+      }).catch(() => {});
     }
-  }, [showViewDialog, showShareSheet, showRefundDialog, showDebtPaymentDialog, loadData]);
+  }, [showViewDialog, showShareSheet, showRefundDialog, showDebtPaymentDialog]);
 
   // Memoized filtered invoices for performance
   // Refunded invoices appear only in the "فواتير مستردة" view (full or partial refunds)
