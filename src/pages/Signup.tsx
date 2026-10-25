@@ -213,7 +213,7 @@ export default function Signup() {
         </form>
       </Card>
 
-      <LanguageQuickSelector />
+      <LanguageQuickSelector isAbsolute />
     </div>
   );
 }

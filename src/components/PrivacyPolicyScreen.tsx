@@ -4,7 +4,7 @@
  * Supports Arabic, English, Turkish, Persian, and Kurdish with instant switching & RTL/LTR adaptivity
  */
 import { useState, useRef, useCallback } from 'react';
-import { Shield, Check, ArrowDown, CheckCircle2, Globe, ChevronDown } from 'lucide-react';
+import { Shield, Check, ArrowDown, CheckCircle2, Globe, ChevronDown, Sun, Moon, Type, Palette } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/hooks/use-language';
+import { useTheme } from '@/hooks/use-theme';
+import { useUIScale } from '@/hooks/use-ui-scale';
+import { UIScaleId } from '@/lib/ui-scale-config';
 import { Language } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -288,6 +291,8 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
   const [agreed, setAgreed] = useState(false);
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const { t, isRTL, language, setLanguage } = useLanguage();
+  const { mode, setTheme, color } = useTheme();
+  const { currentScale, setScale } = useUIScale();
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentLangObj = AVAILABLE_LANGUAGES.find(l => l.code === language) || AVAILABLE_LANGUAGES[0];
 
@@ -354,81 +359,118 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] min-h-[100dvh] overflow-hidden bg-background text-foreground"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-between p-3 sm:p-5 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] min-h-[100dvh] overflow-hidden bg-background text-foreground"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      <div className="w-full max-w-2xl flex flex-col items-center gap-2 sm:gap-2.5 h-full max-h-full overflow-hidden">
+      <div className="w-full max-w-2xl flex flex-col items-center gap-2 sm:gap-3 h-full max-h-full overflow-hidden">
         {/* Header with circular icon badge */}
         <div className="flex-shrink-0 flex flex-col items-center gap-1.5 text-center pt-0.5">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 aspect-square border border-blue-200 bg-blue-50 dark:bg-blue-950/40 shadow-xs">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-blue-600 dark:text-blue-400" />
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 aspect-square border border-primary/20 bg-primary/10 shadow-sm">
+            <Shield className="w-6 h-6 shrink-0 text-primary" />
           </div>
-          <h1 className="text-base sm:text-lg font-bold leading-tight text-blue-900 dark:text-blue-100">
+          <h1 className="text-lg sm:text-xl font-black leading-tight text-foreground tracking-tight">
             {t('privacy.title')}
           </h1>
-          <p className="text-[11px] sm:text-xs text-muted-foreground max-w-md px-2 leading-tight">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-md px-2 leading-tight">
             {subtitleText}
           </p>
+        </div>
+
+        {/* Quick Appearance Strip: Theme + Font Scale */}
+        <div className="w-full flex-shrink-0 flex items-center justify-between px-3 py-1.5 rounded-xl border border-border/80 bg-card/60 backdrop-blur-xs text-xs">
+          <div className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+            <Palette className="w-4 h-4 text-primary" />
+            <span>المظهر والخط</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Theme Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => setTheme(mode === 'dark' ? 'light' : 'dark', color)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card border border-border/60 hover:bg-muted text-foreground font-bold active:scale-95 transition-all cursor-pointer shadow-2xs"
+              title={mode === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
+            >
+              {mode === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-sky-500" />}
+              <span className="text-[11px]">{mode === 'dark' ? 'نهاري' : 'ليلي'}</span>
+            </button>
+            {/* UI Scale Cycling */}
+            <button
+              type="button"
+              onClick={() => {
+                const scales: UIScaleId[] = ['80', '90', '100', '110'];
+                const nextIdx = (scales.indexOf(currentScale) + 1) % scales.length;
+                setScale(scales[nextIdx]);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card border border-border/60 hover:bg-muted text-foreground font-bold active:scale-95 transition-all cursor-pointer shadow-2xs"
+              title="تغيير مقاس الخط والواجهة"
+            >
+              <Type className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[11px] font-mono">{currentScale}%</span>
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Terms Content */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 w-full overflow-y-auto rounded-xl p-3 sm:p-4 text-xs sm:text-sm shadow-inner overscroll-contain border border-blue-200 dark:border-blue-900/50 bg-blue-50/40 dark:bg-card"
+          className="flex-1 min-h-0 w-full overflow-y-auto rounded-2xl p-4 sm:p-6 text-sm sm:text-base leading-relaxed shadow-inner overscroll-contain border border-border/80 bg-card/60 dark:bg-card/40 backdrop-blur-xs text-foreground"
           dir={isRTL ? 'rtl' : 'ltr'}
         >
           <div
-            className={`prose prose-sm max-w-none leading-relaxed space-y-3 sm:space-y-4 text-blue-950 dark:text-blue-100 ${isRTL ? 'pr-1.5 text-right' : 'pl-1.5 text-left'}`}
+            className={cn(
+              "prose prose-sm sm:prose-base max-w-none leading-relaxed space-y-4 text-foreground/90",
+              isRTL ? "pr-1.5 text-right" : "pl-1.5 text-left"
+            )}
           >
             {renderTerms()}
           </div>
         </div>
 
-        {/* Bottom Actions Container - completely raised above Android system navigation */}
-        <div className="w-full flex-shrink-0 flex flex-col items-center gap-2 pt-1 pb-1">
-          {/* Bouncing Scroll Down Indicator Bar */}
+        {/* Bottom Actions Container */}
+        <div className="w-full flex-shrink-0 flex flex-col items-center gap-2.5 pt-1 pb-1">
+          {/* Scroll Down Indicator / Read Complete */}
           {!scrolledToBottom ? (
             <button
               type="button"
               onClick={scrollToBottom}
-              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-2 px-4 rounded-xl shadow-xs cursor-pointer transition-all duration-300 hover:opacity-95 active:scale-[0.99] border border-blue-300 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
+              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl shadow-xs cursor-pointer transition-all duration-300 hover:opacity-95 active:scale-[0.99] border border-primary/30 bg-primary/5 text-primary"
             >
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white shrink-0 animate-bounce">
-                <ArrowDown className="w-3 h-3" />
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground shrink-0 animate-bounce">
+                <ArrowDown className="w-3.5 h-3.5" />
               </span>
-              <span className="text-xs sm:text-sm font-semibold">
+              <span className="text-xs sm:text-sm font-bold">
                 {scrollDownText}
               </span>
             </button>
           ) : (
             <div
-              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg border border-green-200 dark:border-green-800 text-xs font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 animate-in fade-in duration-300"
+              className="w-full flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-emerald-500/30 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 animate-in fade-in duration-300"
             >
-              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
                 {readCompleteText}
               </span>
             </div>
           )}
 
-          {/* Checkbox Card */}
+          {/* بطاقة الموافقة الموسعة — مريحة للعين وسهلة النقر */}
           <div
-            onClick={(e) => {
-              if ((e.target as HTMLElement).closest('#terms-agree')) return;
+            onClick={() => {
               if (!scrolledToBottom) {
                 scrollToBottom();
               } else {
                 setAgreed(!agreed);
               }
             }}
-            className={`flex items-center gap-3 w-full flex-shrink-0 p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer ${
+            className={cn(
+              "flex items-center gap-3.5 w-full p-4 rounded-2xl border-2 transition-all cursor-pointer select-none",
               !scrolledToBottom
-                ? 'opacity-50 border-gray-200 bg-gray-50'
+                ? "opacity-50 border-border/40 bg-muted/20"
                 : agreed
-                ? 'border-blue-500 bg-blue-50/60 shadow-xs'
-                : 'border-blue-200 bg-white hover:border-blue-400'
-            }`}
+                ? "border-primary bg-primary/10 shadow-sm"
+                : "border-border bg-card hover:border-primary/50"
+            )}
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             <Checkbox
@@ -438,65 +480,64 @@ export function PrivacyPolicyScreen({ onAccept }: { onAccept: () => void }) {
                 if (scrolledToBottom) setAgreed(checked === true);
               }}
               disabled={!scrolledToBottom}
-              className="h-5 w-5 rounded-md data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shrink-0"
+              className="h-6 w-6 rounded-lg data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0 transition-transform active:scale-95"
             />
             <Label
               htmlFor="terms-agree"
-              className="cursor-pointer text-xs sm:text-sm font-medium select-none flex-1 leading-snug text-blue-950 dark:text-blue-100"
+              className="cursor-pointer text-sm sm:text-base font-bold flex-1 leading-snug text-foreground"
             >
-              {t('privacy.agreeCheckbox')}
+              {t('privacy.agreeCheckbox') || 'أوافق على الشروط وإخلاء المسؤولية'}
             </Label>
           </div>
 
-          {/* Action Row: Language Selector Dropdown + Continue Button */}
-          <div className="w-full flex items-center gap-2">
-            {/* Language Selector Dropdown */}
+          {/* صف الأزرار: زر اللغة الواضح + زر المتابعة العريض */}
+          <div className="w-full flex items-center gap-3 pt-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 h-12 px-3 sm:px-3.5 rounded-xl bg-blue-50/90 hover:bg-blue-100/90 text-blue-900 border border-blue-200 text-xs font-bold transition-all shadow-xs shrink-0 active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 h-14 px-4 rounded-2xl bg-card border border-border/80 hover:bg-muted text-foreground text-xs sm:text-sm font-bold shadow-sm shrink-0 active:scale-95 cursor-pointer"
                   title="اختيار اللغة / Change language"
                 >
-                  <Globe className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="text-sm">{currentLangObj.flag}</span>
-                  <span className="hidden xs:inline sm:inline">{currentLangObj.label}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-blue-600 opacity-70 shrink-0" />
+                  <Globe className="w-5 h-5 text-primary shrink-0" />
+                  <span className="text-base">{currentLangObj.flag}</span>
+                  <span className="hidden sm:inline">{currentLangObj.label}</span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-48 p-1 z-[110] bg-popover text-popover-foreground border border-border shadow-xl rounded-xl">
+              <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-48 p-1 z-[110] bg-popover text-popover-foreground border border-border shadow-xl rounded-2xl">
                 {AVAILABLE_LANGUAGES.map((item) => (
                   <DropdownMenuItem
                     key={item.code}
                     onClick={() => setLanguage(item.code)}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors",
+                      "flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-colors",
                       language === item.code
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
                     <span className="flex items-center gap-2">
-                      <span>{item.flag}</span>
+                      <span className="text-base">{item.flag}</span>
                       <span>{item.label}</span>
                     </span>
-                    {language === item.code && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                    {language === item.code && <Check className="w-4 h-4 text-primary-foreground" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Continue Button */}
             <button
               className={cn(
-                "flex-1 gap-2 flex-shrink-0 transition-all duration-300 flex items-center justify-center py-3 px-4 rounded-xl font-bold text-white shadow-md disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed active:scale-[0.99] min-h-12 text-[0.95rem]",
-                agreed ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300"
+                "flex-1 gap-2 h-14 rounded-2xl font-bold text-primary-foreground shadow-lg transition-all flex items-center justify-center text-base sm:text-lg cursor-pointer",
+                agreed 
+                  ? "bg-primary hover:bg-primary/90 active:scale-[0.99]" 
+                  : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
               )}
               disabled={!agreed}
               onClick={onAccept}
             >
-              <Check className="w-5 h-5 shrink-0" />
-              <span>{t('privacy.continue')}</span>
+              <Check className="w-5 h-5 stroke-[2.5]" />
+              <span>{t('privacy.continue') || 'المتابعة والدخول'}</span>
             </button>
           </div>
         </div>

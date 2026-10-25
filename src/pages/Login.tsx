@@ -461,93 +461,118 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4 relative" dir={direction}>
-      <Card className="w-full max-w-md shadow-2xl border-border/50 bg-card">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
-            <Store className="w-8 h-8 text-primary" />
+    <div 
+      className="min-h-screen w-full bg-background flex flex-col justify-between p-4 sm:p-6 md:justify-center md:items-center relative"
+      dir={direction}
+    >
+      {/* ترويسة آمنة تأخذ بعين الاعتبار نوتش الجوال وSafe Area Insets */}
+      <div className="w-full max-w-md mx-auto pt-[env(safe-area-inset-top,12px)] flex items-center justify-between pb-4">
+        {/* شعار المتجر والعنوان المدمج */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-2xs">
+            <Store className="w-5 h-5" />
           </div>
-          <div>
-            <CardTitle className="text-2xl font-bold">{t('auth.welcome')}</CardTitle>
-            <CardDescription className="mt-2">{t('auth.loginSubtitle')}</CardDescription>
-          </div>
-        </CardHeader>
+          <span className="font-bold text-sm sm:text-base text-foreground tracking-tight">FlowPOS Pro</span>
+        </div>
 
-        <CardContent className="space-y-4">
-          {location.state?.error && (
-            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2.5">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-              <span className="font-medium">{location.state.error}</span>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
+        {/* زر اللغة الموحد والواضح تماماً — بعيداً عن حواف الشاشة والإشعارات */}
+        <LanguageQuickSelector />
+      </div>
+
+      {/* المحتوى الرئيسي للنموذج — شاشة كاملة متجاوبة Native */}
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center py-4 space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+            {t('auth.welcome') || 'مرحباً بك في FlowPOS Pro'}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t('auth.loginSubtitle') || 'سجل دخولك لإدارة مبيعاتك ومتجرك'}
+          </p>
+        </div>
+
+        {location.state?.error && (
+          <div className="p-3.5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <span className="font-medium">{location.state.error}</span>
+          </div>
+        )}
+
+        {/* حقول الإدخال والأزرار المصممة بارتفاعات لمس مريحة (h-12) */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-xs sm:text-sm font-bold text-foreground">
+              {t('auth.email')}
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+              className="h-12 rounded-xl text-sm sm:text-base px-3.5 border-border/80"
+              dir="ltr"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-xs sm:text-sm font-bold text-foreground">
+              {t('auth.password')}
+            </Label>
+            <div className="relative">
               <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
-                className="h-11"
+                className="h-12 rounded-xl pe-11 text-sm sm:text-base px-3.5 border-border/80"
+                dir="ltr"
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  className="h-11 pe-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => { setResetEmail(email); setShowForgotDialog(true); }}
-                className="text-sm text-primary hover:underline"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-muted-foreground hover:text-foreground transition-colors p-1"
               >
-                {t('auth.forgotPassword')}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+          </div>
 
-            <Button type="submit" className="w-full h-11" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('auth.loading')}
-                </>
-              ) : (
-                t('auth.login')
-              )}
-            </Button>
-          </form>
-        </CardContent>
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              onClick={() => { setResetEmail(email); setShowForgotDialog(true); }}
+              className="text-xs sm:text-sm text-primary font-bold hover:underline cursor-pointer"
+            >
+              {t('auth.forgotPassword')}
+            </button>
+          </div>
 
-        <CardFooter className="flex flex-col gap-4">
-          <div className="relative w-full my-1">
+          <Button
+            type="submit"
+            className="w-full h-12 rounded-2xl text-base font-bold shadow-md bg-gradient-primary hover:brightness-105 active:scale-98 text-primary-foreground transition-all cursor-pointer"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>{t('auth.loading')}</span>
+              </>
+            ) : (
+              <span>{t('auth.login')}</span>
+            )}
+          </Button>
+
+          <div className="relative w-full my-2">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground font-medium">أو</span>
+              <span className="bg-background px-2 text-muted-foreground font-medium">أو</span>
             </div>
           </div>
 
@@ -556,22 +581,23 @@ export default function Login() {
             variant="outline"
             onClick={handleStartDemo}
             disabled={isLoading}
-            className="w-full h-11 border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary font-medium flex items-center justify-center gap-2 transition-colors"
+            className="w-full h-12 rounded-2xl border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 text-primary font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm"
           >
             <Sparkles className="w-4 h-4 text-primary" />
-            تجربة التطبيق بدون حساب (Demo Mode)
+            <span>تجربة التطبيق بدون حساب (Demo Mode)</span>
           </Button>
+        </form>
+      </div>
 
-          <p className="text-sm text-muted-foreground text-center">
-            {t('auth.noAccount')}{' '}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
-              {t('auth.signup')}
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
-
-      <LanguageQuickSelector />
+      {/* التذييل السفلي: روابط الاستعادة وإنشاء حساب جديد */}
+      <div className="w-full max-w-md mx-auto pb-[env(safe-area-inset-bottom,16px)] pt-4 text-center">
+        <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          <span>{t('auth.noAccount') || 'ليس لديك حساب؟'}</span>
+          <Link to="/signup" className="text-primary font-bold hover:underline">
+            {t('auth.signup') || 'إنشاء حساب جديد'}
+          </Link>
+        </div>
+      </div>
 
       {/* Device Blocked Dialog - Protected from accidental closure on mobile */}
       <Dialog open={showDeviceBlockedDialog} onOpenChange={(open) => { if (!open) return; }}>

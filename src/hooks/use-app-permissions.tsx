@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { requestNotificationPermissionNative } from '@/lib/native-notifications';
+import { checkNotificationPermissionNative } from '@/lib/native-notifications';
 
 interface PermissionStatus {
   camera: 'granted' | 'denied' | 'prompt' | 'unknown';
@@ -18,56 +18,34 @@ export function useAppPermissions() {
   });
 
   useEffect(() => {
-    // Request notification permission (web / PWA path only)
-    const requestWebNotificationPermission = async (): Promise<'granted' | 'denied' | 'prompt'> => {
+    // Check permission statuses passively (on-demand prompt when used)
+    const checkPermissions = async () => {
       try {
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-          if (Notification.permission === 'granted') return 'granted';
-          if (Notification.permission === 'denied') return 'denied';
-          const res = await Notification.requestPermission();
-          return res === 'granted' ? 'granted' : res === 'denied' ? 'denied' : 'prompt';
+        if (!Capacitor.isNativePlatform()) {
+          const notif = typeof window !== 'undefined' && 'Notification' in window
+            ? (Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'prompt')
+            : 'prompt';
+          setStatus({ camera: 'granted', storage: 'granted', notifications: notif, requested: true });
+          return;
         }
-      } catch (err) {
-        console.warn('[Permissions] Notification request error:', err);
-      }
-      return 'prompt';
-    };
 
-    if (!Capacitor.isNativePlatform()) {
-      requestWebNotificationPermission().then(notifStatus => {
-        setStatus({ camera: 'granted', storage: 'granted', notifications: notifStatus, requested: true });
-      });
-      return;
-    }
-
-    const requestPermissions = async () => {
-      try {
-        // Request camera permission via Camera plugin (Capacitor 8)
+        // On native, check passively without prompting
         const { Camera } = await import('@capacitor/camera');
-        const cameraResult = await Camera.requestPermissions({ permissions: ['camera'] });
-
+        const cameraResult = await Camera.checkPermissions();
         const cameraStatus = cameraResult.camera === 'granted' ? 'granted' :
           cameraResult.camera === 'denied' ? 'denied' : 'prompt';
 
-        // Request storage permission via Filesystem
         const { Filesystem } = await import('@capacitor/filesystem');
-        let storageStatus: 'granted' | 'denied' | 'prompt' = 'unknown' as any;
-
+        let storageStatus: 'granted' | 'denied' | 'prompt' = 'prompt';
         try {
-          const storageResult = await Filesystem.requestPermissions();
+          const storageResult = await Filesystem.checkPermissions();
           storageStatus = storageResult.publicStorage === 'granted' ? 'granted' :
             storageResult.publicStorage === 'denied' ? 'denied' : 'prompt';
-        } catch (storageError) {
-          console.warn('[Permissions] Storage permission request failed:', storageError);
+        } catch {
           storageStatus = 'prompt';
         }
 
-        // On Android, use @capacitor/local-notifications to show the real
-        // POST_NOTIFICATIONS system dialog (Android 13+). The web Notification API
-        // is NOT supported inside Android WebView and shows nothing.
-        const notifResult = await requestNotificationPermissionNative();
-        const notifStatus: 'granted' | 'denied' | 'prompt' =
-          notifResult === 'granted' ? 'granted' : 'denied';
+        const notifStatus = await checkNotificationPermissionNative();
 
         setStatus({
           camera: cameraStatus,
@@ -76,16 +54,14 @@ export function useAppPermissions() {
           requested: true,
         });
 
-        console.log('[Permissions] Camera:', cameraStatus, '| Storage:', storageStatus, '| Notifications:', notifStatus);
+        console.log('[Permissions Status (On-Demand)] Camera:', cameraStatus, '| Storage:', storageStatus, '| Notifications:', notifStatus);
       } catch (error) {
-        console.warn('[Permissions] Failed to request permissions:', error);
+        console.warn('[Permissions] Failed to check permissions:', error);
         setStatus(prev => ({ ...prev, requested: true }));
       }
     };
 
-    // Small delay to let the app initialize first
-    const timer = setTimeout(requestPermissions, 500);
-    return () => clearTimeout(timer);
+    checkPermissions();
   }, []);
 
   return status;
@@ -101,7 +77,6 @@ export function useOpenAppSettings() {
     try {
       // Use App plugin to open settings (Capacitor 8)
       const { App } = await import('@capacitor/app');
-      // Note: App plugin doesn't have openAppSettings, use native approach
       console.warn('[Permissions] Opening app settings is not directly supported in Cap 8 barcode scanner');
     } catch (error) {
       console.error('[Permissions] Failed to open settings:', error);
