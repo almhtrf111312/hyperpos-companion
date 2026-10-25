@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  ArrowRight,
   Search,
   Plus,
   Package,
@@ -2423,7 +2424,7 @@ export default function Products() {
         {/* Add Product Dialog */}
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) { setImagePreviewBase64(''); clearPersistedState(); } }}>
           <DialogContent
-            className="w-[min(calc(100vw-1rem),42rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl"
+            className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),46rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden shadow-2xl bg-background"
             onPointerDownOutside={(e) => {
               if (formData.name?.trim()) e.preventDefault();
             }}
@@ -2431,16 +2432,40 @@ export default function Products() {
               if (formData.name?.trim()) e.preventDefault();
             }}
           >
-            {/* Premium Header */}
-            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60">
-              <DialogHeader className="space-y-0">
-                <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            {/* Responsive Header */}
+            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowAddDialog(false);
+                    setImagePreviewBase64('');
+                    clearPersistedState();
+                  }}
+                  className="rounded-full h-8 w-8 sm:hidden"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
                   {t('products.addProductTitle') || 'إضافة منتج جديد'}
                 </DialogTitle>
-              </DialogHeader>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowAddDialog(false);
+                  setImagePreviewBase64('');
+                  clearPersistedState();
+                }}
+                className="text-xs text-muted-foreground"
+              >
+                {t('common.cancel') || 'إلغاء'}
+              </Button>
             </div>
 
-            <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto scrollbar-thin">
+            <div className="flex-1 min-h-0 p-4 sm:p-6 pb-28 sm:pb-6 overflow-y-auto scrollbar-thin">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
@@ -2952,7 +2977,7 @@ export default function Products() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-6 flex items-center gap-3">
+            <div className="sticky bottom-0 border-t bg-card/95 backdrop-blur-md px-4 py-3 sm:px-6 flex items-center gap-3 shrink-0 shadow-lg">
               <Button
                 type="button"
                 variant="outline"
@@ -2967,7 +2992,7 @@ export default function Products() {
               </Button>
               <Button
                 type="button"
-                className="flex-1 h-11 rounded-xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-colors cursor-pointer"
+                className="flex-[2] h-11 rounded-xl text-sm font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 transition-colors cursor-pointer"
                 onClick={handleAddProduct}
               >
                 <Save className="w-4 h-4 ml-2" />
@@ -2980,7 +3005,7 @@ export default function Products() {
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) clearPersistedState(); }}>
           <DialogContent
-            className="w-[min(calc(100vw-1rem),42rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden border border-border/70 shadow-2xl rounded-2xl"
+            className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),46rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden shadow-2xl bg-background"
             onPointerDownOutside={(e) => {
               if (formData.name?.trim()) e.preventDefault();
             }}
@@ -2988,16 +3013,40 @@ export default function Products() {
               if (formData.name?.trim()) e.preventDefault();
             }}
           >
-            {/* Premium Header */}
-            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60">
-              <DialogHeader className="space-y-0">
-                <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            {/* Responsive Header */}
+            <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-3 sm:px-6 border-b border-border/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowEditDialog(false);
+                    setImagePreviewBase64('');
+                    clearPersistedState();
+                  }}
+                  className="rounded-full h-8 w-8 sm:hidden"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
                   {selectedProduct?.archived ? t('products.restoreAndEditProduct') : tDynamic('editProduct')}
                 </DialogTitle>
-              </DialogHeader>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowEditDialog(false);
+                  setImagePreviewBase64('');
+                  clearPersistedState();
+                }}
+                className="text-xs text-muted-foreground"
+              >
+                {t('common.cancel') || 'إلغاء'}
+              </Button>
             </div>
 
-            <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto scrollbar-thin">
+            <div className="flex-1 min-h-0 p-4 sm:p-6 pb-28 sm:pb-6 overflow-y-auto scrollbar-thin">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-sm font-medium mb-1.5 block">{t('products.name')} *</label>
@@ -3483,7 +3532,7 @@ export default function Products() {
               </div>
             </div>
 
-            <div className="shrink-0 border-t bg-muted/30 px-4 py-3 sm:px-6 flex items-center gap-3">
+            <div className="sticky bottom-0 border-t bg-card/95 backdrop-blur-md px-4 py-3 sm:px-6 flex items-center gap-3 shrink-0 shadow-lg">
               <Button
                 type="button"
                 variant="outline"
@@ -3499,7 +3548,7 @@ export default function Products() {
               <Button
                 type="button"
                 className={cn(
-                  "flex-1 h-11 rounded-xl text-sm font-black shadow-md transition-colors cursor-pointer",
+                  "flex-[2] h-11 rounded-xl text-sm font-black shadow-md transition-colors cursor-pointer",
                   selectedProduct?.archived
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
                     : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
@@ -3634,8 +3683,8 @@ export default function Products() {
 
         {/* Quick Restock Dialog */}
         <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
-          <DialogContent className="sm:max-w-[30rem]">
-            <DialogHeader>
+          <DialogContent className="w-[min(calc(100vw-1rem),30rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-background">
+            <DialogHeader className="p-4 border-b border-border/60 shrink-0 bg-muted/20">
               <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
                 <Boxes className="w-5 h-5 text-emerald-600" />
                 {t('products.restockTitle')}
@@ -3646,7 +3695,7 @@ export default function Products() {
             </DialogHeader>
 
             {restockProduct && (
-              <div className="space-y-4 py-2">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
                 <div className="flex items-center gap-3 p-3 bg-muted/60 rounded-xl border border-border/60">
                   {restockProduct.image ? (
                     <div className="w-12 h-12 rounded-lg overflow-hidden border border-border flex-shrink-0">
@@ -3675,7 +3724,7 @@ export default function Products() {
                     type="text"
                     inputMode="numeric"
                     dir="ltr"
-                    className="text-center text-lg font-bold h-12"
+                    className="text-center text-lg font-bold h-12 rounded-xl"
                     value={restockQuantity}
                     onChange={(e) => setRestockQuantity(e.target.value)}
                     placeholder="10"
@@ -3691,7 +3740,7 @@ export default function Products() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs font-bold px-2.5"
+                      className="h-8 text-xs font-bold px-2.5 rounded-lg"
                       onClick={() => setRestockQuantity(String(val))}
                     >
                       +{val}
@@ -3701,7 +3750,7 @@ export default function Products() {
 
                 <div className="pt-2 flex flex-col gap-2">
                   <Button
-                    className="w-full h-10 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="w-full h-11 font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm"
                     onClick={handleQuickRestock}
                     disabled={isRestocking}
                   >
@@ -3716,7 +3765,7 @@ export default function Products() {
                   <Button
                     variant="ghost"
                     type="button"
-                    className="w-full text-xs text-muted-foreground hover:text-foreground h-8"
+                    className="w-full text-xs text-muted-foreground hover:text-foreground h-9 rounded-xl"
                     onClick={() => {
                       const p = restockProduct;
                       setShowRestockDialog(false);

@@ -3,11 +3,11 @@ import { Plus, Edit, Trash2, X, Save, Tag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,6 +99,7 @@ export function CategoryManager({
       onCategoriesChange?.();
       toast.success('تم إضافة التصنيف بنجاح');
       loadData();
+      onClose();
     } else {
       toast.error('فشل في إضافة التصنيف');
     }
@@ -164,14 +165,14 @@ export function CategoryManager({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-md max-h-[85vh] max-h-[85dvh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent side="bottom" className="max-h-[85vh] max-h-[85dvh] sm:max-w-lg sm:mx-auto rounded-t-2xl sm:rounded-2xl p-0 flex flex-col overflow-hidden bg-background border-border shadow-2xl">
+          <SheetHeader className="p-4 border-b border-border/50 shrink-0 bg-muted/20">
+            <SheetTitle className="flex items-center gap-2 text-base font-bold text-foreground">
               <Tag className="w-5 h-5 text-primary" />
               إدارة التصنيفات
-            </DialogTitle>
-          </DialogHeader>
+            </SheetTitle>
+          </SheetHeader>
 
           {/* Add new category */}
           <div className="flex gap-2 p-2 bg-muted rounded-lg">
@@ -269,8 +270,8 @@ export function CategoryManager({
               إغلاق
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteCategory} onOpenChange={() => setDeleteCategory(null)}>

@@ -9,6 +9,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useMoney } from '@/hooks/use-money';
 import { toast } from '@/lib/sonner-bridge';
 import {
+  ArrowRight,
   ShoppingBag,
   Image as ImageIcon,
   Loader2,
@@ -515,20 +516,37 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="w-[min(100vw-1rem,42rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden text-xs sm:text-sm rounded-2xl break-words"
+          className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),46rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden text-xs sm:text-sm shadow-2xl break-words bg-background"
           onPointerDownOutside={(e) => e.preventDefault()}
         >
-          <DialogHeader className="p-3.5 sm:p-5 pb-3 border-b shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <ShoppingBag className="w-5 h-5 text-primary shrink-0" />
-              <span>{t('purchases.quickAdd') || 'إضافة مشتريات سريعة'}</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              أدخل تفاصيل الشراء؛ سيتم تسجيل الفاتورة وإضافة الصنف وتحديث المخزون والأسعار تلقائياً.
-            </DialogDescription>
-          </DialogHeader>
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className="rounded-full h-8 w-8 sm:hidden"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-sm sm:text-base font-bold text-foreground">
+                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+                  <span>{t('purchases.quickAdd') || 'إضافة مشتريات سريعة'}</span>
+                </DialogTitle>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="text-xs text-muted-foreground"
+            >
+              {t('common.cancel') || 'إلغاء'}
+            </Button>
+          </div>
 
-          <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 pb-28 sm:pb-5 space-y-3.5 sm:space-y-4">
             {/* Existing Product Indicator */}
             {selectedProduct && (
               <div className="flex items-center justify-between p-2.5 bg-primary/10 border border-primary/20 rounded-lg text-xs">
@@ -1004,11 +1022,11 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             {/* Action Buttons */}
           </div>
 
-          <div className="p-3 sm:p-4 border-t bg-muted/20 shrink-0 flex gap-2">
+          <div className="sticky bottom-0 p-3 sm:p-4 border-t border-border bg-card/95 backdrop-blur-md shrink-0 flex items-center gap-2 shadow-lg">
             <Button
               type="button"
               variant="outline"
-              className="flex-1 h-11 text-sm"
+              className="flex-1 h-11 text-xs sm:text-sm rounded-xl font-bold"
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
@@ -1016,19 +1034,19 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
             </Button>
             <Button
               type="button"
-              className="flex-1 h-11 text-sm bg-primary hover:bg-primary/90 font-bold"
+              className="flex-[2] h-11 text-xs sm:text-sm rounded-xl bg-primary hover:bg-primary/90 font-bold text-primary-foreground shadow-sm"
               onClick={handleSubmit}
               disabled={loading}
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('common.loading') || 'جارٍ الحفظ...'}
+                  <Loader2 className="w-4 h-4 animate-spin ml-1" />
+                  <span>{t('common.loading') || 'جارٍ الحفظ...'}</span>
                 </>
               ) : (
                 <>
-                  <Package className="w-4 h-4" />
-                  {selectedProduct ? 'تحديث المخزون والفاتورة' : 'حفظ المنتج وتحديث المخزون'}
+                  <Package className="w-4 h-4 ml-1" />
+                  <span>{selectedProduct ? 'تحديث المخزون والفاتورة' : 'حفظ المنتج وتحديث المخزون'}</span>
                 </>
               )}
             </Button>

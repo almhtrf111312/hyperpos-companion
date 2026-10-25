@@ -475,49 +475,69 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[min(calc(100vw-1rem),46rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border/70 shadow-2xl">
+      <DialogContent className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(92vh,56rem)] sm:w-[min(calc(100vw-1rem),50rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden shadow-2xl bg-background">
         
-        {/* Premium Header with gradient background */}
-        <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background px-4 py-4 sm:px-6 sm:py-5 border-b border-border/50">
-          <DialogHeader>
-            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 ring-1 ring-primary/20">
-              <FileText className="w-6 h-6 text-primary" />
+        {/* Responsive Header */}
+        <div className="shrink-0 bg-gradient-to-br from-primary/5 via-background to-background border-b border-border/50">
+          <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleOpenChange(false)}
+                className="rounded-full h-8 w-8 sm:hidden"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/10 rounded-xl flex items-center justify-center ring-1 ring-primary/20">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                </div>
+                <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground">
+                  {t('purchaseInvoice.title')}
+                </DialogTitle>
+              </div>
             </div>
-            <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
-              {t('purchaseInvoice.title')}
-            </DialogTitle>
-          </DialogHeader>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenChange(false)}
+              className="text-xs text-muted-foreground"
+            >
+              {t('common.cancel')}
+            </Button>
+          </div>
 
           {/* Step Indicator */}
-          <div className="flex flex-wrap items-center gap-3 mt-6">
+          <div className="flex items-center gap-2 px-4 pb-3 sm:px-6 sm:pb-4 overflow-x-auto">
             <div className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300",
               step === 'header' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
             )}>
               <span className={cn(
-                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                "w-4 h-4 rounded-full flex items-center justify-center text-[10px]",
                 step === 'header' ? "bg-primary-foreground/20" : "bg-background/80"
               )}>1</span>
               {t('purchaseInvoice.headerStep')}
             </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
+            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
             <div className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300",
               step === 'items' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
             )}>
               <span className={cn(
-                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                "w-4 h-4 rounded-full flex items-center justify-center text-[10px]",
                 step === 'items' ? "bg-primary-foreground/20" : "bg-background/80"
               )}>2</span>
               {t('purchaseInvoice.itemsStep')}
             </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
+            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 rtl:rotate-180 shrink-0" />
             <div className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold transition-all duration-300",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300",
               step === 'finalize' ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "bg-muted/50 text-muted-foreground"
             )}>
               <span className={cn(
-                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                "w-4 h-4 rounded-full flex items-center justify-center text-[10px]",
                 step === 'finalize' ? "bg-primary-foreground/20" : "bg-background/80"
               )}>3</span>
               {t('purchases.finalize')}
@@ -525,7 +545,7 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto scrollbar-thin">
+        <div className="flex-1 min-h-0 p-4 sm:p-6 pb-28 sm:pb-6 overflow-y-auto scrollbar-thin">
 
         {/* Step 1: Header */}
         {step === 'header' && (
@@ -599,13 +619,13 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold" onClick={() => handleOpenChange(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button onClick={handleCreateInvoice} disabled={loading}>
+              <Button className="flex-[2] h-11 rounded-xl text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={handleCreateInvoice} disabled={loading}>
                 {loading ? t('common.loading') : t('common.next')}
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 rtl:rotate-180 mr-1" />
               </Button>
             </div>
           </div>
@@ -680,14 +700,24 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
             )}
 
             {!showItemForm && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => setShowItemForm(true)}
-              >
-                <Plus className="w-4 h-4" />
-                {t('purchaseInvoice.addAnotherItem')}
-              </Button>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold"
+                  variant="outline"
+                  onClick={() => setShowItemForm(true)}
+                >
+                  <Plus className="w-4 h-4 ml-1" />
+                  {t('purchaseInvoice.addAnotherItem')}
+                </Button>
+                <Button
+                  className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                  onClick={goToFinalize}
+                  disabled={invoiceItems.length === 0}
+                >
+                  {t('purchases.finalize')}
+                  <ArrowLeft className="w-4 h-4 rtl:rotate-180 mr-1" />
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -791,13 +821,13 @@ export function PurchaseInvoiceDialog({ open, onOpenChange, onSuccess }: Purchas
 
             {/* Actions */}
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={backToItems} disabled={loading}>
-                <ArrowRight className="w-4 h-4" />
+              <Button variant="outline" className="flex-1 h-11 rounded-xl text-xs sm:text-sm font-bold" onClick={backToItems} disabled={loading}>
+                <ArrowRight className="w-4 h-4 ml-1" />
                 {t('common.back')}
               </Button>
-              <Button className="flex-1" onClick={handleFinalize} disabled={loading}>
+              <Button className="flex-[2] h-11 rounded-xl text-xs sm:text-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={handleFinalize} disabled={loading}>
                 {loading ? t('common.loading') : t('purchaseInvoice.finalizeInvoice')}
-                <Check className="w-4 h-4" />
+                <Check className="w-4 h-4 mr-1" />
               </Button>
             </div>
           </div>

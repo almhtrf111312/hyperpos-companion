@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  ArrowRight,
   Search,
   Plus,
   User,
@@ -579,26 +580,43 @@ export default function Customers() {
 
       {/* Add Customer Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl">
-          <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30">
-            <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Plus className="w-4 h-4 text-primary" />
-              <span>{t('customers.addCustomer')}</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">{t('customers.fillRequired')}</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 p-4">
+        <DialogContent className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(90vh,42rem)] sm:w-[min(calc(100vw-1.5rem),30rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden bg-background text-card-foreground shadow-2xl">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowAddDialog(false)}
+                className="rounded-full h-8 w-8 sm:hidden"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <DialogTitle className="flex items-center gap-2 text-sm sm:text-base font-bold text-foreground">
+                <Plus className="w-4 h-4 text-primary" />
+                <span>{t('customers.addCustomer')}</span>
+              </DialogTitle>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowAddDialog(false)}
+              className="text-xs text-muted-foreground"
+            >
+              {t('common.cancel')}
+            </Button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 pb-28 sm:pb-4">
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.name')} *</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.name')} *</label>
               <Input
                 placeholder={t('customers.name')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="h-9 text-xs rounded-xl bg-background border-border"
+                className="h-10 text-xs rounded-xl bg-background border-border"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.phone')} *</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.phone')} *</label>
               <Input
                 type="tel"
                 inputMode="tel"
@@ -606,60 +624,78 @@ export default function Customers() {
                 placeholder="+963 xxx xxx xxx"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+]/g, '') })}
-                className="h-9 text-xs rounded-xl bg-background border-border text-left font-mono"
+                className="h-10 text-xs rounded-xl bg-background border-border text-left font-mono"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.email')}</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.email')}</label>
               <Input
                 placeholder="email@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="h-9 text-xs rounded-xl bg-background border-border"
+                className="h-10 text-xs rounded-xl bg-background border-border"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.address')}</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.address')}</label>
               <Input
                 placeholder={t('customers.address')}
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="h-9 text-xs rounded-xl bg-background border-border"
+                className="h-10 text-xs rounded-xl bg-background border-border"
               />
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1 h-9 text-xs rounded-xl" onClick={() => setShowAddDialog(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button className="flex-1 h-9 text-xs rounded-xl bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold shadow-sm" onClick={handleAddCustomer} disabled={isSaving}>
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSaving ? 'جاري الحفظ...' : t('common.save')}</span>
-              </Button>
-            </div>
+          </div>
+          <div className="sticky bottom-0 p-3 sm:p-4 bg-card/95 backdrop-blur-md border-t border-border flex items-center gap-2 shrink-0 shadow-lg">
+            <Button variant="outline" className="flex-1 h-11 text-xs rounded-xl font-bold" onClick={() => setShowAddDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button className="flex-[2] h-11 text-xs rounded-xl bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold shadow-sm" onClick={handleAddCustomer} disabled={isSaving}>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Save className="w-4 h-4 ml-1" />}
+              <span>{isSaving ? 'جاري الحفظ...' : t('common.save')}</span>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Edit Customer Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="w-[min(calc(100vw-1.5rem),28rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col p-0 overflow-hidden rounded-2xl bg-card text-card-foreground border border-border shadow-2xl">
-          <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30">
-            <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Edit className="w-4 h-4 text-primary" />
-              <span>{t('customers.editCustomer')}</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 p-4">
+        <DialogContent className="fixed inset-0 z-50 w-full h-[100dvh] max-h-[100dvh] sm:static sm:h-auto sm:max-h-[min(90vh,42rem)] sm:w-[min(calc(100vw-1.5rem),30rem)] sm:rounded-2xl rounded-none border-0 sm:border flex flex-col p-0 overflow-hidden bg-background text-card-foreground shadow-2xl">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border bg-card/80 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowEditDialog(false)}
+                className="rounded-full h-8 w-8 sm:hidden"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <DialogTitle className="flex items-center gap-2 text-sm sm:text-base font-bold text-foreground">
+                <Edit className="w-4 h-4 text-primary" />
+                <span>{t('customers.editCustomer')}</span>
+              </DialogTitle>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowEditDialog(false)}
+              className="text-xs text-muted-foreground"
+            >
+              {t('common.cancel')}
+            </Button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 p-4 pb-28 sm:pb-4">
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.name')} *</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.name')} *</label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="h-9 text-xs rounded-xl bg-background border-border"
+                className="h-10 text-xs rounded-xl bg-background border-border"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.phone')} *</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.phone')} *</label>
               <Input
                 type="tel"
                 inputMode="tel"
@@ -667,34 +703,34 @@ export default function Customers() {
                 placeholder="+963 xxx xxx xxx"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+]/g, '') })}
-                className="h-9 text-xs rounded-xl bg-background border-border text-left font-mono"
+                className="h-10 text-xs rounded-xl bg-background border-border text-left font-mono"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.email')}</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.email')}</label>
               <Input
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="h-9 text-xs rounded-xl bg-background border-border"
+                className="h-10 text-xs rounded-xl bg-background border-border"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1 block text-foreground">{t('customers.address')}</label>
+              <label className="text-xs font-semibold mb-1.5 block text-foreground">{t('customers.address')}</label>
               <Input
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="h-9 text-xs rounded-xl bg-background border-border"
+                className="h-10 text-xs rounded-xl bg-background border-border"
               />
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1 h-9 text-xs rounded-xl" onClick={() => setShowEditDialog(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button className="flex-1 h-9 text-xs rounded-xl bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold shadow-sm" onClick={handleEditCustomer}>
-                <Save className="w-3.5 h-3.5" />
-                <span>{t('common.save')}</span>
-              </Button>
-            </div>
+          </div>
+          <div className="sticky bottom-0 p-3 sm:p-4 bg-card/95 backdrop-blur-md border-t border-border flex items-center gap-2 shrink-0 shadow-lg">
+            <Button variant="outline" className="flex-1 h-11 text-xs rounded-xl font-bold" onClick={() => setShowEditDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button className="flex-[2] h-11 text-xs rounded-xl bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold shadow-sm" onClick={handleEditCustomer}>
+              <Save className="w-4 h-4 ml-1" />
+              <span>{t('common.save')}</span>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
