@@ -14,9 +14,16 @@ interface Props {
   invoices: Invoice[];
   isLoading: boolean;
   hideInternalExport?: boolean;
+  displayMode?: 'smart' | 'professional';
 }
 
-export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideInternalExport = false }: Props) {
+export function CashierPerformanceReport({
+  dateRange,
+  invoices,
+  isLoading,
+  hideInternalExport = false,
+  displayMode = 'smart',
+}: Props) {
   const { t } = useLanguage();
 
   const data = useMemo(() => {
@@ -195,8 +202,8 @@ export function CashierPerformanceReport({ dateRange, invoices, isLoading, hideI
         </div>
       )}
 
-      {/* Bar chart visualization */}
-      {data.length > 0 && (
+      {/* Bar chart visualization - Smart mode only */}
+      {displayMode === 'smart' && data.length > 0 && (
         <div className="bg-card rounded-2xl border border-border p-4 sm:p-6">
           <h3 className="text-base font-semibold mb-4">مقارنة المبيعات</h3>
           <div className="space-y-3">

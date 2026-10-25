@@ -9,11 +9,14 @@ import { formatNumber, formatReportAmount, cn } from '@/lib/utils';
 import { ReportCurrencyBanner } from './ReportCurrencyBanner';
 import { useLanguage } from '@/hooks/use-language';
 
-interface Props { dateRange: { from: string; to: string } }
+export interface InventoryValueReportProps {
+  dateRange: { from: string; to: string };
+  displayMode?: 'chart' | 'table';
+}
 
 const COLORS = ['#6366f1', 'var(--emerald-500)', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
-export function InventoryValueReport({ dateRange }: Props) {
+export function InventoryValueReport({ dateRange, displayMode = 'chart' }: InventoryValueReportProps) {
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,17 +108,45 @@ export function InventoryValueReport({ dateRange }: Props) {
             <Layers className="w-4 h-4 text-primary" />
             <p className="text-xs font-bold">توزيع قيمة العهدة على التصنيفات</p>
           </div>
-          <div className="w-full min-w-0 max-w-full overflow-hidden h-64">
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(e) => `${e.name}`} labelLine={false}>
-                  {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatReportAmount(v)} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {displayMode === 'chart' ? (
+            <div className="w-full min-w-0 max-w-full overflow-hidden h-64">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(e) => `${e.name}`} labelLine={false}>
+                    {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => formatReportAmount(v)} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="w-full min-w-0 overflow-x-auto rounded-xl border border-border/60">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/70 text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="p-2.5 text-start font-semibold">{t('products.category') || 'التصنيف'}</th>
+                    <th scope="col" className="p-2.5 text-end font-semibold">{t('reports.custodyValue') || 'قيمة العهدة (تكلفة)'}</th>
+                    <th scope="col" className="p-2.5 text-end font-semibold">النسبة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {byCategory.map((cat, i) => (
+                    <tr key={cat.name} className="hover:bg-muted/30">
+                      <td className="p-2.5 text-start font-medium flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                        <span>{cat.name}</span>
+                      </td>
+                      <td className="p-2.5 text-end tabular-nums font-semibold text-foreground">{formatReportAmount(cat.value)}</td>
+                      <td className="p-2.5 text-end tabular-nums text-muted-foreground font-mono">
+                        {stats.totalCost > 0 ? ((cat.value / stats.totalCost) * 100).toFixed(1) + '%' : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent></Card>
       )}
     </ReportShell>

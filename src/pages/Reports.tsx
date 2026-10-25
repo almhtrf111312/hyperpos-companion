@@ -41,7 +41,14 @@ import {
   UserCheck,
   ClipboardCheck,
   SlidersHorizontal,
-  Sparkles
+  Sparkles,
+  CreditCard,
+  Undo2,
+  GitCompare,
+  Scale,
+  DollarSign,
+  AlertTriangle,
+  ArrowDownUp
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatMoney, formatReportAmount } from '@/lib/utils';
@@ -99,6 +106,27 @@ import { StockDiscrepancyReport } from '@/components/reports/StockDiscrepancyRep
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ReportCurrencyBanner } from '@/components/reports/ReportCurrencyBanner';
 
+export type ReportDisplayMode = 'smart' | 'professional';
+const REPORT_DISPLAY_MODE_KEY = 'hyperpos_reports_display_mode_v1';
+
+function readReportDisplayMode(): ReportDisplayMode {
+  try {
+    const saved = localStorage.getItem(REPORT_DISPLAY_MODE_KEY);
+    return saved === 'professional' ? 'professional' : 'smart';
+  } catch {
+    return 'smart';
+  }
+}
+
+export interface ReportEntry {
+  id: string;
+  category: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  availability?: 'ready' | 'planned' | 'needs-data';
+  unavailableReasonKey?: string;
+}
+
 export default function Reports() {
   const navigate = useNavigate();
   const { t, isRTL } = useLanguage();
@@ -108,7 +136,16 @@ export default function Reports() {
   const visibleSections = getVisibleSections(storeType);
 
   const { mode, setMode } = useTheme();
+  const [reportDisplayMode, setReportDisplayMode] = useState<ReportDisplayMode>(readReportDisplayMode);
   const [activeReport, setActiveReport] = useState('sales');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REPORT_DISPLAY_MODE_KEY, reportDisplayMode);
+    } catch {
+      // optional UI preference; silent catch
+    }
+  }, [reportDisplayMode]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [salesViewMode, setSalesViewMode] = useState<'summary' | 'detailed'>('summary');
   const [viewTab, setViewTab] = useState<'summary' | 'detailed' | 'comprehensive'>('summary');
@@ -244,40 +281,54 @@ export default function Reports() {
 
   // Report Categories for modern, organized accounting navigation
   const REPORT_CATEGORIES = useMemo(() => [
+    { id: 'all', label: t('reports.category.all'), icon: BarChart3 },
     { id: 'sales', label: t('reports.category.sales'), icon: ShoppingCart },
     { id: 'inventory', label: t('reports.category.inventory'), icon: Package },
     { id: 'purchases', label: t('reports.category.purchases'), icon: FileText },
     { id: 'debts', label: t('reports.category.debts'), icon: Banknote },
+    { id: 'financial', label: t('reports.category.financial'), icon: TrendingUp },
     { id: 'admin', label: t('reports.category.admin'), icon: Activity },
-    { id: 'all', label: t('reports.category.all'), icon: BarChart3 },
   ], [t]);
 
   // All available reports categorized and refined
-  const allReports = useMemo(() => [
-    { id: 'sales', category: 'sales', label: t('reports.sales'), icon: ShoppingCart },
-    { id: 'partner-detailed', category: 'sales', label: t('reports.partnerDetailedReport'), icon: ClipboardList },
+  const allReports: ReportEntry[] = useMemo(() => [
+    { id: 'sales', category: 'sales', label: t('reports.sales'), icon: ShoppingCart, availability: 'ready' },
+    { id: 'partner-detailed', category: 'sales', label: t('reports.partnerDetailedReport'), icon: ClipboardList, availability: 'ready' },
+    { id: 'payment-methods', category: 'sales', label: t('reports.paymentMethods'), icon: CreditCard, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
+    { id: 'returns-discounts', category: 'sales', label: t('reports.returnsDiscounts'), icon: Undo2, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
 
     ...(!noInventory ? [
-      { id: 'inventory', category: 'inventory', label: t('reports.inventoryValueCost'), icon: Package },
-      { id: 'product-movement', category: 'inventory', label: t('reports.productMovement'), icon: Activity },
-      { id: 'inventory-stock', category: 'inventory', label: t('reports.inventoryStockDiscrepancy'), icon: PackageSearch },
-      { id: 'top-products', category: 'inventory', label: t('reports.topProducts'), icon: TrendingUp },
+      { id: 'inventory', category: 'inventory', label: t('reports.inventoryValueCost'), icon: Package, availability: 'ready' as const },
+      { id: 'product-movement', category: 'inventory', label: t('reports.productMovement'), icon: Activity, availability: 'ready' as const },
+      { id: 'inventory-stock', category: 'inventory', label: t('reports.inventoryStockDiscrepancy'), icon: PackageSearch, availability: 'ready' as const },
+      { id: 'top-products', category: 'inventory', label: t('reports.topProducts'), icon: TrendingUp, availability: 'ready' as const },
+      { id: 'product-profit', category: 'inventory', label: t('reports.productProfitability'), icon: DollarSign, availability: 'needs-data' as const, unavailableReasonKey: 'reports.unsupportedDataReason' },
+      { id: 'slow-moving-stock', category: 'inventory', label: t('reports.slowMovingStock'), icon: AlertTriangle, availability: 'needs-data' as const, unavailableReasonKey: 'reports.unsupportedDataReason' },
     ] : []),
 
-    { id: 'purchases', category: 'purchases', label: t('reports.purchasesInvoices'), icon: FileText },
-    { id: 'expenses', category: 'purchases', label: t('reports.expenses'), icon: Receipt },
+    { id: 'purchases', category: 'purchases', label: t('reports.purchasesInvoices'), icon: FileText, availability: 'ready' },
+    { id: 'expenses', category: 'purchases', label: t('reports.expenses'), icon: Receipt, availability: 'ready' },
+    { id: 'supplier-payables', category: 'purchases', label: t('reports.supplierPayables'), icon: FileText, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
 
-    { id: 'debts', category: 'debts', label: t('reports.debtsDeferredSale'), icon: Banknote },
-    { id: 'customers', category: 'debts', label: t('reports.customers'), icon: Users },
-    { id: 'partners', category: 'debts', label: t('reports.partners'), icon: UsersRound },
+    { id: 'debts', category: 'debts', label: t('reports.debtsDeferredSale'), icon: Banknote, availability: 'ready' },
+    { id: 'customers', category: 'debts', label: t('reports.customers'), icon: Users, availability: 'ready' },
+    { id: 'partners', category: 'debts', label: t('reports.partners'), icon: UsersRound, availability: 'ready' },
+    { id: 'receivables-aging', category: 'debts', label: t('reports.receivablesAging'), icon: Clock, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
 
-    { id: 'daily-closing', category: 'admin', label: t('reports.dailyClosing'), icon: Calendar },
-    { id: 'cashier-performance', category: 'admin', label: t('reports.cashierPerformance'), icon: Users },
-    ...(visibleSections.maintenance ? [{ id: 'maintenance', category: 'admin', label: t('reports.maintenanceServices'), icon: ClipboardList }] : []),
-    ...(storeType === 'bookstore' ? [{ id: 'library', category: 'admin', label: t('reports.libraryReport'), icon: BookOpen }] : []),
+    { id: 'profits', category: 'financial', label: t('reports.profitLoss'), icon: TrendingUp, availability: 'ready' },
+    { id: 'cash-flow', category: 'financial', label: t('reports.cashFlow'), icon: ArrowDownUp, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
+    { id: 'tax-summary', category: 'financial', label: t('reports.taxSummary'), icon: Receipt, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
+    { id: 'period-comparison', category: 'financial', label: t('reports.periodComparison'), icon: GitCompare, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
+    { id: 'balance-sheet', category: 'financial', label: t('reports.balanceSheet'), icon: Scale, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
+    { id: 'trial-balance', category: 'financial', label: t('reports.trialBalance'), icon: BookOpen, availability: 'needs-data', unavailableReasonKey: 'reports.unsupportedDataReason' },
+
+    { id: 'daily-closing', category: 'admin', label: t('reports.dailyClosing'), icon: Calendar, availability: 'ready' },
+    { id: 'cashier-performance', category: 'admin', label: t('reports.cashierPerformance'), icon: Users, availability: 'ready' },
+    ...(visibleSections.maintenance ? [{ id: 'maintenance', category: 'admin', label: t('reports.maintenanceServices'), icon: ClipboardList, availability: 'ready' as const }] : []),
+    ...(storeType === 'bookstore' ? [{ id: 'library', category: 'admin', label: t('reports.libraryReport'), icon: BookOpen, availability: 'ready' as const }] : []),
     ...(isDistributorStore ? [
-      { id: 'distributor-inventory', category: 'admin', label: t('reports.distributorInventory'), icon: Truck },
-      { id: 'custody-value', category: 'admin', label: t('reports.custodyValue'), icon: Wallet },
+      { id: 'distributor-inventory', category: 'admin', label: t('reports.distributorInventory'), icon: Truck, availability: 'ready' as const },
+      { id: 'custody-value', category: 'admin', label: t('reports.custodyValue'), icon: Wallet, availability: 'ready' as const },
     ] : []),
   ], [noInventory, visibleSections.maintenance, storeType, isDistributorStore, t]);
 
@@ -2046,88 +2097,122 @@ export default function Reports() {
   return (
 
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 w-full max-w-4xl min-w-0 mx-auto overflow-x-hidden">
-        {/* Sticky Opaque Header with Centered Title & Non-overlapping layout */}
-        <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2 border-b border-border/50 shadow-sm">
-          <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
+        {/* Sticky Opaque Header with Centered Title & Smart/Professional Switch */}
+        <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2.5 border-b border-border/50 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
+
+            {/* Display Mode Capsule Switch */}
+            <div
+              role="group"
+              aria-label={t('reports.displayModeLabel')}
+              className="inline-flex max-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/50 p-1 self-start sm:self-auto shrink-0 shadow-xs"
+            >
+              <Button
+                type="button"
+                variant={reportDisplayMode === 'smart' ? 'default' : 'ghost'}
+                size="sm"
+                aria-pressed={reportDisplayMode === 'smart'}
+                onClick={() => setReportDisplayMode('smart')}
+                className={cn(
+                  'h-8 sm:h-9 rounded-full px-3 sm:px-4 gap-1.5 text-xs sm:text-sm font-semibold transition-all',
+                  reportDisplayMode === 'smart' ? 'bg-primary text-primary-foreground shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{t('reports.displayModeSmart')}</span>
+              </Button>
+              <Button
+                type="button"
+                variant={reportDisplayMode === 'professional' ? 'default' : 'ghost'}
+                size="sm"
+                aria-pressed={reportDisplayMode === 'professional'}
+                onClick={() => setReportDisplayMode('professional')}
+                className={cn(
+                  'h-8 sm:h-9 rounded-full px-3 sm:px-4 gap-1.5 text-xs sm:text-sm font-semibold transition-all',
+                  reportDisplayMode === 'professional' ? 'bg-primary text-primary-foreground shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{t('reports.displayModeProfessional')}</span>
+              </Button>
+            </div>
+          </div>
         </div>
 
-        {/* Currency selection banner for reports */}
+        {/* Currency selection banner for reports (Single consolidated banner) */}
         <ReportCurrencyBanner />
 
-        {/* Quick Access Pill Row — no horizontal scroll, always 2-per-row in compact layout */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveReport('sales');
-              setViewTab('summary');
-            }}
-            className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
-              activeReport === 'sales'
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-card border-border/70 hover:bg-muted text-foreground"
-            )}
-          >
-            <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-            <span>{t('reports.sales')}</span>
-          </button>
+        {/* Categorized Report Capsules Hub */}
+        <div className="bg-card rounded-2xl border border-border/70 p-3 sm:p-4 space-y-3 shadow-sm">
+          {/* Categories Selector Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {REPORT_CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              const isCatActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0",
+                    isCatActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
+                      : "bg-muted/40 border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveReport('inventory');
-            }}
-            className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
-              activeReport === 'inventory'
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-card border-border/70 hover:bg-muted text-foreground"
-            )}
-          >
-            <Package className="w-3.5 h-3.5 text-amber-600" />
-            <span>{t('reports.category.inventory')}</span>
-          </button>
+          {/* Report Pills in Current Category */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {visibleReports.map(report => {
+              const Icon = report.icon;
+              const isActive = activeReport === report.id;
+              const isNeedsData = report.availability === 'needs-data';
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveReport('debts');
-            }}
-            className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
-              activeReport === 'debts'
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-card border-border/70 hover:bg-muted text-foreground"
-            )}
-          >
-            <Users className="w-3.5 h-3.5 text-blue-600" />
-            <span>{t('reports.category.debts')}</span>
-          </button>
+              return (
+                <button
+                  key={report.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveReport(report.id);
+                    if (report.id === 'sales') {
+                      setViewTab('summary');
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all border active:scale-95",
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-card border-border/70 hover:bg-muted text-foreground",
+                    isNeedsData && !isActive && "opacity-70 border-dashed"
+                  )}
+                >
+                  <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary-foreground" : "text-primary")} />
+                  <span>{report.label}</span>
+                  {isNeedsData && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 font-normal">
+                      {t('reports.reportComingSoon')}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveReport('expenses');
-            }}
-            className={cn(
-              "flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border active:scale-95 w-full",
-              activeReport === 'expenses'
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-card border-border/70 hover:bg-muted text-foreground"
-            )}
-          >
-            <Banknote className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{t('reports.expenses')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsAllReportsModalOpen(true)}
-            className="col-span-2 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-2xl text-[11px] font-bold transition-[colors,transform] border border-border/80 bg-card hover:bg-muted text-foreground shadow-sm active:scale-95 w-full"
-          >
-            <span>{t('common.more') || (isRTL ? '+ المزيد' : '+ More')}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsAllReportsModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all border border-border/80 bg-muted/40 hover:bg-muted text-foreground active:scale-95"
+            >
+              <span>{t('common.more') || (isRTL ? '+ المزيد' : '+ More')}</span>
+            </button>
+          </div>
         </div>
 
         {/* Date Filter & Search Hub */}
@@ -2306,14 +2391,7 @@ export default function Reports() {
           </div>
         )}
 
-        {/* USD Currency Notice Banner */}
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-muted/40 border border-border/50 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Banknote className="w-3.5 h-3.5 text-primary" />
-            <span>جميع الأرقام المالية بالدولار الأمريكي ($ USD)</span>
-          </span>
-          <span className="text-[10px] opacity-75">المعايير المعتمدة في التقارير</span>
-        </div>
+
 
         {/* Dynamic Executive Metrics Cards Grid - adapts to activeReport */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
@@ -2455,25 +2533,60 @@ export default function Reports() {
             ) : viewTab === 'comprehensive' ? (
               <div className="space-y-4">
                 <div className="w-full min-w-0 max-w-full overflow-hidden">
-                  <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
+                  <ProfitTrendChart
+                    days={60}
+                    startDate={dateRange.from}
+                    endDate={dateRange.to}
+                    displayMode={reportDisplayMode === 'smart' ? 'chart' : 'table'}
+                  />
                 </div>
                 {reportData.topCustomers.length > 0 && (
                   <div className="bg-card rounded-2xl border border-border/70 p-4 shadow-sm">
-                    <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-primary" />
-                      <span>أفضل العملاء تعاملاً</span>
-                    </h3>
-                    <div className="space-y-2">
-                      {reportData.topCustomers.map((cust, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/30">
-                          <span className="text-xs font-bold text-foreground">{cust.name}</span>
-                          <div className="text-left">
-                            <span className="text-xs font-black text-primary">{formatReportAmount(cust.total)}</span>
-                            <span className="text-[10px] text-muted-foreground mr-2">({cust.orders} طلب)</span>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        <span>{t('reports.topCustomers')}</span>
+                      </h3>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {reportData.topCustomers.length}
+                      </span>
                     </div>
+                    {reportDisplayMode === 'smart' ? (
+                      <div className="space-y-2">
+                        {reportData.topCustomers.map((cust, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/30">
+                            <span className="text-xs font-bold text-foreground">{cust.name}</span>
+                            <div className="text-left">
+                              <span className="text-xs font-black text-primary">{formatReportAmount(cust.total)}</span>
+                              <span className="text-[10px] text-muted-foreground mr-2">({cust.orders} {t('reports.orders')})</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-border/60">
+                        <table className="w-full text-xs sm:text-sm">
+                          <thead className="bg-muted/70 text-muted-foreground">
+                            <tr>
+                              <th scope="col" className="p-2.5 text-center font-semibold w-12">#</th>
+                              <th scope="col" className="p-2.5 text-start font-semibold">{t('reports.customers')}</th>
+                              <th scope="col" className="p-2.5 text-end font-semibold">{t('reports.orders')}</th>
+                              <th scope="col" className="p-2.5 text-end font-semibold">{t('common.total')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/60">
+                            {reportData.topCustomers.map((cust, idx) => (
+                              <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                                <td className="p-2.5 text-center font-bold text-muted-foreground">{idx + 1}</td>
+                                <td className="p-2.5 text-start font-medium text-foreground">{cust.name}</td>
+                                <td className="p-2.5 text-end tabular-nums text-muted-foreground">{cust.orders}</td>
+                                <td className="p-2.5 text-end tabular-nums font-black text-primary">{formatReportAmount(cust.total)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2481,7 +2594,8 @@ export default function Reports() {
               <>
                 {reportData.hasData && (
                   <>
-                    {/* Daily Sales Bar Chart Card */}
+                    {/* Daily Sales: Visual Chart in Smart Mode vs Tabular View in Professional Mode */}
+                    {reportDisplayMode === 'smart' ? (
                     <div className="bg-card rounded-2xl border border-border/70 p-4 space-y-3.5 shadow-sm">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -2559,51 +2673,134 @@ export default function Reports() {
                         </span>
                       </div>
                     </div>
+                    ) : (
+                      /* Tabular View in Professional Mode */
+                      <div className="w-full min-w-0 overflow-x-auto rounded-2xl border border-border/70 bg-card p-4 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
+                            <h3 className="text-sm font-bold text-foreground">{t('reports.salesDailySummary')}</h3>
+                          </div>
+                          <div className="bg-muted text-foreground border border-border/70 text-xs font-bold px-2.5 py-1 rounded-xl flex items-center gap-1.5 shadow-sm">
+                            <span className="text-primary font-black">{formatReportAmount(activeChartDay.sales)}</span>
+                            <span className="text-muted-foreground/50">|</span>
+                            <span className="text-emerald-600 font-bold">{t('reports.profit')}: {formatReportAmount(activeChartDay.profit)}</span>
+                            <span className="text-muted-foreground/50">|</span>
+                            <span className="text-muted-foreground text-[11px]">{activeChartDay.orders} {t('reports.orders')}</span>
+                          </div>
+                        </div>
 
-                    {/* Top Products Card (Screenshot 1) */}
+                        <div className="overflow-x-auto rounded-xl border border-border/60">
+                          <table className="w-full min-w-[520px] text-xs sm:text-sm">
+                            <thead className="bg-muted/70 text-muted-foreground sticky top-0">
+                              <tr>
+                                <th scope="col" className="p-3 text-start font-semibold">{t('reports.date')}</th>
+                                <th scope="col" className="p-3 text-end font-semibold">{t('reports.sales')}</th>
+                                <th scope="col" className="p-3 text-end font-semibold">{t('reports.profit')}</th>
+                                <th scope="col" className="p-3 text-end font-semibold">{t('reports.orders')}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                              {chartDays.map(day => (
+                                <tr
+                                  key={day.date}
+                                  onClick={() => setSelectedDayDate(day.date)}
+                                  className={cn(
+                                    "hover:bg-muted/30 transition-colors cursor-pointer",
+                                    day.date === activeChartDay.date && "bg-primary/5 font-semibold"
+                                  )}
+                                >
+                                  <td className="p-3 text-start font-medium text-foreground">{day.date}</td>
+                                  <td className="p-3 text-end tabular-nums text-foreground font-medium">{formatReportAmount(day.sales)}</td>
+                                  <td className="p-3 text-end tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {formatReportAmount(day.profit)}
+                                  </td>
+                                  <td className="p-3 text-end tabular-nums text-muted-foreground">{day.orders}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
+                          <span>{t('reports.displayedRowsCount')} {chartDays.length}</span>
+                          <span className="font-mono text-[11px]">{t('reports.date')}: {activeChartDay.date}</span>
+                        </div>
+                      </div>
+                    )}
+
+{/* Top Products: Cards in Smart Mode vs Table in Professional Mode */}
                     {reportData.topProducts.length > 0 && (
                       <div className="bg-card rounded-2xl border border-border/70 p-4 space-y-3 shadow-sm">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
-                            <h3 className="text-sm font-bold text-foreground">أفضل المنتجات مبيعاً</h3>
+                            <h3 className="text-sm font-bold text-foreground">{t('reports.topProducts')}</h3>
                           </div>
                           <span className="text-xs text-muted-foreground font-medium">
-                            {reportData.topProducts.length} أصناف
+                            {reportData.topProducts.length}
                           </span>
                         </div>
 
-                        <div className="space-y-2 pt-1">
-                          {reportData.topProducts.map((product, idx) => (
-                            <div 
-                              key={idx} 
-                              className="bg-muted/20 hover:bg-muted/40 transition-colors p-3 rounded-2xl flex items-center justify-between border border-border/40"
-                            >
-                              <div className="flex items-center gap-3">
-                                <span 
-                                  className={cn(
-                                    "w-7 h-7 rounded-xl text-xs font-black flex items-center justify-center shrink-0 shadow-sm",
-                                    idx === 0 
-                                      ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40" 
-                                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700"
-                                  )}
-                                >
-                                  {idx + 1}
-                                </span>
-                                <div>
-                                  <p className="text-xs sm:text-sm font-bold text-foreground">{product.name}</p>
-                                  <p className="text-[11px] text-muted-foreground mt-0.5">الكمية المباعة: {product.sales} قطعة</p>
+                        {reportDisplayMode === 'smart' ? (
+                          <div className="space-y-2 pt-1">
+                            {reportData.topProducts.map((product, idx) => (
+                              <div 
+                                key={idx} 
+                                className="bg-muted/20 hover:bg-muted/40 transition-colors p-3 rounded-2xl flex items-center justify-between border border-border/40"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span 
+                                    className={cn(
+                                      "w-7 h-7 rounded-xl text-xs font-black flex items-center justify-center shrink-0 shadow-sm",
+                                      idx === 0 
+                                        ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40" 
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700"
+                                    )}
+                                  >
+                                    {idx + 1}
+                                  </span>
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-bold text-foreground">{product.name}</p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">{t('reports.salesQuantity')}: {product.sales}</p>
+                                  </div>
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-xs sm:text-sm font-black text-foreground">{formatReportAmount(product.revenue)}</p>
+                                  <p className="text-[11px] font-semibold text-emerald-600 mt-0.5">
+                                    {t('reports.profit')}: {formatReportAmount(product.profit)}
+                                  </p>
                                 </div>
                               </div>
-                              <div className="text-left">
-                                <p className="text-xs sm:text-sm font-black text-foreground">{formatReportAmount(product.revenue)}</p>
-                                <p className="text-[11px] font-semibold text-emerald-600 mt-0.5">
-                                  ربح: {formatReportAmount(product.profit)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto rounded-xl border border-border/60">
+                            <table className="w-full min-w-[500px] text-xs sm:text-sm">
+                              <thead className="bg-muted/70 text-muted-foreground sticky top-0">
+                                <tr>
+                                  <th scope="col" className="p-2.5 text-center font-semibold w-12">#</th>
+                                  <th scope="col" className="p-2.5 text-start font-semibold">{t('products.productName') || 'المنتج'}</th>
+                                  <th scope="col" className="p-2.5 text-end font-semibold">{t('reports.salesQuantity')}</th>
+                                  <th scope="col" className="p-2.5 text-end font-semibold">{t('reports.revenueLabel') || 'الإيراد'}</th>
+                                  <th scope="col" className="p-2.5 text-end font-semibold">{t('reports.profit')}</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/60">
+                                {reportData.topProducts.map((product, idx) => (
+                                  <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                                    <td className="p-2.5 text-center font-bold text-muted-foreground">{idx + 1}</td>
+                                    <td className="p-2.5 text-start font-medium text-foreground">{product.name}</td>
+                                    <td className="p-2.5 text-end tabular-nums text-muted-foreground">{product.sales}</td>
+                                    <td className="p-2.5 text-end tabular-nums font-semibold text-foreground">{formatReportAmount(product.revenue)}</td>
+                                    <td className="p-2.5 text-end tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
+                                      {formatReportAmount(product.profit)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
 
                         <div className="pt-2 text-center">
                           <button
@@ -2613,7 +2810,7 @@ export default function Reports() {
                             }}
                             className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium flex items-center justify-center gap-1.5 w-full py-1.5"
                           >
-                            <span>عرض جميع المنتجات في التقرير</span>
+                            <span>{t('reports.viewAllProductsInReport')}</span>
                             <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180 ltr:rotate-0" />
                           </button>
                         </div>
@@ -2749,8 +2946,13 @@ export default function Reports() {
         {/* Profit Trend */}
         {activeReport === 'profits' && (
           <div className="w-full min-w-0 max-w-full overflow-hidden">
-                  <ProfitTrendChart days={60} startDate={dateRange.from} endDate={dateRange.to} />
-                </div>
+            <ProfitTrendChart
+              days={60}
+              startDate={dateRange.from}
+              endDate={dateRange.to}
+              displayMode={reportDisplayMode === 'smart' ? 'chart' : 'table'}
+            />
+          </div>
         )}
 
         {/* Products */}
@@ -2878,7 +3080,7 @@ export default function Reports() {
         {activeReport === 'stock-discrepancy' && <StockDiscrepancyReport search={filters.search} warehouseId={filters.warehouseId} />}
 
         {/* Inventory Value */}
-        {activeReport === 'inventory-value' && <InventoryValueReport dateRange={dateRange} />}
+        {activeReport === 'inventory-value' && <InventoryValueReport dateRange={dateRange} displayMode={reportDisplayMode === 'smart' ? 'chart' : 'table'} />}
 
         {/* Top Products */}
         {activeReport === 'top-products' && <TopProductsReport dateRange={dateRange} />}
@@ -2891,7 +3093,13 @@ export default function Reports() {
 
         {/* Cashier Performance */}
         {activeReport === 'cashier-performance' && (
-          <CashierPerformanceReport dateRange={dateRange} invoices={cloudInvoices} isLoading={isLoading} hideInternalExport={true} />
+          <CashierPerformanceReport
+            dateRange={dateRange}
+            invoices={cloudInvoices}
+            isLoading={isLoading}
+            hideInternalExport={true}
+            displayMode={reportDisplayMode}
+          />
         )}
 
         {/* Maintenance */}
@@ -3069,6 +3277,34 @@ export default function Reports() {
         {/* Distributor Reports */}
         {activeReport === 'distributor-inventory' && <DistributorInventoryReport />}
         {activeReport === 'custody-value' && <DistributorCustodyValueReport />}
+
+        {/* Informative placeholder for proposed reports requiring additional backend ledgers */}
+        {(() => {
+          const matched = allReports.find(r => r.id === activeReport);
+          if (matched && matched.availability === 'needs-data') {
+            const Icon = matched.icon;
+            return (
+              <div className="bg-card rounded-2xl border border-dashed border-border/80 p-6 sm:p-8 text-center space-y-4 shadow-sm animate-in fade-in duration-200">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 mx-auto flex items-center justify-center">
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                  <h3 className="text-base sm:text-lg font-bold text-foreground">
+                    {matched.label}
+                  </h3>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{t('reports.reportComingSoon')} — {t('reports.reportNeedsData')}</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground pt-1 leading-relaxed">
+                    {t('reports.unsupportedDataReason')}
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* Expenses */}
         {activeReport === 'expenses' && (

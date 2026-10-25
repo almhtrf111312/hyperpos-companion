@@ -1,8 +1,14 @@
 {
-  "versionCode": 335,
-  "versionName": "1.1.5",
-  "lastUpdated": "2026-10-25T23:19:14.667150+00:00",
+  "versionCode": 336,
+  "versionName": "1.1.6",
+  "lastUpdated": "2026-10-25T23:44:19.137900+00:00",
   "buildHistory": [
+    {
+      "versionCode": 336,
+      "versionName": "1.1.6",
+      "date": "2026-10-26",
+      "description": "v1.1.6 - واجهة التقارير الذكية والاحترافية (Smart & Professional Report Modes with Categorized Capsules Hub) — إضافة خياري العرض (الذكي بالرسوم والاحترافي بالجداول)، حفظ التفضيل محلياً للعمل دون اتصال، تنظيم أزرار التقارير ضمن كبسولات مصنفة ومجموعات واضحة، توحيد تنبيه العملة، ودعم بدائل الجداول لجميع الرسوم مع الحفاظ الكامل على الحسابات والأرقام."
+    },
     {
       "versionCode": 335,
       "versionName": "1.1.5",

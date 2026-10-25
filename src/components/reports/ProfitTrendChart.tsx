@@ -3,17 +3,25 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tool
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDailyProfitStats } from '@/lib/profits-store';
-import { formatReportAmount } from '@/lib/utils';
+import { formatReportAmount, cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
-interface ProfitTrendChartProps {
+export type ProfitTrendDisplayMode = 'chart' | 'table';
+
+export interface ProfitTrendChartProps {
   days?: number;
   startDate?: string;
   endDate?: string;
+  displayMode?: ProfitTrendDisplayMode;
 }
 
-export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendChartProps) {
+export function ProfitTrendChart({
+  days = 30,
+  startDate,
+  endDate,
+  displayMode = 'chart',
+}: ProfitTrendChartProps) {
   const { t, isRTL, language } = useLanguage();
 
   const chartConfig = {
@@ -153,74 +161,110 @@ export function ProfitTrendChart({ days = 30, startDate, endDate }: ProfitTrendC
           </div>
         </div>
 
-        {/* Chart */}
-        <div className="w-full min-w-0 max-w-full overflow-hidden">
-          <ChartContainer config={chartConfig} className="h-[260px] w-full min-w-0 max-w-full">
-            <ResponsiveContainer width="100%" height={260}>
-            <LineChart
-              data={chartData}
-              margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="dateLabel"
-                tickLine={false}
-                axisLine={false}
-                className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                className="text-xs"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(value) => formatReportAmount(Number(value))}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(value) => `${t('products.dateLabel')}: ${value}`}
-                    formatter={(value, name) => {
-                      const labels: Record<string, string> = {
-                        grossProfit: t('products.grossProfitLabel'),
-                        netProfit: t('products.netProfitLabel'),
-                        sales: t('products.totalSalesLabel'),
-                        expenses: t('products.expensesLabel'),
-                      };
-                      return [formatReportAmount(Number(value)), labels[name as string] || name];
-                    }}
-                  />
-                }
-              />
-              <Legend
-                formatter={(value) => {
-                  const labels: Record<string, string> = {
-                    grossProfit: t('products.grossProfitLabel'),
-                    netProfit: t('products.netProfitLabel'),
-                  };
-                  return labels[value] || value;
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="grossProfit"
-                stroke="hsl(142, 76%, 36%)"
-                strokeWidth={2}
-                dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="netProfit"
-                stroke="hsl(217, 91%, 60%)"
-                strokeWidth={2}
-                dot={{ fill: 'hsl(217, 91%, 60%)', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </div>
+        {/* Chart or Table based on displayMode */}
+        {displayMode === 'chart' ? (
+          <div className="w-full min-w-0 max-w-full overflow-hidden">
+            <ChartContainer config={chartConfig} className="h-[260px] w-full min-w-0 max-w-full">
+              <ResponsiveContainer width="100%" height={260}>
+              <LineChart
+                data={chartData}
+                margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="dateLabel"
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={(value) => formatReportAmount(Number(value))}
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(value) => `${t('products.dateLabel')}: ${value}`}
+                      formatter={(value, name) => {
+                        const labels: Record<string, string> = {
+                          grossProfit: t('products.grossProfitLabel'),
+                          netProfit: t('products.netProfitLabel'),
+                          sales: t('products.totalSalesLabel'),
+                          expenses: t('products.expensesLabel'),
+                        };
+                        return [formatReportAmount(Number(value)), labels[name as string] || name];
+                      }}
+                    />
+                  }
+                />
+                <Legend
+                  formatter={(value) => {
+                    const labels: Record<string, string> = {
+                      grossProfit: t('products.grossProfitLabel'),
+                      netProfit: t('products.netProfitLabel'),
+                    };
+                    return labels[value] || value;
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="grossProfit"
+                  stroke="hsl(142, 76%, 36%)"
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="netProfit"
+                  stroke="hsl(217, 91%, 60%)"
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(217, 91%, 60%)', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
+        ) : (
+          <div className="w-full min-w-0 overflow-x-auto rounded-xl border border-border/70 bg-card">
+            <table className="w-full min-w-[560px] text-xs sm:text-sm">
+              <thead className="bg-muted/70 text-muted-foreground sticky top-0">
+                <tr>
+                  <th scope="col" className="p-3 text-start font-semibold">{t('products.dateLabel')}</th>
+                  <th scope="col" className="p-3 text-end font-semibold">{t('products.totalSalesLabel')}</th>
+                  <th scope="col" className="p-3 text-end font-semibold">{t('products.grossProfitLabel')}</th>
+                  <th scope="col" className="p-3 text-end font-semibold">{t('products.expensesLabel')}</th>
+                  <th scope="col" className="p-3 text-end font-semibold">{t('products.netProfitLabel')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {chartData.map((row) => (
+                  <tr key={row.date} className="hover:bg-muted/30 transition-colors">
+                    <td className="p-3 text-start font-medium text-foreground">{row.dateLabel || row.date}</td>
+                    <td className="p-3 text-end tabular-nums text-foreground">{formatReportAmount(row.sales)}</td>
+                    <td className="p-3 text-end tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatReportAmount(row.grossProfit)}
+                    </td>
+                    <td className="p-3 text-end tabular-nums text-red-600 dark:text-red-400">
+                      {formatReportAmount(row.expenses)}
+                    </td>
+                    <td className={cn(
+                      "p-3 text-end tabular-nums font-black",
+                      row.netProfit >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400"
+                    )}>
+                      {formatReportAmount(row.netProfit)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Additional Stats */}
         <div className="mt-4 pt-4 border-t flex justify-between text-sm text-muted-foreground">
