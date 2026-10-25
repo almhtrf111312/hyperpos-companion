@@ -1,8 +1,14 @@
 {
-  "versionCode": 320,
-  "versionName": "1.0.90",
-  "lastUpdated": "2026-10-25T08:27:00.000Z",
+  "versionCode": 321,
+  "versionName": "1.0.91",
+  "lastUpdated": "2026-10-25T08:31:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 321,
+      "versionName": "1.0.91",
+      "date": "2026-10-25",
+      "description": "v1.0.91 - المرحلة 8: المظهر والخطوط — رفع ومتابعة زر الحفظ العائم؛ رفع تموضع زر الحفظ العائم في شاشة المظهر والخطوط (Appearance.tsx) إلى bottom-20 على الهواتف المحمولة (مع بقائه bottom-8 على الشاشات الكبيرة) لضمان ظهوره دائماً بوضوح تام فوق شريط التنقل السفلي (bottom-nav) وسهولة النقر دون أي حجب"
+    },
     {
       "versionCode": 320,
       "versionName": "1.0.90",

@@ -196,11 +196,11 @@ export default function Appearance() {
 
       {/* الشريط/الزر العائم الحصري عند حدوث أي تعديل غير محفوظ في السمة أو الخط أو الحجم */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-6 end-6 z-50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-20 end-4 md:bottom-8 md:end-8 z-50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200">
           <Button
             onClick={handleSaveAll}
             disabled={isSaving}
-            className="rounded-full shadow-2xl h-12 px-6 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm transition-all"
+            className="rounded-full shadow-2xl h-12 px-6 gap-2 bg-primary text-primary-foreground font-bold text-sm"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span>{isRTL ? 'حفظ التعديلات' : 'Save Changes'}</span>
@@ -209,8 +209,7 @@ export default function Appearance() {
             variant="outline"
             onClick={handleCancelAll}
             disabled={isSaving}
-            className="rounded-full shadow-lg h-12 px-4 gap-1.5 border-border/80 bg-background/95 hover:bg-muted font-medium text-sm transition-all"
-            title={isRTL ? 'إلغاء / تراجع' : 'Cancel / Undo'}
+            className="rounded-full shadow-lg h-12 px-4 gap-1.5 border-border/80 bg-background/95 text-sm"
           >
             <Undo2 className="w-4 h-4" />
             <span>{isRTL ? 'إلغاء' : 'Cancel'}</span>
