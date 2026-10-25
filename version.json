@@ -1,8 +1,14 @@
 {
-  "versionCode": 333,
-  "versionName": "1.1.3",
-  "lastUpdated": "2026-10-25T19:14:28.152002+00:00",
+  "versionCode": 334,
+  "versionName": "1.1.4",
+  "lastUpdated": "2026-10-25T22:56:14.756645+00:00",
   "buildHistory": [
+    {
+      "versionCode": 334,
+      "versionName": "1.1.4",
+      "date": "2026-10-26",
+      "description": "v1.1.4 - توحيد واجهة أشرطة التبويبات والتنقل الداخلي (Unified Capsule In-Page Tab Navigation)؛ توحيد جميع أشرطة التبويبات في الصفحات (src/components/ui/tabs.tsx, BossPanel.tsx, LibraryMembers.tsx, Appearance.tsx, Help.tsx, Reports.tsx, ArchiveSection.tsx, ProductDetailsDialog.tsx) وفق النمط المرجعي لصفحة المنتجات بحاوية كبسولية خارجية (bg-muted/60 p-1 rounded-2xl border border-border/40 shadow-xs) وأزرار كبسولية مستقلة بحالة نشطة موحدة (bg-gradient-primary text-primary-foreground shadow-xs) مع دعم كامل للموبايل والـ RTL/LTR"
+    },
     {
       "versionCode": 333,
       "versionName": "1.1.3",
