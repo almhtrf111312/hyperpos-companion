@@ -2162,7 +2162,7 @@ export default function Products() {
             <span>{t('products.categories') || 'التصنيفات'}</span>
           </button>
 
-          {/* 3. الأرشيف (يسار في RTL) - لون أحمر ناصع وثابت بأي ثيم عند النقر */}
+          {/* 3. الأرشيف (يسار في RTL) - لون أحمر موحد بالوضع النهاري والليلي */}
           <button
             type="button"
             onClick={() => {
@@ -2170,21 +2170,24 @@ export default function Products() {
               loadArchivedData();
             }}
             className={cn(
-              "rounded-xl p-1.5 sm:px-3.5 sm:py-2 text-[clamp(0.65rem,2.6vw,0.85rem)] font-bold min-w-0 leading-tight whitespace-normal text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-colors duration-200 select-none cursor-pointer",
+              "rounded-xl p-1.5 sm:px-3.5 sm:py-2 text-[clamp(0.65rem,2.6vw,0.85rem)] font-bold min-w-0 leading-tight whitespace-normal text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all duration-200 select-none cursor-pointer",
               mainTab === 'archive'
-                ? "!bg-red-600 !text-white shadow-xs shadow-red-600/30"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+                ? "bg-destructive !bg-red-600 hover:!bg-red-700 !text-white shadow-sm shadow-red-600/30"
+                : "!bg-red-500/12 !text-red-600 dark:!text-red-400 border border-red-500/25 hover:!bg-red-500/20"
             )}
           >
-            <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <Archive className={cn(
+              "w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0",
+              mainTab === 'archive' ? "!text-white" : "!text-red-600 dark:!text-red-400"
+            )} />
             <span className="flex items-center gap-1 justify-center">
               {t('products.archive') || 'الأرشيف'}
               {mergedArchivedProducts.length > 0 && (
                 <span className={cn(
                   "px-1.5 py-0.2 text-[9px] rounded-full font-bold leading-none shrink-0",
                   mainTab === 'archive'
-                    ? "bg-white/25 text-white"
-                    : "bg-red-500/15 text-red-600 dark:text-red-400"
+                    ? "bg-white/25 !text-white"
+                    : "bg-red-500/20 !text-red-700 dark:!text-red-300"
                 )}>
                   {mergedArchivedProducts.length}
                 </span>

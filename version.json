@@ -1,8 +1,14 @@
 {
-  "versionCode": 329,
-  "versionName": "1.0.99",
-  "lastUpdated": "2026-10-25T09:44:44.281609+00:00",
+  "versionCode": 330,
+  "versionName": "1.1.0",
+  "lastUpdated": "2026-10-25T18:54:36.419912+00:00",
   "buildHistory": [
+    {
+      "versionCode": 330,
+      "versionName": "1.1.0",
+      "date": "2026-10-25",
+      "description": "v1.1.0 - المرحلة 1: توحيد اللون الأحمر لزر الأرشيف في الوضع النهاري والليلي (Archive Button Red Theme Unification)؛ استثناء كلاسات الأزرار الحمراء (bg-red, bg-rose, bg-destructive, text-red, text-rose, text-destructive) في (src/index.css) من قواعد الوضع النهاري (.light) التي كانت تفرض اللون الأسود أو الخلفية الرمادية عند التمرير، وتحديث زر تبويب الأرشيف في (src/pages/Products.tsx) ليعرض اللون الأحمر المميز بالوضع النهاري والليلي مع شارات العداد والظلال المخصصة"
+    },
     {
       "versionCode": 329,
       "versionName": "1.0.99",

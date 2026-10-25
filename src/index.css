@@ -943,9 +943,9 @@ input, textarea {
   background-color: hsl(var(--background));
 }
 
-/* ── جميع أنواع الأزرار ── */
-.light button,
-.light [role="button"] {
+/* السطر 947: حماية ألوان الأزرار المخصصة في الوضع الفاتح */
+.light button:not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-destructive"]):not([class*="text-red"]):not([class*="text-rose"]):not([class*="text-destructive"]),
+.light [role="button"]:not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-destructive"]):not([class*="text-red"]):not([class*="text-rose"]):not([class*="text-destructive"]) {
   color: hsl(var(--foreground));
 }
 
@@ -992,9 +992,9 @@ button.bg-gradient-primary:active,
   color: hsl(var(--foreground)) !important;
 }
 
-/* أزرار ghost */
-.light button[class*="ghost"],
-.light [class*="variant-ghost"] {
+/* السطر 996: حماية أزرار ghost الحمراء */
+.light button[class*="ghost"]:not([class*="text-red"]):not([class*="text-rose"]):not([class*="text-destructive"]),
+.light [class*="variant-ghost"]:not([class*="text-red"]):not([class*="text-rose"]):not([class*="text-destructive"]) {
   color: hsl(var(--foreground)) !important;
 }
 
@@ -1218,7 +1218,8 @@ button.bg-gradient-primary:active,
 }
 
 /* ── Hover على الأزرار العادية ── */
-.light button:hover:not(:disabled):not([class*="bg-primary"]):not([class*="bg-destructive"]):not([class*="bg-success"]) {
+/* السطر 1221: منع تحويل خلفية الأزرار الحمراء إلى رمادي عند اللمس أو التمرير */
+.light button:hover:not(:disabled):not([class*="bg-primary"]):not([class*="bg-destructive"]):not([class*="bg-success"]):not([class*="bg-red"]):not([class*="bg-rose"]) {
   background-color: hsl(var(--muted)) !important;
 }
 
