@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-10-25",
+    "changes": [
+      "v1.1.1 - المرحلة 2: الحل الجذري لتأخر ظهور التصنيفات عند إضافة منتج في فاتورة المشتريات (Categories Local-First & Cache Invalidation Fix)؛ منع حجز مصفوفة فارغة في categoriesCache لمدة دقيقة في (src/lib/cloud/categories-cloud.ts) وإرجاع الكاش المحلي أو التصنيفات الافتراضية فوراً إذا كانت السحابة فارغة أو غير متصلة، تهيئة التصنيفات محلياً في 0ms عبر getCategoryNamesLocalFirst في نموذج إضافة صنف الفاتورة (src/components/products/PurchaseInvoiceItemForm.tsx) مع التحديث التلقائي بالخلفية والاستماع لحدث CATEGORIES_UPDATED وتحديث القائمة عند الفتح، وتطبيق التهيئة الفورية 0ms في نافذة الشراء السريع (src/components/products/QuickPurchaseDialog.tsx)"
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-10-25",
     "changes": [

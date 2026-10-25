@@ -42,7 +42,7 @@ import { isNoInventoryMode } from '@/lib/store-type-config';
 import { cn, formatNumber, formatMoney } from '@/lib/utils';
 import { addWithdrawalFromShift } from '@/lib/cashbox-store';
 import { addActivityLog } from '@/lib/activity-log';
-import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { getCategoryNamesCloud, getCategoryNamesLocalFirst } from '@/lib/cloud/categories-cloud';
 
 interface QuickPurchaseDialogProps {
   open: boolean;
@@ -103,8 +103,8 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
   const [selectedProduct, setSelectedProduct] = useState<ExistingProductOption | null>(null);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-  // Category List
-  const [categories, setCategories] = useState<string[]>([]);
+  // Category List — قراءة فورية من الكاش المحلي 0ms
+  const [categories, setCategories] = useState<string[]>(() => getCategoryNamesLocalFirst());
 
   // Scanners & Camera
   const [showScanner, setShowScanner] = useState(false);
@@ -124,7 +124,15 @@ export function QuickPurchaseDialog({ open, onOpenChange, onSuccess }: QuickPurc
   // Load Categories on mount / open
   useEffect(() => {
     if (open) {
-      getCategoryNamesCloud().then(cats => setCategories(cats || []));
+      const local = getCategoryNamesLocalFirst();
+      if (local.length > 0) {
+        setCategories(prev => Array.from(new Set([...prev, ...local])));
+      }
+      getCategoryNamesCloud().then(cats => {
+        if (cats && cats.length > 0) {
+          setCategories(Array.from(new Set([...local, ...cats])));
+        }
+      });
     }
   }, [open]);
 

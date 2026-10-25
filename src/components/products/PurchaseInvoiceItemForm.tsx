@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { useLanguage } from '@/hooks/use-language';
 import { Plus, Camera, ScanLine, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getEffectiveFieldsConfig } from '@/lib/product-fields-config';
-import { getCategoryNamesCloud } from '@/lib/cloud/categories-cloud';
+import { getCategoryNamesCloud, getCategoryNamesLocalFirst } from '@/lib/cloud/categories-cloud';
+import { EVENTS } from '@/lib/events';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { useImageUpload } from '@/hooks/use-image-upload';
 import { useMoney } from '@/hooks/use-money';
@@ -106,18 +107,30 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
   // Barcode scanner
   const [showScanner, setShowScanner] = useState(false);
 
-  // Categories
-  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  // Categories — قراءة محلية فورية 0ms مع التحديث التلقائي بالخلفية
+  const [categoryNames, setCategoryNames] = useState<string[]>(() => getCategoryNamesLocalFirst());
+
+  const refreshCategories = useCallback(async () => {
+    const local = getCategoryNamesLocalFirst();
+    if (local.length > 0) {
+      setCategoryNames(prev => Array.from(new Set([...prev, ...local])));
+    }
+    const cloud = await getCategoryNamesCloud();
+    if (cloud && cloud.length > 0) {
+      setCategoryNames(Array.from(new Set([...local, ...cloud])));
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshCategories();
+    window.addEventListener(EVENTS.CATEGORIES_UPDATED, refreshCategories);
+    return () => window.removeEventListener(EVENTS.CATEGORIES_UPDATED, refreshCategories);
+  }, [refreshCategories]);
 
   // Search existing products
   const [searchResults, setSearchResults] = useState<ExistingProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ExistingProduct | null>(null);
   const [showSearch, setShowSearch] = useState(false);
-
-  // Load categories
-  useEffect(() => {
-    getCategoryNamesCloud().then(setCategoryNames);
-  }, []);
 
   useEffect(() => {
     const searchProducts = async () => {
@@ -326,11 +339,19 @@ export function PurchaseInvoiceItemForm({ onAdd, onClose, loading }: PurchaseInv
       {/* Category Dropdown */}
       <div className="space-y-1.5">
         <Label className="text-sm">{t('products.category')}</Label>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="h-9">
+        <Select
+          value={category}
+          onValueChange={setCategory}
+          onOpenChange={(isOpen) => {
+            if (isOpen && categoryNames.length === 0) {
+              refreshCategories();
+            }
+          }}
+        >
+          <SelectTrigger className="h-10 rounded-xl">
             <SelectValue placeholder={t('products.category')} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[80] max-h-60">
             {categoryNames.map((cat) => (
               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
             ))}

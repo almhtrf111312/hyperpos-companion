@@ -82,8 +82,8 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
 
-  // Check cache
-  if (categoriesCache && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Check cache — يشترط وجود عناصر فعلية في الكاش وعدم حجز مصفوفة فارغة لمدة دقيقة
+  if (categoriesCache && categoriesCache.length > 0 && Date.now() - cacheTimestamp < CACHE_TTL) {
     return categoriesCache;
   }
 
@@ -152,10 +152,24 @@ export const loadCategoriesCloud = async (): Promise<Category[]> => {
     }).catch(() => {});
   }
 
+  if (unique.length === 0) {
+    const localFallback = loadCategoriesLocally();
+    if (localFallback && localFallback.length > 0) {
+      categoriesCache = localFallback;
+      cacheTimestamp = Date.now();
+      return localFallback;
+    }
+    const defaults = getDefaultCategoryNames().map(name => ({
+      id: `default_cat_${name}`,
+      name,
+      createdAt: new Date().toISOString(),
+    }));
+    return defaults;
+  }
+
   categoriesCache = unique;
   cacheTimestamp = Date.now();
   saveCategoriesLocally(categoriesCache);
-  
   return categoriesCache;
 };
 
