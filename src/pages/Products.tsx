@@ -1128,10 +1128,15 @@ export default function Products() {
     const numConversionFactor = Number(formData.conversionFactor) || 1;
     const numBulkSalePrice = parseFormPriceToUsd(formData.bulkSalePrice);
 
-    // تحويل الكمية إلى قطع قبل الحفظ (دائماً نحفظ بالقطع)
-    const quantityInPieces = formData.trackByUnit === 'bulk'
-      ? numQuantity * numConversionFactor
-      : numQuantity;
+    // حماية المخزون الفعلي: عند تعديل منتج قائم، إذا لم يقم المستخدم بتعديل حقل الكمية المعروضة،
+    // نثبت المخزون الفعلي القائم للمنتج لمنع فقدان القطع أو تشوه المخزون
+    const originalDisplayQty = selectedProduct.trackByUnit === 'bulk' && selectedProduct.conversionFactor && selectedProduct.conversionFactor > 1
+      ? Math.floor(selectedProduct.quantity / selectedProduct.conversionFactor)
+      : selectedProduct.quantity;
+
+    const quantityInPieces = (numQuantity === originalDisplayQty && formData.trackByUnit === (selectedProduct.trackByUnit || 'piece'))
+      ? selectedProduct.quantity
+      : (formData.trackByUnit === 'bulk' ? numQuantity * numConversionFactor : numQuantity);
 
     // حساب سعر تكلفة الكرتونة تلقائياً
     const calculatedBulkCostPrice = numCostPrice * numConversionFactor;
@@ -3105,10 +3110,10 @@ export default function Products() {
                         </span>
                         <span className="text-xs font-black font-mono">
                           {profit > 0 
-                            ? `+${formatPriceRaw(profit)}` 
+                            ? `+${m.fmt(profit)}` 
                             : profit < 0 
-                            ? `-${formatPriceRaw(Math.abs(profit))}` 
-                            : formatPriceRaw(0)}
+                            ? `-${m.fmt(Math.abs(profit))}` 
+                            : m.fmt(0)}
                         </span>
                       </div>
                     </div>

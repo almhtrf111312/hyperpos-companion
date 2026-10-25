@@ -1887,7 +1887,7 @@ export function CartPanel({
                   </div>
                   {(wholesaleMode || (isRepairStoreType() && item.costPrice != null)) && (
                     <div className="text-[9px] text-muted-foreground truncate leading-none mt-0.5">
-                      {wholesaleMode && <span className="text-orange-400 font-medium">{formatNumber(getItemPrice(item))} × {item.quantity}</span>}
+                      {wholesaleMode && <span className="text-orange-400 font-medium">{formatNumber(roundForCurr(fromUsd(getItemPrice(item), selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code))} × {item.quantity}</span>}
                       {wholesaleMode && isRepairStoreType() && item.costPrice != null && ' · '}
                       {isRepairStoreType() && item.costPrice != null && `${t('pos.cost') || 'تكلفة'}: ${formatNumber(item.costPrice || 0)}`}
                     </div>

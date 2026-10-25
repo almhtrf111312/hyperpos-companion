@@ -4,6 +4,7 @@ import { ProductImage } from '@/components/products/ProductImage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn, formatNumber } from '@/lib/utils';
+import { fromUsd, roundForCurrency as roundForCurr } from '@/lib/money-engine';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { DualUnitDisplayCompact } from '@/components/products/DualUnitDisplay';
 import { ProductDetailsDialog } from '@/components/pos/ProductDetailsDialog';
@@ -81,10 +82,11 @@ export const ProductGrid = memo(function ProductGrid({
 
   // تنسيق السعر بالعملة المختارة ومعدل الصرف
   const formatDisplayPrice = (usdPrice: number) => {
+    const code = selectedCurrency?.code || 'USD';
     const rate = selectedCurrency?.rate || 1;
     const symbol = selectedCurrency?.symbol || '$';
-    const converted = usdPrice * rate;
-    const decimals = (selectedCurrency?.rate && selectedCurrency.rate >= 100) ? 0 : 2;
+    const converted = roundForCurr(fromUsd(usdPrice, code, rate), code);
+    const decimals = (rate >= 100) ? 0 : 2;
 
     return `${symbol}${formatNumber(converted, decimals)}`;
   };
