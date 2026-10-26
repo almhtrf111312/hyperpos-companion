@@ -216,7 +216,7 @@ const clearAllUserSessionCaches = async () => {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('hyperpos_') || key.startsWith('flowpos_'))) {
+      if (key && (key.startsWith('hyperpos_') || key.startsWith('flowpos_') || key.startsWith('fps_swr_'))) {
         // استثناء إعدادات اللغة والثيم والحساب المحفوظة الضرورية
         if (
           key !== 'hyperpos_language' &&
@@ -232,6 +232,15 @@ const clearAllUserSessionCaches = async () => {
     }
     keysToRemove.forEach(k => localStorage.removeItem(k));
     console.log(`[Auth] Cleared ${keysToRemove.length} storage keys`);
+
+    // 1.1 تفريغ محرك كاش SWR الفوري من الذاكرة والتخزين لضمان العزل التام
+    try {
+      const { NativeSWRCache } = await import('@/lib/cache/native-swr-cache');
+      NativeSWRCache.clear();
+      console.log('[Auth] Cleared NativeSWRCache');
+    } catch (err) {
+      console.warn('[Auth] Error clearing NativeSWRCache:', err);
+    }
 
     // 2. تفريغ IndexedDB للمنتجات والصور
     try {

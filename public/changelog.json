@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.7",
+    "date": "2026-10-26",
+    "changes": [
+      "v1.1.7 - تسريع التنقل بين الصفحات والعودة الفورية كالواتساب (Instant Native-Feel Page Navigation & Keep-Alive Lifecycle)؛ تطبيق نمط الـ Keep-Alive للتبويبات الرئيسية (Products, Invoices, Customers, Purchases, Services, Expenses, Reports, Settings, Appearance) بسياسة طرد LRU منضبطة (بحد أقصى 4 شاشات في الذاكرة الحية لمنع تراكم RAM)، تفعيل Stale-While-Revalidate بعزل كامل حسب المستخدم (userId-scoped SWR cache) وتنظيفه الصارم عند تسجيل الخروج، تعليق جلب البيانات والأحداث في الخلفية للشاشات غير النشطة عبر PageActivityContext، جدولة التدفئة التدريجية للحزم (Staged 350ms prewarm) مع مراعاة وضع توفير البيانات، وتطبيق التجزئة التراكمية التدريجية للقوائم الطويلة في المنتجات والفواتير (Progressive Rendering Batching) لجعل زمن الرسم الأولي أقل من 10ms مع قياسات أداء دقيقة وخالية من أي بيانات حساسة."
+    ]
+  },
+  {
     "version": "1.1.6",
     "date": "2026-10-26",
     "changes": [

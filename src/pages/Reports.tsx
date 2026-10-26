@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import Dashboard from '@/pages/Dashboard';
+import { usePageActivity } from '@/contexts/PageActivityContext';
 import {
   BarChart3,
   BookOpen,
@@ -129,6 +129,7 @@ export interface ReportEntry {
 
 export default function Reports() {
   const navigate = useNavigate();
+  const { isActive: isPageActive } = usePageActivity();
   const { t, isRTL } = useLanguage();
   const [searchParams] = useSearchParams();
   const storeType = getCurrentStoreType();
@@ -255,9 +256,30 @@ export default function Reports() {
     }
   }, [t, cloudProducts.length]);
 
+  const isPageActiveRef = useRef(isPageActive);
+  useEffect(() => {
+    isPageActiveRef.current = isPageActive;
+  }, [isPageActive]);
+
+  const hasPendingReportUpdateRef = useRef(false);
+
+  useEffect(() => {
+    // If returning to reports tab and an update was queued while hidden, trigger fresh load
+    if (isPageActive && hasPendingReportUpdateRef.current) {
+      hasPendingReportUpdateRef.current = false;
+      loadCloudData(true);
+    }
+  }, [isPageActive, loadCloudData]);
+
   useEffect(() => {
     loadCloudData();
-    const handleUpdate = () => loadCloudData(true);
+    const handleUpdate = () => {
+      if (!isPageActiveRef.current) {
+        hasPendingReportUpdateRef.current = true;
+        return;
+      }
+      loadCloudData(true);
+    };
     window.addEventListener(EVENTS.INVOICES_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.PRODUCTS_UPDATED, handleUpdate);
     window.addEventListener(EVENTS.CUSTOMERS_UPDATED, handleUpdate);

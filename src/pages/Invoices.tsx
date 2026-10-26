@@ -120,6 +120,7 @@ import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getCurrentUserRole } from '@/lib/supabase-store';
 import { PurchaseInvoicesListTab } from '@/components/purchases/PurchaseInvoicesListTab';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { usePageActivity } from '@/contexts/PageActivityContext';
 
 // مفتاح موحّد لبنود الاسترداد (يُستخدم في الاختيار والإرسال معًا)
 const refundKey = (item: { productId?: string; name: string }): string =>
@@ -273,6 +274,7 @@ export function isInvoiceInRange(createdAt?: string | null, from?: string, to?: 
 
 export default function Invoices() {
   const { t, language, isRTL } = useLanguage();
+  const { isActive: isPageActive } = usePageActivity();
 
   // Helper to ensure clean Arabic text and eliminate translation key leaks
   const tx = useCallback((key: string, arabicFallback: string): string => {
@@ -756,6 +758,40 @@ export default function Invoices() {
 
     return result;
   }, [invoices, debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, customDateMode, dateFrom, dateTo, showRefunded, refundMeta]);
+
+  // Progressive rendering limits to keep initial render <10ms for large invoice lists
+  const INITIAL_INVOICES_LIMIT = 40;
+  const INVOICES_BATCH_SIZE = 30;
+  const [invoiceDisplayLimit, setInvoiceDisplayLimit] = useState(INITIAL_INVOICES_LIMIT);
+  const invoiceSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setInvoiceDisplayLimit(INITIAL_INVOICES_LIMIT);
+  }, [debouncedSearch, filterType, filterPayment, dateQuickFilter, dateFilter, customDateMode, dateFrom, dateTo, showRefunded]);
+
+  const displayedInvoices = useMemo(() => {
+    return filteredInvoices.slice(0, invoiceDisplayLimit);
+  }, [filteredInvoices, invoiceDisplayLimit]);
+
+  useEffect(() => {
+    if (!isPageActive) return;
+    if (displayedInvoices.length >= filteredInvoices.length) return;
+
+    const sentinel = invoiceSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setInvoiceDisplayLimit((prev) => Math.min(prev + INVOICES_BATCH_SIZE, filteredInvoices.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isPageActive, displayedInvoices.length, filteredInvoices.length]);
 
   // KPI Card Filter Handlers
   const handleKpiTotal = () => {
@@ -2130,7 +2166,7 @@ export default function Invoices() {
           {/* 4. ملخص الفواتير المعروضة */}
           <div className="flex items-center justify-between px-1 text-muted-foreground text-xs font-bold">
             <span>
-              {tx('invoices.displayedInvoices', 'الفواتير المعروضة')}: <b className="text-foreground font-mono">{filteredInvoices.length}</b>
+              {tx('invoices.displayedInvoices', 'الفواتير المعروضة')}: <b className="text-foreground font-mono">{displayedInvoices.length < filteredInvoices.length ? `${displayedInvoices.length} / ${filteredInvoices.length}` : filteredInvoices.length}</b>
             </span>
           </div>
 
@@ -2167,7 +2203,7 @@ export default function Invoices() {
                 </Card>
               </div>
             ) : (
-              filteredInvoices.map((invoice) => {
+              displayedInvoices.map((invoice) => {
                 const financials = getInvoiceFinancials(invoice);
                 const invUsdTotal = invoice.total || 0;
                 const invUsdProfit = financials.baseProfit || 0;
@@ -2375,6 +2411,23 @@ export default function Invoices() {
                   </div>
                 );
               })
+            )}
+
+            {/* Progressive Rendering Load More Sentinel for Invoices */}
+            {displayedInvoices.length < filteredInvoices.length && (
+              <div className="col-span-full pt-4 pb-2 flex flex-col items-center justify-center gap-2">
+                <div ref={invoiceSentinelRef} className="h-4 w-full" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setInvoiceDisplayLimit(prev => Math.min(prev + INVOICES_BATCH_SIZE, filteredInvoices.length))}
+                  className="px-5 py-2.5 rounded-xl bg-card border border-border text-foreground hover:bg-muted text-xs font-bold transition-[colors,transform] active:scale-95 shadow-2xs flex items-center gap-2"
+                >
+                  <span>{tx('invoices.loadMore', 'عرض المزيد من الفواتير')}</span>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    ({displayedInvoices.length} / {filteredInvoices.length})
+                  </span>
+                </button>
+              </div>
             )}
           </div>
         </TabsContent>

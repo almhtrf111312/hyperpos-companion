@@ -1,8 +1,14 @@
 {
-  "versionCode": 336,
-  "versionName": "1.1.6",
-  "lastUpdated": "2026-10-25T23:44:19.137900+00:00",
+  "versionCode": 337,
+  "versionName": "1.1.7",
+  "lastUpdated": "2026-10-26T00:10:00.000000+00:00",
   "buildHistory": [
+    {
+      "versionCode": 337,
+      "versionName": "1.1.7",
+      "date": "2026-10-26",
+      "description": "v1.1.7 - تسريع التنقل بين الصفحات والعودة الفورية كالواتساب (Instant Native-Feel Page Navigation & Keep-Alive Lifecycle)؛ تطبيق نمط الـ Keep-Alive للتبويبات الرئيسية (Products, Invoices, Customers, Purchases, Services, Expenses, Reports, Settings, Appearance) بسياسة طرد LRU منضبطة (بحد أقصى 4 شاشات في الذاكرة الحية لمنع تراكم RAM)، تفعيل Stale-While-Revalidate بعزل كامل حسب المستخدم (userId-scoped SWR cache) وتنظيفه الصارم عند تسجيل الخروج، تعليق جلب البيانات والأحداث في الخلفية للشاشات غير النشطة عبر PageActivityContext، جدولة التدفئة التدريجية للحزم (Staged 350ms prewarm) مع مراعاة وضع توفير البيانات، وتطبيق التجزئة التراكمية التدريجية للقوائم الطويلة في المنتجات والفواتير (Progressive Rendering Batching) لجعل زمن الرسم الأولي أقل من 10ms مع قياسات أداء دقيقة وخالية من أي بيانات حساسة."
+    },
     {
       "versionCode": 336,
       "versionName": "1.1.6",

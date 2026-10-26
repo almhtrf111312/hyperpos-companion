@@ -1,27 +1,83 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { NativeSWRCache } from '@/lib/cache/native-swr-cache';
+import { usePageActivity } from '@/contexts/PageActivityContext';
+import { performanceMetrics } from '@/lib/performance-metrics';
+
+export interface UseFastNativeDataOptions<T> {
+  dependencies?: any[];
+  ttlMs?: number;
+  enabled?: boolean;
+  userId?: string;
+  idbFallback?: () => Promise<T | null>;
+  onSuccess?: (data: T) => void;
+  onError?: (err: any) => void;
+}
 
 /**
- * هوك البيانات فائق السرعة useFastNativeData
- * يسترجع البيانات فوراً في 0 ميلي ثانية من الكاش الدائم (RAM + localStorage)
- * ويقوم بإجراء المزامنة التحديثية الصامتة في الخلفية دون تعطيل الواجهة أو إظهار سبينر التحميل
+ * useFastNativeData
+ * نمط Stale-While-Revalidate فائق السرعة:
+ * 1) قراءة فورية 0ms من RAM أو localStorage أو IndexedDB.
+ * 2) تحديث صامت في الخلفية عند توفر اتصال.
+ * 3) تعليق التحديث عند إخفاء التبويب عبر PageActivityContext.
  */
 export function useFastNativeData<T>(
   cacheKey: string,
   fetcher: () => Promise<T>,
-  dependencies: any[] = []
+  optionsOrDeps: any[] | UseFastNativeDataOptions<T> = {}
 ) {
-  // استرجاع فوري للبيانات دون إظهار سبينر التحميل إطلاقاً إذا كانت البيانات متوفرة مسبقاً
-  const [data, setData] = useState<T | null>(() => NativeSWRCache.getInstant<T>(cacheKey));
+  const options: UseFastNativeDataOptions<T> = Array.isArray(optionsOrDeps)
+    ? { dependencies: optionsOrDeps }
+    : optionsOrDeps;
+
+  const {
+    dependencies = [],
+    ttlMs = 3 * 60 * 1000,
+    enabled = true,
+    userId,
+    idbFallback,
+    onSuccess,
+    onError,
+  } = options;
+
+  let isActive = true;
+  try {
+    const activity = usePageActivity();
+    isActive = activity.isActive;
+  } catch {
+    isActive = true;
+  }
+
+  // قراءة فورية من الذاكرة أو التخزين المحلي في 0 ميلي ثانية
+  const [data, setData] = useState<T | null>(() => {
+    const instant = NativeSWRCache.getInstant<T>(cacheKey, { idbFallback, userId });
+    if (instant !== null) {
+      performanceMetrics.markCacheReady(cacheKey);
+    }
+    return instant;
+  });
   const [isSilentSyncing, setIsSilentSyncing] = useState(false);
   const isMountedRef = useRef(true);
+  const lastFetchedRef = useRef<number>(0);
 
   useEffect(() => {
     isMountedRef.current = true;
     let isCancelled = false;
 
+    if (!enabled) return;
+
+    // إذا كانت الصفحة مخفية ويوجد كاش بالفعل، نعلّق الجلب حتى تصبح نشطة
+    if (!isActive && data !== null) {
+      return;
+    }
+
+    // التحقق مما إذا كانت البيانات حديثة مقارنة بفترة TTL
+    const isStale = NativeSWRCache.isStale(cacheKey, ttlMs);
+    const timeSinceLastFetch = Date.now() - lastFetchedRef.current;
+    if (!isStale && timeSinceLastFetch < ttlMs && data !== null) {
+      return;
+    }
+
     async function revalidate() {
-      // إذا لم يكن هناك كاش سابق فقط نُظهر مؤشر المزامنة، وإلا يتم التحديث صامتاً تماماً
       if (!data) {
         setIsSilentSyncing(true);
       }
@@ -30,10 +86,14 @@ export function useFastNativeData<T>(
         const fresh = await fetcher();
         if (!isCancelled && isMountedRef.current) {
           setData(fresh);
-          NativeSWRCache.set(cacheKey, fresh);
+          lastFetchedRef.current = Date.now();
+          NativeSWRCache.set(cacheKey, fresh, userId);
+          performanceMetrics.markFreshData(cacheKey);
+          onSuccess?.(fresh);
         }
       } catch (err) {
         console.warn(`[FastNativeData] Silent refresh skipped for ${cacheKey}:`, err);
+        onError?.(err);
       } finally {
         if (!isCancelled && isMountedRef.current) {
           setIsSilentSyncing(false);
@@ -47,23 +107,33 @@ export function useFastNativeData<T>(
       isCancelled = true;
       isMountedRef.current = false;
     };
-  }, [cacheKey, ...dependencies]);
+  }, [cacheKey, enabled, isActive, ttlMs, userId, ...dependencies]);
 
-  /**
-   * تحديث متفائل (Optimistic Update) في الكاش والواجهة مباشرة
-   */
-  const mutate = useCallback((newData: T | ((prev: T | null) => T)) => {
-    setData((prev) => {
-      const val = typeof newData === 'function' ? (newData as any)(prev) : newData;
-      NativeSWRCache.set(cacheKey, val);
-      return val;
-    });
-  }, [cacheKey]);
+  const forceRefresh = useCallback(async () => {
+    setIsSilentSyncing(true);
+    try {
+      const fresh = await fetcher();
+      if (isMountedRef.current) {
+        setData(fresh);
+        lastFetchedRef.current = Date.now();
+        NativeSWRCache.set(cacheKey, fresh, userId);
+        performanceMetrics.markFreshData(cacheKey);
+        onSuccess?.(fresh);
+      }
+      return fresh;
+    } catch (err) {
+      onError?.(err);
+      throw err;
+    } finally {
+      if (isMountedRef.current) {
+        setIsSilentSyncing(false);
+      }
+    }
+  }, [cacheKey, fetcher, onSuccess, onError, userId]);
 
   return {
     data,
-    isLoading: data === null, // يكون صحيحاً فقط في أول فتحة للتطبيق على جهاز جديد كلياً
     isSilentSyncing,
-    mutate,
+    forceRefresh,
   };
 }

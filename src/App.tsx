@@ -85,6 +85,15 @@ const PartnersRedirect = () => {
 
 const IndexRoute = () => <POS />;
 
+const MainLayoutWithKeepAlive = () => {
+  const { user } = useAuth();
+  return (
+    <MainLayout>
+      <NativeTabHost key={user?.id || 'guest'} />
+    </MainLayout>
+  );
+};
+
 const AppContent = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -122,34 +131,47 @@ const AppContent = () => {
   // License expiration reminder toasts
   useLicenseReminder();
 
-  // Eager Bundle Pre-warming during idle time (Native Feel Pillar 4)
+  // Staged & Progressive Bundle Pre-warming during idle time (Native Feel Pillar 4)
   useEffect(() => {
+    // Respect Data Saver mode if user enabled it on mobile / slow connection
+    if (typeof navigator !== 'undefined' && (navigator as any).connection?.saveData) {
+      return;
+    }
+
     const warmUpRoutes = () => {
-      const targets = [
+      // Prioritized sequence: highest-frequency user paths loaded first
+      const prioritizedTargets = [
         () => import("./pages/POS"),
         () => import("./pages/Products"),
         () => import("./pages/Invoices"),
+        () => import("./pages/Customers"),
         () => import("./pages/Purchases"),
-        () => import("./pages/Services"),
         () => import("./pages/Expenses"),
+        () => import("./pages/Reports"),
+        () => import("./pages/Services"),
         () => import("./pages/Settings"),
         () => import("./pages/Appearance"),
-        () => import("./pages/Customers"),
-        () => import("./pages/Reports"),
       ];
 
-      targets.forEach(loader => {
+      // Staggered sequential warmup (1 chunk every 350ms) to avoid network contention & CPU spikes
+      let index = 0;
+      const intervalId = setInterval(() => {
+        if (index >= prioritizedTargets.length) {
+          clearInterval(intervalId);
+          return;
+        }
         try {
-          loader().catch(() => {});
+          prioritizedTargets[index]().catch(() => {});
         } catch {}
-      });
+        index++;
+      }, 350);
     };
 
     if (typeof window !== 'undefined') {
       if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(warmUpRoutes, { timeout: 1500 });
+        (window as any).requestIdleCallback(warmUpRoutes, { timeout: 2000 });
       } else {
-        setTimeout(warmUpRoutes, 800);
+        setTimeout(warmUpRoutes, 1000);
       }
     }
   }, []);
@@ -438,8 +460,8 @@ const PageFallback = () => (
         <Route path="/help" element={<ProtectedRoute><FeatureErrorBoundary featureName="المساعدة والدعم"><Help /></FeatureErrorBoundary></ProtectedRoute>} />
         <Route path="/boss" element={<ProtectedRoute><RoleGuard allowedRoles={['boss']}><FeatureErrorBoundary featureName="لوحة الإدارة"><BossPanel /></FeatureErrorBoundary></RoleGuard></ProtectedRoute>} />
 
-        {/* Protected routes wrapped by a single persistent MainLayout with NativeTabHost Keep-Alive */}
-        <Route element={<ProtectedRoute><MainLayout><NativeTabHost /></MainLayout></ProtectedRoute>}>
+        {/* Protected routes wrapped by a single persistent MainLayout with NativeTabHost Keep-Alive and user-scoped key */}
+        <Route element={<ProtectedRoute><MainLayoutWithKeepAlive /></ProtectedRoute>}>
           {/* Non-keepalive routes handled by Outlet */}
           <Route path="/debts" element={<DebtsRedirect />} />
           <Route path="/partners" element={<RoleGuard allowedRoles={['boss', 'admin']}><PartnersRedirect /></RoleGuard>} />

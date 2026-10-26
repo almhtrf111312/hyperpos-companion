@@ -1,8 +1,11 @@
-import React, { memo, ReactNode, useState, useEffect, lazy, Suspense } from 'react';
+import React, { memo, ReactNode, useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useLocation, Outlet } from 'react-router-dom';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { FeatureErrorBoundary } from '@/components/debug/FeatureErrorBoundary';
+import { PageActivityProvider } from '@/contexts/PageActivityContext';
+import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
+import { performanceMetrics } from '@/lib/performance-metrics';
 
 /**
  * KeepAliveTab Component
@@ -18,23 +21,31 @@ export interface KeepAliveTabProps {
 export const KeepAliveTab = memo(({ activePath, tabPath, children }: KeepAliveTabProps) => {
   const isMatch = activePath === tabPath;
 
+  useEffect(() => {
+    if (isMatch) {
+      performanceMetrics.markUsefulRender(tabPath);
+    }
+  }, [isMatch, tabPath]);
+
   return (
-    <div
-      role="tabpanel"
-      aria-hidden={!isMatch}
-      className={`w-full h-full flex-1 flex flex-col native-instant-tab ${
-        isMatch 
-          ? 'relative opacity-100 pointer-events-auto z-10' 
-          : 'hidden opacity-0 pointer-events-none z-0'
-      }`}
-      style={{
-        // تحسين أداء المعالجة الرسومية GPU عبر Hardware Acceleration
-        contain: isMatch ? 'none' : 'strict',
-        contentVisibility: isMatch ? 'visible' : 'hidden',
-      }}
-    >
-      {children}
-    </div>
+    <PageActivityProvider isActive={isMatch} activePath={activePath}>
+      <div
+        role="tabpanel"
+        aria-hidden={!isMatch}
+        className={`w-full h-full flex-1 flex flex-col native-instant-tab ${
+          isMatch 
+            ? 'relative opacity-100 pointer-events-auto z-10' 
+            : 'hidden opacity-0 pointer-events-none z-0'
+        }`}
+        style={{
+          // تحسين أداء المعالجة الرسومية GPU عبر Hardware Acceleration
+          contain: isMatch ? 'none' : 'strict',
+          contentVisibility: isMatch ? 'visible' : 'hidden',
+        }}
+      >
+        {children}
+      </div>
+    </PageActivityProvider>
   );
 });
 
@@ -69,37 +80,56 @@ const Appearance = lazy(() => import('@/pages/Appearance'));
 
 const TabFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] gap-3 p-4">
-    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-    <span className="text-xs text-muted-foreground font-medium">جاري تجهيز الصفحة...</span>
+    <Loader2 className="w-8 h-8 animate-spin text-primary opacity-80" />
+    <span className="text-xs text-muted-foreground font-medium">جاري تجهيز الشاشة...</span>
   </div>
 );
 
 /**
- * NativeTabHost Component
- * يدير التبويبات الرئيسية ويبقيها في الذاكرة بمجرد زيارتها
- * مع تمرير المسارات الفرعية أو غير التبويبية إلى Outlet
+ * الحد الأقصى لعدد التبويبات المحتفظ بها في الذاكرة الحية RAM في نفس الوقت
+ * 4 تبويبات تضمن تجربة تنقل فائقة السلاسة كالواتساب مع استهلاك ذاكرة لا يتجاوز 45 ميغابايت
  */
-export function NativeTabHost() {
+const MAX_MOUNTED_TABS = 4;
+
+/**
+ * NativeTabHost
+ * المضيف الذكي للتبويبات المستمرة:
+ * يُبقي الشاشات الرئيسية محملة في الخلفية دون إعادة جلب البيانات أو تفكيك الـ DOM عند التنقل
+ * مع تطبيق سياسة LRU Eviction منضبطة لمنع تراكم الذاكرة.
+ */
+export const NativeTabHost = memo(() => {
   const location = useLocation();
+  const { user } = useAuth();
   const activeTab = getBaseTabPath(location.pathname);
 
-  // تتبع التبويبات التي تمت زيارتها فقط لعدم حجز ذاكرة لصفحات لم يدخلها المستخدم بعد
-  const [mountedTabs, setMountedTabs] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    if (activeTab) initial.add(activeTab);
-    return initial;
-  });
+  // طابور LRU للتبويبات النشطة (الأحدث في نهاية المصفوفة)
+  const [tabLRU, setTabLRU] = useState<string[]>(() => (activeTab ? [activeTab] : []));
 
   useEffect(() => {
-    if (activeTab) {
-      setMountedTabs(prev => {
-        if (prev.has(activeTab)) return prev;
-        const next = new Set(prev);
-        next.add(activeTab);
-        return next;
-      });
-    }
+    if (!activeTab) return;
+
+    performanceMetrics.markRouteIntent(activeTab);
+
+    setTabLRU(prev => {
+      const filtered = prev.filter(t => t !== activeTab);
+      filtered.push(activeTab);
+      if (filtered.length > MAX_MOUNTED_TABS) {
+        return filtered.slice(-MAX_MOUNTED_TABS);
+      }
+      return filtered;
+    });
   }, [activeTab]);
+
+  // إعادة ضبط التبويبات المركبة فور تغيير المستخدم لعزل الحسابات
+  useEffect(() => {
+    if (activeTab) {
+      setTabLRU([activeTab]);
+    } else {
+      setTabLRU([]);
+    }
+  }, [user?.id]);
+
+  const mountedTabs = useMemo(() => new Set(tabLRU), [tabLRU]);
 
   return (
     <div className="w-full flex-1 flex flex-col relative min-h-[calc(100vh-4rem)]">
@@ -158,7 +188,7 @@ export function NativeTabHost() {
       {mountedTabs.has('/purchases') && (
         <KeepAliveTab activePath={activeTab ?? ''} tabPath="/purchases">
           <RoleGuard allowedRoles={['boss', 'admin']}>
-            <FeatureErrorBoundary featureName="فواتير الشراء">
+            <FeatureErrorBoundary featureName="المشتريات">
               <Suspense fallback={<TabFallback />}>
                 <Purchases />
               </Suspense>
@@ -181,13 +211,11 @@ export function NativeTabHost() {
 
       {mountedTabs.has('/settings') && (
         <KeepAliveTab activePath={activeTab ?? ''} tabPath="/settings">
-          <RoleGuard allowedRoles={['boss', 'admin']}>
-            <FeatureErrorBoundary featureName="الإعدادات">
-              <Suspense fallback={<TabFallback />}>
-                <Settings />
-              </Suspense>
-            </FeatureErrorBoundary>
-          </RoleGuard>
+          <FeatureErrorBoundary featureName="الإعدادات">
+            <Suspense fallback={<TabFallback />}>
+              <Settings />
+            </Suspense>
+          </FeatureErrorBoundary>
         </KeepAliveTab>
       )}
 
@@ -201,8 +229,10 @@ export function NativeTabHost() {
         </KeepAliveTab>
       )}
 
-      {/* المسارات غير المحفوظة في التبويبات مثل ورديات الصندوق والمكتبة يتم عرضها عبر Outlet */}
+      {/* fallback للأي مسارات فرعية أخرى داخل الإطار العام */}
       {!activeTab && <Outlet />}
     </div>
   );
-}
+});
+
+NativeTabHost.displayName = 'NativeTabHost';

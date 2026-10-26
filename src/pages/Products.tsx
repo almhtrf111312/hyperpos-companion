@@ -107,6 +107,7 @@ import { NativeCameraPreview } from '@/components/camera/NativeCameraPreview';
 import { isNoInventoryMode, getCurrentStoreType, getVisibleSections } from '@/lib/store-type-config';
 import { ProductImage } from '@/components/products/ProductImage';
 import { getSignedImageUrl } from '@/lib/image-upload';
+import { usePageActivity } from '@/contexts/PageActivityContext';
 
 export default function Products() {
   const m = useMoney();
@@ -145,6 +146,7 @@ export default function Products() {
       : localFormatted;
   };
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isActive: isPageActive } = usePageActivity();
   const { user, profile } = useAuth();
   const { t, tDynamic, storeType, isRTL, language } = useLanguage();
   const visible = getVisibleSections(storeType);
@@ -886,6 +888,72 @@ export default function Products() {
     });
   }, [products, noInventory, debouncedSearch, selectedCategory, statusFilter, unitFilter, t]);
 
+  // Progressive rendering limits to keep initial render <10ms for large catalogs
+  const INITIAL_PRODUCTS_LIMIT = 48;
+  const PRODUCTS_BATCH_SIZE = 36;
+  const [productDisplayLimit, setProductDisplayLimit] = useState(INITIAL_PRODUCTS_LIMIT);
+  const [archiveDisplayLimit, setArchiveDisplayLimit] = useState(INITIAL_PRODUCTS_LIMIT);
+  const productSentinelRef = useRef<HTMLDivElement | null>(null);
+  const archiveSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setProductDisplayLimit(INITIAL_PRODUCTS_LIMIT);
+  }, [debouncedSearch, selectedCategory, statusFilter, unitFilter]);
+
+  useEffect(() => {
+    setArchiveDisplayLimit(INITIAL_PRODUCTS_LIMIT);
+  }, [archiveSearchQuery, archiveFilter]);
+
+  const displayedProducts = useMemo(() => {
+    return filteredProducts.slice(0, productDisplayLimit);
+  }, [filteredProducts, productDisplayLimit]);
+
+  const displayedArchivedProducts = useMemo(() => {
+    return filteredArchivedProducts.slice(0, archiveDisplayLimit);
+  }, [filteredArchivedProducts, archiveDisplayLimit]);
+
+  // Progressive infinite scroll for active products grid
+  useEffect(() => {
+    if (!isPageActive) return;
+    if (displayedProducts.length >= filteredProducts.length) return;
+
+    const sentinel = productSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setProductDisplayLimit((prev) => Math.min(prev + PRODUCTS_BATCH_SIZE, filteredProducts.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isPageActive, displayedProducts.length, filteredProducts.length]);
+
+  // Progressive infinite scroll for archived products grid
+  useEffect(() => {
+    if (!isPageActive || mainTab !== 'archive') return;
+    if (displayedArchivedProducts.length >= filteredArchivedProducts.length) return;
+
+    const sentinel = archiveSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setArchiveDisplayLimit((prev) => Math.min(prev + PRODUCTS_BATCH_SIZE, filteredArchivedProducts.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isPageActive, mainTab, displayedArchivedProducts.length, filteredArchivedProducts.length]);
+
   const activeProductsCount = useMemo(() => {
     return products.filter(p => !p.archived && (noInventory || p.quantity > 0)).length;
   }, [products, noInventory]);
@@ -1398,8 +1466,9 @@ export default function Products() {
     lastScrollTopRef.current = currentScrollTop;
   }, []);
 
-  // إعادة إظهار الزر العائم تلقائياً عند تغيير التبويب واستماع التمرير على النافذة
+  // إعادة إظهار الزر العائم تلقائياً عند تغيير التبويب واستماع التمرير على النافذة (مع تعليق الاستماع عند خمول التبويب)
   useEffect(() => {
+    if (!isPageActive) return;
     setIsFabVisible(true);
     const handleWindowScroll = () => {
       const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -1414,7 +1483,7 @@ export default function Products() {
     };
     window.addEventListener('scroll', handleWindowScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleWindowScroll);
-  }, [mainTab]);
+  }, [mainTab, isPageActive]);
 
   // دالة فتح نافذة إضافة منتج جديد
   const handleOpenAddProduct = useCallback(() => {
@@ -2477,7 +2546,7 @@ export default function Products() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredArchivedProducts.map((product) => (
+              {displayedArchivedProducts.map((product) => (
                 <div
                   key={product.id}
                   className="bg-card rounded-xl border border-border/80 p-3.5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between gap-3"
@@ -2608,6 +2677,23 @@ export default function Products() {
                   </div>
                 </div>
               ))}
+
+              {/* Progressive Rendering Load More Sentinel for Archive */}
+              {displayedArchivedProducts.length < filteredArchivedProducts.length && (
+                <div className="col-span-full pt-3 pb-2 flex flex-col items-center justify-center gap-2">
+                  <div ref={archiveSentinelRef} className="h-4 w-full" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={() => setArchiveDisplayLimit(prev => Math.min(prev + PRODUCTS_BATCH_SIZE, filteredArchivedProducts.length))}
+                    className="px-4 py-2 rounded-xl bg-card border border-border text-foreground hover:bg-muted text-xs font-bold transition-[colors,transform] active:scale-95 shadow-2xs flex items-center gap-2"
+                  >
+                    <span>{t('common.more')}</span>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      ({displayedArchivedProducts.length} / {filteredArchivedProducts.length})
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2649,7 +2735,7 @@ export default function Products() {
               ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5"
               : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start"
           )}>
-            {filteredProducts.map((product, index) => {
+            {displayedProducts.map((product, index) => {
               const status = statusConfig[product.status];
               const profit = product.salePrice - product.costPrice;
 
@@ -3124,6 +3210,23 @@ export default function Products() {
                 </div>
               );
             })}
+
+            {/* Progressive Rendering Load More Sentinel for Active Products */}
+            {displayedProducts.length < filteredProducts.length && (
+              <div className="col-span-full pt-4 pb-2 flex flex-col items-center justify-center gap-2">
+                <div ref={productSentinelRef} className="h-4 w-full" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setProductDisplayLimit(prev => Math.min(prev + PRODUCTS_BATCH_SIZE, filteredProducts.length))}
+                  className="px-5 py-2.5 rounded-xl bg-card border border-border text-foreground hover:bg-muted text-xs font-bold transition-[colors,transform] active:scale-95 shadow-2xs flex items-center gap-2"
+                >
+                  <span>{t('common.more')}</span>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    ({displayedProducts.length} / {filteredProducts.length})
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         )}
         </div>
