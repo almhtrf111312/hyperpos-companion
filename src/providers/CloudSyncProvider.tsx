@@ -15,6 +15,7 @@ import { processGenericQueuedOperation } from '@/lib/cloud/sync-operation-proces
 import { warmupAllCaches } from '@/lib/cloud/cache-warmup';
 import { isGuestDemoMode } from '@/lib/demo-data';
 import { isOperationCancelled, reconcileCancelledOperationsWithCloud } from '@/lib/cancellation-registry';
+import { resetOfflineInvoiceCounter, clearOfflineLease } from '@/lib/offline-lease';
 import {
   loadUnifiedStoreSettings,
   mergeStoreSettings,
@@ -273,6 +274,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
     if (lastUserId && lastUserId !== user.id) {
       console.log('[CloudSync] User changed, clearing old localStorage data + IndexedDB');
       clearUserLocalStorage();
+      // 🎫 مسح تذكرة الأوفلاين وعدادها عند تبديل الحساب
+      clearOfflineLease();
       // ✅ مسح IndexedDB عند تغيير المستخدم
       import('@/lib/indexeddb-cache').then(({ clearProductsIDB }) => {
         clearProductsIDB();
@@ -413,6 +416,8 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         const { invalidateAllCaches } = await import('@/lib/cloud');
         await invalidateAllCaches();
         warmupAllCaches(true).catch(() => {});
+        // 🎫 مزامنة ناجحة بالكامل = تصفير عداد فواتير الأوفلاين
+        if (result.failed === 0) resetOfflineInvoiceCounter();
       }
 
       const cloudSettings = await fetchStoreSettings();
