@@ -210,10 +210,15 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         offlineDays: 0,
         offlineWarning: false,
         dataEncrypted: false,
+        offlineLeaseBlocked: false,
+        offlineLeaseReason: null,
       };
 
       // Record successful server contact
       recordServerContact();
+
+      // 🎫 إصدار/تجديد تذكرة الأوفلاين الموقّعة من الخادم (تتقدم الساعة الموثوقة ويُصفَّر عداد الفواتير)
+      await fetchOfflineLease();
 
       // If data was encrypted, decrypt it now
       if (isDataEncrypted()) {
@@ -224,11 +229,14 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       // Update offline status after successful contact
       const offlineStatus = getOfflineStatus();
 
+      const leaseStatus = getOfflineLeaseStatus();
       setState({
         ...newState,
         offlineDays: offlineStatus.daysOffline,
         offlineWarning: offlineStatus.shouldWarn,
         dataEncrypted: isDataEncrypted(),
+        offlineLeaseBlocked: !leaseStatus.allowed,
+        offlineLeaseReason: leaseStatus.reason,
       });
       // Save successful result to cache
       const { isLoading: _, error: _e, ...cacheData } = newState;
@@ -240,6 +248,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       const offlineStatus = getOfflineStatus();
       const fallback = loadLicenseCacheFallback();
 
+      const leaseStatus = getOfflineLeaseStatus();
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -250,6 +259,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         offlineDays: offlineStatus.daysOffline,
         offlineWarning: offlineStatus.shouldWarn,
         dataEncrypted: isDataEncrypted(),
+        offlineLeaseBlocked: !leaseStatus.allowed,
+        offlineLeaseReason: leaseStatus.reason,
       }));
     }
   }, [user]);
