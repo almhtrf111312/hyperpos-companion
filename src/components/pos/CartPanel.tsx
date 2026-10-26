@@ -93,52 +93,6 @@ const getFallbackCostPrice = (productId: string): number => {
   return 0;
 };
 
-// EditablePrice: local string state during editing, commits on blur/Enter
-function EditablePrice({ value, onChange, className }: { value: number; className?: string; onChange: (v: number) => void }) {
-  const [localValue, setLocalValue] = useState(String(value));
-  const [isEditing, setIsEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Sync from parent when not editing
-  useEffect(() => {
-    if (!isEditing) {
-      setLocalValue(String(value));
-    }
-  }, [value, isEditing]);
-
-  const commit = () => {
-    setIsEditing(false);
-    const parsed = Number.parseFloat(localValue);
-    if (!Number.isNaN(parsed) && parsed >= 0) {
-      onChange(parsed);
-    } else {
-      setLocalValue(String(value)); // revert
-    }
-  };
-
-  return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="decimal"
-      value={isEditing ? localValue : String(value)}
-      onFocus={(e) => {
-        setIsEditing(true);
-        setLocalValue(String(value));
-        setTimeout(() => e.target.select(), 0);
-      }}
-      onChange={(e) => setLocalValue(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
-      className={cn(
-        "flex rounded-xl border border-border bg-muted/30 text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-colors duration-200",
-        className
-      )}
-      dir="ltr"
-    />
-  );
-}
-
 interface CartItem {
   id: string;
   name: string;
@@ -1961,30 +1915,8 @@ export function CartPanel({
                   </button>
                 </div>
 
-                {/* سعر البيع التفاعلي بعملة السلة العامة، مع إجمالي السطر */}
-                <div className="flex items-center gap-1 shrink-0 text-left">
-                  {onUpdateItemPrice && (() => {
-                    const safeCartRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0
-                      ? selectedCurrency.rate
-                      : 1;
-                    const displayedLinePrice = roundForCurr(
-                      fromUsd(getItemPrice(item), selectedCurrency.code, safeCartRate),
-                      selectedCurrency.code
-                    );
-
-                    return (
-                      <EditablePrice
-                        value={displayedLinePrice}
-                        onChange={(newPriceInCartCurrency) => {
-                          const newBasePrice = selectedCurrency.code === 'USD'
-                            ? newPriceInCartCurrency
-                            : newPriceInCartCurrency / safeCartRate;
-                          onUpdateItemPrice(item.id, newBasePrice, item.unit);
-                        }}
-                        className="w-12 h-6 text-[10px] text-center bg-card border border-border/40 p-0.5 rounded-md font-bold"
-                      />
-                    );
-                  })()}
+                {/* إجمالي السطر بعملة السلة العامة */}
+                <div className="flex items-center shrink-0 text-left">
                   <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[3.4rem] text-left", wholesaleMode ? "text-warning" : "text-primary")}>
                     {selectedCurrency.symbol}{formatNumber(roundForCurr(fromUsd(getItemPrice(item) * item.quantity, selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code))}
                   </span>
