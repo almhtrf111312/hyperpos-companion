@@ -10,8 +10,6 @@ import {
   Percent,
   Banknote,
   CreditCard,
-  Share2,
-  Send,
   X,
   UserPlus,
   Check,
@@ -37,6 +35,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { toast } from '@/lib/sonner-bridge';
 import { showToast } from '@/lib/toast-config';
 import { isNotificationEventAllowed } from '@/lib/notification-events-config';
 import { showSmartToast } from '@/hooks/use-smart-toast';
@@ -1589,19 +1588,25 @@ export function CartPanel({
     if (data) setLastSale(null); // مسح بعد الطباعة
   };
 
+  // مشاركة الفاتورة عبر واتساب كصورة بعد اعتماد البيع حصراً
   const handleWhatsApp = async (saleData?: typeof lastSale) => {
-    const data = saleData || lastSale;
-    const shareCart = data ? data.cart : cart;
-    const shareCustName = data ? data.customerName : customerName;
-    const shareCurrency = data ? data.selectedCurrency : selectedCurrency;
-    const shareTotalInCurrency = data ? data.totalInCurrency : totalInCurrency;
-    const shareSubtotal = data ? data.subtotal : subtotal;
-    const shareDiscountAmount = data ? data.discountAmount : discountAmount;
+    const completedSale = saleData ?? lastSale;
+    // حماية صارمة: منع مشاركة السلة كمسودة قبل صدور رقم فاتورة معتمد
+    if (!completedSale?.invoiceNumber || !completedSale?.cart || completedSale.cart.length === 0) {
+      toast.warning('يرجى إتمام عملية البيع أولاً لمشاركة الفاتورة الرسمية');
+      return;
+    }
+
+    const data = completedSale;
+    const shareCart = data.cart;
+    const shareCustName = data.customerName;
+    const shareCurrency = data.selectedCurrency;
+    const shareTotalInCurrency = data.totalInCurrency;
+    const shareSubtotal = data.subtotal;
+    const shareDiscountAmount = data.discountAmount;
     const sharePaymentType = data?.paymentType || 'cash';
     const shareDownPayment = data?.downPayment ? roundForCurr(fromUsd(data.downPayment, shareCurrency.code, shareCurrency.rate), shareCurrency.code) : undefined;
     const shareDebtRemaining = data?.debtRemaining ? roundForCurr(fromUsd(data.debtRemaining, shareCurrency.code, shareCurrency.rate), shareCurrency.code) : undefined;
-
-    if (shareCart.length === 0) return;
 
     // تحميل إعدادات المتجر
     const store = getStoreSettings();
@@ -1609,7 +1614,7 @@ export function CartPanel({
 
     // تحضير بيانات الفاتورة للمشاركة
     const shareData: InvoiceShareData = {
-      id: data?.invoiceNumber ? `#${data.invoiceNumber}` : `POS-${Date.now()}`,
+      id: `#${data.invoiceNumber}`,
       storeName: store.name,
       storePhone: store.phone,
       customerName: shareCustName || 'عميل نقدي',
@@ -1626,7 +1631,7 @@ export function CartPanel({
       currencySymbol: shareCurrency.symbol,
       currency: shareCurrency.code,
       exchangeRate: shareCurrency.rate,
-      totalUSD: (data ? round8(data.subtotal - data.discountAmount + data.taxAmount) : round8(total)),
+      totalUSD: round8(data.subtotal - data.discountAmount + data.taxAmount),
       paymentType: sharePaymentType,
       downPayment: shareDownPayment,
       debtRemaining: shareDebtRemaining,
@@ -2302,28 +2307,6 @@ export function CartPanel({
                 <CreditCard className="w-4 h-4" />
                 {t('pos.debt')}
               </Button>
-              {/* Share Invoice as Image Action */}
-            <Button
-              data-tour="action-btns"
-              variant="ghost"
-              size="icon"
-              className="h-11 w-9 flex-shrink-0 text-primary hover:text-primary hover:bg-primary/10 rounded-xl"
-              disabled={cart.length === 0 && !lastSale}
-              onClick={() => handleWhatsApp()}
-              title={t('pos.shareAsImage') || 'مشاركة الفاتورة كصورة'}
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-9 flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
-              disabled={cart.length === 0 && !lastSale}
-              onClick={() => handleWhatsApp()}
-              title={t('pos.whatsapp')}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
           </div>
         </div>
         </>

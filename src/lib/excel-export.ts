@@ -7,16 +7,30 @@ import { formatDate, formatDateTime } from './utils';
 import { getReportCurrency } from './currencies';
 import { roundForCurrency } from './money-engine';
 
-export interface ExcelColumn {
+export interface ExportCurrencySnapshot {
+  code: string;
+  name: string;
+  symbol: string;
+  rate: number;
+  decimals: number;
+}
+
+export type ExportValueKind = 'money' | 'quantity' | 'percent' | 'date' | 'text';
+
+export interface ReportExportColumn {
   header: string;
   key: string;
   width?: number;
+  kind?: ExportValueKind;
 }
+
+export type ExcelColumn = ReportExportColumn;
 
 export interface ExcelExportOptions {
   sheetName?: string;
   fileName?: string;
-  columns: ExcelColumn[];
+  currency?: ExportCurrencySnapshot;
+  columns: ReportExportColumn[];
   data: Record<string, unknown>[];
   totals?: Record<string, number>;
   title?: string;
@@ -122,6 +136,7 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
   const {
     sheetName = 'Sheet1',
     fileName = 'export.xlsx',
+    currency,
     columns,
     data,
     totals,
@@ -133,6 +148,15 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
     reportType,
     summary,
   } = options;
+
+  const reportCurr = getReportCurrency();
+  const currencySnapshot: ExportCurrencySnapshot = currency || {
+    code: reportCurr.code,
+    name: reportCurr.name,
+    symbol: reportCurr.symbol,
+    rate: reportCurr.isUsd ? 1 : reportCurr.rate,
+    decimals: 2,
+  };
 
   const store = storeName ? { name: storeName, phone: storePhone, address: storeAddress } : getStoreInfo();
 
@@ -162,12 +186,11 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
   ws.mergeCells(1, 1, store.address ? 3 : store.phone ? 2 : 1, columns.length);
   ws.addRow([]);
 
-  const reportCurr = getReportCurrency();
   if (reportType) {
       ws.addRow([`نوع التقرير: ${reportType}`]);
       ws.lastRow!.font = { name: 'Segoe UI', size: 12, bold: true };
   }
-  ws.addRow([`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol}) - سعر الصرف: ${reportCurr.rate}`]);
+  ws.addRow([`عملة التقرير: ${currencySnapshot.name} (${currencySnapshot.symbol}) - سعر الصرف: ${currencySnapshot.rate}`]);
   ws.lastRow!.font = { name: 'Segoe UI', size: 10, italic: true };
   ws.addRow([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
   ws.addRow([]);
@@ -191,29 +214,45 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
       cell.border = thinBorder;
   });
 
-  // Data rows
+  // تنسيق مالي مناسب لعدد المنازل العشرية
+  const numFmt = currencySnapshot.decimals === 0
+    ? '#,##0'
+    : currencySnapshot.decimals === 3
+      ? '#,##0.000'
+      : '#,##0.00';
+
+  // معالجة صفوف البيانات بدقة
   data.forEach((item, index) => {
     const row = columns.map(col => {
-      const value = item[col.key];
-      if (typeof value === 'number') return value;
-      return String(value ?? '');
+      const val = item[col.key];
+      if (typeof val === 'number') {
+        if (col.kind === 'money') {
+          return roundForCurrency(val, currencySnapshot.code);
+        }
+        return val;
+      }
+      return String(val ?? '');
     });
-    
+
     const dataRow = ws.addRow(row);
     const isZebra = index % 2 !== 0;
-    
-    dataRow.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Segoe UI', size: 11 };
-        cell.border = thinBorder;
-        if (isZebra) {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-        }
-        
-        if (typeof cell.value === 'number') {
-            cell.alignment = { horizontal: 'left', vertical: 'middle' };
-        } else {
-            cell.alignment = { horizontal: 'right', vertical: 'middle' };
-        }
+
+    columns.forEach((col, colIdx) => {
+      const cell = dataRow.getCell(colIdx + 1);
+      cell.font = { name: 'Segoe UI', size: 11 };
+      cell.border = thinBorder;
+      if (isZebra) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      }
+
+      if (col.kind === 'money') {
+        cell.numFmt = numFmt;
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      } else if (typeof cell.value === 'number') {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      }
     });
   });
 
@@ -226,10 +265,15 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
       return '';
     });
     const totalsRow = ws.addRow(totalsRowValues);
-    totalsRow.eachCell((cell) => {
+    totalsRow.eachCell((cell, colNumber) => {
         cell.font = { name: 'Segoe UI', size: 12, bold: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
         cell.border = thinBorder;
+        const col = columns[colNumber - 1];
+        if (col?.kind === 'money') {
+          cell.numFmt = numFmt;
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
     });
   }
 

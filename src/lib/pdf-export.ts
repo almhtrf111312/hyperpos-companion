@@ -10,6 +10,23 @@ import ArabicReshaper from 'arabic-reshaper';
 import { getReportCurrency } from './currencies';
 import { roundForCurrency } from './money-engine';
 
+export interface ExportCurrencySnapshot {
+  code: string;
+  name: string;
+  symbol: string;
+  rate: number;
+  decimals: number;
+}
+
+export type ExportValueKind = 'money' | 'quantity' | 'percent' | 'date' | 'text';
+
+export interface ReportExportColumn {
+  header: string;
+  key: string;
+  width?: number;
+  kind?: ExportValueKind;
+}
+
 export interface PDFExportOptions {
   title: string;
   subtitle?: string;
@@ -18,7 +35,8 @@ export interface PDFExportOptions {
   storeAddress?: string;
   storeLogo?: string; // Base64 logo
   reportType?: string;
-  columns: { header: string; key: string }[];
+  currency?: ExportCurrencySnapshot;
+  columns: ReportExportColumn[];
   data: Record<string, unknown>[];
   totals?: Record<string, number | string>;
   summary?: { label: string; value: string | number }[];
@@ -138,6 +156,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     storeAddress,
     storeLogo,
     reportType,
+    currency,
     columns,
     data,
     totals,
@@ -146,6 +165,15 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     columnStyles,
     orientation = 'portrait',
   } = options;
+
+  const reportCurr = getReportCurrency();
+  const currencySnapshot: ExportCurrencySnapshot = currency || {
+    code: reportCurr.code,
+    name: reportCurr.name,
+    symbol: reportCurr.symbol,
+    rate: reportCurr.isUsd ? 1 : reportCurr.rate,
+    decimals: 2,
+  };
 
   // Create PDF document
   const doc = new jsPDF({
@@ -232,10 +260,9 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       doc.setTextColor(56, 189, 248); // #38BDF8 Sky Blue
       doc.text(processRTL(reportType), leftX, yPosition + 7.5, { align: 'left' });
     }
-    const reportCurr = getReportCurrency();
     doc.setFontSize(7.5);
     doc.setTextColor(203, 213, 225); // #CBD5E1
-    doc.text(processRTL(`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol})`), leftX, yPosition + 12.5, { align: 'left' });
+    doc.text(processRTL(`عملة التقرير: ${currencySnapshot.name} (${currencySnapshot.symbol})`), leftX, yPosition + 12.5, { align: 'left' });
     doc.text(processRTL(`تاريخ الإصدار: ${formatLocalDateTime()}`), leftX, yPosition + 17.5, { align: 'left' });
   } else {
     // --- LTR Header Layout ---
@@ -355,6 +382,12 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     effectiveColumns.map(col => {
       const value = item[col.key];
       if (typeof value === 'number') {
+        if (col.kind === 'money') {
+          return value.toLocaleString('en-US', {
+            minimumFractionDigits: currencySnapshot.decimals,
+            maximumFractionDigits: currencySnapshot.decimals,
+          });
+        }
         return value.toLocaleString('en-US');
       }
       return processRTL(String(value ?? ''));

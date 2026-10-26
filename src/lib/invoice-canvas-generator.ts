@@ -8,7 +8,7 @@
 import { formatNumber } from './utils';
 import { isGuestDemoMode } from './demo-data';
 import { getStoreSettings, getPrintSettings } from './print-utils';
-import { resolveInvoiceCurrencySymbol } from './currencies';
+import { resolveInvoiceCurrencySymbol, getActiveCurrencyCode } from './currencies';
 import { getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
 
 export interface InvoiceCanvasItem {
@@ -631,7 +631,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
     try {
       const enabledList = getEnabledCurrencies();
       const rawCode = data.currency_code || data.currency;
-      const invCurrency = (rawCode || (effectiveSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
+      const invCurrency = (rawCode || (effectiveSymbol === '$' ? 'USD' : getActiveCurrencyCode())).toUpperCase();
       const invRate = Number(data.exchange_rate || data.exchangeRate) || 1;
       
       // 1. حساب المعادل بالدولار الأساسي أولاً

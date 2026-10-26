@@ -9,7 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { formatNumber, formatCurrency } from './utils';
-import { resolveInvoiceCurrencySymbol } from './currencies';
+import { resolveInvoiceCurrencySymbol, getActiveCurrencyCode } from './currencies';
 import { getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
 import { isGuestDemoMode } from './demo-data';
 
@@ -355,7 +355,7 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
         try {
           const enabledList = getEnabledCurrencies();
           const rawCode = invoice.currency_code || invoice.currency;
-          const invCode = (rawCode || (effectiveSymbol === '$' ? 'USD' : 'TRY')).toUpperCase();
+          const invCode = (rawCode || (effectiveSymbol === '$' ? 'USD' : getActiveCurrencyCode())).toUpperCase();
           const invRate = Number(invoice.exchange_rate || invoice.exchangeRate) || 1;
 
           let baseUSD = invoice.totalUSD;

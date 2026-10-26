@@ -1,8 +1,14 @@
 {
-  "versionCode": 339,
-  "versionName": "1.1.9",
-  "lastUpdated": "2026-10-26T01:00:50.529261+00:00",
+  "versionCode": 340,
+  "versionName": "1.2.0",
+  "lastUpdated": "2026-10-26T09:35:07.131Z",
   "buildHistory": [
+    {
+      "versionCode": 340,
+      "versionName": "1.2.0",
+      "date": "2026-10-26",
+      "description": "v1.2.0 (Build 340) - عزل هوية العملات، زر الإضافة العائم الذكي، إزالة أزرار مشاركة السلة قبل البيع، وتوحيد محرك تصدير التقارير (Isolated Currency Models, Smart FAB, Pre-Sale Share Removal & Unified Report Exports)؛ حذف أزرار مشاركة السلة كمسودة وحماية دالة الواتساب للفواتير المعتمدة فقط، تحرير العملات من فرض TRY الافتراضي ودعم هويات QAR و EGP، مكوّن SmartFab العائم المشترك والمتتبع للتمرير مع دعم RTL، وترقية محرك تصدير Excel و PDF ببيانات رقمية دقيقة ولقطة عملة موحدة."
+    },
     {
       "versionCode": 339,
       "versionName": "1.1.9",

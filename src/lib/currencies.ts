@@ -10,7 +10,12 @@ import {
   getCurrencyDef,
   getActiveCurrencyDef,
   normalizeCurrencyCode,
+  CurrencyDefinition,
+  getDefaultDecimals,
+  getDefaultSymbolPosition,
 } from '@/lib/money-engine';
+
+export type { CurrencyDefinition };
 
 export interface PredefinedCurrency {
   code: string;
@@ -62,6 +67,68 @@ export const CURRENCY_CATEGORIES = [
 ] as const;
 
 /**
+ * كتالوج العملات الصريح الموحد
+ */
+export const CURRENCY_CATALOG: Record<string, CurrencyDefinition> = Object.fromEntries(
+  PREDEFINED_CURRENCIES.map(c => [
+    c.code.toUpperCase(),
+    {
+      code: c.code,
+      symbol: c.symbol,
+      name: c.name,
+      rate: c.suggestedRate || 1,
+      decimals: getDefaultDecimals(c.code),
+      symbolPosition: getDefaultSymbolPosition(c.code, c.symbol),
+      enabled: true,
+    }
+  ])
+);
+
+/**
+ * الحصول على تعريف العملة الأساسية للمتجر
+ */
+export const getPrimaryCurrencyDef = (): CurrencyDefinition => {
+  return getActiveCurrencyDef();
+};
+
+/**
+ * الحصول على كود العملة الأساسية/النشطة للمتجر
+ */
+export const getActiveCurrencyCode = (): string => {
+  return getActiveCurrencyDef().code || 'USD';
+};
+
+/**
+ * Safe currency resolver: Prioritizes explicit code over rate guessing
+ */
+export const resolveSafeCurrency = (
+  code?: string,
+  symbol?: string,
+  rate?: number
+): CurrencyDefinition => {
+  if (code) {
+    const upper = code.toUpperCase();
+    if (CURRENCY_CATALOG[upper]) {
+      return CURRENCY_CATALOG[upper];
+    }
+    const stateDef = getCurrencyDef(upper);
+    if (stateDef && stateDef.code === upper) {
+      return stateDef;
+    }
+  }
+  
+  // فحص بالرمز إذا كان الكود مفقوداً
+  if (symbol) {
+    const cleanSym = symbol.trim();
+    const foundBySymbol = Object.values(CURRENCY_CATALOG).find(c => c.symbol === cleanSym);
+    if (foundBySymbol) return foundBySymbol;
+  }
+
+  // fallback آمن إلى العملة الأساسية للمتجر بدلاً من فرض TRY عشوائياً
+  return getPrimaryCurrencyDef();
+};
+
+/**
  * البحث عن عملة محددة مسبقاً حسب الرمز الكودي (Code)
  */
 export function getPredefinedCurrency(code?: string): PredefinedCurrency | undefined {
@@ -87,29 +154,25 @@ export function getCurrencySymbolByCode(code?: string, fallback?: string): strin
 export function inferCurrencyFromExchangeRate(rate: number, hintedCode?: string): PredefinedCurrency | undefined {
   if (!rate || isNaN(rate) || rate <= 0) return undefined;
 
-  // إذا كان هناك تلميح بكود العملة
+  // 1. إذا كان هناك كود صريح، يتم اعتماده فوراً وتفضيله على أي تخمين لسعر الصرف
   if (hintedCode && hintedCode.trim().toUpperCase() !== 'USD') {
     const hintUpper = normalizeCurrencyCode(hintedCode);
-
-    // فحص أمان صارم: إذا كان سعر الصرف غير متوافق نهائياً مع العملة المزعومة،
-    // نمنع تطبيق الكود الخاطئ ونستنتج العملة الحقيقية من السعر
-    if (rate >= 50000 && hintUpper !== 'LBP') {
-      return PREDEFINED_CURRENCIES.find(c => c.code === 'LBP');
-    }
-    if (rate >= 5000 && rate < 50000 && hintUpper !== 'SYP') {
-      return PREDEFINED_CURRENCIES.find(c => c.code === 'SYP');
-    }
-    if (rate >= 800 && rate < 5000 && hintUpper !== 'IQD') {
-      return PREDEFINED_CURRENCIES.find(c => c.code === 'IQD');
-    }
-
     const hintCur = PREDEFINED_CURRENCIES.find(c => c.code === hintUpper);
     if (hintCur) {
       return hintCur;
     }
   }
 
-  // استنتاج حسب نطاقات أسعار الصرف الحقيقية مقابل الدولار الأمريكي
+  // 2. التحقق من العملة النشطة للمتجر: إذا كان سعر الصرف الحالي للمتجر متوافقاً مع هذا المعدل
+  const activeDef = getActiveCurrencyDef();
+  if (activeDef && activeDef.code !== 'USD' && activeDef.rate > 0) {
+    if (Math.abs(activeDef.rate - rate) / activeDef.rate < 0.15) {
+      const match = PREDEFINED_CURRENCIES.find(c => c.code === activeDef.code);
+      if (match) return match;
+    }
+  }
+
+  // 3. استنتاج العملة التاريخية بحيادية من نطاقات الأسعار دون فرض أعمى لـ TRY أو SAR
   if (rate >= 50000) {
     // الليرة اللبنانية (LBP ~89500)
     return PREDEFINED_CURRENCIES.find(c => c.code === 'LBP');
@@ -138,17 +201,19 @@ export function inferCurrencyFromExchangeRate(rate: number, hintedCode?: string)
     return PREDEFINED_CURRENCIES.find(c => c.code === 'DZD');
   }
   if (rate >= 15 && rate < 80) {
-    // الليرة التركية (TRY ~34) أو الجنيه المصري (EGP ~48)
-    if (hintedCode && hintedCode.trim().toUpperCase() === 'EGP') {
-      return PREDEFINED_CURRENCIES.find(c => c.code === 'EGP');
+    // التفريق العادل بين الجنيه المصري (EGP ~48-50) والليرة التركية (TRY ~34)
+    if (activeDef.code === 'EGP' || activeDef.code === 'TRY') {
+      return PREDEFINED_CURRENCIES.find(c => c.code === activeDef.code);
     }
-    return PREDEFINED_CURRENCIES.find(c => c.code === 'TRY');
+    return rate >= 42
+      ? PREDEFINED_CURRENCIES.find(c => c.code === 'EGP')
+      : PREDEFINED_CURRENCIES.find(c => c.code === 'TRY');
   }
   if (rate > 1.05 && rate < 15) {
-    // عملات الخليج والمغرب العربي ذات الصرف المنخفض
-    if (hintedCode) {
-      const match = PREDEFINED_CURRENCIES.find(c => c.code === normalizeCurrencyCode(hintedCode));
-      if (match) return match;
+    // عملات الخليج والمغرب العربي (SAR, AED, QAR, MAD, LYD, TND, JOD)
+    if (activeDef && activeDef.code !== 'USD') {
+      const activeMatch = PREDEFINED_CURRENCIES.find(c => c.code === activeDef.code);
+      if (activeMatch) return activeMatch;
     }
     return PREDEFINED_CURRENCIES.find(c => c.code === 'SAR');
   }

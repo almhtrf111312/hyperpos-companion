@@ -53,6 +53,7 @@ import {
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatMoney, formatReportAmount } from '@/lib/utils';
 import { getReportCurrency } from '@/lib/currencies';
+import { getCurrencyDef, roundForCurrency } from '@/lib/money-engine';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/sonner-bridge';
 import { useTheme } from '@/hooks/use-theme';
@@ -1479,28 +1480,38 @@ export default function Reports() {
         case 'purchases': {
           const filteredPurchases = getFilteredPurchasesForReport();
           if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات في الفترة المحددة للتصدير'); return; }
+          const reportCurr = getReportCurrency();
+          const currDef = getCurrencyDef(reportCurr.code);
+          const exportSnapshot = {
+            code: reportCurr.code,
+            name: reportCurr.name,
+            symbol: reportCurr.symbol,
+            rate: reportCurr.isUsd ? 1 : reportCurr.rate,
+            decimals: currDef.decimals,
+          };
           await exportToPDF({
             title: 'تقرير فواتير المشتريات',
-            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to}`,
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to} - العملة: ${exportSnapshot.name} (${exportSnapshot.symbol})`,
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            currency: exportSnapshot,
             summary: currentSummary,
             columns: [
               { header: 'رقم الفاتورة', key: 'invoiceNumber' },
               { header: 'المورد', key: 'supplierName' },
               { header: 'التاريخ', key: 'date' },
-              { header: 'الإجمالي المتوقع', key: 'expectedTotal' },
-              { header: 'الإجمالي الفعلي', key: 'actualTotal' },
-              { header: 'عدد الأصناف', key: 'itemsCount' },
+              { header: `الإجمالي المتوقع (${exportSnapshot.symbol})`, key: 'expectedTotal', kind: 'money' },
+              { header: `الإجمالي الفعلي (${exportSnapshot.symbol})`, key: 'actualTotal', kind: 'money' },
+              { header: 'عدد الأصناف', key: 'itemsCount', kind: 'quantity' },
               { header: 'الحالة', key: 'status' },
             ],
             data: filteredPurchases.map(p => ({
               invoiceNumber: p.invoice_number || p.id,
               supplierName: p.supplier_name || 'مورد عام',
               date: toLocalDateString(p.created_at || p.invoice_date),
-              expectedTotal: formatReportAmount(p.expected_grand_total || 0),
-              actualTotal: formatReportAmount(p.actual_grand_total || p.expected_grand_total || 0),
+              expectedTotal: roundForCurrency((p.expected_grand_total || 0) * exportSnapshot.rate, exportSnapshot.code),
+              actualTotal: roundForCurrency((p.actual_grand_total || p.expected_grand_total || 0) * exportSnapshot.rate, exportSnapshot.code),
               itemsCount: p.actual_items_count || p.expected_items_count || 0,
               status: p.status === 'finalized' ? 'معتمدة ومكتملة' : p.status === 'reconciled' ? 'تمت المطابقة' : 'مسودة',
             })),
@@ -1511,42 +1522,52 @@ export default function Reports() {
         case 'debts': {
           const filteredDebts = getFilteredDebtsForReport();
           if (filteredDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          const reportCurr = getReportCurrency();
+          const currDef = getCurrencyDef(reportCurr.code);
+          const exportSnapshot = {
+            code: reportCurr.code,
+            name: reportCurr.name,
+            symbol: reportCurr.symbol,
+            rate: reportCurr.isUsd ? 1 : reportCurr.rate,
+            decimals: currDef.decimals,
+          };
           const totalDebtVal = filteredDebts.reduce((s, d) => s + (d.totalDebt || 0), 0);
           const totalPaidVal = filteredDebts.reduce((s, d) => s + (d.totalPaid || 0), 0);
           const remainingDebtVal = filteredDebts.reduce((s, d) => s + (d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))), 0);
           await exportToPDF({
             title: 'تقرير الديون والبيع المؤجل',
             reportType: 'تقرير الديون والبيع المؤجل',
-            subtitle: `تاريخ التقرير: ${dateRange.to}`,
+            subtitle: `تاريخ التقرير: ${dateRange.to} - العملة: ${exportSnapshot.name} (${exportSnapshot.symbol})`,
             storeName: storeInfo.name,
             storePhone: storeInfo.phone,
             storeAddress: storeInfo.address,
+            currency: exportSnapshot,
             summary: [
-              { label: 'إجمالي الديون', value: totalDebtVal },
-              { label: 'إجمالي المسدد', value: totalPaidVal },
-              { label: 'المتبقي للتحصيل', value: remainingDebtVal },
+              { label: 'إجمالي الديون', value: formatReportAmount(totalDebtVal) },
+              { label: 'إجمالي المسدد', value: formatReportAmount(totalPaidVal) },
+              { label: 'المتبقي للتحصيل', value: formatReportAmount(remainingDebtVal) },
               { label: 'عدد الديون', value: filteredDebts.length },
             ],
             columns: [
               { header: 'العميل', key: 'customerName' },
-              { header: 'المبلغ الإجمالي', key: 'totalDebt' },
-              { header: 'المسدد', key: 'totalPaid' },
-              { header: 'المتبقي', key: 'remainingDebt' },
+              { header: `المبلغ الإجمالي (${exportSnapshot.symbol})`, key: 'totalDebt', kind: 'money' },
+              { header: `المسدد (${exportSnapshot.symbol})`, key: 'totalPaid', kind: 'money' },
+              { header: `المتبقي (${exportSnapshot.symbol})`, key: 'remainingDebt', kind: 'money' },
               { header: 'تاريخ الاستحقاق', key: 'dueDate' },
               { header: 'الحالة', key: 'status_label' },
             ],
             data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
-              totalDebt: d.totalDebt || 0,
-              totalPaid: d.totalPaid || 0,
-              remainingDebt: d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0)),
+              totalDebt: roundForCurrency((d.totalDebt || 0) * exportSnapshot.rate, exportSnapshot.code),
+              totalPaid: roundForCurrency((d.totalPaid || 0) * exportSnapshot.rate, exportSnapshot.code),
+              remainingDebt: roundForCurrency((d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))) * exportSnapshot.rate, exportSnapshot.code),
               dueDate: d.dueDate || '-',
               status_label: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : d.status === 'overdue' ? 'متأخر' : 'مستحق',
             })),
             totals: {
-              totalDebt: totalDebtVal,
-              totalPaid: totalPaidVal,
-              remainingDebt: remainingDebtVal,
+              totalDebt: roundForCurrency(totalDebtVal * exportSnapshot.rate, exportSnapshot.code),
+              totalPaid: roundForCurrency(totalPaidVal * exportSnapshot.rate, exportSnapshot.code),
+              remainingDebt: roundForCurrency(remainingDebtVal * exportSnapshot.rate, exportSnapshot.code),
             },
             fileName: `debts-report-${dateRange.to}.pdf`,
             orientation: 'landscape',
@@ -1778,25 +1799,36 @@ export default function Reports() {
         case 'purchases': {
           const filteredPurchases = getFilteredPurchasesForReport();
           if (filteredPurchases.length === 0) { toast.error('لا توجد فواتير مشتريات للتصدير'); return; }
+          const reportCurr = getReportCurrency();
+          const currDef = getCurrencyDef(reportCurr.code);
+          const exportSnapshot = {
+            code: reportCurr.code,
+            name: reportCurr.name,
+            symbol: reportCurr.symbol,
+            rate: reportCurr.isUsd ? 1 : reportCurr.rate,
+            decimals: currDef.decimals,
+          };
           await exportToExcel({
             title: 'تقرير فواتير المشتريات',
+            subtitle: `الفترة من ${dateRange.from} إلى ${dateRange.to} - العملة: ${exportSnapshot.name} (${exportSnapshot.symbol})`,
             sheetName: 'المشتريات',
+            currency: exportSnapshot,
             summary: currentSummary,
             columns: [
               { header: 'رقم الفاتورة', key: 'invoiceNumber', width: 18 },
               { header: 'المورد', key: 'supplierName', width: 22 },
               { header: 'التاريخ', key: 'date', width: 15 },
-              { header: 'الإجمالي المتوقع', key: 'expectedTotal', width: 16 },
-              { header: 'الإجمالي الفعلي', key: 'actualTotal', width: 16 },
-              { header: 'عدد الأصناف', key: 'itemsCount', width: 14 },
+              { header: `الإجمالي المتوقع (${exportSnapshot.symbol})`, key: 'expectedTotal', width: 16, kind: 'money' },
+              { header: `الإجمالي الفعلي (${exportSnapshot.symbol})`, key: 'actualTotal', width: 16, kind: 'money' },
+              { header: 'عدد الأصناف', key: 'itemsCount', width: 14, kind: 'quantity' },
               { header: 'الحالة', key: 'status', width: 16 },
             ],
             data: filteredPurchases.map(p => ({
               invoiceNumber: p.invoice_number || p.id,
               supplierName: p.supplier_name || 'مورد عام',
               date: toLocalDateString(p.created_at || p.invoice_date),
-              expectedTotal: p.expected_grand_total || 0,
-              actualTotal: p.actual_grand_total || p.expected_grand_total || 0,
+              expectedTotal: roundForCurrency((p.expected_grand_total || 0) * exportSnapshot.rate, exportSnapshot.code),
+              actualTotal: roundForCurrency((p.actual_grand_total || p.expected_grand_total || 0) * exportSnapshot.rate, exportSnapshot.code),
               itemsCount: p.actual_items_count || p.expected_items_count || 0,
               status: p.status === 'finalized' ? 'معتمدة ومكتملة' : p.status === 'reconciled' ? 'تمت المطابقة' : 'مسودة',
             })),
@@ -1807,38 +1839,50 @@ export default function Reports() {
         case 'debts': {
           const filteredDebts = getFilteredDebtsForReport();
           if (filteredDebts.length === 0) { toast.error('لا توجد ديون للتصدير'); return; }
+          const reportCurr = getReportCurrency();
+          const currDef = getCurrencyDef(reportCurr.code);
+          const exportSnapshot = {
+            code: reportCurr.code,
+            name: reportCurr.name,
+            symbol: reportCurr.symbol,
+            rate: reportCurr.isUsd ? 1 : reportCurr.rate,
+            decimals: currDef.decimals,
+          };
           const totalDebtVal = filteredDebts.reduce((s, d) => s + (d.totalDebt || 0), 0);
           const totalPaidVal = filteredDebts.reduce((s, d) => s + (d.totalPaid || 0), 0);
           const remainingDebtVal = filteredDebts.reduce((s, d) => s + (d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))), 0);
           await exportToExcel({
             title: 'تقرير الديون والبيع المؤجل',
+            reportType: 'تقرير الديون والبيع المؤجل',
+            subtitle: `تاريخ التقرير: ${dateRange.to} - العملة: ${exportSnapshot.name} (${exportSnapshot.symbol})`,
             sheetName: 'الديون',
+            currency: exportSnapshot,
             summary: [
-              { label: 'إجمالي الديون', value: totalDebtVal },
-              { label: 'إجمالي المسدد', value: totalPaidVal },
-              { label: 'المتبقي للتحصيل', value: remainingDebtVal },
+              { label: 'إجمالي الديون', value: formatReportAmount(totalDebtVal) },
+              { label: 'إجمالي المسدد', value: formatReportAmount(totalPaidVal) },
+              { label: 'المتبقي للتحصيل', value: formatReportAmount(remainingDebtVal) },
               { label: 'عدد الديون', value: filteredDebts.length },
             ],
             columns: [
               { header: 'العميل', key: 'customerName', width: 22 },
-              { header: 'المبلغ الإجمالي', key: 'totalDebt', width: 15 },
-              { header: 'المسدد', key: 'totalPaid', width: 15 },
-              { header: 'المتبقي', key: 'remainingDebt', width: 15 },
+              { header: `المبلغ الإجمالي (${exportSnapshot.symbol})`, key: 'totalDebt', width: 15, kind: 'money' },
+              { header: `المسدد (${exportSnapshot.symbol})`, key: 'totalPaid', width: 15, kind: 'money' },
+              { header: `المتبقي (${exportSnapshot.symbol})`, key: 'remainingDebt', width: 15, kind: 'money' },
               { header: 'تاريخ الاستحقاق', key: 'dueDate', width: 15 },
               { header: 'الحالة', key: 'status_label', width: 15 },
             ],
             data: filteredDebts.map(d => ({
               customerName: d.customerName || 'عميل',
-              totalDebt: d.totalDebt || 0,
-              totalPaid: d.totalPaid || 0,
-              remainingDebt: d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0)),
+              totalDebt: roundForCurrency((d.totalDebt || 0) * exportSnapshot.rate, exportSnapshot.code),
+              totalPaid: roundForCurrency((d.totalPaid || 0) * exportSnapshot.rate, exportSnapshot.code),
+              remainingDebt: roundForCurrency((d.remainingDebt ?? Math.max(0, (d.totalDebt || 0) - (d.totalPaid || 0))) * exportSnapshot.rate, exportSnapshot.code),
               dueDate: d.dueDate || '-',
               status_label: d.status === 'fully_paid' ? 'مسدد' : d.status === 'partially_paid' ? 'مسدد جزئياً' : d.status === 'overdue' ? 'متأخر' : 'مستحق',
             })),
             totals: {
-              totalDebt: totalDebtVal,
-              totalPaid: totalPaidVal,
-              remainingDebt: remainingDebtVal,
+              totalDebt: roundForCurrency(totalDebtVal * exportSnapshot.rate, exportSnapshot.code),
+              totalPaid: roundForCurrency(totalPaidVal * exportSnapshot.rate, exportSnapshot.code),
+              remainingDebt: roundForCurrency(remainingDebtVal * exportSnapshot.rate, exportSnapshot.code),
             },
             fileName: `debts-${dateRange.to}.xlsx`,
           });

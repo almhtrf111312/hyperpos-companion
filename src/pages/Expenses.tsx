@@ -30,6 +30,7 @@ import {
 import { cn, formatNumber, formatCurrency, formatDateTime } from '@/lib/utils';
 import { useMoney } from '@/hooks/use-money';
 import { Button } from '@/components/ui/button';
+import { SmartFab } from '@/components/ui/SmartFab';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -1432,17 +1433,8 @@ export default function Expenses() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Scroll-aware Smart FAB with Speed Dial Options */}
-      <div
-        className={cn(
-          "fixed z-40 transition-all duration-300 ease-out pointer-events-none",
-          "bottom-20 md:bottom-8",
-          isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
-          isFabVisible
-            ? "translate-y-0 opacity-100 scale-100"
-            : "translate-y-24 opacity-0 scale-90 pointer-events-none"
-        )}
-      >
+      {/* Scroll-aware Smart FAB with Speed Dial Options عبر المكوّن الذكي الموحد */}
+      <SmartFab label={t('expenses.addExpense')}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -1495,7 +1487,7 @@ export default function Expenses() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </SmartFab>
     </div>
   );
 }

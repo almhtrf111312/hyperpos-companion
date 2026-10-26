@@ -32,6 +32,7 @@ import { cn, toWesternNumerals, formatNumber, formatMoney } from '@/lib/utils';
 import { useCurrency } from '@/hooks/use-currency';
 import { useMoney } from '@/hooks/use-money';
 import { Button } from '@/components/ui/button';
+import { SmartFab } from '@/components/ui/SmartFab';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -3479,32 +3480,12 @@ export default function Products() {
           quality={40}
         />
 
-        {/* Floating Action Button (FAB) لإضافة منتج - ظاهر دائماً وثابت لسهولة وسرعة الوصول */}
+        {/* Floating Action Button (FAB) لإضافة منتج عبر المكوّن الذكي الموحد */}
         {canAddProducts && (
-          <div
-            className={cn(
-              "fixed z-40 transition-[opacity,transform] duration-300 ease-out pointer-events-none",
-              "bottom-20 md:bottom-8",
-              isRTL ? "left-4 md:left-8" : "right-4 md:right-8",
-              isFabVisible
-                ? "translate-y-0 opacity-100 scale-100"
-                : "translate-y-24 opacity-0 scale-90 pointer-events-none"
-            )}
-          >
-            <button
-              type="button"
-              onClick={handleOpenAddProduct}
-              className={cn(
-                "pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full",
-                "bg-gradient-primary hover:opacity-95 active:scale-95 text-primary-foreground font-bold",
-                "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 ring-4 ring-primary/15 transition-[transform,opacity] duration-300 ease-out cursor-pointer"
-              )}
-              title={tDynamic('addProduct')}
-              aria-label={tDynamic('addProduct')}
-            >
-              <Plus className="w-7 h-7 md:w-8 md:h-8 stroke-[2.5]" />
-            </button>
-          </div>
+          <SmartFab
+            onClick={handleOpenAddProduct}
+            label={tDynamic('addProduct')}
+          />
         )}
     </div>
   );
