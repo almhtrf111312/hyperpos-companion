@@ -1,8 +1,8 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-24  
-**Current Version:** v1.0.72  
-**Repository Branch:** `main`  
+**Last Updated:** 2026-10-26  
+**Current Version:** `v1.1.9 (Build 339)`  
+**Repository Branch:** `main` (Synced with `origin/main` & `origin/event-or-artifact` at commit `a4c245c`)  
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
 
@@ -69,6 +69,34 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-26 (v1.1.9 - Build 339 | Commit `a4c245c`):** Phase 1-6 Full POS & Reports Polish & Unified Export:
+  * **POS Cart Currency Selector Isolation & Catalog Fixed Base:** Isolated `ProductGrid` currency display strictly to default store currency (`catalogCurrency`). Added elegant currency capsule buttons in `CartPanel.tsx` header for instant cart receipt currency selection and live total recalculation while preserving catalog prices.
+  * **Reports Header Streamlining:** Merged financial reports title directly with Smart/Professional display mode capsule switcher on the same flex row (`whitespace-nowrap shrink-0`) to prevent wrapping and wasted space on mobile viewports.
+  * **Unified Dynamic Report Currency & Export:** Converted `PartnerProfitDetailedReport.tsx` to `formatReportAmount` and `roundForCurrency`. Upgraded both `src/lib/excel-export.ts` and `src/lib/pdf-export.ts` to retrieve `getReportCurrency()` and convert all accounting numbers across sales, invoices, expenses, partners, cash shifts, and custody reports into active report currency with formal headers.
+  * **Non-Scrolling Categorized Tab Matrix:** Eliminated horizontal scrolling (`overflow-x-auto`) for report categories. Organized all reports into vertical sections with responsive grids (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4`) for sales, inventory, debts, and admin operations.
+  * **ProfitTrendChart Deduplication:** Stripped duplicate top summary stats cards appearing above average daily profit line; expanded clean chart height to 280px with neat footer KPI highlights.
+  * **Production Build & Verification:** Zero TypeScript errors, 11/11 automated unit tests passed, production build passed in 12s, committed and pushed to `origin main` and `origin event-or-artifact`.
+* **2026-10-26 (v1.1.8 - Build 338 | Commit `25002e9`):** Line-Level Price Entry Currency Scope in POS:
+  * Isolated invoice currency (governed by store settings) from cart item price entry currency.
+  * Added line-level currency dropdown adjacent to `EditablePrice` in `CartPanel.tsx` storing `item.priceEntryCurrencyCode` and `item.priceEntryRateSnapshot`.
+  * Updated held-cart management (`HeldCart`) to store and restore `invoiceCurrencyCode` and `invoiceExchangeRateSnapshot`.
+  * Added comprehensive test suite `pos-currency-scope.test.ts` (5/5 passed).
+* **2026-10-26 (v1.1.7 - Build 337 | Commit `64c5022`):** Instant Native-Feel Page Navigation & Keep-Alive Lifecycle:
+  * Implemented `PageActivityContext` and Keep-Alive tab system keeping heavy pages in memory with LRU eviction policy.
+  * Added progressive batch pagination (20 items/page) with IntersectionObserver for `Products.tsx`.
+  * Implemented user-scoped Stale-While-Revalidate caching (`native-swr-cache.ts`).
+* **2026-10-26 (v1.1.6 - Build 336 | Commit `e474494`):** Smart & Professional Reports Hub:
+  * Introduced dual display modes: Smart (visual KPI cards & charts) and Professional (dense tabular data).
+  * Categorized reports into structured pills with single consolidated currency banner.
+* **2026-10-26 (v1.1.5 - Build 335 | Commit `c8f5c60` & `ae0f888`):** High-Precision Financial Math Engine:
+  * 8-decimal intermediate USD precision engine (`money-engine.ts`) preventing rounding drift across QAR, KWD, SYP, TRY, and USD.
+  * Dynamic currency decimals (0, 2, 3) and unified cash shifts accounting with automated tests (`financial-precision.test.ts`).
+* **2026-10-26 (v1.1.4 - Build 334 | Commit `4958f0f` & `e2516b3`):** Unified Capsule In-Page Tab Navigation:
+  * Modern capsule styling across all tabs (`Tabs.tsx`, `BossPanel.tsx`, `Appearance.tsx`, etc.) matching reference product design.
+* **2026-10-25 (v1.1.1 - v1.1.3 | Builds 331-333):** Full-Screen Views & Camera Isolation:
+  * Full-screen responsive forms for Services (`Services.tsx`) and Purchase Invoices (`PurchaseInvoiceDialog.tsx`).
+  * Isolated native camera barcode scanner portal (`NativeCameraPreview.tsx`) preventing inadvertent dialog dismissal or state loss.
+  * Instant category synchronization for rapid item creation.
 * **2026-10-24 (Branch: `event-or-artifact`):** Phase 2 - In-Memory Money Engine & Compatibility Layer:
   * Created `src/lib/money-engine.ts`: In-memory currency engine with zero-render-blocking localStorage calls, automatic `hyperpos_settings_v1_backup` safety guard, 8-decimal `round8` USD precision, dynamic currency decimal rules (0, 2, 3), and snapshot creation/formatting.
   * Created `src/hooks/use-money.tsx`: React hook powered by `useSyncExternalStore` for reactive currency updates.

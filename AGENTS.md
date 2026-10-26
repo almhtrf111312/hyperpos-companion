@@ -58,7 +58,15 @@
 ## 🚨 MANDATORY AGENT STARTUP PROTOCOL (إلزامي عند كل محادثة جديدة حتى مع «مرحباً»)
 Whenever the user starts a session (even with a greeting like "مرحبا" or a question):
 1. **Pull Latest from GitHub First:** Immediately run a git status/fetch (`git pull origin main` or verify alignment with `origin/main`).
-2. **Greet & Deliver Session Snapshot:** Greet the user in Arabic and provide a direct, concise recap of the latest session (Current version v1.0.72, 10 Improvements Plan completed, and where we stopped).
+2. **Greet & Deliver Session Snapshot:** Greet the user in Arabic and provide a direct, concise recap of the latest session:
+   - **Current Version:** `v1.1.9 (Build 339)` | Commit `a4c245c` (synced on `main` and `event-or-artifact`).
+   - **Completed Milestones:**
+     * v1.1.9: عزل عملة السلة عن الكتالوج، كبسولات عملة السلة، مصفوفة تبويبات التقارير بدون سكرول، توحيد عملة التصدير Excel/PDF، وتنظيف مخطط الأرباح.
+     * v1.1.8: عزل عملة تسعير بنود السلة في نقطة البيع وحفظ لقطات الصرف في السلات المعلقة.
+     * v1.1.7: تسريع التنقل الفوري بين الصفحات بالـ Keep-Alive والتحميل التدريجي المرجأ.
+     * v1.1.6: واجهة التقارير الذكية والاحترافية.
+     * v1.1.5: محرك الدقة المالية بـ 8 منازل عشرية وحسابات الصندوق متعددة العملات.
+     * v1.1.1 - v1.1.4: الشاشات الكاملة للصيانة والمشتريات وتوحيد التبويبات الكبسولية.
 3. **Strictly Abide by PROJECT_RULES.md:** Read and enforce all rules in `PROJECT_RULES.md` (USD Base Accounting, Atomic & WAC Reversal, No SQL/RPC without prior consent, `npm run build` exit code 0 before commit/push, Mobile-First responsiveness, and Arabic completion summaries).
 
 ## How Agents Should Work Here (FlowPOS Pro Protocol)
