@@ -715,15 +715,21 @@ export default function POS() {
     return filtered.length > 0 ? filtered : [all[0]];
   }, [settingsRev, t]);
 
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => {
-    const code = loadDefaultCurrencyCode();
-    return currencies.find(c => c.code === code) || currencies[0];
+  // 1. تثبيت عملة عرض شبكة المنتجات على عملة المتجر الافتراضية
+  const defaultStoreCurrencyCode = loadDefaultCurrencyCode();
+  const catalogCurrency = useMemo(() => {
+    return currencies.find(c => c.code === defaultStoreCurrencyCode) || currencies[0];
+  }, [currencies, defaultStoreCurrencyCode]);
+
+  // 2. عملة السلة والقبض (مستقلة تماماً)
+  const [cartCurrency, setCartCurrency] = useState<Currency>(() => {
+    return currencies.find(c => c.code === defaultStoreCurrencyCode) || currencies[0];
   });
 
   useEffect(() => {
     const code = loadDefaultCurrencyCode();
     const defaultCurr = currencies.find(c => c.code === code) || currencies[0];
-    setSelectedCurrency(prev => {
+    setCartCurrency(prev => {
       // إذا كانت السلة فارغة، تأخذ تلقائياً العملة الافتراضية من الإعدادات
       if (cart.length === 0) {
         return defaultCurr;
@@ -1031,8 +1037,8 @@ export default function POS() {
         cart,
         customerName,
         discount,
-        invoiceCurrencyCode: selectedCurrency.code,
-        invoiceExchangeRateSnapshot: selectedCurrency.rate,
+        invoiceCurrencyCode: cartCurrency.code,
+        invoiceExchangeRateSnapshot: cartCurrency.rate,
       } : c);
       
       const target = updated.find(c => c.id === cartId);
@@ -1042,13 +1048,13 @@ export default function POS() {
         setDiscount(target.discount);
         if (target.invoiceCurrencyCode) {
           const matchingCurr = currencies.find(c => c.code === target.invoiceCurrencyCode);
-          if (matchingCurr) setSelectedCurrency(matchingCurr);
+          if (matchingCurr) setCartCurrency(matchingCurr);
         }
         setActiveCartId(target.id);
       }
       return updated;
     });
-  }, [activeCartId, cart, customerName, discount, selectedCurrency, currencies]);
+  }, [activeCartId, cart, customerName, discount, cartCurrency, currencies]);
 
   const handleAddNewCart = useCallback(() => {
     const defaultCode = loadDefaultCurrencyCode();
@@ -1061,8 +1067,8 @@ export default function POS() {
         cart,
         customerName,
         discount,
-        invoiceCurrencyCode: selectedCurrency.code,
-        invoiceExchangeRateSnapshot: selectedCurrency.rate,
+        invoiceCurrencyCode: cartCurrency.code,
+        invoiceExchangeRateSnapshot: cartCurrency.rate,
       } : c),
       {
         id: newId,
@@ -1078,9 +1084,9 @@ export default function POS() {
     setCart([]);
     setCustomerName('');
     setDiscount(0);
-    setSelectedCurrency(defaultCurr);
+    setCartCurrency(defaultCurr);
     setActiveCartId(newId);
-  }, [activeCartId, cart, customerName, discount, heldCarts.length, currencies, selectedCurrency, t]);
+  }, [activeCartId, cart, customerName, discount, heldCarts.length, currencies, cartCurrency, t]);
 
   const handleRemoveCart = useCallback((cartId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1095,7 +1101,7 @@ export default function POS() {
         setDiscount(nextActive.discount);
         if (nextActive.invoiceCurrencyCode) {
           const matchingCurr = currencies.find(c => c.code === nextActive.invoiceCurrencyCode);
-          if (matchingCurr) setSelectedCurrency(matchingCurr);
+          if (matchingCurr) setCartCurrency(matchingCurr);
         }
         setActiveCartId(nextActive.id);
       }
@@ -1211,7 +1217,7 @@ export default function POS() {
               onProductClick={(product, qty) => addToCart(product, 'piece', qty || 1)}
               onAddToCart={(product, qty) => addToCart(product, 'piece', qty || 1)}
               onBarcodeScan={handleBarcodeScan}
-              selectedCurrency={selectedCurrency}
+              selectedCurrency={catalogCurrency} // لا يتغير إطلاقاً عند تبديل عملة السلة
             />
           </div>
 
@@ -1224,13 +1230,16 @@ export default function POS() {
               <CartPanel
                 cart={cart}
                 currencies={currencies}
-                selectedCurrency={selectedCurrency}
+                selectedCurrency={cartCurrency}
                 discount={discount}
                 customerName={customerName}
                 onUpdateQuantity={updateQuantity}
                 onRemoveItem={removeItem}
                 onClearCart={clearCart}
-                onCurrencyChange={setSelectedCurrency}
+                onCurrencyChange={(newCurr) => {
+                  // يغير عملة السلة والقبض فقط دون المساس بأسعار الكتالوج المعروضة
+                  setCartCurrency(newCurr);
+                }}
                 onDiscountChange={setDiscount}
                 onCustomerNameChange={setCustomerName}
                 onToggleUnit={toggleCartItemUnit}
@@ -1257,13 +1266,16 @@ export default function POS() {
             <CartPanel
               cart={cart}
               currencies={currencies}
-              selectedCurrency={selectedCurrency}
+              selectedCurrency={cartCurrency}
               discount={discount}
               customerName={customerName}
               onUpdateQuantity={updateQuantity}
               onRemoveItem={removeItem}
               onClearCart={clearCart}
-              onCurrencyChange={setSelectedCurrency}
+              onCurrencyChange={(newCurr) => {
+                // يغير عملة السلة والقبض فقط دون المساس بأسعار الكتالوج المعروضة
+                setCartCurrency(newCurr);
+              }}
               onDiscountChange={setDiscount}
               onCustomerNameChange={setCustomerName}
               onToggleUnit={toggleCartItemUnit}

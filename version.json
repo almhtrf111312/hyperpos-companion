@@ -1,8 +1,14 @@
 {
-  "versionCode": 338,
-  "versionName": "1.1.8",
-  "lastUpdated": "2026-10-26T00:18:00.000000+00:00",
+  "versionCode": 339,
+  "versionName": "1.1.9",
+  "lastUpdated": "2026-10-26T01:00:50.529261+00:00",
   "buildHistory": [
+    {
+      "versionCode": 339,
+      "versionName": "1.1.9",
+      "date": "2026-10-26",
+      "description": "v1.1.9 - عزل عملة السلة في نقطة البيع ومصفوفة التقارير وتوحيد عملة التصدير (POS Cart Currency Selector Isolation, Non-Scrolling Report Matrix & Unified Report Export)؛ عزل عملة عرض شبكة المنتجات عن عملة السلة والقبض، إعادة كبسولات العملة برأس السلة، دمج ترويسة التقارير وزر النمط الذكي/الاحترافي، توحيد عملة التقارير وتصدير Excel و PDF بالعملة المختارة، مصفوفة تبويبات التقارير المنظمة بدون تمرير أفقي، واستبعاد بطاقات الملخص المكررة فوق متوسط الربح اليومي."
+    },
     {
       "versionCode": 338,
       "versionName": "1.1.8",

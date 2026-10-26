@@ -27,7 +27,9 @@ import {
 } from '@/components/ui/table';
 import { toast } from '@/lib/sonner-bridge';
 import { loadPartners, Partner, ProfitRecord } from '@/lib/partners-store';
-import { formatNumber, formatMoney } from '@/lib/utils';
+import { formatNumber, formatMoney, formatReportAmount } from '@/lib/utils';
+import { getReportCurrency } from '@/lib/currencies';
+import { roundForCurrency } from '@/lib/money-engine';
 import { shareReport } from '@/lib/native-share';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -188,17 +190,22 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
   };
 
   const handleExportExcel = () => {
-    const headers = ['التاريخ', 'الشريك', 'التصنيف', 'المبلغ', 'الحالة', 'رقم الفاتورة'];
+    const reportCurr = getReportCurrency();
+    const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+    const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
+    const headers = ['التاريخ', 'الشريك', 'التصنيف', `المبلغ (${reportCurr.symbol})`, 'الحالة', 'رقم الفاتورة'];
     const rows = detailedData.map(row => [
       row.date,
       row.partnerName,
       row.category,
-      row.amount,
+      toCurr(row.amount),
       row.status === 'confirmed' ? 'مؤكد' : 'معلق',
       row.invoiceId,
     ]);
 
     const csvContent = [
+      [`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol}) - سعر الصرف: ${reportCurr.rate}`],
       headers.join(','),
       ...rows.map(row => row.map(cell => {
         let v = String(cell ?? '');
@@ -222,17 +229,19 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
   };
 
   const handleShareWhatsApp = async () => {
+    const reportCurr = getReportCurrency();
     let report = `📊 تقرير أرباح الشركاء المفصل\n`;
-    report += `📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n\n`;
-    report += `💰 الإجمالي: ${formatMoney(summary.totalProfit)}\n`;
-    report += `✅ مؤكد: ${formatMoney(summary.confirmedProfit)}\n`;
-    report += `⏳ معلق: ${formatMoney(summary.pendingProfit)}\n\n`;
+    report += `📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n`;
+    report += `💱 عملة التقرير: ${reportCurr.name} (${reportCurr.symbol})\n\n`;
+    report += `💰 الإجمالي: ${formatReportAmount(summary.totalProfit)}\n`;
+    report += `✅ مؤكد: ${formatReportAmount(summary.confirmedProfit)}\n`;
+    report += `⏳ معلق: ${formatReportAmount(summary.pendingProfit)}\n\n`;
 
     report += `📋 التفاصيل:\n`;
     aggregatedData.forEach(partner => {
-      report += `\n👤 ${partner.partnerName}: ${formatMoney(partner.totalProfit)}\n`;
+      report += `\n👤 ${partner.partnerName}: ${formatReportAmount(partner.totalProfit)}\n`;
       Object.entries(partner.byCategory).forEach(([cat, data]) => {
-        report += `   • ${cat}: ${formatMoney(data.amount)} (${data.count} عملية)\n`;
+        report += `   • ${cat}: ${formatReportAmount(data.amount)} (${data.count} عملية)\n`;
       });
     });
 
@@ -308,7 +317,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('reports.totalProfit') || 'إجمالي الأرباح'}</p>
-          <p className="text-xl font-bold text-foreground">{formatMoney(summary.totalProfit)}</p>
+          <p className="text-xl font-bold text-foreground">{formatReportAmount(summary.totalProfit)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('reports.ordersCount') || 'عدد العمليات'}</p>
@@ -316,11 +325,11 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('invoices.confirmed') || 'أرباح مؤكدة'}</p>
-          <p className="text-xl font-bold text-success">{formatMoney(summary.confirmedProfit)}</p>
+          <p className="text-xl font-bold text-success">{formatReportAmount(summary.confirmedProfit)}</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground mb-1">{t('debts.pending') || 'أرباح معلقة'}</p>
-          <p className="text-xl font-bold text-warning">{formatMoney(summary.pendingProfit)}</p>
+          <p className="text-xl font-bold text-warning">{formatReportAmount(summary.pendingProfit)}</p>
         </div>
       </div>
 
@@ -358,7 +367,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-left">
-                      <p className="text-lg font-bold text-success">{formatMoney(partner.totalProfit)}</p>
+                      <p className="text-lg font-bold text-success">{formatReportAmount(partner.totalProfit)}</p>
                     </div>
                     {expandedPartners.has(partner.partnerId) ?
                       <ChevronUp className="w-5 h-5 text-muted-foreground" /> :
@@ -384,7 +393,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                               </span>
                             </div>
                             <p className="text-lg font-bold text-primary mt-1">
-                              {formatMoney(data.amount)}
+                              {formatReportAmount(data.amount)}
                             </p>
                           </div>
                         ))}
@@ -455,7 +464,7 @@ export function PartnerProfitDetailedReport({ dateRange }: PartnerProfitDetailed
                         {row.category}
                       </span>
                     </TableCell>
-                    <TableCell className="font-semibold">{formatMoney(row.amount)}</TableCell>
+                    <TableCell className="font-semibold">{formatReportAmount(row.amount)}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${row.status === 'confirmed'
                           ? 'bg-success/10 text-success'

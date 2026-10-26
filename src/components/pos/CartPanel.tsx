@@ -17,7 +17,8 @@ import {
   Check,
   Search,
   Package,
-  Repeat
+  Repeat,
+  Coins
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -1768,6 +1769,35 @@ export function CartPanel({
                   <span>{t('pos.cart') || 'سلة'} +</span>
                 </button>
               )}
+            </div>
+          )}
+
+          {/* شريط اختيار العملة المفعلة للقبض داخل السلة */}
+          {currencies && currencies.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mt-1.5 scrollbar-none">
+              <span className="text-[11px] font-medium text-muted-foreground shrink-0 flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-primary" />
+                <span>{t('pos.cartCurrency') || 'عملة السلة'}:</span>
+              </span>
+              {currencies.map((curr) => {
+                const isSelected = selectedCurrency.code === curr.code;
+                return (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    onClick={() => onCurrencyChange?.(curr)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 border cursor-pointer select-none",
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs scale-105"
+                        : "bg-muted/50 text-muted-foreground border-border/50 hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <span>{curr.symbol}</span>
+                    <span className="mr-1 text-[10px] opacity-80">{curr.code}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
 

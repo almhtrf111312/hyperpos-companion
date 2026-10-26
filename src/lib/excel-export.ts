@@ -4,6 +4,8 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { formatDate, formatDateTime } from './utils';
+import { getReportCurrency } from './currencies';
+import { roundForCurrency } from './money-engine';
 
 export interface ExcelColumn {
   header: string;
@@ -160,10 +162,13 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
   ws.mergeCells(1, 1, store.address ? 3 : store.phone ? 2 : 1, columns.length);
   ws.addRow([]);
 
+  const reportCurr = getReportCurrency();
   if (reportType) {
       ws.addRow([`نوع التقرير: ${reportType}`]);
       ws.lastRow!.font = { name: 'Segoe UI', size: 12, bold: true };
   }
+  ws.addRow([`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol}) - سعر الصرف: ${reportCurr.rate}`]);
+  ws.lastRow!.font = { name: 'Segoe UI', size: 10, italic: true };
   ws.addRow([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
   ws.addRow([]);
 
@@ -277,13 +282,17 @@ export const exportInvoicesToExcel = async (
   dateRange?: { start: string; end: string },
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns: ExcelColumn[] = [
     { header: 'رقم الفاتورة', key: 'id', width: 15 },
     { header: 'التاريخ', key: 'date', width: 12 },
     { header: 'العميل', key: 'customerName', width: 20 },
-    { header: 'الإجمالي', key: 'total', width: 12 },
-    { header: 'الخصم', key: 'discount', width: 10 },
-    { header: 'صافي الربح', key: 'profit', width: 12 },
+    { header: `الإجمالي (${reportCurr.symbol})`, key: 'total', width: 14 },
+    { header: `الخصم (${reportCurr.symbol})`, key: 'discount', width: 12 },
+    { header: `صافي الربح (${reportCurr.symbol})`, key: 'profit', width: 14 },
     { header: 'نسبة الربح %', key: 'profitMargin', width: 12 },
     { header: 'نوع الدفع', key: 'paymentType', width: 10 },
     { header: 'الكاشير', key: 'cashierName', width: 15 },
@@ -293,17 +302,17 @@ export const exportInvoicesToExcel = async (
     id: inv.id,
     date: formatDate(new Date(inv.createdAt)),
     customerName: normalizeExportCustomerName(inv.customerName, inv.paymentType),
-    total: Math.round(inv.total * 100) / 100,
-    discount: Math.round((inv.discount || 0) * 100) / 100,
-    profit: Math.round((inv.profit || 0) * 100) / 100,
+    total: toCurr(inv.total),
+    discount: toCurr(inv.discount || 0),
+    profit: toCurr(inv.profit || 0),
     profitMargin: inv.total > 0 ? Math.round(((inv.profit || 0) / inv.total) * 100) : 0,
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
     cashierName: inv.cashierName || '-',
   }));
 
-  const totalSales = Math.round(invoices.reduce((sum, inv) => sum + inv.total, 0) * 100) / 100;
-  const totalProfit = Math.round(invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0) * 100) / 100;
-  const totalDiscount = Math.round(invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0) * 100) / 100;
+  const totalSales = toCurr(invoices.reduce((sum, inv) => sum + inv.total, 0));
+  const totalProfit = toCurr(invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0));
+  const totalDiscount = toCurr(invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0));
   const avgProfitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
 
   const totals: Record<string, number> = {
@@ -314,9 +323,9 @@ export const exportInvoicesToExcel = async (
   };
 
   const summary = customSummary || [
-    { label: 'إجمالي المبيعات', value: totalSales },
-    { label: 'إجمالي الخصومات', value: totalDiscount },
-    { label: 'صافي الأرباح', value: totalProfit },
+    { label: `إجمالي المبيعات (${reportCurr.symbol})`, value: totalSales },
+    { label: `إجمالي الخصومات (${reportCurr.symbol})`, value: totalDiscount },
+    { label: `صافي الأرباح (${reportCurr.symbol})`, value: totalProfit },
     { label: 'نسبة الربح الإجمالية %', value: `${avgProfitMargin}%` },
     { label: 'عدد الفواتير', value: invoices.length },
   ];
@@ -430,22 +439,26 @@ export const exportExpensesToExcel = async (
   dateRange?: { start: string; end: string },
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns: ExcelColumn[] = [
     { header: 'رقم', key: 'id', width: 10 },
     { header: 'النوع', key: 'type', width: 20 },
-    { header: 'المبلغ', key: 'amount', width: 12 },
+    { header: `المبلغ (${reportCurr.symbol})`, key: 'amount', width: 14 },
     { header: 'التاريخ', key: 'date', width: 12 },
     { header: 'ملاحظات', key: 'notes', width: 30 },
   ];
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = toCurr(expenses.reduce((sum, e) => sum + e.amount, 0));
 
   const totals: Record<string, number> = {
     amount: totalExpenses,
   };
 
   const summary = customSummary || [
-    { label: 'إجمالي المصاريف', value: totalExpenses },
+    { label: `إجمالي المصاريف (${reportCurr.symbol})`, value: totalExpenses },
     { label: 'عدد المصاريف', value: expenses.length },
   ];
 
@@ -483,23 +496,28 @@ export const exportPartnersToExcel = async (
   }>,
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns: ExcelColumn[] = [
     { header: 'الشريك', key: 'name', width: 20 },
     { header: 'نسبة الأرباح %', key: 'sharePercentage', width: 15 },
-    { header: 'رأس المال الأولي', key: 'initialCapital', width: 15 },
-    { header: 'رأس المال الحالي', key: 'currentCapital', width: 15 },
-    { header: 'إجمالي الأرباح', key: 'totalProfit', width: 15 },
-    { header: 'المسحوبات', key: 'totalWithdrawn', width: 15 },
-    { header: 'الرصيد الحالي', key: 'currentBalance', width: 15 },
+    { header: `رأس المال الأولي (${reportCurr.symbol})`, key: 'initialCapital', width: 16 },
+    { header: `رأس المال الحالي (${reportCurr.symbol})`, key: 'currentCapital', width: 16 },
+    { header: `إجمالي الأرباح (${reportCurr.symbol})`, key: 'totalProfit', width: 16 },
+    { header: `المسحوبات (${reportCurr.symbol})`, key: 'totalWithdrawn', width: 16 },
+    { header: `الرصيد الحالي (${reportCurr.symbol})`, key: 'currentBalance', width: 16 },
   ];
 
-  const totalCapital = partners.reduce((sum, p) => sum + p.currentCapital, 0);
-  const totalProfit = partners.reduce((sum, p) => sum + p.totalProfit, 0);
-  const totalWithdrawn = partners.reduce((sum, p) => sum + p.totalWithdrawn, 0);
-  const totalBalance = partners.reduce((sum, p) => sum + p.currentBalance, 0);
+  const totalInitial = toCurr(partners.reduce((sum, p) => sum + p.initialCapital, 0));
+  const totalCapital = toCurr(partners.reduce((sum, p) => sum + p.currentCapital, 0));
+  const totalProfit = toCurr(partners.reduce((sum, p) => sum + p.totalProfit, 0));
+  const totalWithdrawn = toCurr(partners.reduce((sum, p) => sum + p.totalWithdrawn, 0));
+  const totalBalance = toCurr(partners.reduce((sum, p) => sum + p.currentBalance, 0));
 
   const totals: Record<string, number> = {
-    initialCapital: partners.reduce((sum, p) => sum + p.initialCapital, 0),
+    initialCapital: totalInitial,
     currentCapital: totalCapital,
     totalProfit: totalProfit,
     totalWithdrawn: totalWithdrawn,
@@ -507,10 +525,10 @@ export const exportPartnersToExcel = async (
   };
 
   const summary = customSummary || [
-    { label: 'إجمالي رأس المال', value: totalCapital },
-    { label: 'إجمالي الأرباح', value: totalProfit },
-    { label: 'إجمالي المسحوبات', value: totalWithdrawn },
-    { label: 'إجمالي الأرصدة', value: totalBalance },
+    { label: `إجمالي رأس المال (${reportCurr.symbol})`, value: totalCapital },
+    { label: `إجمالي الأرباح (${reportCurr.symbol})`, value: totalProfit },
+    { label: `إجمالي المسحوبات (${reportCurr.symbol})`, value: totalWithdrawn },
+    { label: `إجمالي الأرصدة (${reportCurr.symbol})`, value: totalBalance },
   ];
 
   await exportToExcel({
@@ -587,6 +605,9 @@ export const exportSalesReportToExcel = async (
 ): Promise<void> => {
   const wb = new ExcelJS.Workbook();
   const store = getStoreInfo();
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
 
   // Summary sheet
   const summarySheet = wb.addWorksheet('الملخص');
@@ -596,53 +617,54 @@ export const exportSalesReportToExcel = async (
     store.address ? [`العنوان: ${store.address}`] : [],
     [],
     [`نوع التقرير: تقرير المبيعات التفصيلي`],
+    [`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol}) - سعر الصرف: ${reportCurr.rate}`],
     [`تاريخ الإصدار: ${formatLocalDateTime()}`],
     [],
     ['تقرير المبيعات التفصيلي'],
     [`الفترة: من ${dateRange.start} إلى ${dateRange.end}`],
     [],
-    ['البند', 'القيمة'],
-    ['إجمالي المبيعات', data.summary.totalSales],
-    ['صافي الأرباح', data.summary.totalProfit],
+    ['البند', `القيمة (${reportCurr.symbol})`],
+    ['إجمالي المبيعات', toCurr(data.summary.totalSales)],
+    ['صافي الأرباح', toCurr(data.summary.totalProfit)],
     ['عدد الطلبات', data.summary.totalOrders],
-    ['متوسط قيمة الطلب', Math.round(data.summary.avgOrderValue)],
+    ['متوسط قيمة الطلب', toCurr(data.summary.avgOrderValue)],
   ].filter(row => row.length > 0);
   summaryRows.forEach(row => summarySheet.addRow(row));
   summarySheet.getColumn(1).width = 25;
-  summarySheet.getColumn(2).width = 15;
+  summarySheet.getColumn(2).width = 20;
 
   // Daily sales sheet
   const dailySheet = wb.addWorksheet('المبيعات اليومية');
   const dailyRows = [
-    ['التاريخ', 'المبيعات', 'الأرباح', 'الطلبات'],
-    ...data.dailySales.map(d => [d.date, d.sales, d.profit, d.orders]),
+    ['التاريخ', `المبيعات (${reportCurr.symbol})`, `الأرباح (${reportCurr.symbol})`, 'الطلبات'],
+    ...data.dailySales.map(d => [d.date, toCurr(d.sales), toCurr(d.profit), d.orders]),
     [],
     ['الإجمالي',
-      data.dailySales.reduce((s, d) => s + d.sales, 0),
-      data.dailySales.reduce((s, d) => s + d.profit, 0),
+      toCurr(data.dailySales.reduce((s, d) => s + d.sales, 0)),
+      toCurr(data.dailySales.reduce((s, d) => s + d.profit, 0)),
       data.dailySales.reduce((s, d) => s + d.orders, 0)
     ]
   ];
   dailyRows.forEach(row => dailySheet.addRow(row));
-  [12, 12, 12, 10].forEach((w, i) => { dailySheet.getColumn(i + 1).width = w; });
+  [14, 18, 18, 10].forEach((w, i) => { dailySheet.getColumn(i + 1).width = w; });
 
   // Top products sheet
   const productsSheet = wb.addWorksheet('أفضل المنتجات');
   const productsRows = [
-    ['المنتج', 'الكمية المباعة', 'الإيرادات'],
-    ...data.topProducts.map(p => [p.name, p.sales, p.revenue]),
+    ['المنتج', 'الكمية المباعة', `الإيرادات (${reportCurr.symbol})`],
+    ...data.topProducts.map(p => [p.name, p.sales, toCurr(p.revenue)]),
   ];
   productsRows.forEach(row => productsSheet.addRow(row));
-  [25, 15, 15].forEach((w, i) => { productsSheet.getColumn(i + 1).width = w; });
+  [25, 15, 18].forEach((w, i) => { productsSheet.getColumn(i + 1).width = w; });
 
   // Top customers sheet
   const customersSheet = wb.addWorksheet('أفضل العملاء');
   const customersRows = [
-    ['العميل', 'عدد الطلبات', 'الإجمالي'],
-    ...data.topCustomers.map(c => [c.name, c.orders, c.total]),
+    ['العميل', 'عدد الطلبات', `الإجمالي (${reportCurr.symbol})`],
+    ...data.topCustomers.map(c => [c.name, c.orders, toCurr(c.total)]),
   ];
   customersRows.forEach(row => customersSheet.addRow(row));
-  [25, 15, 15].forEach((w, i) => { customersSheet.getColumn(i + 1).width = w; });
+  [25, 15, 18].forEach((w, i) => { customersSheet.getColumn(i + 1).width = w; });
 
   const fileName = `تقرير_المبيعات_${dateRange.start}_${dateRange.end}.xlsx`;
 
@@ -666,20 +688,24 @@ export const exportDailyReportToExcel = async (
     discrepancy: number;
   }
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns: ExcelColumn[] = [
     { header: 'البند', key: 'item', width: 25 },
-    { header: 'المبلغ', key: 'amount', width: 15 },
+    { header: `المبلغ (${reportCurr.symbol})`, key: 'amount', width: 16 },
   ];
 
   const data = [
-    { item: 'رصيد الافتتاح', amount: report.openingCash },
-    { item: 'المبيعات', amount: report.sales },
-    { item: 'الإيداعات', amount: report.deposits },
-    { item: 'المصاريف', amount: -report.expenses },
-    { item: 'السحوبات', amount: -report.withdrawals },
-    { item: 'رصيد الإغلاق (متوقع)', amount: report.openingCash + report.sales + report.deposits - report.expenses - report.withdrawals },
-    { item: 'رصيد الإغلاق (فعلي)', amount: report.closingCash },
-    { item: 'الفارق', amount: report.discrepancy },
+    { item: 'رصيد الافتتاح', amount: toCurr(report.openingCash) },
+    { item: 'المبيعات', amount: toCurr(report.sales) },
+    { item: 'الإيداعات', amount: toCurr(report.deposits) },
+    { item: 'المصاريف', amount: toCurr(-report.expenses) },
+    { item: 'السحوبات', amount: toCurr(-report.withdrawals) },
+    { item: 'رصيد الإغلاق (متوقع)', amount: toCurr(report.openingCash + report.sales + report.deposits - report.expenses - report.withdrawals) },
+    { item: 'رصيد الإغلاق (فعلي)', amount: toCurr(report.closingCash) },
+    { item: 'الفارق', amount: toCurr(report.discrepancy) },
   ];
 
   await exportToExcel({
@@ -713,29 +739,33 @@ export const exportCustodyReportToExcel = async (
     }>;
   }>
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns: ExcelColumn[] = [
     { header: 'الموزع', key: 'warehouseName', width: 20 },
     { header: 'عدد المنتجات', key: 'totalProducts', width: 12 },
     { header: 'إجمالي الكميات', key: 'totalQuantity', width: 12 },
-    { header: 'قيمة التكلفة', key: 'totalCostValue', width: 15 },
-    { header: 'قيمة البيع', key: 'totalSaleValue', width: 15 },
-    { header: 'الربح المتوقع', key: 'potentialProfit', width: 15 },
+    { header: `قيمة التكلفة (${reportCurr.symbol})`, key: 'totalCostValue', width: 16 },
+    { header: `قيمة البيع (${reportCurr.symbol})`, key: 'totalSaleValue', width: 16 },
+    { header: `الربح المتوقع (${reportCurr.symbol})`, key: 'potentialProfit', width: 16 },
   ];
 
   const data = distributors.map(d => ({
     warehouseName: d.warehouseName,
     totalProducts: d.totalProducts,
     totalQuantity: d.totalQuantity,
-    totalCostValue: d.totalCostValue,
-    totalSaleValue: d.totalSaleValue,
-    potentialProfit: d.potentialProfit,
+    totalCostValue: toCurr(d.totalCostValue),
+    totalSaleValue: toCurr(d.totalSaleValue),
+    potentialProfit: toCurr(d.potentialProfit),
   }));
 
   const totalProducts = distributors.reduce((sum, d) => sum + d.totalProducts, 0);
   const totalQuantity = distributors.reduce((sum, d) => sum + d.totalQuantity, 0);
-  const totalCostValue = distributors.reduce((sum, d) => sum + d.totalCostValue, 0);
-  const totalSaleValue = distributors.reduce((sum, d) => sum + d.totalSaleValue, 0);
-  const totalProfit = distributors.reduce((sum, d) => sum + d.potentialProfit, 0);
+  const totalCostValue = toCurr(distributors.reduce((sum, d) => sum + d.totalCostValue, 0));
+  const totalSaleValue = toCurr(distributors.reduce((sum, d) => sum + d.totalSaleValue, 0));
+  const totalProfit = toCurr(distributors.reduce((sum, d) => sum + d.potentialProfit, 0));
 
   const totals: Record<string, number> = {
     totalProducts,
@@ -749,9 +779,9 @@ export const exportCustodyReportToExcel = async (
     { label: 'عدد الموزعين', value: distributors.length },
     { label: 'إجمالي المنتجات', value: totalProducts },
     { label: 'إجمالي الكميات', value: totalQuantity },
-    { label: 'قيمة التكلفة الإجمالية', value: totalCostValue },
-    { label: 'قيمة البيع الإجمالية', value: totalSaleValue },
-    { label: 'الربح المتوقع', value: totalProfit },
+    { label: `قيمة التكلفة الإجمالية (${reportCurr.symbol})`, value: totalCostValue },
+    { label: `قيمة البيع الإجمالية (${reportCurr.symbol})`, value: totalSaleValue },
+    { label: `الربح المتوقع (${reportCurr.symbol})`, value: totalProfit },
   ];
 
   await exportToExcel({

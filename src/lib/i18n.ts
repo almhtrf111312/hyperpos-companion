@@ -1273,6 +1273,7 @@ export const translations = {
     // POS
     'pos.title': 'نقطة البيع',
     'pos.cart': 'السلة',
+    'pos.cartCurrency': 'عملة السلة',
     'pos.itemPriceCurrency': 'عملة سعر الصنف',
     'pos.invoiceCurrency': 'عملة الفاتورة',
     'pos.fromSettings': 'من الإعدادات',
@@ -3822,6 +3823,7 @@ export const translations = {
     // POS
     'pos.title': 'Point of Sale',
     'pos.cart': 'Cart',
+    'pos.cartCurrency': 'Cart Currency',
     'pos.itemPriceCurrency': 'Item Price Currency',
     'pos.invoiceCurrency': 'Invoice Currency',
     'pos.fromSettings': 'From Settings',
@@ -6309,6 +6311,7 @@ export const translations = {
     // POS (extended)
     'pos.title': 'Satış Noktası',
     'pos.cart': 'Sepet',
+    'pos.cartCurrency': 'Sepet Para Birimi',
     'pos.itemPriceCurrency': 'Kalem Fiyat Para Birimi',
     'pos.invoiceCurrency': 'Fatura Para Birimi',
     'pos.fromSettings': 'Ayarlardan',
@@ -9842,6 +9845,7 @@ export const translations = {
     // POS (extended)
     'pos.title': 'صندوق فروش',
     'pos.cart': 'سبد خرید',
+    'pos.cartCurrency': 'ارز سبد خرید',
     'pos.itemPriceCurrency': 'ارز قیمت کالا',
     'pos.invoiceCurrency': 'ارز فاکتور',
     'pos.fromSettings': 'از تنظیمات',
@@ -12048,6 +12052,7 @@ export const translations = {
     'reports.shareViaWhatsApp': 'هاوبەشکردن لە واتساپ',
     'pos.title': 'خاڵی فرۆشتن',
     'pos.cart': 'سەبەتە',
+    'pos.cartCurrency': 'دراوی سەبەتە',
     'pos.itemPriceCurrency': 'دراوی نرخی بڕگە',
     'pos.invoiceCurrency': 'دراوی پسوولە',
     'pos.fromSettings': 'لە ڕێکخستنەکانەوە',

@@ -7,6 +7,8 @@ import { Share } from '@capacitor/share';
 import { loadArabicFont, ARABIC_FONT_NAME } from './fonts/cairo-font';
 import { getCurrentLanguage } from './i18n';
 import ArabicReshaper from 'arabic-reshaper';
+import { getReportCurrency } from './currencies';
+import { roundForCurrency } from './money-engine';
 
 export interface PDFExportOptions {
   title: string;
@@ -187,7 +189,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
   // 1. PROFESSIONAL REPORT HEADER CARD
   // ==========================================
   const logo = storeLogo || getStoreLogo();
-  const headerCardHeight = logo ? 26 : 22;
+  const headerCardHeight = logo ? 28 : 24;
 
   // Header Card Background (#1E293B Dark Slate Navy)
   doc.setFillColor(30, 41, 59);
@@ -223,16 +225,18 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
       doc.text(processRTL(storeDetails.join(' | ')), storeX, yPosition + 15.5, { align: 'right' });
     }
 
-    // Left side of Header: Report Type & Generation Date
+    // Left side of Header: Report Type & Generation Date & Currency
     const leftX = pageMargin + 8;
     if (reportType) {
       doc.setFontSize(9.5);
       doc.setTextColor(56, 189, 248); // #38BDF8 Sky Blue
-      doc.text(processRTL(reportType), leftX, yPosition + 8.5, { align: 'left' });
+      doc.text(processRTL(reportType), leftX, yPosition + 7.5, { align: 'left' });
     }
+    const reportCurr = getReportCurrency();
     doc.setFontSize(7.5);
     doc.setTextColor(203, 213, 225); // #CBD5E1
-    doc.text(processRTL(`تاريخ الإصدار: ${formatLocalDateTime()}`), leftX, yPosition + 15.5, { align: 'left' });
+    doc.text(processRTL(`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol})`), leftX, yPosition + 12.5, { align: 'left' });
+    doc.text(processRTL(`تاريخ الإصدار: ${formatLocalDateTime()}`), leftX, yPosition + 17.5, { align: 'left' });
   } else {
     // --- LTR Header Layout ---
     let storeX = pageMargin + 8;
@@ -265,11 +269,13 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     if (reportType) {
       doc.setFontSize(9.5);
       doc.setTextColor(56, 189, 248);
-      doc.text(reportType, rightX, yPosition + 8.5, { align: 'right' });
+      doc.text(reportType, rightX, yPosition + 7.5, { align: 'right' });
     }
+    const reportCurr = getReportCurrency();
     doc.setFontSize(7.5);
     doc.setTextColor(203, 213, 225);
-    doc.text(`Issued: ${formatLocalDateTime()}`, rightX, yPosition + 15.5, { align: 'right' });
+    doc.text(`Currency: ${reportCurr.name} (${reportCurr.symbol})`, rightX, yPosition + 12.5, { align: 'right' });
+    doc.text(`Issued: ${formatLocalDateTime()}`, rightX, yPosition + 17.5, { align: 'right' });
   }
 
   yPosition += headerCardHeight + 7;
@@ -576,13 +582,17 @@ export const exportInvoicesToPDF = async (
   dateRange?: { start: string; end: string },
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns = [
     { header: 'رقم الفاتورة', key: 'id' },
     { header: 'التاريخ', key: 'date' },
     { header: 'العميل', key: 'customerName' },
-    { header: 'الإجمالي', key: 'total' },
-    { header: 'الخصم', key: 'discount' },
-    { header: 'صافي الربح', key: 'profit' },
+    { header: `الإجمالي (${reportCurr.symbol})`, key: 'total' },
+    { header: `الخصم (${reportCurr.symbol})`, key: 'discount' },
+    { header: `صافي الربح (${reportCurr.symbol})`, key: 'profit' },
     { header: 'نسبة الربح %', key: 'profitMargin' },
     { header: 'نوع الدفع', key: 'paymentType' },
     { header: 'الكاشير', key: 'cashierName' },
@@ -594,17 +604,17 @@ export const exportInvoicesToPDF = async (
     customerName: (inv.customerName && inv.customerName.trim() && inv.customerName.trim() !== 'عميل')
       ? inv.customerName.trim()
       : (inv.paymentType === 'debt' ? 'عميل دين' : 'عميل نقدي'),
-    total: inv.total,
-    discount: inv.discount || 0,
-    profit: inv.profit || 0,
+    total: toCurr(inv.total),
+    discount: toCurr(inv.discount || 0),
+    profit: toCurr(inv.profit || 0),
     profitMargin: inv.total > 0 ? `${Math.round(((inv.profit || 0) / inv.total) * 100)}%` : '0%',
     paymentType: inv.paymentType === 'cash' ? 'نقدي' : 'آجل',
     cashierName: inv.cashierName || '-',
   }));
 
-  const totalSales = invoices.reduce((sum, inv) => sum + inv.total, 0);
-  const totalProfit = invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
-  const totalDiscount = invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0);
+  const totalSales = toCurr(invoices.reduce((sum, inv) => sum + inv.total, 0));
+  const totalProfit = toCurr(invoices.reduce((sum, inv) => sum + (inv.profit || 0), 0));
+  const totalDiscount = toCurr(invoices.reduce((sum, inv) => sum + (inv.discount || 0), 0));
   const avgProfitMargin = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
 
   const totals: Record<string, number | string> = {
@@ -615,9 +625,9 @@ export const exportInvoicesToPDF = async (
   };
 
   const summary = customSummary || [
-    { label: 'إجمالي المبيعات', value: totalSales },
-    { label: 'إجمالي الخصومات', value: totalDiscount },
-    { label: 'صافي الأرباح', value: totalProfit },
+    { label: `إجمالي المبيعات (${reportCurr.symbol})`, value: totalSales },
+    { label: `إجمالي الخصومات (${reportCurr.symbol})`, value: totalDiscount },
+    { label: `صافي الأرباح (${reportCurr.symbol})`, value: totalProfit },
     { label: 'نسبة الربح الإجمالية %', value: `${avgProfitMargin}%` },
     { label: 'عدد الفواتير', value: invoices.length },
   ];
@@ -870,22 +880,26 @@ export const exportExpensesToPDF = async (
   dateRange?: { start: string; end: string },
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns = [
     { header: 'رقم', key: 'id' },
     { header: 'النوع', key: 'typeLabel' },
-    { header: 'المبلغ', key: 'amount' },
+    { header: `المبلغ (${reportCurr.symbol})`, key: 'amount' },
     { header: 'التاريخ', key: 'date' },
     { header: 'ملاحظات', key: 'notes' },
   ];
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = toCurr(expenses.reduce((sum, e) => sum + e.amount, 0));
 
   const totals: Record<string, number | string> = {
     amount: totalExpenses,
   };
 
   const summary = customSummary || [
-    { label: 'إجمالي المصاريف', value: totalExpenses },
+    { label: `إجمالي المصاريف (${reportCurr.symbol})`, value: totalExpenses },
     { label: 'عدد المصاريف', value: expenses.length },
   ];
 
@@ -905,7 +919,7 @@ export const exportExpensesToPDF = async (
     storePhone: storeInfo?.phone,
     storeAddress: storeInfo?.address,
     columns,
-    data: expenses.map(e => ({ ...e, notes: e.notes || '' })),
+    data: expenses.map(e => ({ ...e, amount: toCurr(e.amount), notes: e.notes || '' })),
     totals,
     summary,
     fileName: `مصاريف_${fileDate}.pdf`,
@@ -925,19 +939,23 @@ export const exportPartnersToPDF = async (
   storeInfo?: { name: string; phone?: string; address?: string },
   customSummary?: { label: string; value: string | number }[]
 ): Promise<void> => {
+  const reportCurr = getReportCurrency();
+  const rate = reportCurr.rate > 0 ? reportCurr.rate : 1;
+  const toCurr = (valUsd: number) => roundForCurrency((valUsd || 0) * rate, reportCurr.code);
+
   const columns = [
     { header: 'الشريك', key: 'name' },
     { header: 'نسبة الأرباح %', key: 'sharePercentage' },
-    { header: 'رأس المال', key: 'currentCapital' },
-    { header: 'الأرباح', key: 'totalProfit' },
-    { header: 'المسحوب', key: 'totalWithdrawn' },
-    { header: 'الرصيد', key: 'currentBalance' },
+    { header: `رأس المال (${reportCurr.symbol})`, key: 'currentCapital' },
+    { header: `الأرباح (${reportCurr.symbol})`, key: 'totalProfit' },
+    { header: `المسحوب (${reportCurr.symbol})`, key: 'totalWithdrawn' },
+    { header: `الرصيد (${reportCurr.symbol})`, key: 'currentBalance' },
   ];
 
-  const totalCapital = partners.reduce((sum, p) => sum + p.currentCapital, 0);
-  const totalProfit = partners.reduce((sum, p) => sum + p.totalProfit, 0);
-  const totalWithdrawn = partners.reduce((sum, p) => sum + p.totalWithdrawn, 0);
-  const totalBalance = partners.reduce((sum, p) => sum + p.currentBalance, 0);
+  const totalCapital = toCurr(partners.reduce((sum, p) => sum + p.currentCapital, 0));
+  const totalProfit = toCurr(partners.reduce((sum, p) => sum + p.totalProfit, 0));
+  const totalWithdrawn = toCurr(partners.reduce((sum, p) => sum + p.totalWithdrawn, 0));
+  const totalBalance = toCurr(partners.reduce((sum, p) => sum + p.currentBalance, 0));
 
   const totals: Record<string, number | string> = {
     currentCapital: totalCapital,
@@ -947,10 +965,10 @@ export const exportPartnersToPDF = async (
   };
 
   const summary = customSummary || [
-    { label: 'إجمالي رأس المال', value: totalCapital },
-    { label: 'إجمالي الأرباح', value: totalProfit },
-    { label: 'إجمالي المسحوبات', value: totalWithdrawn },
-    { label: 'إجمالي الأرصدة', value: totalBalance },
+    { label: `إجمالي رأس المال (${reportCurr.symbol})`, value: totalCapital },
+    { label: `إجمالي الأرباح (${reportCurr.symbol})`, value: totalProfit },
+    { label: `إجمالي المسحوبات (${reportCurr.symbol})`, value: totalWithdrawn },
+    { label: `إجمالي الأرصدة (${reportCurr.symbol})`, value: totalBalance },
   ];
 
   await exportToPDF({
@@ -961,7 +979,13 @@ export const exportPartnersToPDF = async (
     storePhone: storeInfo?.phone,
     storeAddress: storeInfo?.address,
     columns,
-    data: partners,
+    data: partners.map(p => ({
+      ...p,
+      currentCapital: toCurr(p.currentCapital),
+      totalProfit: toCurr(p.totalProfit),
+      totalWithdrawn: toCurr(p.totalWithdrawn),
+      currentBalance: toCurr(p.currentBalance),
+    })),
     totals,
     summary,
     fileName: `شركاء_${new Date().toISOString().split('T')[0]}.pdf`,

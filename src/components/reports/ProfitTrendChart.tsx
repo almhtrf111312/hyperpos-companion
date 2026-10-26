@@ -133,39 +133,14 @@ export function ProfitTrendChart({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">{t('products.totalSalesLabel')}</p>
-            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-              {formatReportAmount(summary.totalSales)}
-            </p>
-          </div>
-          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">{t('products.grossProfitLabel')}</p>
-            <p className="text-lg font-bold text-green-600 dark:text-green-400">
-              {formatReportAmount(summary.totalGrossProfit)}
-            </p>
-          </div>
-          <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">{t('products.expensesLabel')}</p>
-            <p className="text-lg font-bold text-red-600 dark:text-red-400">
-              {formatReportAmount(summary.totalExpenses)}
-            </p>
-          </div>
-          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground">{t('products.netProfitLabel')}</p>
-            <p className={`text-lg font-bold ${summary.totalNetProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600'}`}>
-              {formatReportAmount(summary.totalNetProfit)}
-            </p>
-          </div>
-        </div>
+        {/* إخفاء البطاقات / الجدول المكرر وإبقاء المخطط البياني المباشر مع متوسط الربح اليومي */}
+        {/* تم استبعاد كتلة Summary Cards المكررة بناءً على توجيهات النظام المحاسبي */}
 
         {/* Chart or Table based on displayMode */}
         {displayMode === 'chart' ? (
           <div className="w-full min-w-0 max-w-full overflow-hidden">
-            <ChartContainer config={chartConfig} className="h-[260px] w-full min-w-0 max-w-full">
-              <ResponsiveContainer width="100%" height={260}>
+            <ChartContainer config={chartConfig} className="h-[280px] w-full min-w-0 max-w-full">
+              <ResponsiveContainer width="100%" height={280}>
               <LineChart
                 data={chartData}
                 margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
@@ -266,10 +241,14 @@ export function ProfitTrendChart({
           </div>
         )}
 
-        {/* Additional Stats */}
-        <div className="mt-4 pt-4 border-t flex justify-between text-sm text-muted-foreground">
-          <span>{t('products.avgDailyProfit')}: <strong className="text-foreground">{formatReportAmount(summary.avgDailyProfit)}</strong></span>
-          <span>{t('products.profitMargin')}: <strong className="text-foreground">{summary.profitMargin.toFixed(1)}%</strong></span>
+        {/* إحصائيات المؤشر النهائي النظيف فقط */}
+        <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+          <span>
+            {t('products.avgDailyProfit')}: <strong className="text-foreground font-black text-primary">{formatReportAmount(summary.avgDailyProfit)}</strong>
+          </span>
+          <span>
+            {t('products.profitMargin')}: <strong className="text-foreground font-black">{summary.profitMargin.toFixed(1)}%</strong>
+          </span>
         </div>
       </CardContent>
     </Card>

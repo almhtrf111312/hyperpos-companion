@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatMoney, formatReportAmount } from '@/lib/utils';
+import { getReportCurrency } from '@/lib/currencies';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/sonner-bridge';
 import { useTheme } from '@/hooks/use-theme';
@@ -2008,9 +2009,10 @@ export default function Reports() {
       const dist = exp.distributions.find(d => d.partnerName === partnerName);
       return sum + (dist?.amount || 0);
     }, 0);
-    const report = `📊 تقرير المصاريف - ${partnerName}\n📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n\n💰 إجمالي المصاريف المشتركة: ${formatMoney(partnerTotal, 'USD')}\n\n📋 التفاصيل:\n${partnerExpenses.map(exp => {
+    const reportCurr = getReportCurrency();
+    const report = `📊 تقرير المصاريف - ${partnerName}\n📅 الفترة: ${dateRange.from} إلى ${dateRange.to}\n💱 عملة التقرير: ${reportCurr.name} (${reportCurr.symbol})\n\n💰 إجمالي المصاريف المشتركة: ${formatReportAmount(partnerTotal)}\n\n📋 التفاصيل:\n${partnerExpenses.map(exp => {
       const dist = exp.distributions.find(d => d.partnerName === partnerName);
-      return `• ${exp.date} - ${exp.typeLabel}: ${formatMoney(dist?.amount || 0, 'USD')}`;
+      return `• ${exp.date} - ${exp.typeLabel}: ${formatReportAmount(dist?.amount || 0)}`;
     }).join('\n')}\n\n---\nتم إنشاء التقرير بواسطة HyperPOS`;
     window.open(`https://wa.me/?text=${encodeURIComponent(report)}`, '_blank');
     toast.success(t('reports.shareWhatsapp'));
@@ -2082,25 +2084,38 @@ export default function Reports() {
     }
   };
 
-  const ALL_REPORT_SECTIONS = [
+  const ALL_REPORT_SECTIONS = useMemo(() => [
     {
-      category: t('reports.category.inventory'),
+      category: t('reports.category.sales') || 'المبيعات والأرباح',
+      items: [
+        { id: 'sales', name: t('reports.sales'), icon: ShoppingCart, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
+        { id: 'profits', name: t('reports.profitLoss'), icon: TrendingUp, bg: 'bg-green-100/70 dark:bg-green-950/60 text-green-600' },
+        { id: 'partner-detailed', name: t('reports.partnerDetailedReport'), icon: ClipboardList, bg: 'bg-blue-100/70 dark:bg-blue-950/60 text-blue-600' },
+        { id: 'expenses', name: t('reports.expenses'), icon: Receipt, bg: 'bg-rose-100/70 dark:bg-rose-950/60 text-rose-600' },
+      ]
+    },
+    {
+      category: t('reports.category.inventory') || 'المخزون والمشتريات',
       items: [
         { id: 'top-products', name: t('reports.topProducts'), icon: Flame, bg: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-600' },
-        { id: 'product-movement', name: t('reports.productMovement'), icon: RefreshCw, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
-        { id: 'inventory-stock', name: t('reports.inventoryStockDiscrepancy'), icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
+        ...(!noInventory ? [
+          { id: 'inventory', name: t('reports.inventoryValueCost'), icon: Package, bg: 'bg-orange-100/70 dark:bg-orange-950/60 text-orange-600' },
+          { id: 'product-movement', name: t('reports.productMovement'), icon: RefreshCw, bg: 'bg-purple-100/70 dark:bg-purple-950/60 text-purple-600' },
+          { id: 'inventory-stock', name: t('reports.inventoryStockDiscrepancy'), icon: ClipboardCheck, bg: 'bg-cyan-100/70 dark:bg-cyan-950/60 text-cyan-600' },
+        ] : []),
         { id: 'purchases', name: t('reports.purchasesInvoices'), icon: FileText, bg: 'bg-sky-100/70 dark:bg-sky-950/60 text-sky-600' },
       ]
     },
     {
-      category: t('reports.category.debts'),
+      category: t('reports.category.debts') || 'الديون والشركاء',
       items: [
+        { id: 'debts', name: t('reports.debtsDeferredSale'), icon: Banknote, bg: 'bg-red-100/70 dark:bg-red-950/60 text-red-600' },
         { id: 'customers', name: t('reports.customers'), icon: Users, bg: 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-600' },
         { id: 'partners', name: t('reports.partners'), icon: UsersRound, bg: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600' },
       ]
     },
     {
-      category: t('reports.category.admin'),
+      category: t('reports.category.admin') || 'الصندوق والعمليات',
       items: [
         { id: 'daily-closing', name: t('reports.dailyClosing'), icon: Lock, bg: 'bg-pink-100/70 dark:bg-pink-950/60 text-pink-600' },
         { id: 'cashier-performance', name: t('reports.cashierPerformance'), icon: UserCheck, bg: 'bg-teal-100/70 dark:bg-teal-950/60 text-teal-600' },
@@ -2112,52 +2127,62 @@ export default function Reports() {
         ] : []),
       ]
     }
-  ];
+  ], [t, noInventory, visibleSections.maintenance, storeType, isDistributorStore]);
 
   // ========== RENDER ==========
 
   return (
 
       <div className="p-3 md:p-6 space-y-3.5 md:space-y-4 w-full max-w-4xl min-w-0 mx-auto overflow-x-hidden">
-        {/* Sticky Opaque Header with Centered Title & Smart/Professional Switch */}
-        <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2.5 border-b border-border/50 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <PageHeader title={t('reports.financialReportsTitle')} className="mb-0 md:mb-0" />
+        {/* Sticky Header: العنوان وبجانبه مباشرة زر الواجهة الذكية / الاحترافية */}
+        <div className="sticky top-0 z-30 bg-background/95 -mx-3 px-3 md:-mx-6 md:px-6 py-2.5 border-b border-border/50 shadow-sm backdrop-blur-md">
+          <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+            {/* حاوية العنوان المدمج مع زر التبديل بجانبه مباشرة */}
+            <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+              <h1 className="text-lg sm:text-xl font-black text-foreground tracking-tight whitespace-nowrap">
+                {t('reports.financialReportsTitle') || 'التقارير المالية'}
+              </h1>
 
-            {/* Display Mode Capsule Switch */}
-            <div
-              role="group"
-              aria-label={t('reports.displayModeLabel')}
-              className="inline-flex max-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/50 p-1 self-start sm:self-auto shrink-0 shadow-xs"
-            >
-              <Button
-                type="button"
-                variant={reportDisplayMode === 'smart' ? 'default' : 'ghost'}
-                size="sm"
-                aria-pressed={reportDisplayMode === 'smart'}
-                onClick={() => setReportDisplayMode('smart')}
-                className={cn(
-                  'h-8 sm:h-9 rounded-full px-3 sm:px-4 gap-1.5 text-xs sm:text-sm font-semibold transition-all',
-                  reportDisplayMode === 'smart' ? 'bg-primary text-primary-foreground shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
-                )}
+              {/* زر التبديل بين الواجهة الذكية والاحترافية بجانب الكلمة مباشرة */}
+              <div
+                role="group"
+                aria-label={t('reports.displayModeLabel')}
+                className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/60 p-0.5 sm:p-1 shrink-0 shadow-2xs"
               >
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{t('reports.displayModeSmart')}</span>
-              </Button>
-              <Button
-                type="button"
-                variant={reportDisplayMode === 'professional' ? 'default' : 'ghost'}
-                size="sm"
-                aria-pressed={reportDisplayMode === 'professional'}
-                onClick={() => setReportDisplayMode('professional')}
-                className={cn(
-                  'h-8 sm:h-9 rounded-full px-3 sm:px-4 gap-1.5 text-xs sm:text-sm font-semibold transition-all',
-                  reportDisplayMode === 'professional' ? 'bg-primary text-primary-foreground shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{t('reports.displayModeProfessional')}</span>
-              </Button>
+                <button
+                  type="button"
+                  aria-pressed={reportDisplayMode === 'smart'}
+                  onClick={() => setReportDisplayMode('smart')}
+                  className={cn(
+                    'h-7 sm:h-8 rounded-full px-2.5 sm:px-3.5 gap-1.5 text-xs font-bold transition-all flex items-center whitespace-nowrap',
+                    reportDisplayMode === 'smart'
+                      ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
+                  <span>{t('reports.displayModeSmart') || 'ذكية'}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={reportDisplayMode === 'professional'}
+                  onClick={() => setReportDisplayMode('professional')}
+                  className={cn(
+                    'h-7 sm:h-8 rounded-full px-2.5 sm:px-3.5 gap-1.5 text-xs font-bold transition-all flex items-center whitespace-nowrap',
+                    reportDisplayMode === 'professional'
+                      ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <ClipboardList className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
+                  <span>{t('reports.displayModeProfessional') || 'احترافية'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* أدوات إضافية سريعة مثل التحديث والتاريخ إن وجدت */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* ... أزرار التحديث أو الإجراءات السريعة ... */}
             </div>
           </div>
         </div>
@@ -2165,76 +2190,54 @@ export default function Reports() {
         {/* Currency selection banner for reports (Single consolidated banner) */}
         <ReportCurrencyBanner />
 
-        {/* Categorized Report Capsules Hub */}
-        <div className="bg-card rounded-2xl border border-border/70 p-3 sm:p-4 space-y-3 shadow-sm">
-          {/* Categories Selector Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {REPORT_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              const isCatActive = activeCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0",
-                    isCatActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
-                      : "bg-muted/40 border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* مصفوفة أقسام التقارير المنظمة بدون أي تمرير أفقي (No Horizontal Scroll) */}
+        <div className="bg-card rounded-2xl border border-border/70 p-3 sm:p-5 space-y-4 shadow-sm">
+          {ALL_REPORT_SECTIONS.map((section, sIdx) => (
+            <div key={sIdx} className="space-y-2">
+              {/* عنوان القسم مع خط فاصل جمالي */}
+              <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                <span className="w-1.5 h-3.5 rounded-full bg-primary" />
+                <h3 className="text-xs sm:text-sm font-bold text-foreground">
+                  {section.category}
+                </h3>
+              </div>
 
-          {/* Report Pills in Current Category */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {visibleReports.map(report => {
-              const Icon = report.icon;
-              const isActive = activeReport === report.id;
-              const isNeedsData = report.availability === 'needs-data';
+              {/* أزرار التقارير مصفوفة شبكياً متجاوبة دون أي سكرول */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {section.items.map((report) => {
+                  const Icon = report.icon;
+                  const isSelected = activeReport === report.id;
 
-              return (
-                <button
-                  key={report.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveReport(report.id);
-                    if (report.id === 'sales') {
-                      setViewTab('summary');
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all border active:scale-95",
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-card border-border/70 hover:bg-muted text-foreground",
-                    isNeedsData && !isActive && "opacity-70 border-dashed"
-                  )}
-                >
-                  <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary-foreground" : "text-primary")} />
-                  <span>{report.label}</span>
-                  {isNeedsData && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 font-normal">
-                      {t('reports.reportComingSoon')}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={() => setIsAllReportsModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all border border-border/80 bg-muted/40 hover:bg-muted text-foreground active:scale-95"
-            >
-              <span>{t('common.more') || (isRTL ? '+ المزيد' : '+ More')}</span>
-            </button>
-          </div>
+                  return (
+                    <button
+                      key={report.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveReport(report.id);
+                        if (report.id === 'sales') {
+                          setViewTab('summary');
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold transition-all border text-start select-none active:scale-98",
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs font-black ring-2 ring-primary/20"
+                          : "bg-muted/30 hover:bg-muted/70 text-foreground border-border/60"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                        isSelected ? "bg-primary-foreground/20 text-primary-foreground" : report.bg
+                      )}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="truncate">{report.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Date Filter & Search Hub */}
