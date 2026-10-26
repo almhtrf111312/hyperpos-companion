@@ -146,6 +146,12 @@ interface CartItem {
   costPrice?: number;
   bulkCostPrice?: number;
   laborCost?: number;
+  expiryDate?: string;
+  batchNumber?: string;
+  /** عملة إدخال/عرض السعر لهذا السطر فقط */
+  priceEntryCurrencyCode?: string;
+  /** لقطة معدل صرف وقت اختيار عملة السطر */
+  priceEntryRateSnapshot?: number;
 }
 
 type Currency = { code: string; symbol: string; name: string; rate: number };
@@ -158,6 +164,8 @@ export interface HeldCart {
   customerName: string;
   discount: number;
   createdAt: number;
+  invoiceCurrencyCode?: string;
+  invoiceExchangeRateSnapshot?: number;
 }
 const HELD_CARTS_KEY = 'hyperpos_held_carts_v1';
 const CART_STORAGE_KEY = 'hyperpos_temp_cart';
@@ -716,14 +724,18 @@ export default function POS() {
     const code = loadDefaultCurrencyCode();
     const defaultCurr = currencies.find(c => c.code === code) || currencies[0];
     setSelectedCurrency(prev => {
-      // الحفاظ على اختيار المستخدم طالما أن العملة لا تزال مفعلة وموجودة، مع تحديث بياناتها
+      // إذا كانت السلة فارغة، تأخذ تلقائياً العملة الافتراضية من الإعدادات
+      if (cart.length === 0) {
+        return defaultCurr;
+      }
+      // الحفاظ على لقطة عملة الفاتورة طالما أن العملة لا تزال مفعلة وموجودة
       const currentMatching = currencies.find(c => c.code === prev.code);
       if (currentMatching) {
         return currentMatching;
       }
       return defaultCurr;
     });
-  }, [currencies]);
+  }, [currencies, cart.length]);
   const [customerName, setCustomerName] = useState<string>(() => {
     try {
       return localStorage.getItem(CART_CUSTOMER_KEY) || '';
@@ -1019,6 +1031,8 @@ export default function POS() {
         cart,
         customerName,
         discount,
+        invoiceCurrencyCode: selectedCurrency.code,
+        invoiceExchangeRateSnapshot: selectedCurrency.rate,
       } : c);
       
       const target = updated.find(c => c.id === cartId);
@@ -1026,24 +1040,47 @@ export default function POS() {
         setCart(target.cart);
         setCustomerName(target.customerName);
         setDiscount(target.discount);
+        if (target.invoiceCurrencyCode) {
+          const matchingCurr = currencies.find(c => c.code === target.invoiceCurrencyCode);
+          if (matchingCurr) setSelectedCurrency(matchingCurr);
+        }
         setActiveCartId(target.id);
       }
       return updated;
     });
-  }, [activeCartId, cart, customerName, discount]);
+  }, [activeCartId, cart, customerName, discount, selectedCurrency, currencies]);
 
   const handleAddNewCart = useCallback(() => {
+    const defaultCode = loadDefaultCurrencyCode();
+    const defaultCurr = currencies.find(c => c.code === defaultCode) || currencies[0];
     const newId = `cart_${Date.now()}`;
     const newName = `${t('pos.cart') || 'سلة'} ${heldCarts.length + 1}`;
     setHeldCarts(prev => [
-      ...prev.map(c => c.id === activeCartId ? { ...c, cart, customerName, discount } : c),
-      { id: newId, name: newName, cart: [], customerName: '', discount: 0, createdAt: Date.now() }
+      ...prev.map(c => c.id === activeCartId ? {
+        ...c,
+        cart,
+        customerName,
+        discount,
+        invoiceCurrencyCode: selectedCurrency.code,
+        invoiceExchangeRateSnapshot: selectedCurrency.rate,
+      } : c),
+      {
+        id: newId,
+        name: newName,
+        cart: [],
+        customerName: '',
+        discount: 0,
+        createdAt: Date.now(),
+        invoiceCurrencyCode: defaultCurr.code,
+        invoiceExchangeRateSnapshot: defaultCurr.rate,
+      }
     ]);
     setCart([]);
     setCustomerName('');
     setDiscount(0);
+    setSelectedCurrency(defaultCurr);
     setActiveCartId(newId);
-  }, [activeCartId, cart, customerName, discount, heldCarts.length]);
+  }, [activeCartId, cart, customerName, discount, heldCarts.length, currencies, selectedCurrency, t]);
 
   const handleRemoveCart = useCallback((cartId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1056,17 +1093,39 @@ export default function POS() {
         setCart(nextActive.cart);
         setCustomerName(nextActive.customerName);
         setDiscount(nextActive.discount);
+        if (nextActive.invoiceCurrencyCode) {
+          const matchingCurr = currencies.find(c => c.code === nextActive.invoiceCurrencyCode);
+          if (matchingCurr) setSelectedCurrency(matchingCurr);
+        }
         setActiveCartId(nextActive.id);
       }
       return remaining;
     });
-  }, [activeCartId, heldCarts.length]);
+  }, [activeCartId, heldCarts.length, currencies]);
 
   useEffect(() => {
     try {
       localStorage.setItem(HELD_CARTS_KEY, JSON.stringify(heldCarts));
     } catch {}
   }, [heldCarts]);
+
+  // تغيير عملة إدخال/عرض سعر صنف معين في السلة دون تعديل السعر الأساسي أو عملة الفاتورة
+  const changeItemPriceCurrency = useCallback((
+    id: string,
+    currencyCode: string,
+    rateSnapshot: number,
+    unit: 'piece' | 'bulk'
+  ) => {
+    setCart(prev => prev.map(item =>
+      item.id === id && item.unit === unit
+        ? {
+            ...item,
+            priceEntryCurrencyCode: currencyCode,
+            priceEntryRateSnapshot: rateSnapshot,
+          }
+        : item
+    ));
+  }, []);
 
   // Update item price manually (for Boss/Admin discounts)
   const updateItemPrice = (id: string, newPrice: number, unit: 'piece' | 'bulk') => {
@@ -1176,6 +1235,7 @@ export default function POS() {
                 onCustomerNameChange={setCustomerName}
                 onToggleUnit={toggleCartItemUnit}
                 onUpdateItemPrice={updateItemPrice}
+                onItemPriceCurrencyChange={changeItemPriceCurrency}
                 heldCarts={heldCarts}
                 activeCartId={activeCartId}
                 onSwitchCart={handleSwitchCart}
@@ -1208,6 +1268,7 @@ export default function POS() {
               onCustomerNameChange={setCustomerName}
               onToggleUnit={toggleCartItemUnit}
               onUpdateItemPrice={updateItemPrice}
+              onItemPriceCurrencyChange={changeItemPriceCurrency}
               heldCarts={heldCarts}
               activeCartId={activeCartId}
               onSwitchCart={handleSwitchCart}
