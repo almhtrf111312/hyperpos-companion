@@ -25,6 +25,9 @@ interface LicenseState {
   offlineDays: number;
   offlineWarning: boolean;
   dataEncrypted: boolean;
+  /** تذكرة الأوفلاين محظورة (انتهاء/عبث بالساعة/بلوغ حد الفواتير) */
+  offlineLeaseBlocked: boolean;
+  offlineLeaseReason: string | null;
 }
 
 interface LicenseContextType extends LicenseState {
@@ -89,6 +92,8 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     offlineDays: getOfflineStatus().daysOffline,
     offlineWarning: getOfflineStatus().shouldWarn,
     dataEncrypted: isDataEncrypted(),
+    offlineLeaseBlocked: !getOfflineLeaseStatus().allowed,
+    offlineLeaseReason: getOfflineLeaseStatus().reason,
   });
 
   // Safety failsafe: ensure isLoading never blocks the screen longer than 1500ms
@@ -127,6 +132,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     // Clear cache when user changes to force fresh server check
     if (prevUserIdRef.current && prevUserIdRef.current !== user.id) {
       localStorage.removeItem(LICENSE_CACHE_KEY);
+      clearOfflineLease();
     }
     prevUserIdRef.current = user.id;
 
