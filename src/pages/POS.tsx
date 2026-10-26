@@ -22,6 +22,7 @@ import { getCurrentStoreType, isNoInventoryMode, getVisibleSections } from '@/li
 import { playAddToCart } from '@/lib/sound-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { loadCurrencySymbols, loadCurrencyNames } from '@/hooks/use-currency';
+import { loadNormalizedCurrencySettings } from '@/lib/currencies';
 import { getLocalizedUnit } from '@/lib/product-units';
 import { useWarehouse } from '@/hooks/use-warehouse';
 import { useAuth } from '@/hooks/use-auth';
@@ -95,17 +96,10 @@ const loadExchangeRates = () => {
   }
 };
 
-const loadDefaultCurrencyCode = (): 'USD' | 'TRY' | 'SYP' => {
+const loadDefaultCurrencyCode = (): string => {
   try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return 'USD';
-    const parsed = JSON.parse(raw);
-    const primary = (parsed?.primaryCurrency || 'USD') as 'USD' | 'TRY' | 'SYP';
-    const enabled = parsed?.enabledCurrencies;
-    if (primary === 'TRY' && enabled?.TRY === false) return enabled?.USD !== false ? 'USD' : (enabled?.SYP ? 'SYP' : 'TRY');
-    if (primary === 'SYP' && enabled?.SYP === false) return enabled?.USD !== false ? 'USD' : (enabled?.TRY ? 'TRY' : 'SYP');
-    if (primary === 'USD' && enabled?.USD === false) return enabled?.TRY ? 'TRY' : (enabled?.SYP ? 'SYP' : 'USD');
-    return primary;
+    const normalized = loadNormalizedCurrencySettings();
+    return normalized.primaryCurrencyCode || 'USD';
   } catch {
     return 'USD';
   }
@@ -663,56 +657,51 @@ export default function POS() {
 
   const currencies: Currency[] = useMemo(() => {
     const _ = settingsRev;
-    const rates = loadExchangeRates();
-    const names = loadCurrencyNames();
-    const symbols = loadCurrencySymbols();
-    const enabled = loadEnabledCurrencies();
-    const all: Currency[] = [
-      { 
-        code: 'USD', 
-        symbol: (symbols?.USD && symbols.USD.trim()) || '$', 
-        name: (names?.USD && names.USD.trim()) || t('currency.usd') || 'دولار', 
-        rate: 1 
-      },
-      { 
-        code: 'TRY', 
-        symbol: (symbols?.TRY && symbols.TRY.trim()) || '₺', 
-        name: (names?.TRY && names.TRY.trim()) || 'ليرة تركية', 
-        rate: rates.TRY 
-      },
-      { 
-        code: 'SYP', 
-        symbol: (symbols?.SYP && symbols.SYP.trim()) || 'ل.س', 
-        name: (names?.SYP && names.SYP.trim()) || 'ليرة سورية', 
-        rate: rates.SYP 
-      },
-    ];
+    const normalized = loadNormalizedCurrencySettings();
+    const result: Currency[] = [];
 
-    // تضمين أي عملات مخصصة أخرى مفعلة في الإعدادات
-    try {
-      const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const customRates = parsed?.exchangeRates || {};
-        const customSymbols = parsed?.currencySymbols || {};
-        const customNames = parsed?.currencyNames || {};
-        const customEnabled = parsed?.enabledCurrencies || {};
-        
-        Object.keys(customEnabled).forEach(code => {
-          if (!all.some(c => c.code === code) && customEnabled[code] !== false) {
-            all.push({
-              code,
-              symbol: (customSymbols[code] && typeof customSymbols[code] === 'string' && customSymbols[code].trim()) || code,
-              name: (customNames[code] && typeof customNames[code] === 'string' && customNames[code].trim()) || code,
-              rate: Number(customRates[code] ?? 1) || 1,
-            });
-          }
+    // 1. إضافة الدولار إذا كان مفعلاً
+    const usd = normalized.currencies.USD || {
+      code: 'USD',
+      symbol: '$',
+      name: t('currency.usd') || 'دولار',
+      rate: 1,
+      enabled: true,
+    };
+
+    if (usd.enabled) {
+      result.push({
+        code: 'USD',
+        symbol: usd.symbol || '$',
+        name: usd.name || 'دولار',
+        rate: 1,
+      });
+    }
+
+    // 2. إضافة كافة العملات الأخرى المفعلة في إعدادات المتجر بكودها ورمزها واسمها الحقيقي
+    for (const [code, c] of Object.entries(normalized.currencies)) {
+      if (code === 'USD') continue;
+      if (c.enabled && Number.isFinite(c.rate) && c.rate > 0) {
+        result.push({
+          code: c.code,
+          symbol: c.symbol,
+          name: c.name,
+          rate: c.rate,
         });
       }
-    } catch {}
+    }
 
-    const filtered = all.filter(c => enabled[c.code] !== false);
-    return filtered.length > 0 ? filtered : [all[0]];
+    // 3. كضمان أمان: إذا تم تعطيل جميع العملات، يبقى الدولار هو العملة المرجعية
+    if (result.length === 0) {
+      result.push({
+        code: 'USD',
+        symbol: usd.symbol || '$',
+        name: usd.name || 'دولار',
+        rate: 1,
+      });
+    }
+
+    return result;
   }, [settingsRev, t]);
 
   // 1. تثبيت عملة عرض شبكة المنتجات على عملة المتجر الافتراضية
@@ -1115,23 +1104,7 @@ export default function POS() {
     } catch {}
   }, [heldCarts]);
 
-  // تغيير عملة إدخال/عرض سعر صنف معين في السلة دون تعديل السعر الأساسي أو عملة الفاتورة
-  const changeItemPriceCurrency = useCallback((
-    id: string,
-    currencyCode: string,
-    rateSnapshot: number,
-    unit: 'piece' | 'bulk'
-  ) => {
-    setCart(prev => prev.map(item =>
-      item.id === id && item.unit === unit
-        ? {
-            ...item,
-            priceEntryCurrencyCode: currencyCode,
-            priceEntryRateSnapshot: rateSnapshot,
-          }
-        : item
-    ));
-  }, []);
+
 
   // Update item price manually (for Boss/Admin discounts)
   const updateItemPrice = (id: string, newPrice: number, unit: 'piece' | 'bulk') => {
@@ -1244,7 +1217,6 @@ export default function POS() {
                 onCustomerNameChange={setCustomerName}
                 onToggleUnit={toggleCartItemUnit}
                 onUpdateItemPrice={updateItemPrice}
-                onItemPriceCurrencyChange={changeItemPriceCurrency}
                 heldCarts={heldCarts}
                 activeCartId={activeCartId}
                 onSwitchCart={handleSwitchCart}
@@ -1280,7 +1252,6 @@ export default function POS() {
               onCustomerNameChange={setCustomerName}
               onToggleUnit={toggleCartItemUnit}
               onUpdateItemPrice={updateItemPrice}
-              onItemPriceCurrencyChange={changeItemPriceCurrency}
               heldCarts={heldCarts}
               activeCartId={activeCartId}
               onSwitchCart={handleSwitchCart}

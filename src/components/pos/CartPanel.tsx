@@ -196,12 +196,6 @@ interface CartPanelProps {
   onCustomerNameChange: (name: string) => void;
   onToggleUnit?: (id: string, currentUnit: 'piece' | 'bulk') => void;
   onUpdateItemPrice?: (id: string, newPrice: number, unit: 'piece' | 'bulk') => void;
-  onItemPriceCurrencyChange?: (
-    id: string,
-    currencyCode: string,
-    rateSnapshot: number,
-    unit: 'piece' | 'bulk'
-  ) => void;
   onClose?: () => void;
   isMobile?: boolean;
   heldCarts?: HeldCart[];
@@ -250,14 +244,6 @@ function generateQuickCashOptions(totalAmount: number, currencyCode: string, exc
     .slice(0, 5);
 }
 
-function getLineCurrency(item: CartItem, currencies: Currency[], invoiceCurrency: Currency): Currency {
-  return currencies.find(c => c.code === item.priceEntryCurrencyCode) ?? invoiceCurrency;
-}
-
-function getSafeRate(currency: Currency, item: CartItem): number {
-  const rate = item.priceEntryRateSnapshot ?? currency.rate;
-  return Number.isFinite(rate) && rate > 0 ? rate : 1;
-}
 
 export function CartPanel({
   cart,
@@ -273,7 +259,6 @@ export function CartPanel({
   onCustomerNameChange,
   onToggleUnit,
   onUpdateItemPrice,
-  onItemPriceCurrencyChange,
   onClose,
   isMobile = false,
   heldCarts,
@@ -1941,10 +1926,11 @@ export function CartPanel({
                   {(wholesaleMode || (isRepairStoreType() && item.costPrice != null)) && (
                     <div className="text-[9px] text-muted-foreground truncate leading-none mt-0.5">
                       {wholesaleMode && (() => {
-                        const lineCurrency = getLineCurrency(item, currencies, selectedCurrency);
-                        const lineRate = getSafeRate(lineCurrency, item);
-                        const linePrice = roundForCurr(fromUsd(getItemPrice(item), lineCurrency.code, lineRate), lineCurrency.code);
-                        return <span className="text-orange-400 font-medium">{formatNumber(linePrice)} {lineCurrency.symbol} × {item.quantity}</span>;
+                        const safeCartRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0
+                          ? selectedCurrency.rate
+                          : 1;
+                        const linePrice = roundForCurr(fromUsd(getItemPrice(item), selectedCurrency.code, safeCartRate), selectedCurrency.code);
+                        return <span className="text-orange-400 font-medium">{formatNumber(linePrice)} {selectedCurrency.symbol} × {item.quantity}</span>;
                       })()}
                       {wholesaleMode && isRepairStoreType() && item.costPrice != null && ' · '}
                       {isRepairStoreType() && item.costPrice != null && `${t('pos.cost') || 'تكلفة'}: ${formatNumber(item.costPrice || 0)}`}
@@ -1975,51 +1961,28 @@ export function CartPanel({
                   </button>
                 </div>
 
-                {/* سعر البيع التفاعلي بعملة السطر المستقلة، مع إجمالي السطر بعملة الفاتورة */}
+                {/* سعر البيع التفاعلي بعملة السلة العامة، مع إجمالي السطر */}
                 <div className="flex items-center gap-1 shrink-0 text-left">
                   {onUpdateItemPrice && (() => {
-                    const lineCurrency = getLineCurrency(item, currencies, selectedCurrency);
-                    const lineRate = getSafeRate(lineCurrency, item);
+                    const safeCartRate = Number.isFinite(selectedCurrency.rate) && selectedCurrency.rate > 0
+                      ? selectedCurrency.rate
+                      : 1;
                     const displayedLinePrice = roundForCurr(
-                      fromUsd(getItemPrice(item), lineCurrency.code, lineRate),
-                      lineCurrency.code
+                      fromUsd(getItemPrice(item), selectedCurrency.code, safeCartRate),
+                      selectedCurrency.code
                     );
 
                     return (
-                      <div className="flex items-center gap-0.5 bg-muted/40 border border-border/60 rounded-lg p-0.5 shadow-2xs">
-                        <EditablePrice
-                          value={displayedLinePrice}
-                          onChange={(newPriceInCurr) => {
-                            // تحويل السعر المعدل من عملة السطر إلى الأساس بدقة
-                            const newBasePrice = lineCurrency.code === 'USD'
-                              ? newPriceInCurr
-                              : newPriceInCurr / lineRate;
-                            onUpdateItemPrice(item.id, newBasePrice, item.unit);
-                          }}
-                          className="w-12 h-6 text-[10px] text-center bg-card border border-border/40 p-0.5 rounded-md font-bold"
-                        />
-                        <label className="sr-only" htmlFor={`line-currency-${item.id}-${item.unit}`}>
-                          {t('pos.itemPriceCurrency') || 'عملة سعر الصنف'}
-                        </label>
-                        <select
-                          id={`line-currency-${item.id}-${item.unit}`}
-                          value={lineCurrency.code}
-                          onChange={(e) => {
-                            const next = currencies.find(c => c.code === e.target.value);
-                            if (!next) return;
-                            const rate = Number.isFinite(next.rate) && next.rate > 0 ? next.rate : 1;
-                            onItemPriceCurrencyChange?.(item.id, next.code, rate, item.unit);
-                          }}
-                          className="h-6 rounded-md border-0 bg-transparent px-1 text-[9.5px] font-bold text-foreground cursor-pointer focus:ring-1 focus:ring-primary/40 focus:outline-none"
-                          title={t('pos.itemPriceCurrency') || 'عملة سعر الصنف'}
-                        >
-                          {currencies.map(c => (
-                            <option key={c.code} value={c.code}>
-                              {c.symbol} {c.code}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <EditablePrice
+                        value={displayedLinePrice}
+                        onChange={(newPriceInCartCurrency) => {
+                          const newBasePrice = selectedCurrency.code === 'USD'
+                            ? newPriceInCartCurrency
+                            : newPriceInCartCurrency / safeCartRate;
+                          onUpdateItemPrice(item.id, newBasePrice, item.unit);
+                        }}
+                        className="w-12 h-6 text-[10px] text-center bg-card border border-border/40 p-0.5 rounded-md font-bold"
+                      />
                     );
                   })()}
                   <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[3.4rem] text-left", wholesaleMode ? "text-warning" : "text-primary")}>

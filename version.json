@@ -1,8 +1,14 @@
 {
-  "versionCode": 340,
-  "versionName": "1.2.0",
-  "lastUpdated": "2026-10-26T09:35:07.131Z",
+  "versionCode": 341,
+  "versionName": "1.2.1",
+  "lastUpdated": "2026-10-26T20:43:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 341,
+      "versionName": "1.2.1",
+      "date": "2026-10-26",
+      "description": "v1.2.1 (Build 341) - توحيد عملة السلة في نقطة البيع وحذف محدد عملة البند الفرعي وإلغاء الاعتماد على الليرة التركية والسورية، وتثبيت مهارة Antigravity Serena Token Engine (Unified Cart Currency Scope, Item-Level Selector Removal, Dynamic Store Currency Identity & Serena Token Engine Integration)؛ حذف محدد العملة من أسطر السلة وتوحيد العرض والحساب على عملة السلة العامة، احتساب التعديل اليدوي للأسعار بدقة وتحويلها لأساس USD، التحرير الشامل لنموذج العملات من فرض TRY و SYP كقيم افتراضية مع التعرف الذكي على هويات العملات (QAR, EGP, SAR)، وتثبيت وتفعيل مهارة هندسة وتحسين التوكنز وتعديل الرموز جراحياً (توفير 60% إلى 80%)."
+    },
     {
       "versionCode": 340,
       "versionName": "1.2.0",

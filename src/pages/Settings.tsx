@@ -64,7 +64,7 @@ import { ActivationCodeInput } from '@/components/settings/ActivationCodeInput';
 import { ProductFieldsSection } from '@/components/settings/ProductFieldsSection';
 import { ProductFieldsConfig, loadProductFieldsConfig, saveProductFieldsConfig, getDefaultFieldsByStoreType, StoreType } from '@/lib/product-fields-config';
 import { loadCustomFields } from '@/lib/custom-fields-config';
-import { PREDEFINED_CURRENCIES, CURRENCY_CATEGORIES } from '@/lib/currencies';
+import { PREDEFINED_CURRENCIES, CURRENCY_CATEGORIES, detectCurrencyCodeFromMeta, loadNormalizedCurrencySettings, normalizeCurrencySettings } from '@/lib/currencies';
 import { getDefaultCategories } from '@/lib/store-type-config';
 import { saveCategories, Category } from '@/lib/categories-store';
 import DataResetSection from '@/components/settings/DataResetSection';
@@ -174,12 +174,12 @@ interface BackupSettingsType {
 }
 
 export interface PersistedSettings {
-  primaryCurrency?: 'USD' | 'TRY' | 'SYP';
-  enabledCurrencies?: { USD: boolean; TRY: boolean; SYP: boolean };
+  primaryCurrency?: string;
+  enabledCurrencies?: Record<string, boolean>;
   storeSettings?: Partial<{ name: string; type: string; phone: string; email: string; address: string; logo: string }>;
-  exchangeRates?: Partial<{ USD?: number; TRY: string; SYP: string }>;
-  currencyNames?: Partial<{ USD?: string; TRY?: string; SYP?: string }>;
-  currencySymbols?: Partial<{ USD?: string; TRY?: string; SYP?: string }>;
+  exchangeRates?: Record<string, string | number>;
+  currencyNames?: Record<string, string>;
+  currencySymbols?: Record<string, string>;
   syncSettings?: Partial<SyncSettingsType>;
   notificationSettings?: Partial<NotificationSettingsType>;
   printSettings?: Partial<PrintSettingsType>;
@@ -420,22 +420,43 @@ export default function Settings() {
     });
   };
 
-  // Enabled currencies state
-  const [enabledCurrencies, setEnabledCurrencies] = useState({
-    USD: initialUnified?.enabledCurrencies?.USD !== false && persisted?.enabledCurrencies?.USD !== false,
-    TRY: initialUnified?.enabledCurrencies?.TRY !== false && (persisted?.enabledCurrencies?.TRY ?? true),
-    SYP: initialUnified?.enabledCurrencies?.SYP !== false && (persisted?.enabledCurrencies?.SYP ?? true),
+  // Dynamic currency states (Slot 1 & Slot 2 with real codes)
+  const initialNormalized = useMemo(() => loadNormalizedCurrencySettings(), []);
+
+  const [slot1Code, setSlot1Code] = useState<string>(() => {
+    const sym = persisted?.currencySymbols?.TRY || initialUnified?.currencySymbols?.TRY;
+    const name = persisted?.currencyNames?.TRY || initialUnified?.currencyNames?.TRY;
+    return detectCurrencyCodeFromMeta(sym, name, 'TRY');
   });
 
-  const toggleCurrency = (currency: 'USD' | 'TRY' | 'SYP', enabled: boolean) => {
-    // 1. حساب العملات الجديدة
+  const [slot2Code, setSlot2Code] = useState<string>(() => {
+    const sym = persisted?.currencySymbols?.SYP || initialUnified?.currencySymbols?.SYP;
+    const name = persisted?.currencyNames?.SYP || initialUnified?.currencyNames?.SYP;
+    return detectCurrencyCodeFromMeta(sym, name, 'SYP');
+  });
+
+  const [primaryCurrency, setPrimaryCurrency] = useState<string>(
+    initialUnified?.primaryCurrency || persisted?.primaryCurrency || initialNormalized.primaryCurrencyCode || 'USD'
+  );
+
+  const [enabledCurrencies, setEnabledCurrencies] = useState<Record<string, boolean>>(() => {
+    const base: Record<string, boolean> = {
+      USD: initialUnified?.enabledCurrencies?.USD !== false && persisted?.enabledCurrencies?.USD !== false,
+    };
+    for (const [code, c] of Object.entries(initialNormalized.currencies)) {
+      base[code] = c.enabled;
+    }
+    return base;
+  });
+
+  const toggleCurrency = (currency: string, enabled: boolean) => {
     const nextEnabled = {
       ...enabledCurrencies,
       [currency]: enabled,
     };
 
-    // منع إيقاف جميع العملات معاً (يجب إبقاء عملة واحدة على الأقل نشطة في النظام)
-    if (!nextEnabled.USD && !nextEnabled.TRY && !nextEnabled.SYP) {
+    const anyEnabled = Object.values(nextEnabled).some(Boolean);
+    if (!anyEnabled) {
       toast({
         title: 'تنبيه',
         description: 'يجب الإبقاء على عملة واحدة مفعلة على الأقل في النظام',
@@ -443,66 +464,56 @@ export default function Settings() {
       });
       return;
     }
-    
-    // 2. إذا تم إيقاف العملة الأساسية، يتم التحويل تلقائياً للعملة النشطة الأخرى
+
     let newPrimary = primaryCurrency;
     if (!enabled && primaryCurrency === currency) {
-      if (currency === 'USD') {
-        newPrimary = nextEnabled.TRY ? 'TRY' : nextEnabled.SYP ? 'SYP' : 'USD';
-      } else if (currency === 'TRY') {
-        newPrimary = nextEnabled.SYP ? 'SYP' : nextEnabled.USD ? 'USD' : 'TRY';
-      } else if (currency === 'SYP') {
-        newPrimary = nextEnabled.TRY ? 'TRY' : nextEnabled.USD ? 'USD' : 'SYP';
-      }
+      const activeOther = Object.keys(nextEnabled).find(k => k !== currency && nextEnabled[k]);
+      newPrimary = activeOther || 'USD';
       setPrimaryCurrency(newPrimary);
     }
-    
-    // 3. تحديث حالة الواجهة
+
     setEnabledCurrencies(nextEnabled);
 
-    // 4. حفظ الإعدادات بالاسم الصحيح لدالة التحميل loadPersistedSettings
     const persistedSettings = loadPersistedSettings() || {};
     const updated = {
       ...persistedSettings,
-      enabledCurrencies: nextEnabled,
+      enabledCurrencies: { USD: true, ...nextEnabled },
       primaryCurrency: newPrimary,
     };
 
     savePersistedSettings(updated as PersistedSettings);
 
-    // الحفظ المتزامن والموحد في الخلفية (Offline-First) مع طابع زمني جديد
     saveUnifiedStoreSettings({
       updatedAt: Date.now(),
       enabledCurrencies: nextEnabled,
       primaryCurrency: newPrimary,
     }).catch(e => console.warn('[Settings] toggleCurrency unified save error:', e));
 
-    // 5. إشعار جميع التبويبات والشاشات بالحدث الرسمي الموحد
     emitEvent(EVENTS.SETTINGS_UPDATED, updated);
   };
 
-  // Exchange rates (string to avoid mobile keyboard/focus issues)
-  const [primaryCurrency, setPrimaryCurrency] = useState<'USD' | 'TRY' | 'SYP'>(
-    (initialUnified?.primaryCurrency as 'USD' | 'TRY' | 'SYP') || persisted?.primaryCurrency || 'USD'
-  );
-
-  const [exchangeRates, setExchangeRates] = useState({
-    TRY: initialUnified?.exchangeRates?.TRY ? String(initialUnified.exchangeRates.TRY) : (persisted?.exchangeRates?.TRY ?? ''),
-    SYP: initialUnified?.exchangeRates?.SYP ? String(initialUnified.exchangeRates.SYP) : (persisted?.exchangeRates?.SYP ?? ''),
+  const [exchangeRates, setExchangeRates] = useState<Record<string, string>>(() => {
+    const base: Record<string, string> = {};
+    for (const [code, c] of Object.entries(initialNormalized.currencies)) {
+      base[code] = String(c.rate);
+    }
+    return base;
   });
 
-  // Custom currency names (USD, TRY, SYP)
-  const [currencyNames, setCurrencyNames] = useState({
-    USD: (persisted?.currencyNames?.USD && persisted.currencyNames.USD.trim()) ? persisted.currencyNames.USD.trim() : (initialUnified?.currencyNames?.USD || 'دولار'),
-    TRY: (persisted?.currencyNames?.TRY && persisted.currencyNames.TRY.trim()) ? persisted.currencyNames.TRY.trim() : (initialUnified?.currencyNames?.TRY || 'ليرة تركية'),
-    SYP: (persisted?.currencyNames?.SYP && persisted.currencyNames.SYP.trim()) ? persisted.currencyNames.SYP.trim() : (initialUnified?.currencyNames?.SYP || 'ليرة سورية'),
+  const [currencyNames, setCurrencyNames] = useState<Record<string, string>>(() => {
+    const base: Record<string, string> = {};
+    for (const [code, c] of Object.entries(initialNormalized.currencies)) {
+      base[code] = c.name;
+    }
+    return base;
   });
 
-  // Custom currency symbols (USD, TRY, SYP)
-  const [currencySymbols, setCurrencySymbols] = useState({
-    USD: (persisted?.currencySymbols?.USD && persisted.currencySymbols.USD.trim()) ? persisted.currencySymbols.USD.trim() : (initialUnified?.currencySymbols?.USD || '$'),
-    TRY: (persisted?.currencySymbols?.TRY && persisted.currencySymbols.TRY.trim()) ? persisted.currencySymbols.TRY.trim() : (initialUnified?.currencySymbols?.TRY || '₺'),
-    SYP: (persisted?.currencySymbols?.SYP && persisted.currencySymbols.SYP.trim()) ? persisted.currencySymbols.SYP.trim() : (initialUnified?.currencySymbols?.SYP || 'ل.س'),
+  const [currencySymbols, setCurrencySymbols] = useState<Record<string, string>>(() => {
+    const base: Record<string, string> = {};
+    for (const [code, c] of Object.entries(initialNormalized.currencies)) {
+      base[code] = c.symbol;
+    }
+    return base;
   });
 
   // Sync settings
@@ -741,7 +752,7 @@ export default function Settings() {
   // Snapshot of settings when page loads - for revert functionality
   const settingsSnapshotRef = useRef<{
     storeSettings: typeof storeSettings;
-    primaryCurrency: 'USD' | 'TRY' | 'SYP';
+    primaryCurrency: string;
     enabledCurrencies: typeof enabledCurrencies;
     exchangeRates: typeof exchangeRates;
     currencyNames: typeof currencyNames;
@@ -778,32 +789,34 @@ export default function Settings() {
           setTaxRate(merged.taxRate);
           setNotificationSettings(merged.notificationSettings as unknown as typeof notificationSettings);
           setPrintSettings(merged.printSettings as typeof printSettings);
-          setExchangeRates({
-            TRY: String(merged.exchangeRates.TRY),
-            SYP: String(merged.exchangeRates.SYP),
-          });
-          setPrimaryCurrency(merged.primaryCurrency as 'USD' | 'TRY' | 'SYP');
-          setEnabledCurrencies({
-            USD: merged.enabledCurrencies.USD !== false,
-            TRY: merged.enabledCurrencies.TRY !== false,
-            SYP: merged.enabledCurrencies.SYP !== false,
-          });
+          const s1Code = detectCurrencyCodeFromMeta(merged.currencySymbols?.TRY, merged.currencyNames?.TRY, 'TRY');
+          const s2Code = detectCurrencyCodeFromMeta(merged.currencySymbols?.SYP, merged.currencyNames?.SYP, 'SYP');
+          setSlot1Code(s1Code);
+          setSlot2Code(s2Code);
+          const initialNorm = normalizeCurrencySettings(merged);
+          setPrimaryCurrency(initialNorm.primaryCurrencyCode);
+
+          const loadedRates: Record<string, string> = {};
+          const loadedNames: Record<string, string> = {};
+          const loadedSymbols: Record<string, string> = {};
+          const loadedEnabled: Record<string, boolean> = {};
+          for (const [code, c] of Object.entries(initialNorm.currencies)) {
+            loadedRates[code] = String(c.rate);
+            loadedNames[code] = c.name;
+            loadedSymbols[code] = c.symbol;
+            loadedEnabled[code] = c.enabled;
+          }
+          setExchangeRates(loadedRates);
+          setCurrencyNames(loadedNames);
+          setCurrencySymbols(loadedSymbols);
+          setEnabledCurrencies(loadedEnabled);
+
           setDiscountPercentEnabled(merged.discountPercentEnabled);
           setDiscountFixedEnabled(merged.discountFixedEnabled);
           setBarcodeScanMode(merged.barcodeScanMode);
           setHideMaintenanceSection(merged.hideMaintenanceSection);
           setTrackCapital(merged.trackCapital);
           setInitialCapital(merged.initialCapital);
-          setCurrencyNames({
-            USD: merged.currencyNames.USD || 'دولار',
-            TRY: merged.currencyNames.TRY || 'ليرة تركية',
-            SYP: merged.currencyNames.SYP || 'ليرة سورية',
-          });
-          setCurrencySymbols({
-            USD: merged.currencySymbols.USD || '$',
-            TRY: merged.currencySymbols.TRY || '₺',
-            SYP: merged.currencySymbols.SYP || 'ل.س',
-          });
           setBackupSettings({
             autoBackup: Boolean(merged.backupSettings.autoBackup),
             interval: String(merged.backupSettings.interval || 'daily'),
@@ -819,26 +832,11 @@ export default function Settings() {
           // ✅ Update snapshot with the EXACT identical fresh values
           settingsSnapshotRef.current = {
             storeSettings: { ...merged.storeSettings },
-            primaryCurrency: merged.primaryCurrency as 'USD' | 'TRY' | 'SYP',
-            enabledCurrencies: {
-              USD: merged.enabledCurrencies.USD !== false,
-              TRY: merged.enabledCurrencies.TRY !== false,
-              SYP: merged.enabledCurrencies.SYP !== false,
-            },
-            exchangeRates: {
-              TRY: String(merged.exchangeRates.TRY),
-              SYP: String(merged.exchangeRates.SYP),
-            },
-            currencyNames: {
-              USD: merged.currencyNames.USD || 'دولار',
-              TRY: merged.currencyNames.TRY || 'ليرة تركية',
-              SYP: merged.currencyNames.SYP || 'ليرة سورية',
-            },
-            currencySymbols: {
-              USD: merged.currencySymbols.USD || '$',
-              TRY: merged.currencySymbols.TRY || '₺',
-              SYP: merged.currencySymbols.SYP || 'ل.س',
-            },
+            primaryCurrency: merged.primaryCurrency,
+            enabledCurrencies: { ...merged.enabledCurrencies },
+            exchangeRates: { ...merged.exchangeRates } as any,
+            currencyNames: { ...merged.currencyNames } as any,
+            currencySymbols: { ...merged.currencySymbols } as any,
             notificationSettings: { ...(merged.notificationSettings as unknown as typeof notificationSettings) },
             printSettings: { ...(merged.printSettings as typeof printSettings) },
             backupSettings: {
@@ -1220,7 +1218,18 @@ export default function Settings() {
         storeSettings,
         primaryCurrency,
         enabledCurrencies,
-        exchangeRates: { USD: 1, TRY: tryRate, SYP: sypRate },
+        exchangeRates: (() => {
+          const res: Record<string, number> = { USD: 1 };
+          for (const [k, v] of Object.entries(exchangeRates)) {
+            if (v !== '' && v !== undefined) {
+              const num = Number(v);
+              if (Number.isFinite(num) && num >= 0) res[k] = num;
+            }
+          }
+          if (exchangeRates[slot1Code]) res[slot1Code] = Number(exchangeRates[slot1Code]) || 1;
+          if (exchangeRates[slot2Code]) res[slot2Code] = Number(exchangeRates[slot2Code]) || 1;
+          return res;
+        })() as any,
         currencyNames,
         currencySymbols,
         taxEnabled,
@@ -2205,16 +2214,16 @@ export default function Settings() {
                     {/* 2. العملة الإضافية 1 (Slot 1) */}
                     <div
                       onClick={() => {
-                        if (enabledCurrencies.TRY) {
-                          setPrimaryCurrency('TRY');
+                        if (enabledCurrencies[slot1Code]) {
+                          setPrimaryCurrency(slot1Code);
                         } else {
                           toast({ title: isRTL ? 'العملة معطلة' : 'Currency Disabled', description: isRTL ? 'يجب تفعيل هذه العملة أولاً لاختيارها كعملة افتراضية' : 'Must enable this currency first' });
                         }
                       }}
                       className={cn(
                         "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-colors cursor-pointer",
-                        !enabledCurrencies.TRY && "opacity-60 border-dashed border-border/60 bg-muted/10",
-                        primaryCurrency === 'TRY'
+                        !enabledCurrencies[slot1Code] && "opacity-60 border-dashed border-border/60 bg-muted/10",
+                        primaryCurrency === slot1Code
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
                           : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
                       )}
@@ -2224,9 +2233,9 @@ export default function Settings() {
                         <div className="flex items-start justify-between gap-2">
                           <div className={cn(
                             "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs",
-                            primaryCurrency === 'TRY' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            primaryCurrency === slot1Code ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                           )}>
-                            {currencySymbols.TRY || '₺'}
+                            {currencySymbols[slot1Code] || PREDEFINED_CURRENCIES.find(c => c.code === slot1Code)?.symbol || slot1Code}
                           </div>
 
                           <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -2234,14 +2243,20 @@ export default function Settings() {
                               {isRTL ? 'قائمة العملات الجاهزة (27 عملة):' : 'Predefined currencies (27):'}
                             </label>
                             <select
-                              value={PREDEFINED_CURRENCIES.find(c => c.symbol === currencySymbols.TRY && c.name === currencyNames.TRY)?.code || ''}
+                              value={PREDEFINED_CURRENCIES.find(c => c.code === slot1Code)?.code || ''}
                               onChange={(e) => {
                                 const selected = PREDEFINED_CURRENCIES.find(c => c.code === e.target.value);
                                 if (selected) {
-                                  setCurrencySymbols(prev => ({ ...prev, TRY: selected.symbol }));
-                                  setCurrencyNames(prev => ({ ...prev, TRY: isRTL ? selected.name : selected.nameEn }));
+                                  const nextCode = selected.code;
+                                  setSlot1Code(nextCode);
+                                  setCurrencySymbols(prev => ({ ...prev, [nextCode]: selected.symbol }));
+                                  setCurrencyNames(prev => ({ ...prev, [nextCode]: isRTL ? selected.name : selected.nameEn }));
                                   if (selected.suggestedRate) {
-                                    setExchangeRates(prev => ({ ...prev, TRY: String(selected.suggestedRate) }));
+                                    setExchangeRates(prev => ({ ...prev, [nextCode]: String(selected.suggestedRate) }));
+                                  }
+                                  setEnabledCurrencies(prev => ({ ...prev, [nextCode]: true }));
+                                  if (primaryCurrency === slot1Code) {
+                                    setPrimaryCurrency(nextCode);
                                   }
                                 }
                               }}
@@ -2262,9 +2277,9 @@ export default function Settings() {
 
                           <div className={cn(
                             "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-1",
-                            primaryCurrency === 'TRY' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                            primaryCurrency === slot1Code ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
                           )}>
-                            {primaryCurrency === 'TRY' && <Check className="w-3 h-3 stroke-[3]" />}
+                            {primaryCurrency === slot1Code && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
                         </div>
 
@@ -2275,10 +2290,10 @@ export default function Settings() {
                               {isRTL ? 'اسم العملة:' : 'Name:'}
                             </span>
                             <Input
-                              value={currencyNames.TRY}
-                              onChange={(e) => setCurrencyNames({ ...currencyNames, TRY: e.target.value })}
+                              value={currencyNames[slot1Code] || ''}
+                              onChange={(e) => setCurrencyNames({ ...currencyNames, [slot1Code]: e.target.value })}
                               className="h-7 text-xs font-bold px-2 bg-background/80"
-                              placeholder={isRTL ? "مثال: ليرة تركية" : "e.g. Turkish Lira"}
+                              placeholder={isRTL ? "مثال: ريال قطري" : "e.g. Qatari Riyal"}
                             />
                           </div>
                           <div>
@@ -2286,10 +2301,10 @@ export default function Settings() {
                               {isRTL ? 'رمز العملة:' : 'Symbol:'}
                             </span>
                             <Input
-                              value={currencySymbols.TRY}
-                              onChange={(e) => setCurrencySymbols({ ...currencySymbols, TRY: e.target.value })}
+                              value={currencySymbols[slot1Code] || ''}
+                              onChange={(e) => setCurrencySymbols({ ...currencySymbols, [slot1Code]: e.target.value })}
                               className="h-7 text-xs font-bold px-2 bg-background/80 font-mono"
-                              placeholder={isRTL ? "مثال: ₺ أو ر.س" : "e.g. ₺ or SAR"}
+                              placeholder={isRTL ? "مثال: ر.ق أو ₺" : "e.g. QAR or ₺"}
                             />
                           </div>
                         </div>
@@ -2302,17 +2317,17 @@ export default function Settings() {
                           <Input
                             type="text"
                             inputMode="decimal"
-                            value={exchangeRates.TRY}
-                            onChange={(e) => setExchangeRates({ ...exchangeRates, TRY: sanitizeNumberText(e.target.value) })}
+                            value={exchangeRates[slot1Code] || ''}
+                            onChange={(e) => setExchangeRates({ ...exchangeRates, [slot1Code]: sanitizeNumberText(e.target.value) })}
                             className="h-7 text-xs font-mono font-bold px-2 bg-background/80"
-                            placeholder="34"
+                            placeholder="3.64"
                           />
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs font-medium text-foreground">{isRTL ? 'تفعيل العملة:' : 'Enable Currency:'}</span>
                           <Switch
-                            checked={enabledCurrencies.TRY}
-                            onCheckedChange={(val) => toggleCurrency('TRY', val)}
+                            checked={enabledCurrencies[slot1Code] === true}
+                            onCheckedChange={(val) => toggleCurrency(slot1Code, val)}
                           />
                         </div>
                       </div>
@@ -2321,16 +2336,16 @@ export default function Settings() {
                     {/* 3. العملة الإضافية 2 (Slot 2) */}
                     <div
                       onClick={() => {
-                        if (enabledCurrencies.SYP) {
-                          setPrimaryCurrency('SYP');
+                        if (enabledCurrencies[slot2Code]) {
+                          setPrimaryCurrency(slot2Code);
                         } else {
                           toast({ title: isRTL ? 'العملة معطلة' : 'Currency Disabled', description: isRTL ? 'يجب تفعيل هذه العملة أولاً لاختيارها كعملة افتراضية' : 'Must enable this currency first' });
                         }
                       }}
                       className={cn(
                         "relative flex flex-col justify-between p-4 rounded-xl border-2 transition-colors cursor-pointer",
-                        !enabledCurrencies.SYP && "opacity-60 border-dashed border-border/60 bg-muted/10",
-                        primaryCurrency === 'SYP'
+                        !enabledCurrencies[slot2Code] && "opacity-60 border-dashed border-border/60 bg-muted/10",
+                        primaryCurrency === slot2Code
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary/20"
                           : "border-border/60 hover:border-primary/40 bg-card hover:bg-muted/20"
                       )}
@@ -2339,10 +2354,10 @@ export default function Settings() {
                         {/* Header: Icon + Predefined Dropdown + Radio */}
                         <div className="flex items-start justify-between gap-2">
                           <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-xs",
-                            primaryCurrency === 'SYP' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs",
+                            primaryCurrency === slot2Code ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                           )}>
-                            {currencySymbols.SYP || 'ل.س'}
+                            {currencySymbols[slot2Code] || PREDEFINED_CURRENCIES.find(c => c.code === slot2Code)?.symbol || slot2Code}
                           </div>
 
                           <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -2350,14 +2365,20 @@ export default function Settings() {
                               {isRTL ? 'قائمة العملات الجاهزة (27 عملة):' : 'Predefined currencies (27):'}
                             </label>
                             <select
-                              value={PREDEFINED_CURRENCIES.find(c => c.symbol === currencySymbols.SYP && c.name === currencyNames.SYP)?.code || ''}
+                              value={PREDEFINED_CURRENCIES.find(c => c.code === slot2Code)?.code || ''}
                               onChange={(e) => {
                                 const selected = PREDEFINED_CURRENCIES.find(c => c.code === e.target.value);
                                 if (selected) {
-                                  setCurrencySymbols(prev => ({ ...prev, SYP: selected.symbol }));
-                                  setCurrencyNames(prev => ({ ...prev, SYP: isRTL ? selected.name : selected.nameEn }));
+                                  const nextCode = selected.code;
+                                  setSlot2Code(nextCode);
+                                  setCurrencySymbols(prev => ({ ...prev, [nextCode]: selected.symbol }));
+                                  setCurrencyNames(prev => ({ ...prev, [nextCode]: isRTL ? selected.name : selected.nameEn }));
                                   if (selected.suggestedRate) {
-                                    setExchangeRates(prev => ({ ...prev, SYP: String(selected.suggestedRate) }));
+                                    setExchangeRates(prev => ({ ...prev, [nextCode]: String(selected.suggestedRate) }));
+                                  }
+                                  setEnabledCurrencies(prev => ({ ...prev, [nextCode]: true }));
+                                  if (primaryCurrency === slot2Code) {
+                                    setPrimaryCurrency(nextCode);
                                   }
                                 }
                               }}
@@ -2378,9 +2399,9 @@ export default function Settings() {
 
                           <div className={cn(
                             "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-1",
-                            primaryCurrency === 'SYP' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                            primaryCurrency === slot2Code ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
                           )}>
-                            {primaryCurrency === 'SYP' && <Check className="w-3 h-3 stroke-[3]" />}
+                            {primaryCurrency === slot2Code && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
                         </div>
 
@@ -2391,10 +2412,10 @@ export default function Settings() {
                               {isRTL ? 'اسم العملة:' : 'Name:'}
                             </span>
                             <Input
-                              value={currencyNames.SYP}
-                              onChange={(e) => setCurrencyNames({ ...currencyNames, SYP: e.target.value })}
+                              value={currencyNames[slot2Code] || ''}
+                              onChange={(e) => setCurrencyNames({ ...currencyNames, [slot2Code]: e.target.value })}
                               className="h-7 text-xs font-bold px-2 bg-background/80"
-                              placeholder={isRTL ? "مثال: ليرة سورية" : "e.g. Syrian Pound"}
+                              placeholder={isRTL ? "مثال: جنيه مصري" : "e.g. Egyptian Pound"}
                             />
                           </div>
                           <div>
@@ -2402,10 +2423,10 @@ export default function Settings() {
                               {isRTL ? 'رمز العملة:' : 'Symbol:'}
                             </span>
                             <Input
-                              value={currencySymbols.SYP}
-                              onChange={(e) => setCurrencySymbols({ ...currencySymbols, SYP: e.target.value })}
+                              value={currencySymbols[slot2Code] || ''}
+                              onChange={(e) => setCurrencySymbols({ ...currencySymbols, [slot2Code]: e.target.value })}
                               className="h-7 text-xs font-bold px-2 bg-background/80 font-mono"
-                              placeholder={isRTL ? "مثال: ل.س أو د.ع" : "e.g. SYP or IQD"}
+                              placeholder={isRTL ? "مثال: ج.م أو د.ع" : "e.g. EGP or IQD"}
                             />
                           </div>
                         </div>
@@ -2417,18 +2438,18 @@ export default function Settings() {
                           <span className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'سعر الصرف ($1 =):' : 'Exchange Rate ($1 =):'}</span>
                           <Input
                             type="text"
-                            inputMode="numeric"
-                            value={exchangeRates.SYP}
-                            onChange={(e) => setExchangeRates({ ...exchangeRates, SYP: sanitizeNumberText(e.target.value) })}
+                            inputMode="decimal"
+                            value={exchangeRates[slot2Code] || ''}
+                            onChange={(e) => setExchangeRates({ ...exchangeRates, [slot2Code]: sanitizeNumberText(e.target.value) })}
                             className="h-7 text-xs font-mono font-bold px-2 bg-background/80"
-                            placeholder="14500"
+                            placeholder="48"
                           />
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs font-medium text-foreground">{isRTL ? 'تفعيل العملة:' : 'Enable Currency:'}</span>
                           <Switch
-                            checked={enabledCurrencies.SYP}
-                            onCheckedChange={(val) => toggleCurrency('SYP', val)}
+                            checked={enabledCurrencies[slot2Code] === true}
+                            onCheckedChange={(val) => toggleCurrency(slot2Code, val)}
                           />
                         </div>
                       </div>

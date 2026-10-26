@@ -62,28 +62,28 @@ export interface UnifiedStoreSettings {
   storeSettings: StoreInfo;
   primaryCurrency: 'USD' | 'TRY' | 'SYP' | string;
   enabledCurrencies: {
-    USD: boolean;
-    TRY: boolean;
-    SYP: boolean;
-    [code: string]: boolean;
+    USD?: boolean;
+    TRY?: boolean;
+    SYP?: boolean;
+    [code: string]: boolean | undefined;
   };
   exchangeRates: {
-    USD: number;
-    TRY: number;
-    SYP: number;
-    [code: string]: number;
+    USD?: number;
+    TRY?: number;
+    SYP?: number;
+    [code: string]: number | undefined;
   };
   currencyNames: {
-    USD: string;
-    TRY: string;
-    SYP: string;
-    [code: string]: string;
+    USD?: string;
+    TRY?: string;
+    SYP?: string;
+    [code: string]: string | undefined;
   };
   currencySymbols: {
-    USD: string;
-    TRY: string;
-    SYP: string;
-    [code: string]: string;
+    USD?: string;
+    TRY?: string;
+    SYP?: string;
+    [code: string]: string | undefined;
   };
   language: Language;
   theme: ThemeMode;
@@ -127,8 +127,8 @@ export const DEFAULT_UNIFIED_SETTINGS: UnifiedStoreSettings = {
   primaryCurrency: 'USD',
   enabledCurrencies: {
     USD: true,
-    TRY: true,
-    SYP: true,
+    TRY: false,
+    SYP: false,
   },
   exchangeRates: {
     USD: 1,

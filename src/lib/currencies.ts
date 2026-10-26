@@ -500,3 +500,176 @@ export function formatReportAmount(amountUsd: number): string {
   }
   return `${numStr}\u00A0${cleanSymbol}`;
 }
+
+export interface StoreCurrencyConfig {
+  code: string;
+  name: string;
+  symbol: string;
+  rate: number;
+  decimals: number;
+  enabled: boolean;
+}
+
+export interface NormalizedCurrencySettings {
+  primaryCurrencyCode: string;
+  currencies: Record<string, StoreCurrencyConfig>;
+}
+
+/**
+ * دالة ذكية لتحديد كود العملة الحقيقي من الاسم والرمز دون افتراض TRY/SYP
+ */
+export function detectCurrencyCodeFromMeta(
+  symbol?: string,
+  name?: string,
+  fallbackCode: string = 'USD'
+): string {
+  const cleanSym = (symbol || '').trim();
+  const cleanName = (name || '').trim();
+
+  // 1. فحص مباشر بالرمز والاسم المميزين
+  if (cleanSym === 'ر.ق' || cleanName.includes('قطر')) return 'QAR';
+  if (cleanSym === 'ج.م' || cleanName.includes('مصر')) return 'EGP';
+  if (cleanSym === 'ر.س' || cleanName.includes('سعود')) return 'SAR';
+  if (cleanSym === 'د.إ' || cleanName.includes('إمارات')) return 'AED';
+  if (cleanSym === 'د.ك' || cleanName.includes('كويت')) return 'KWD';
+  if (cleanSym === 'د.ب' || cleanName.includes('بحرين')) return 'BHD';
+  if (cleanSym === 'ر.ع' || cleanName.includes('عمان')) return 'OMR';
+  if (cleanSym === 'د.أ' || cleanName.includes('أردن')) return 'JOD';
+  if (cleanSym === 'د.ع' || cleanName.includes('عراق')) return 'IQD';
+  if (cleanSym === 'ل.ل' || cleanName.includes('لبنان')) return 'LBP';
+  if (cleanSym === 'د.ل' || cleanName.includes('ليبيا')) return 'LYD';
+  if (cleanSym === 'د.ت' || cleanName.includes('تونس')) return 'TND';
+  if (cleanSym === 'د.ج' || cleanName.includes('جزائر')) return 'DZD';
+  if (cleanSym === 'د.م' || cleanName.includes('مغرب')) return 'MAD';
+  if (cleanSym === 'ج.س' || cleanName.includes('سودان')) return 'SDG';
+  if (cleanSym === 'ر.ي' || cleanName.includes('يمن')) return 'YER';
+  if (cleanSym === '₺' || cleanName.includes('ترك')) return 'TRY';
+  if (cleanSym === 'ل.س' || cleanName.includes('سور')) return 'SYP';
+
+  // 2. مطابقة بالكتالوج العام
+  if (cleanSym) {
+    const bySym = PREDEFINED_CURRENCIES.find(c => c.symbol === cleanSym);
+    if (bySym) return bySym.code;
+  }
+  if (cleanName) {
+    const byName = PREDEFINED_CURRENCIES.find(c => c.name === cleanName || c.nameEn.toLowerCase() === cleanName.toLowerCase());
+    if (byName) return byName.code;
+  }
+
+  return fallbackCode ? fallbackCode.toUpperCase() : 'USD';
+}
+
+/**
+ * تطبيع إعدادات العملة وتحرير هوية العملات من فرض TRY و SYP
+ */
+export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrencySettings {
+  let settings = rawSettings;
+  if (!settings && typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem('hyperpos_settings_v1');
+      if (raw) settings = JSON.parse(raw);
+    } catch {}
+  }
+
+  const enabledMap = settings?.enabledCurrencies || {};
+  const namesMap = settings?.currencyNames || {};
+  const symbolsMap = settings?.currencySymbols || {};
+  const ratesMap = settings?.exchangeRates || {};
+  let rawPrimary = (settings?.primaryCurrency || 'USD') as string;
+
+  const currencies: Record<string, StoreCurrencyConfig> = {};
+
+  // 1. العملة الأساسية/المرجعية USD
+  currencies.USD = {
+    code: 'USD',
+    name: (namesMap.USD && namesMap.USD.trim()) || 'دولار أمريكي',
+    symbol: (symbolsMap.USD && symbolsMap.USD.trim()) || '$',
+    rate: 1,
+    decimals: 2,
+    enabled: enabledMap.USD !== false,
+  };
+
+  const processedRealCodes = new Set<string>(['USD']);
+  const legacySlots = ['TRY', 'SYP'];
+
+  // 2. معالجة الخانات القديمة TRY / SYP واكتشاف إن كانت تحوي عملة مخصصة كـ QAR أو EGP
+  for (const slotKey of legacySlots) {
+    const sym = symbolsMap[slotKey];
+    const name = namesMap[slotKey];
+    const rate = Number(ratesMap[slotKey]);
+    const isExplicitlyDisabled = enabledMap[slotKey] === false;
+
+    // إذا كانت الخانة فارغة كلياً، نتخطاها
+    if (!sym && !name && !rate && enabledMap[slotKey] !== true) {
+      continue;
+    }
+
+    const detectedCode = detectCurrencyCodeFromMeta(sym, name, slotKey);
+    const catalogItem = getPredefinedCurrency(detectedCode);
+
+    const finalCode = detectedCode;
+    const finalName = (name && name.trim()) || catalogItem?.name || finalCode;
+    const finalSymbol = (sym && sym.trim()) || catalogItem?.symbol || finalCode;
+    const finalRate = Number.isFinite(rate) && rate > 0 ? rate : (catalogItem?.suggestedRate || 1);
+    const decimals = getDefaultDecimals(finalCode);
+
+    currencies[finalCode] = {
+      code: finalCode,
+      name: finalName,
+      symbol: finalSymbol,
+      rate: finalRate,
+      decimals,
+      enabled: !isExplicitlyDisabled,
+    };
+    processedRealCodes.add(finalCode);
+
+    if (rawPrimary === slotKey) {
+      rawPrimary = finalCode;
+    }
+  }
+
+  // 3. معالجة أي عملات أخرى مخزنة بكودها المباشر
+  const allCodes = new Set([
+    ...Object.keys(enabledMap),
+    ...Object.keys(ratesMap),
+    ...Object.keys(namesMap),
+    ...Object.keys(symbolsMap),
+  ]);
+
+  for (const rawCode of allCodes) {
+    const code = rawCode.trim().toUpperCase();
+    if (processedRealCodes.has(code) || legacySlots.includes(code)) continue;
+
+    const sym = symbolsMap[rawCode] || symbolsMap[code];
+    const name = namesMap[rawCode] || namesMap[code];
+    const rate = Number(ratesMap[rawCode] ?? ratesMap[code]);
+    const isExplicitlyDisabled = enabledMap[rawCode] === false || enabledMap[code] === false;
+
+    const catalogItem = getPredefinedCurrency(code);
+    currencies[code] = {
+      code,
+      name: (name && name.trim()) || catalogItem?.name || code,
+      symbol: (sym && sym.trim()) || catalogItem?.symbol || code,
+      rate: Number.isFinite(rate) && rate > 0 ? rate : (catalogItem?.suggestedRate || 1),
+      decimals: getDefaultDecimals(code),
+      enabled: !isExplicitlyDisabled,
+    };
+    processedRealCodes.add(code);
+  }
+
+  // 4. ضبط كود العملة الأساسية
+  let primaryCurrencyCode = rawPrimary;
+  if (!currencies[primaryCurrencyCode] || !currencies[primaryCurrencyCode].enabled) {
+    const firstEnabled = Object.values(currencies).find(c => c.enabled);
+    primaryCurrencyCode = firstEnabled ? firstEnabled.code : 'USD';
+  }
+
+  return {
+    primaryCurrencyCode,
+    currencies,
+  };
+}
+
+export function loadNormalizedCurrencySettings(): NormalizedCurrencySettings {
+  return normalizeCurrencySettings();
+}
