@@ -26,11 +26,11 @@ import {
   type ReceiptLine,
 } from './printer/receipt-escpos';
 import {
-  scanPrinters,
   printParts,
   printTestPage,
   describePrinterError,
 } from './printer/bluetooth-printer';
+import { FlowPosPrinter } from './printer/flowpos-printer';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
 
@@ -471,10 +471,10 @@ export function isBluetoothSupported(): boolean {
 export async function searchBluetoothPrinters(): Promise<BluetoothDevice[]> {
   if (isNativeAndroid()) {
     try {
-      const list = await scanPrinters(() => {});
-      return list.map(d => ({ name: d.name, address: d.address }));
+      const paired = await FlowPosPrinter.listPaired();
+      return (paired?.devices || []).map(d => ({ name: d.name, address: d.address }));
     } catch (e) {
-      console.warn('[NativePrint] scanPrinters error:', e);
+      console.warn('[NativePrint] listPaired error:', e);
       return [];
     }
   }

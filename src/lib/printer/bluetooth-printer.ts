@@ -18,21 +18,6 @@ export async function checkReadiness(): Promise<{ ok: true; reason?: undefined }
   }
 }
 
-/** يعرض المقترنة أولاً، وبعدين يبحث عن أجهزة قريبة ويبثّها للواجهة لحظياً. */
-export async function scanPrinters(onFound: (d: PrinterDevice) => void): Promise<PrinterDevice[]> {
-  const handle = await FlowPosPrinter.addListener('deviceFound', onFound);
-  try {
-    const paired = await FlowPosPrinter.listPaired();
-    if (paired?.devices) {
-      paired.devices.forEach(onFound);
-    }
-    const res = await FlowPosPrinter.discover({ durationMs: 12000 });
-    return res?.devices || [];
-  } finally {
-    await handle.remove();
-  }
-}
-
 /** الاقتران يصير عبر النظام. الرمز بيتمرر للـ plugin بالذاكرة فقط ولا بيتخزن. */
 export async function pairAndConnect(address: string, pin?: string): Promise<void> {
   await FlowPosPrinter.pair({ address, pin: pin?.trim() || undefined });

@@ -83,24 +83,14 @@ import {
 import {
   FlowPosPrinter,
   isNativeAndroid,
-  type PrinterDevice,
 } from '@/lib/printer/flowpos-printer';
 import {
-  checkReadiness,
-  scanPrinters,
-  pairAndConnect,
-  saveSelectedPrinter,
   clearSelectedPrinter,
   printTestPage,
   describePrinterError,
-  type ReadinessReason,
 } from '@/lib/printer/bluetooth-printer';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { BluetoothPrinterDialog, PRINTER_FLOW_FLAG } from '@/components/printer/BluetoothPrinterDialog';
+import type { PaperWidth } from '@/lib/printer/receipt-escpos';
 import { checkNotificationPermissionNative, requestNotificationPermissionNative, sendLocalNotification } from '@/lib/native-notifications';
 import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -569,18 +559,10 @@ export default function Settings() {
   const [isTestingPrint, setIsTestingPrint] = useState(false);
   const [showUnpairDialog, setShowUnpairDialog] = useState(false);
 
-  // Add Printer Sheet state
-  const [showAddPrinterSheet, setShowAddPrinterSheet] = useState(false);
-  const [sheetStep, setSheetStep] = useState<'readiness' | 'list' | 'pair' | 'connecting' | 'success'>('readiness');
-  const [readinessReason, setReadinessReason] = useState<ReadinessReason | null>(null);
-  const [pairedDevices, setPairedDevices] = useState<PrinterDevice[]>([]);
-  const [discoveredDevices, setDiscoveredDevices] = useState<PrinterDevice[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [selectedDeviceForPair, setSelectedDeviceForPair] = useState<PrinterDevice | null>(null);
-  const [pairingPin, setPairingPin] = useState('0000');
-  const [showPin, setShowPin] = useState(false);
-  const [connectingStatusText, setConnectingStatusText] = useState('');
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+  // Add Bluetooth Printer Dialog state
+  const [showBtDialog, setShowBtDialog] = useState<boolean>(
+    () => sessionStorage.getItem(PRINTER_FLOW_FLAG) === 'await_bt'
+  );
 
   useEffect(() => {
     if (printerConfig.connectionType === 'bluetooth' && printerConfig.deviceAddress && isNativeAndroid()) {
@@ -635,88 +617,7 @@ export default function Settings() {
     });
   };
 
-  const openAddPrinterSheet = async () => {
-    setShowAddPrinterSheet(true);
-    setConnectionError(null);
-    setSelectedDeviceForPair(null);
-    setPairingPin('0000');
-    setConnectingStatusText('');
-    setDiscoveredDevices([]);
 
-    const readyCheck = await checkReadiness();
-    if (!readyCheck.ok) {
-      setReadinessReason(readyCheck.reason);
-      setSheetStep('readiness');
-    } else {
-      setReadinessReason(null);
-      setSheetStep('list');
-      startScanningProcess();
-    }
-  };
-
-  const startScanningProcess = async () => {
-    setIsScanning(true);
-    setDiscoveredDevices([]);
-    try {
-      const pairedRes = await FlowPosPrinter.listPaired().catch(() => ({ devices: [] }));
-      setPairedDevices(pairedRes.devices || []);
-
-      await scanPrinters((device) => {
-        setDiscoveredDevices((prev) => {
-          if (prev.some((d) => d.address.toLowerCase() === device.address.toLowerCase())) return prev;
-          return [...prev, device];
-        });
-      });
-    } catch (e) {
-      console.warn('Scan error:', e);
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  const handleSelectDeviceInSheet = (device: PrinterDevice) => {
-    setSelectedDeviceForPair(device);
-    if (device.paired) {
-      executeConnectAndTest(device, undefined);
-    } else {
-      setSheetStep('pair');
-    }
-  };
-
-  const executeConnectAndTest = async (device: PrinterDevice, pin?: string) => {
-    setSheetStep('connecting');
-    setConnectionError(null);
-    setConnectingStatusText(t('printer.connecting') || 'جاري الاتصال…');
-
-    try {
-      await pairAndConnect(device.address, pin);
-      setConnectingStatusText(t('printer.printingTest') || 'جاري الطباعة التجريبية…');
-      const paper = (printerConfig.paperWidth === '58mm' ? '58mm' : '80mm');
-      await printTestPage(device.address, paper);
-      saveSelectedPrinter(device, paper);
-      setPrinterConfig(getStoredPrinterConfig());
-      setIsPrinterConnected(true);
-      setSheetStep('success');
-    } catch (err) {
-      setConnectionError(describePrinterError(err));
-    }
-  };
-
-  const handleResolveReadiness = async () => {
-    if (readinessReason === 'BT_OFF') {
-      await FlowPosPrinter.enableBluetooth().catch(() => {});
-    } else if (readinessReason === 'NO_PERMISSION') {
-      await FlowPosPrinter.requestPermissions().catch(() => {});
-    }
-    const check = await checkReadiness();
-    if (!check.ok) {
-      setReadinessReason(check.reason);
-    } else {
-      setReadinessReason(null);
-      setSheetStep('list');
-      startScanningProcess();
-    }
-  };
 
   // Printing settings
   const [printSettings, setPrintSettings] = useState({
@@ -2953,7 +2854,7 @@ export default function Settings() {
                       </div>
                       <Button
                         type="button"
-                        onClick={openAddPrinterSheet}
+                        onClick={() => setShowBtDialog(true)}
                         className="w-full sm:w-auto px-6 h-10 gap-2 font-bold bg-primary text-primary-foreground shadow-xs"
                       >
                         <Plus className="w-4 h-4" />
@@ -3046,7 +2947,7 @@ export default function Settings() {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={openAddPrinterSheet}
+                          onClick={() => setShowBtDialog(true)}
                           disabled={isTestingPrint}
                           className="w-full sm:w-auto h-9 gap-1.5"
                         >
@@ -4385,255 +4286,17 @@ export default function Settings() {
         </DialogContent>
       </Dialog>
 
-      {/* Sheet إضافة واقتران طابعة البلوتوث (خطوات 1 إلى 5) */}
-      <Sheet open={showAddPrinterSheet} onOpenChange={setShowAddPrinterSheet}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
-          <SheetHeader className="text-start">
-            <SheetTitle className="flex items-center gap-2 text-base font-bold">
-              <Bluetooth className="w-5 h-5 text-primary" />
-              <span>{t('printer.add') || 'إضافة طابعة بلوتوث'}</span>
-            </SheetTitle>
-          </SheetHeader>
-
-          {/* الخطوة 1: فحص الجاهزية */}
-          {sheetStep === 'readiness' && (
-            <div className="py-6 space-y-4 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-sm text-foreground">
-                  {readinessReason === 'BT_OFF' && (t('printer.err.btOff') || 'البلوتوث متوقف')}
-                  {readinessReason === 'NO_PERMISSION' && (t('printer.err.permission') || 'صلاحيات البلوتوث مطلوبة')}
-                  {readinessReason === 'NO_LOCATION' && (t('printer.err.location') || 'خدمة الموقع مطلوبة')}
-                  {readinessReason === 'NOT_ANDROID' && 'البلوتوث الكلاسيكي مخصص لتطبيق الأندرويد'}
-                  {readinessReason === 'NO_BLUETOOTH' && 'الجهاز لا يدعم البلوتوث'}
-                </h4>
-                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                  {readinessReason === 'BT_OFF' && 'يرجى تشغيل البلوتوث لاكتشاف الطابعات الحرارية القريبة والاقتران بها.'}
-                  {readinessReason === 'NO_PERMISSION' && 'يحتاج التطبيق لصلاحيات اكتشاف والاتصال بالأجهزة القريبة.'}
-                  {readinessReason === 'NO_LOCATION' && 'على إصدارات أندرويد السابقة، يتطلب البحث عن الأجهزة تفعيل الـ GPS.'}
-                </p>
-              </div>
-
-              {(readinessReason === 'BT_OFF' || readinessReason === 'NO_PERMISSION') && (
-                <Button type="button" onClick={handleResolveReadiness} className="w-full max-w-xs mx-auto font-bold h-10">
-                  {readinessReason === 'BT_OFF' ? (t('printer.enableBt') || 'تشغيل البلوتوث') : (t('printer.grant') || 'منح الصلاحية')}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* الخطوة 2: قائمة الأجهزة المكتشفة والمقترنة */}
-          {sheetStep === 'list' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    {isScanning ? (t('printer.scanning') || 'جاري البحث عن طابعات قريبة…') : 'الطابعات المتاحة:'}
-                  </span>
-                  {isScanning && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={isScanning ? () => FlowPosPrinter.stopDiscovery().catch(() => {}) : startScanningProcess}
-                  className="h-7 px-2.5 text-xs gap-1"
-                >
-                  <RefreshCw className={cn("w-3 h-3", isScanning && "animate-spin")} />
-                  <span>{isScanning ? (t('printer.stopScan') || 'إيقاف البحث') : (t('printer.rescan') || 'بحث من جديد')}</span>
-                </Button>
-              </div>
-
-              {/* قسم الأجهزة المقترنة مسبقاً */}
-              {pairedDevices.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-muted-foreground block">
-                    {t('printer.paired') || 'الأجهزة المقترنة'}:
-                  </span>
-                  <div className="space-y-1.5">
-                    {pairedDevices.map((d) => (
-                      <button
-                        key={d.address}
-                        type="button"
-                        onClick={() => handleSelectDeviceInSheet(d)}
-                        className="w-full p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/50 text-start transition-all flex items-center justify-between gap-3 shadow-2xs"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Printer className="w-4 h-4 text-primary shrink-0" />
-                          <div className="min-w-0">
-                            <span className="font-bold text-sm text-foreground block truncate">{d.name}</span>
-                            <span className="font-mono text-[11px] text-muted-foreground">...{d.address.slice(-5)}</span>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] bg-muted/80">{t('printer.paired') || 'مقترنة'}</Badge>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* قسم الأجهزة القريبة المكتشفة */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold text-muted-foreground block">
-                  {t('printer.new') || 'أجهزة قريبة جديدة'}:
-                </span>
-                {discoveredDevices.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-muted-foreground space-y-1 border border-dashed border-border/60 rounded-xl p-4">
-                    {isScanning ? (
-                      <p>جاري البحث عن طابعات بلوتوث قريبة...</p>
-                    ) : (
-                      <>
-                        <p className="font-semibold text-foreground">{t('printer.noneFound') || 'لم يتم العثور على طابعات'}</p>
-                        <p>تأكد من تشغيل الطابعة وقربها وأنها في وضع الاقتران.</p>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {discoveredDevices.map((d) => (
-                      <button
-                        key={d.address}
-                        type="button"
-                        onClick={() => handleSelectDeviceInSheet(d)}
-                        className="w-full p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/50 text-start transition-all flex items-center justify-between gap-3 shadow-2xs"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Printer className="w-4 h-4 text-primary shrink-0" />
-                          <div className="min-w-0">
-                            <span className="font-bold text-sm text-foreground block truncate">{d.name}</span>
-                            <span className="font-mono text-[11px] text-muted-foreground">...{d.address.slice(-5)}</span>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">{t('printer.new') || 'جديدة'}</Badge>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* الخطوة 3: إدخال رمز الاقتران PIN */}
-          {sheetStep === 'pair' && selectedDeviceForPair && (
-            <div className="space-y-4 py-2">
-              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 flex items-center gap-3">
-                <Printer className="w-5 h-5 text-primary" />
-                <div>
-                  <span className="font-bold text-sm text-foreground block">{selectedDeviceForPair.name}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{selectedDeviceForPair.address}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-foreground block">
-                  {t('printer.pinLabel') || 'رمز الاقتران (PIN)'}
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showPin ? 'text' : 'password'}
-                    inputMode="numeric"
-                    maxLength={8}
-                    value={pairingPin}
-                    onChange={(e) => setPairingPin(e.target.value)}
-                    className="h-10 text-center font-mono tracking-widest text-base"
-                    placeholder="0000"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPin(!showPin)}
-                    className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center text-muted-foreground hover:text-foreground"
-                  >
-                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {t('printer.pinHint') || 'أغلب الطابعات بتستخدم 0000 أو 1234. لا يتم حفظ الرمز بعد الاقتران.'}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  onClick={() => executeConnectAndTest(selectedDeviceForPair, pairingPin)}
-                  className="flex-1 h-10 font-bold"
-                >
-                  {t('printer.pair') || 'اقتران واتصال'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setSheetStep('list')}
-                  className="h-10 px-4"
-                >
-                  {t('common.back') || 'رجوع'}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* الخطوة 4: الاتصال والاختبار */}
-          {sheetStep === 'connecting' && (
-            <div className="py-8 space-y-4 text-center">
-              {connectionError ? (
-                <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive mx-auto flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-foreground">فشل الاتصال أو الطباعة</h4>
-                    <p className="text-xs text-muted-foreground max-w-sm mx-auto">{connectionError}</p>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 pt-2">
-                    <Button
-                      type="button"
-                      onClick={() => selectedDeviceForPair && executeConnectAndTest(selectedDeviceForPair, pairingPin)}
-                      className="font-bold h-9"
-                    >
-                      {t('printer.retry') || 'إعادة المحاولة'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setSheetStep('list')}
-                      className="h-9"
-                    >
-                      {t('printer.pickOther') || 'اختيار طابعة أخرى'}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-                  <p className="text-sm font-bold text-foreground">{connectingStatusText}</p>
-                  <p className="text-xs text-muted-foreground">يرجى الانتظار، جاري إرسال إشارة الطباعة التجريبية للطابعة...</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* الخطوة 5: شاشة النجاح */}
-          {sheetStep === 'success' && selectedDeviceForPair && (
-            <div className="py-6 space-y-4 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
-                <Check className="w-7 h-7" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-base text-foreground">{t('printer.saved') || 'تم حفظ الطابعة بنجاح'}</h4>
-                <p className="text-xs text-muted-foreground">{selectedDeviceForPair.name} جاهزة الآن للطباعة التلقائية</p>
-              </div>
-              <Button
-                type="button"
-                onClick={() => setShowAddPrinterSheet(false)}
-                className="w-full max-w-xs mx-auto font-bold h-10"
-              >
-                {t('printer.done') || 'تم'}
-              </Button>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      {/* نافذة إضافة واقتران طابعة البلوتوث */}
+      <BluetoothPrinterDialog
+        open={showBtDialog}
+        onOpenChange={setShowBtDialog}
+        isRTL={isRTL}
+        paperWidth={(printerConfig.paperWidth === 'A4' ? '80mm' : printerConfig.paperWidth) as PaperWidth}
+        onSaved={() => {
+          setPrinterConfig(getStoredPrinterConfig());
+          setIsPrinterConnected(true);
+        }}
+      />
 
       {/* AlertDialog تأكيد فصل الطابعة */}
       <AlertDialog open={showUnpairDialog} onOpenChange={setShowUnpairDialog}>

@@ -72,6 +72,7 @@ public class FlowPosPrinterPlugin extends Plugin {
     private String connectedAddress;
 
     // ---- البحث ----
+    private boolean scanning = false;
     private PluginCall discoveryCall;
     private BroadcastReceiver discoveryReceiver;
     private Runnable discoveryTimeout;
@@ -125,7 +126,7 @@ public class FlowPosPrinterPlugin extends Plugin {
             name = d.getName();
         } catch (SecurityException ignored) {
         }
-        o.put("name", (name == null || name.isEmpty()) ? "Bluetooth printer" : name);
+        o.put("name", name == null ? "" : name);
         o.put("address", d.getAddress());
         o.put("paired", paired);
         return o;
@@ -244,10 +245,22 @@ public class FlowPosPrinterPlugin extends Plugin {
             call.reject("NO_PERMISSION", "NO_PERMISSION");
             return;
         }
+        if (scanning) {
+            // في بحث شغّال أصلاً، ما بنبدأ ثاني
+            call.reject("ALREADY_SCANNING", "ALREADY_SCANNING");
+            return;
+        }
 
-        finishDiscovery(); // أوقف أي بحث سابق
+        scanning = true;
         found.clear();
-        discoveryCall = call;
+
+        // الأجهزة المحفوظة بتدخل النتيجة من البداية، حتى لو الطابعة مطفية وما ردّت على البحث
+        try {
+            for (BluetoothDevice d : a.getBondedDevices()) {
+                found.put(d.getAddress(), toJs(d, true));
+            }
+        } catch (SecurityException ignored) {
+        }
 
         discoveryReceiver = new BroadcastReceiver() {
             @Override
@@ -255,11 +268,10 @@ public class FlowPosPrinterPlugin extends Plugin {
                 String action = intent.getAction();
                 if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                     BluetoothDevice d = deviceFrom(intent);
-                    if (d != null && !found.containsKey(d.getAddress())) {
-                        JSObject o = toJs(d, d.getBondState() == BluetoothDevice.BOND_BONDED);
-                        found.put(d.getAddress(), o);
-                        notifyListeners("deviceFound", o);
-                    }
+                    if (d == null || d.getAddress() == null) return;
+                    JSObject o = toJs(d, d.getBondState() == BluetoothDevice.BOND_BONDED);
+                    found.put(d.getAddress(), o);
+                    notifyListeners("deviceFound", o);
                 } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                     finishDiscovery();
                 }
@@ -269,7 +281,6 @@ public class FlowPosPrinterPlugin extends Plugin {
         IntentFilter f = new IntentFilter();
         f.addAction(BluetoothDevice.ACTION_FOUND);
         f.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        // أحداث البلوتوث من النظام، لازم RECEIVER_EXPORTED
         ContextCompat.registerReceiver(getContext(), discoveryReceiver, f, ContextCompat.RECEIVER_EXPORTED);
 
         boolean started;
@@ -279,11 +290,13 @@ public class FlowPosPrinterPlugin extends Plugin {
             started = false;
         }
         if (!started) {
-            finishDiscovery();
+            scanning = false;
+            cleanupDiscoveryReceiver();
             call.reject("DISCOVERY_FAILED", "DISCOVERY_FAILED");
             return;
         }
 
+        discoveryCall = call;
         discoveryTimeout = this::finishDiscovery;
         main.postDelayed(discoveryTimeout, call.getInt("durationMs", DEFAULT_SCAN_MS));
     }
@@ -294,7 +307,11 @@ public class FlowPosPrinterPlugin extends Plugin {
         call.resolve();
     }
 
+    /** ينهي البحث مرة وحدة بس، ويرجّع القائمة الكاملة (المحفوظة + اللي انلقت) */
     private void finishDiscovery() {
+        if (!scanning) return;
+        scanning = false;
+
         if (discoveryTimeout != null) {
             main.removeCallbacks(discoveryTimeout);
             discoveryTimeout = null;
@@ -304,13 +321,8 @@ public class FlowPosPrinterPlugin extends Plugin {
             if (a != null) a.cancelDiscovery();
         } catch (SecurityException ignored) {
         }
-        if (discoveryReceiver != null) {
-            try {
-                getContext().unregisterReceiver(discoveryReceiver);
-            } catch (IllegalArgumentException ignored) {
-            }
-            discoveryReceiver = null;
-        }
+        cleanupDiscoveryReceiver();
+
         PluginCall c = discoveryCall;
         discoveryCall = null;
         if (c != null) {
@@ -322,12 +334,23 @@ public class FlowPosPrinterPlugin extends Plugin {
         }
     }
 
+    private void cleanupDiscoveryReceiver() {
+        if (discoveryReceiver != null) {
+            try {
+                getContext().unregisterReceiver(discoveryReceiver);
+            } catch (IllegalArgumentException ignored) {
+            }
+            discoveryReceiver = null;
+        }
+    }
+
     // =====================================================================
     // الاقتران
     // =====================================================================
 
     @PluginMethod
     public void pair(PluginCall call) {
+        finishDiscovery(); // ما في اقتران وبحث شغّالين بنفس الوقت
         String address = call.getString("address");
         BluetoothAdapter a = adapter();
         if (address == null || a == null) {

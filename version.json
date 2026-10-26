@@ -1,8 +1,14 @@
 {
-  "versionCode": 343,
-  "versionName": "1.3.0",
-  "lastUpdated": "2026-10-26T22:00:00.000Z",
+  "versionCode": 344,
+  "versionName": "1.3.1",
+  "lastUpdated": "2026-10-27T01:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 344,
+      "versionName": "1.3.1",
+      "date": "2026-10-27",
+      "description": "v1.3.1 (Build 344) - تصليح نافذة إضافة واقتران طابعة البلوتوث واستقرار دورة حياة البحث (Bluetooth Printer Pairing & Lifecycle Stability Patch)؛ عزل نافذة الإضافة في المكوّن المستقل BluetoothPrinterDialog، منع الخروج وفقدان الحالة عند تفعيل البلوتوث عبر معالجة appStateChange وحفظ PRINTER_FLOW_FLAG، منع تكرار واصطدام عمليات البحث (scanning lock)، تضمين الأجهزة المقترنة مسبقاً من البداية دون اختفاء عند التمرير، وإلغاء الأسماء الوهمية الفارغة للأجهزة القريبة."
+    },
     {
       "versionCode": 343,
       "versionName": "1.3.0",
