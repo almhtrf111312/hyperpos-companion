@@ -63,6 +63,7 @@ import { addUniqueOperation } from '@/lib/sync-queue';
 import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
+import { canSellOffline, incrementOfflineInvoiceCounter } from '@/lib/offline-lease';
 import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/currencies';
 import { createCurrencySnapshot, getCurrencyDef, toUsd, fromUsd, round8, roundForCurrency as roundForCurr } from '@/lib/money-engine';
 
@@ -580,6 +581,13 @@ export function CartPanel({
     // ✅ حماية مزدوجة: state + ref لمنع التكرارات
     if (isSaving || savingRef.current) return;
 
+    // 🎫 بوابة تذكرة الأوفلاين: منع البيع عند انتهاء التذكرة أو العبث بالساعة أو بلوغ حد الفواتير
+    const leaseGate = canSellOffline();
+    if (!leaseGate.allowed) {
+      showToast.error(leaseGate.message, { persistent: false });
+      return;
+    }
+
     // 🛡️ فحص استباقي حاسم قبل تفريغ السلة وتوليد الفاتورة
     const validation = await validateCartProducts(cart);
     if (!validation.isValid) {
@@ -820,6 +828,9 @@ export function CartPanel({
         },
       }, operationId);
 
+      // 🎫 احتساب الفاتورة ضمن حصة الأوفلاين (لا تُصفَّر إلا بمزامنة ناجحة)
+      if (!navigator.onLine) incrementOfflineInvoiceCounter();
+
       // ✅ تسجيل النشاط
       if (user) {
         const itemsDescription = cartSnapshot.map(item => `${item.name} × ${item.quantity}`).join('، ');
@@ -927,6 +938,13 @@ export function CartPanel({
   const confirmDebtSale = async (isSplitSale: boolean = false) => {
     // ✅ حماية مزدوجة: state + ref لمنع التكرارات
     if (isSaving || savingRef.current) return;
+
+    // 🎫 بوابة تذكرة الأوفلاين: منع البيع عند انتهاء التذكرة أو العبث بالساعة أو بلوغ حد الفواتير
+    const leaseGate = canSellOffline();
+    if (!leaseGate.allowed) {
+      showToast.error(leaseGate.message, { persistent: false });
+      return;
+    }
 
     if (!isRealCustomerSelected(customerName)) {
       showToast.error('لا يمكن اعتماد الفاتورة كدين أو بيع مركب بدون تحديد عميل مسجل.');
@@ -1195,6 +1213,9 @@ export function CartPanel({
 
       // 2. ✅ إضافة حزمة البيع الآجل لطابور المزامنة sync-queue
       addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
+
+      // 🎫 احتساب الفاتورة ضمن حصة الأوفلاين (لا تُصفَّر إلا بمزامنة ناجحة)
+      if (!navigator.onLine) incrementOfflineInvoiceCounter();
 
       // ✅ تسجيل النشاط
       if (user) {

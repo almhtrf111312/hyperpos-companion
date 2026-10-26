@@ -131,8 +131,12 @@ export type Database = {
           id: string
           is_revoked: boolean | null
           is_trial: boolean | null
+          last_lease_issued_at: string | null
           license_tier: string | null
           max_cashiers: number | null
+          max_offline_days: number | null
+          max_offline_invoices: number | null
+          offline_lease_secret: string | null
           revoked_at: string | null
           revoked_reason: string | null
           updated_at: string | null
@@ -149,8 +153,12 @@ export type Database = {
           id?: string
           is_revoked?: boolean | null
           is_trial?: boolean | null
+          last_lease_issued_at?: string | null
           license_tier?: string | null
           max_cashiers?: number | null
+          max_offline_days?: number | null
+          max_offline_invoices?: number | null
+          offline_lease_secret?: string | null
           revoked_at?: string | null
           revoked_reason?: string | null
           updated_at?: string | null
@@ -167,8 +175,12 @@ export type Database = {
           id?: string
           is_revoked?: boolean | null
           is_trial?: boolean | null
+          last_lease_issued_at?: string | null
           license_tier?: string | null
           max_cashiers?: number | null
+          max_offline_days?: number | null
+          max_offline_invoices?: number | null
+          offline_lease_secret?: string | null
           revoked_at?: string | null
           revoked_reason?: string | null
           updated_at?: string | null
@@ -1452,6 +1464,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_tamper_logs: {
+        Row: {
+          client_timestamp: string | null
+          device_id: string
+          id: string
+          metadata: Json | null
+          resolved: boolean | null
+          server_timestamp: string | null
+          tamper_type: string
+          user_id: string | null
+        }
+        Insert: {
+          client_timestamp?: string | null
+          device_id: string
+          id?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          server_timestamp?: string | null
+          tamper_type: string
+          user_id?: string | null
+        }
+        Update: {
+          client_timestamp?: string | null
+          device_id?: string
+          id?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          server_timestamp?: string | null
+          tamper_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       shift_transactions: {
         Row: {
           amount: number
@@ -2271,6 +2316,7 @@ export type Database = {
       is_boss: { Args: { _user_id: string }; Returns: boolean }
       is_first_user: { Args: never; Returns: boolean }
       is_license_valid: { Args: { _user_id: string }; Returns: boolean }
+      issue_offline_lease: { Args: { p_device_id: string }; Returns: Json }
       process_pos_sale_atomic: {
         Args: {
           _currency: string

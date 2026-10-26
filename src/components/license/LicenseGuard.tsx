@@ -7,7 +7,7 @@ import { ActivationScreen } from './ActivationScreen';
 import { DeviceBlockedScreen } from '@/components/auth/DeviceBlockedScreen';
 import { DataEncryptedScreen } from './DataEncryptedScreen';
 import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
-import { Loader2, MessageCircle, LogOut } from 'lucide-react';
+import { Loader2, MessageCircle, LogOut, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Key, Clock } from 'lucide-react';
@@ -121,7 +121,7 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
   }
 
   const { user, isLoading: authLoading, signOut } = useAuth();
-  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role, dataEncrypted, isRevoked } = useLicense();
+  const { isLoading, isValid, hasLicense, needsActivation, startTrial, isTrial, checkLicense, expiresAt, remainingDays, ownerNeedsActivation, role, dataEncrypted, isRevoked, offlineLeaseBlocked, offlineLeaseReason } = useLicense();
   const { isChecking: isCheckingDevice, isDeviceBlocked } = useDeviceBinding();
   const { checkLicenseStatus } = useNotifications();
   const { t, direction } = useLanguage();
@@ -173,6 +173,40 @@ export function LicenseGuard({ children }: LicenseGuardProps) {
 
   if (!user) return <>{children}</>;
   if (dataEncrypted) return <DataEncryptedScreen />;
+
+  // 🎫 حظر تذكرة الأوفلاين: انتهاء الصلاحية أو عبث بالساعة أو بلوغ حد الفواتير دون اتصال
+  if (offlineLeaseBlocked && !navigator.onLine) {
+    const reasonMessages: Record<string, string> = {
+      tampered: 'تم رصد تلاعب بساعة الجهاز. تم إيقاف العمل دون اتصال حمايةً لبياناتك.',
+      expired: 'انتهت صلاحية تذكرة العمل دون اتصال.',
+      limit_reached: 'تم بلوغ الحد الأقصى للفواتير دون اتصال.',
+    };
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4" dir={direction}>
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center pb-2">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <WifiOff className="w-8 h-8 text-destructive" />
+            </div>
+            <CardTitle className="text-xl">الاتصال بالإنترنت مطلوب</CardTitle>
+            <CardDescription>
+              {reasonMessages[offlineLeaseReason || ''] || 'تعذر التحقق من صلاحية العمل دون اتصال.'}
+              {' '}يرجى الاتصال بالإنترنت مرة واحدة لمزامنة بياناتك وتجديد التذكرة.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button variant="default" className="w-full" onClick={() => checkLicense()}>
+              إعادة المحاولة بعد الاتصال
+            </Button>
+            <ContactLinksSection />
+            <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => { await supabase.auth.signOut(); }}>
+              {t('license.signOut')}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   // Transient device check protection:
   // If user has a valid active session, do not mount DeviceBlockedScreen while isCheckingDevice is running.
