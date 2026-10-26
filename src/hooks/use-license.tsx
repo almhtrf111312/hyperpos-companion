@@ -3,6 +3,7 @@ import { getDeviceKey } from '@/lib/secure-storage';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './use-auth';
 import { recordServerContact, getOfflineStatus, isDataEncrypted, decryptLocalData, checkAndEnforceProtection } from '@/lib/offline-protection';
+import { fetchOfflineLease, getOfflineLeaseStatus, clearOfflineLease } from '@/lib/offline-lease';
 import { toast } from '@/lib/sonner-bridge';
 
 interface LicenseState {
