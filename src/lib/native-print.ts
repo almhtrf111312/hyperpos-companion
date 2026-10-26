@@ -12,6 +12,25 @@ import { formatNumber, formatCurrency } from './utils';
 import { resolveInvoiceCurrencySymbol, getActiveCurrencyCode } from './currencies';
 import { getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
 import { isGuestDemoMode } from './demo-data';
+import { toast } from '@/lib/sonner-bridge';
+import { isNativeAndroid } from './printer/flowpos-printer';
+import {
+  PRINTER_CONFIG_KEY,
+  getStoredPrinterConfig,
+  saveStoredPrinterConfig,
+  type PrinterConfig,
+} from './printer/printer-config';
+import {
+  buildReceiptParts,
+  type PaperWidth,
+  type ReceiptLine,
+} from './printer/receipt-escpos';
+import {
+  scanPrinters,
+  printParts,
+  printTestPage,
+  describePrinterError,
+} from './printer/bluetooth-printer';
 
 const SETTINGS_KEY = 'hyperpos_settings_v1';
 
@@ -104,8 +123,9 @@ export function getPrintSettings(): PrintSettings {
 /**
  * إنشاء محتوى HTML للفاتورة
  */
-interface PrintableInvoice {
+export interface PrintableInvoice {
   id: string;
+  invoiceNumber?: string;
   date: string;
   time?: string;
   customerName: string;
@@ -129,7 +149,8 @@ interface PrintableInvoice {
   exchangeRate?: number;
   exchange_rate?: number;
   totalUSD?: number;
-  paymentType: 'cash' | 'debt';
+  paymentType: 'cash' | 'debt' | 'split';
+  notes?: string;
 }
 
 export function generateReceiptHTML(invoice: PrintableInvoice): string {
@@ -423,146 +444,58 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
  * على المتصفح: يستخدم iframe + window.print()
  */
 
-export const PRINTER_CONFIG_KEY = 'flowpos_printer_config';
+export {
+  PRINTER_CONFIG_KEY,
+  getStoredPrinterConfig,
+  saveStoredPrinterConfig,
+  type PrinterConfig,
+};
 
 export interface BluetoothDevice {
   name: string;
   address: string;
 }
 
-export interface PrinterConfig {
-  connectionType: 'bluetooth' | 'wired_system';
-  deviceName?: string;
-  deviceAddress?: string; // MAC Address or Device ID
-  paperWidth: '58mm' | '80mm' | 'A4';
-  autoPrintAfterSale?: boolean;
-}
-
-export function getStoredPrinterConfig(): PrinterConfig {
-  try {
-    const raw = localStorage.getItem(PRINTER_CONFIG_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {
-    console.warn('[Printer] Failed to read printer config:', e);
-  }
-  const isMobile = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
-  return {
-    connectionType: isMobile ? 'bluetooth' : 'wired_system',
-    paperWidth: '80mm',
-    autoPrintAfterSale: true,
-  };
-}
-
-export function saveStoredPrinterConfig(config: PrinterConfig): void {
-  try {
-    localStorage.setItem(PRINTER_CONFIG_KEY, JSON.stringify(config));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('flowpos:printer-config-changed', { detail: config }));
-    }
-  } catch (e) {
-    console.warn('[Printer] Failed to save printer config:', e);
-  }
-}
-
 /**
  * Check if Bluetooth hardware or platform bridge is actually supported in current runtime
  */
 export function isBluetoothSupported(): boolean {
-  if (typeof window === 'undefined') return false;
-  return Boolean(
-    typeof (window as any).BluetoothSerial?.connect === 'function' ||
-    typeof (window as any).Capacitor?.Plugins?.BluetoothSerial?.connect === 'function' ||
-    (typeof navigator !== 'undefined' && Boolean((navigator as any).bluetooth))
-  );
+  if (isNativeAndroid()) return true;
+  if (typeof navigator !== 'undefined' && Boolean((navigator as any).bluetooth)) return true;
+  return false;
 }
 
 /**
  * Search paired / available Bluetooth printers
- * Returns only real hardware devices discovered via supported platform bridges.
- * If no device is discovered or supported, returns an empty list [].
  */
 export async function searchBluetoothPrinters(): Promise<BluetoothDevice[]> {
-  const devices: BluetoothDevice[] = [];
-  const seenAddresses = new Set<string>();
-
-  // 1. Android Capacitor / Cordova BluetoothSerial bridge if present
-  if (typeof window !== 'undefined' && typeof (window as any).BluetoothSerial?.list === 'function') {
+  if (isNativeAndroid()) {
     try {
-      const paired = await new Promise<any[]>((resolve) => {
-        (window as any).BluetoothSerial.list(
-          (list: any[]) => resolve(list || []),
-          (err: any) => {
-            console.warn('[Printer] BluetoothSerial.list error:', err);
-            resolve([]);
-          }
-        );
-      });
-      if (paired && Array.isArray(paired)) {
-        for (const d of paired) {
-          const addr = d.address || d.id || '';
-          if (addr && !seenAddresses.has(addr)) {
-            seenAddresses.add(addr);
-            devices.push({
-              name: d.name || 'Bluetooth Printer',
-              address: addr,
-            });
-          }
-        }
-      }
+      const list = await scanPrinters(() => {});
+      return list.map(d => ({ name: d.name, address: d.address }));
     } catch (e) {
-      console.warn('[Printer] BluetoothSerial bridge failed:', e);
+      console.warn('[NativePrint] scanPrinters error:', e);
+      return [];
     }
   }
 
-  // 2. Capacitor Bluetooth plugin if present
-  if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.BluetoothSerial) {
-    try {
-      const res = await (window as any).Capacitor.Plugins.BluetoothSerial.list();
-      if (res?.devices && Array.isArray(res.devices)) {
-        for (const d of res.devices) {
-          const addr = d.address || d.id || '';
-          if (addr && !seenAddresses.has(addr)) {
-            seenAddresses.add(addr);
-            devices.push({
-              name: d.name || 'Bluetooth Printer',
-              address: addr,
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[Printer] Capacitor BluetoothSerial plugin error:', e);
-    }
-  }
-
-  // 3. Web Bluetooth API (if supported in Chrome/Edge/Android WebView)
+  // Web Bluetooth API fallback
   if (typeof navigator !== 'undefined' && (navigator as any).bluetooth?.getDevices) {
     try {
       const webDevices = await (navigator as any).bluetooth.getDevices();
       if (webDevices && Array.isArray(webDevices)) {
-        for (const d of webDevices) {
-          const addr = d.id || '';
-          if (addr && !seenAddresses.has(addr)) {
-            seenAddresses.add(addr);
-            devices.push({
-              name: d.name || 'Bluetooth Thermal Device',
-              address: addr,
-            });
-          }
-        }
+        return webDevices.map((d: any) => ({ name: d.name || 'Bluetooth Printer', address: d.id || '' }));
       }
     } catch (e) {
       console.warn('[Printer] Web Bluetooth getDevices:', e);
     }
   }
 
-  // Never return fake/mock devices. Return empty list if no real hardware is found.
-  return devices;
+  return [];
 }
 
 /**
  * Connect to thermal printer & verify connection / save as default.
- * Only saves config and reports success if connection and test print data succeed.
  */
 export async function connectAndTestBluetoothPrinter(
   address: string,
@@ -575,219 +508,147 @@ export async function connectAndTestBluetoothPrinter(
     };
   }
 
-  const hasCordova = typeof window !== 'undefined' && typeof (window as any).BluetoothSerial?.connect === 'function';
-  const hasCapacitor = typeof window !== 'undefined' && typeof (window as any).Capacitor?.Plugins?.BluetoothSerial?.connect === 'function';
-  const hasWebBluetooth = typeof navigator !== 'undefined' && Boolean((navigator as any).bluetooth);
+  if (isNativeAndroid()) {
+    try {
+      const config = getStoredPrinterConfig();
+      const paper = (config.paperWidth === '58mm' ? '58mm' : '80mm') as PaperWidth;
+      await printTestPage(address, paper);
+      config.connectionType = 'bluetooth';
+      config.deviceAddress = address;
+      if (name) config.deviceName = name;
+      saveStoredPrinterConfig(config);
 
-  if (!hasCordova && !hasCapacitor && !hasWebBluetooth) {
-    return {
-      success: false,
-      message: 'إضافة البلوتوث غير متوفرة أو غير مدعومة في هذه البيئة. يرجى استخدام طابعة النظام/المشاركة أو تشغيل التطبيق في بيئة أندرويد مدعومة.',
-    };
+      return {
+        success: true,
+        message: `تم الاتصال بنجاح بالطابعة ${name || address} وطباعة صفحة الاختبار`,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        message: describePrinterError(err),
+      };
+    }
   }
 
+  return {
+    success: false,
+    message: 'طباعة البلوتوث المباشرة تعمل على نظام أندرويد عبر البلوتوث الكلاسيكي (SPP)',
+  };
+}
+
+/**
+ * Compatibility helper for existing callers
+ */
+export async function htmlToEscPosRaster(htmlContent: string, paperWidth: '58mm' | '80mm' | 'A4'): Promise<Uint8Array> {
+  const lines: ReceiptLine[] = [{ text: 'FlowPOS Pro Print', align: 'center', bold: true }];
+  const parts = await buildReceiptParts(lines, paperWidth === '58mm' ? '58mm' : '80mm');
+  return parts[0] || new Uint8Array([0x1b, 0x40]);
+}
+
+/**
+ * Compatibility helper for existing callers
+ */
+export async function sendEscPosToBluetooth(rasterData: Uint8Array, address: string): Promise<boolean> {
   try {
-    const testText = '\x1B\x40\x1B\x61\x01\n=== FlowPOS Pro ===\nThermal Printer Connected!\n\n\x1D\x56\x41\x00';
-
-    if (hasCordova) {
-      await new Promise<void>((resolve, reject) => {
-        (window as any).BluetoothSerial.connect(
-          address,
-          () => {
-            (window as any).BluetoothSerial.write(
-              testText,
-              () => resolve(),
-              (writeErr: any) => reject(writeErr)
-            );
-          },
-          (connectErr: any) => reject(connectErr)
-        );
-      });
-    } else if (hasCapacitor) {
-      await (window as any).Capacitor.Plugins.BluetoothSerial.connect({ address });
-      await (window as any).Capacitor.Plugins.BluetoothSerial.write({ data: testText });
-    } else if (hasWebBluetooth) {
-      const webDevices = await (navigator as any).bluetooth.getDevices?.();
-      const matchedDevice = webDevices?.find((d: any) => d.id === address);
-      if (matchedDevice && matchedDevice.gatt) {
-        if (!matchedDevice.gatt.connected) {
-          await matchedDevice.gatt.connect();
-        }
-      } else {
-        throw new Error('الجهاز غير مصرح به أو تعذر العثور على خادم GATT للبلوتوث');
-      }
-    }
-
-    // Save only after genuine connection and transmission succeeded
-    const config = getStoredPrinterConfig();
-    config.connectionType = 'bluetooth';
-    config.deviceAddress = address;
-    if (name) config.deviceName = name;
-    saveStoredPrinterConfig(config);
-
-    return {
-      success: true,
-      message: `تم الاقتران والاتصال بنجاح بالطابعة ${name || address} وإرسال إشارة الاختبار`,
-    };
-  } catch (err: any) {
-    console.warn('[Printer] connectAndTest error:', err);
-    const detail = err?.message || (typeof err === 'string' ? err : 'تعذر إتمام الاتصال بالجهاز');
-    return {
-      success: false,
-      message: `فشل الاتصال بالطابعة (${detail}). تأكد من تشغيل البلوتوث واقتران الطابعة بالجهاز أولاً.`,
-    };
+    await printParts(address, [rasterData]);
+    return true;
+  } catch (e) {
+    console.warn('[Printer] sendEscPosToBluetooth error:', e);
+    return false;
   }
 }
 
 /**
- * Convert HTML receipt to monochrome ESC/POS raster bit-image.
- * Renders Arabic text as a high-resolution bitmap to prevent disconnected or reversed Arabic characters.
+ * Convert PrintableInvoice to structured ReceiptLine items for ESC/POS canvas rendering
  */
-export async function htmlToEscPosRaster(htmlContent: string, paperWidth: '58mm' | '80mm' | 'A4'): Promise<Uint8Array> {
-  const widthDots = paperWidth === '58mm' ? 384 : 576;
+export function invoiceToReceiptLines(invoice: PrintableInvoice): ReceiptLine[] {
+  const store = getStoreSettings();
+  const printSettings = getPrintSettings();
+  const rawSymbol = (invoice.currencySymbol || '').trim();
+  const rawCurrency = (invoice.currency || '').toUpperCase();
+  const effectiveSymbol = resolveInvoiceCurrencySymbol(rawCurrency, rawSymbol);
 
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.top = '-9999px';
-  container.style.left = '-9999px';
-  container.style.width = `${widthDots}px`;
-  container.style.maxWidth = `${widthDots}px`;
-  container.style.backgroundColor = '#ffffff';
-  container.style.color = '#000000';
-  container.style.fontFamily = 'Cairo, system-ui, -apple-system, sans-serif';
-  container.style.padding = '12px';
-  container.style.boxSizing = 'border-box';
-  container.innerHTML = htmlContent;
-  document.body.appendChild(container);
+  const lines: ReceiptLine[] = [];
 
-  await new Promise((r) => setTimeout(r, 60));
-
-  const totalHeight = Math.max(container.scrollHeight, 100);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = widthDots;
-  canvas.height = totalHeight;
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    document.body.removeChild(container);
-    return new Uint8Array([0x1B, 0x40]);
+  // 1. Store Header
+  if (printSettings.showStoreName !== false && store.name) {
+    lines.push({ text: store.name, align: 'center', bold: true, size: 1.3 });
+  }
+  if (store.phone) {
+    lines.push({ text: store.phone, align: 'center', size: 0.9 });
+  }
+  if (store.address) {
+    lines.push({ text: store.address, align: 'center', size: 0.9 });
   }
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, widthDots, totalHeight);
+  lines.push({ text: '--------------------------------', align: 'center' });
 
-  const data = `<svg xmlns="http://www.w3.org/2000/svg" width="${widthDots}" height="${totalHeight}">
-    <foreignObject width="100%" height="100%">
-      <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Cairo, sans-serif; color: #000; background: #fff; direction: rtl; padding: 8px;">
-        ${container.innerHTML}
-      </div>
-    </foreignObject>
-  </svg>`;
+  // 2. Invoice Details
+  lines.push({ text: `فاتورة رقم: ${invoice.invoiceNumber || invoice.id}`, align: 'right', bold: true });
+  lines.push({ text: `التاريخ: ${invoice.date} ${invoice.time || ''}`, align: 'right', size: 0.9 });
 
-  document.body.removeChild(container);
+  if (invoice.customerName && invoice.customerName !== 'زبون عام' && invoice.customerName !== 'General Customer') {
+    lines.push({ text: `العميل: ${invoice.customerName}`, align: 'right' });
+  }
+  if (invoice.cashierName) {
+    lines.push({ text: `الكاشير: ${invoice.cashierName}`, align: 'right', size: 0.9 });
+  }
 
-  const img = new Image();
-  const svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+  lines.push({ text: '--------------------------------', align: 'center' });
 
-  await new Promise((resolve) => {
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    img.src = url;
+  // 3. Items Header
+  lines.push({ text: 'الصنف           الكمية      المجموع', align: 'right', bold: true, size: 0.9 });
+  lines.push({ text: '--------------------------------', align: 'center' });
+
+  // 4. Items List
+  for (const item of invoice.items) {
+    const formattedPrice = formatCurrency(item.total, effectiveSymbol);
+    lines.push({
+      text: `${item.name.slice(0, 16)}  ×${item.quantity}  ${formattedPrice}`,
+      align: 'right',
+    });
+  }
+
+  lines.push({ text: '--------------------------------', align: 'center' });
+
+  // 5. Totals
+  lines.push({ text: `المجموع الفرعي: ${formatCurrency(invoice.subtotal, effectiveSymbol)}`, align: 'right' });
+
+  if (invoice.discount && invoice.discount > 0) {
+    const discountVal = invoice.discountAmount ?? invoice.discount;
+    lines.push({ text: `الخصم: -${formatCurrency(discountVal, effectiveSymbol)}`, align: 'right' });
+  }
+
+  if (invoice.tax && invoice.tax > 0) {
+    lines.push({ text: `الضريبة: ${formatCurrency(invoice.tax, effectiveSymbol)}`, align: 'right' });
+  }
+
+  lines.push({
+    text: `الإجمالي النهائي: ${formatCurrency(invoice.total, effectiveSymbol)}`,
+    align: 'right',
+    bold: true,
+    size: 1.2,
   });
 
-  const imgData = ctx.getImageData(0, 0, widthDots, totalHeight);
-  const pixels = imgData.data;
-  const bytesWidth = Math.ceil(widthDots / 8);
-  const rasterBytes = new Uint8Array(bytesWidth * totalHeight);
+  // 6. Payment & Footer
+  const paymentText = invoice.paymentType === 'debt' ? 'آجل (ذمة)' : invoice.paymentType === 'split' ? 'مركب' : 'نقداً';
+  lines.push({ text: `طريقة الدفع: ${paymentText}`, align: 'right' });
 
-  for (let y = 0; y < totalHeight; y++) {
-    for (let x = 0; x < widthDots; x++) {
-      const idx = (y * widthDots + x) * 4;
-      const r = pixels[idx];
-      const g = pixels[idx + 1];
-      const b = pixels[idx + 2];
-      const a = pixels[idx + 3];
-
-      const luminance = (r * 0.299 + g * 0.587 + b * 0.114);
-      if (a > 128 && luminance < 160) {
-        const byteIndex = y * bytesWidth + Math.floor(x / 8);
-        const bitIndex = 7 - (x % 8);
-        rasterBytes[byteIndex] |= (1 << bitIndex);
-      }
-    }
+  if (printSettings.footer) {
+    lines.push({ text: '--------------------------------', align: 'center' });
+    lines.push({ text: printSettings.footer, align: 'center', size: 0.9 });
   }
 
-  const xL = bytesWidth & 0xFF;
-  const xH = (bytesWidth >> 8) & 0xFF;
-  const yL = totalHeight & 0xFF;
-  const yH = (totalHeight >> 8) & 0xFF;
-
-  const header = new Uint8Array([0x1B, 0x40, 0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
-  const footer = new Uint8Array([0x0A, 0x0A, 0x0A, 0x1D, 0x56, 0x41, 0x00]);
-
-  const output = new Uint8Array(header.length + rasterBytes.length + footer.length);
-  output.set(header, 0);
-  output.set(rasterBytes, header.length);
-  output.set(footer, header.length + rasterBytes.length);
-
-  return output;
-}
-
-export async function sendEscPosToBluetooth(rasterData: Uint8Array, address: string): Promise<boolean> {
-  // 1. BluetoothSerial Cordova bridge
-  if (typeof window !== 'undefined' && typeof (window as any).BluetoothSerial?.write === 'function') {
-    try {
-      await new Promise<void>((resolve, reject) => {
-        (window as any).BluetoothSerial.write(rasterData.buffer, resolve, reject);
-      });
-      return true;
-    } catch (e) {
-      console.warn('[Printer] BluetoothSerial write failed:', e);
-      return false;
-    }
-  }
-
-  // 2. Capacitor Bluetooth plugin
-  if (typeof window !== 'undefined' && typeof (window as any).Capacitor?.Plugins?.BluetoothSerial?.write === 'function') {
-    try {
-      await (window as any).Capacitor.Plugins.BluetoothSerial.write({ data: rasterData });
-      return true;
-    } catch (e) {
-      console.warn('[Printer] Capacitor BluetoothSerial write failed:', e);
-      return false;
-    }
-  }
-
-  return false;
+  return lines;
 }
 
 export async function printHTML(htmlContent: string): Promise<boolean> {
   const printerConfig = getStoredPrinterConfig();
 
-  // المسار الأول: طباعة البلوتوث الحرارية للأندرويد / الهواتف
-  if (printerConfig.connectionType === 'bluetooth') {
-    if (printerConfig.deviceAddress) {
-      try {
-        const raster = await htmlToEscPosRaster(htmlContent, printerConfig.paperWidth);
-        const sent = await sendEscPosToBluetooth(raster, printerConfig.deviceAddress);
-        if (sent) return true;
-      } catch (err) {
-        console.warn('[NativePrint] Bluetooth raster print failed, falling back to system print:', err);
-      }
-    } else {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flowpos:request-printer-pairing'));
-      }
-    }
+  // على أندرويد بلوتوث: لا نسقط بصمت على طابعة النظام، وننبه المستخدم
+  if (printerConfig.connectionType === 'bluetooth' && isNativeAndroid()) {
+    toast.error('طباعة البلوتوث تتطلب طباعة الفاتورة المنظمة عبر printInvoice');
+    return false;
   }
 
   // المسار الثاني: الطباعة السلكية / طابعة النظام على الكمبيوتر PC/Electron أو المتصفح Web
@@ -818,7 +679,6 @@ export async function printHTML(htmlContent: string): Promise<boolean> {
  */
 function printOnWeb(htmlContent: string): boolean {
   try {
-    // إنشاء iframe خفيف للطباعة المباشرة
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.bottom = '0';
@@ -844,7 +704,6 @@ function printOnWeb(htmlContent: string): boolean {
           console.error('[NativePrint] iframe print error:', e);
         }
 
-        // تنظيف الـ iframe بعد الطباعة
         setTimeout(() => {
           try {
             if (document.body.contains(iframe)) {
@@ -866,14 +725,37 @@ function printOnWeb(htmlContent: string): boolean {
 }
 
 /**
- * طباعة فاتورة مباشرة
+ * طباعة فاتورة بيع
  */
 export async function printInvoice(invoice: PrintableInvoice): Promise<boolean> {
+  const printerConfig = getStoredPrinterConfig();
+
+  if (printerConfig.connectionType === 'bluetooth' && isNativeAndroid()) {
+    if (!printerConfig.deviceAddress) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowpos:request-printer-pairing'));
+      }
+      toast.warning('يرجى اختيار وإعداد طابعة البلوتوث أولاً من الإعدادات');
+      return false;
+    }
+
+    try {
+      const lines = invoiceToReceiptLines(invoice);
+      const paper = (printerConfig.paperWidth === '58mm' ? '58mm' : '80mm') as PaperWidth;
+      const parts = await buildReceiptParts(lines, paper);
+      await printParts(printerConfig.deviceAddress, parts);
+      toast.success('تمت الطباعة بنجاح');
+      return true;
+    } catch (err) {
+      const errorMsg = describePrinterError(err);
+      toast.error(errorMsg);
+      return false;
+    }
+  }
+
+  // مسار الطباعة العادية HTML لـ PC/Electron/Web
   const html = generateReceiptHTML(invoice);
   return printHTML(html);
 }
 
-/**
- * Re-export للتوافق مع الكود القديم
- */
 export { getStoreSettings as getStoreSettingsLegacy, getPrintSettings as getPrintSettingsLegacy };

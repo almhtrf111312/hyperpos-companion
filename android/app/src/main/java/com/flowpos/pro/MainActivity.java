@@ -13,6 +13,7 @@ import android.webkit.WebView;
 import java.util.Locale;
 
 import com.getcapacitor.BridgeActivity;
+import com.flowpos.pro.printer.FlowPosPrinterPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -28,6 +29,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(FlowPosPrinterPlugin.class);
         super.onCreate(savedInstanceState);
 
         try {

@@ -112,7 +112,9 @@ import { confirmPendingProfit } from '@/lib/partners-store';
 import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
 import { processDebtPayment } from '@/lib/unified-transactions';
 import { logActivity } from '@/lib/activity-log';
-import { printHTML } from '@/lib/native-print';
+import { printHTML, printInvoice, PrintableInvoice } from '@/lib/native-print';
+import { isNativeAndroid } from '@/lib/printer/flowpos-printer';
+import { getStoredPrinterConfig } from '@/lib/printer/printer-config';
 import { shareInvoice, InvoiceShareData, generateInvoiceShareText, nativeShare } from '@/lib/native-share';
 import { useActionGuard } from '@/hooks/use-action-guard';
 import { addToQueueIfNotExists } from '@/lib/sync-queue';
@@ -1552,6 +1554,35 @@ export default function Invoices() {
     const time = new Date(invoice.createdAt).toLocaleTimeString('ar-SA');
 
     const printFinancials = getInvoiceFinancials(invoice, true);
+
+    const printerConfig = getStoredPrinterConfig();
+    if (printerConfig.connectionType === 'bluetooth' && isNativeAndroid()) {
+      const invoiceData: PrintableInvoice = {
+        id: (invoice as any).invoiceNumber || invoice.id,
+        invoiceNumber: (invoice as any).invoiceNumber || invoice.id,
+        date: date,
+        time: time,
+        customerName: invoice.customerName || (language === 'ar' ? 'زبون عام' : 'General Customer'),
+        customerPhone: invoice.customerPhone,
+        items: (invoice.items || [])
+          .filter(item => !(item as any).refunded && item.quantity > 0)
+          .map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price * printFinancials.rate,
+            total: item.total * printFinancials.rate,
+          })),
+        subtotal: invoice.subtotal * printFinancials.rate,
+        discount: invoice.discount ? invoice.discount * printFinancials.rate : undefined,
+        total: printFinancials.displayTotal,
+        currencySymbol: printFinancials.symbol,
+        currency: printFinancials.code,
+        paymentType: invoice.paymentType,
+        notes: (invoice as any).notes,
+      };
+      printInvoice(invoiceData);
+      return;
+    }
     // ✅ جميع القيم المُدخَلة من المستخدم تمر عبر escapeHtml() لمنع XSS
     const itemsHtml = invoice.type === 'sale'
       ? invoice.items.filter(item => !item.refunded && item.quantity > 0).map(item => `

@@ -44,7 +44,9 @@ import { getNextInvoiceNumber } from '@/lib/invoices-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
 import { useAuth } from '@/hooks/use-auth';
-import { printHTML, getStoreSettings, getPrintSettings } from '@/lib/native-print';
+import { printHTML, printInvoice, PrintableInvoice, getStoreSettings, getPrintSettings } from '@/lib/native-print';
+import { isNativeAndroid } from '@/lib/printer/flowpos-printer';
+import { getStoredPrinterConfig } from '@/lib/printer/printer-config';
 import { shareInvoice, InvoiceShareData } from '@/lib/native-share';
 import { playSaleComplete, playDebtRecorded } from '@/lib/sound-utils';
 import { addSalesToShift, getActiveShift } from '@/lib/cashbox-store';
@@ -1424,6 +1426,32 @@ export function CartPanel({
     const printDiscountAmount = data ? data.discountAmount : discountAmount;
 
     if (printCart.length === 0) return;
+
+    const printerConfig = getStoredPrinterConfig();
+    if (printerConfig.connectionType === 'bluetooth' && isNativeAndroid()) {
+      const invoiceData: PrintableInvoice = {
+        id: data?.invoiceNumber ? `#${data.invoiceNumber}` : 'POS',
+        invoiceNumber: data?.invoiceNumber ? `#${data.invoiceNumber}` : undefined,
+        date: new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US'),
+        time: new Date().toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US'),
+        customerName: printCustomerName || (language === 'ar' ? 'زبون عام' : 'General Customer'),
+        items: printCart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: roundForCurr(fromUsd(item.price, printCurrency.code, printCurrency.rate), printCurrency.code),
+          total: roundForCurr(fromUsd(item.price * item.quantity, printCurrency.code, printCurrency.rate), printCurrency.code),
+        })),
+        subtotal: roundForCurr(fromUsd((data?.subtotal ?? (subtotal || 0)), printCurrency.code, printCurrency.rate), printCurrency.code),
+        discount: printDiscountAmount,
+        total: printTotalInCurrency,
+        currencySymbol: printCurrency.symbol || '$',
+        currency: printCurrency.code,
+        paymentType: data?.paymentType === 'split' ? 'split' : data?.paymentType === 'debt' ? 'debt' : 'cash',
+      };
+      printInvoice(invoiceData);
+      if (data) setLastSale(null);
+      return;
+    }
 
     // Load store settings
     let storeName = 'FlowPOS Pro';

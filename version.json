@@ -1,8 +1,14 @@
 {
-  "versionCode": 342,
-  "versionName": "1.2.2",
-  "lastUpdated": "2026-10-26T21:05:00.000Z",
+  "versionCode": 343,
+  "versionName": "1.3.0",
+  "lastUpdated": "2026-10-26T22:00:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 343,
+      "versionName": "1.3.0",
+      "date": "2026-10-27",
+      "description": "v1.3.0 (Build 343) - إضافة جسر البلوتوث الكلاسيكي للطابعات الحرارية وإعادة بناء واجهة الإعدادات والطباعة المباشرة (Native Bluetooth Thermal SPP Bridge, Enhanced Settings UI & Direct Invoice Printing)؛ إضافة FlowPosPrinterPlugin في أندرويد لدعم بروتوكول SPP الكلاسيكي واقتران الـ PIN والطباعة النقطية المقسمة عبر Canvas بدون تلوث أمني، إعادة تصميم بطاقة الطابعة في الإعدادات بحالاتها الثلاث ونافذة إضافة تفاعلية بخمس مراحل، وتوجيه فواتير المبيعات للطباعة الحرارية المباشرة مع الحفاظ على الطباعة النظامية والسلكية."
+    },
     {
       "versionCode": 342,
       "versionName": "1.2.2",
