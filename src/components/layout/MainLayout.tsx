@@ -31,6 +31,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   const toggleSidebar = useCallback(() => setSidebarOpen(false), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('sidebar-state', { detail: sidebarOpen }));
+  }, [sidebarOpen]);
+
   // Close sidebar on orientation change to prevent stuck overlay
   useOrientationChange(useCallback(() => {
     if (sidebarOpen && isMobile) {
