@@ -572,13 +572,6 @@ export default function Expenses() {
       {/* Top Header with Fixed Add Button */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <PageHeader title={t('expenses.title')} className="mb-0 md:mb-0 min-h-0" />
-        <Button 
-          onClick={() => setShowAddExpense(true)}
-          className="h-10 px-4 rounded-xl gap-2 bg-primary text-primary-foreground font-bold shadow-md cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('expenses.addExpense') || 'إضافة مصروف'}</span>
-        </Button>
       </div>
 
       {/* Top Search with Smart Mobile Clearance */}
@@ -1440,14 +1433,14 @@ export default function Expenses() {
             <button
               type="button"
               className={cn(
-                "pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full",
+                "pointer-events-auto flex items-center justify-center size-16 rounded-full",
                 "bg-gradient-primary hover:opacity-95 active:scale-95 text-primary-foreground font-bold",
                 "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 ring-4 ring-primary/15 transition-[transform,opacity] duration-300 ease-out cursor-pointer"
               )}
               title={t('expenses.addExpense')}
               aria-label={t('expenses.addExpense')}
             >
-              <Plus className="w-7 h-7 md:w-8 md:h-8 stroke-[2.5]" />
+              <Plus className="w-7 h-7 stroke-[2.5]" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

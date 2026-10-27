@@ -1,3 +1,4 @@
+import { capsuleOuter, capsuleOuterScroll, capsuleItem, capsuleActive, capsuleIdle } from '@/components/ui/SegmentedCapsule';
 import { useState } from 'react';
 import { 
   BookOpen, ChevronDown, ChevronUp,
@@ -107,12 +108,12 @@ export default function HelpPage() {
         />
 
         {/* Modern 2-Button Segmented Navigation Tabs — Unified Capsule */}
-        <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-2 gap-1 border border-border/40 shadow-xs select-none w-full sm:w-fit sm:min-w-[20rem]">
+        <div className={capsuleOuter}>
           <button
             type="button"
             onClick={() => setActiveTab('features')}
             className={cn(
-              "rounded-xl py-2 px-3 text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 select-none cursor-pointer",
+              capsuleItem,
               activeTab === 'features'
                 ? "bg-gradient-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -127,7 +128,7 @@ export default function HelpPage() {
             type="button"
             onClick={() => setActiveTab('faq')}
             className={cn(
-              "rounded-xl py-2 px-3 text-xs sm:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 select-none cursor-pointer",
+              capsuleItem,
               activeTab === 'faq'
                 ? "bg-gradient-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"

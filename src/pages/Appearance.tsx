@@ -1,11 +1,12 @@
+import { capsuleOuter, capsuleOuterScroll, capsuleItem, capsuleActive, capsuleIdle } from '@/components/ui/SegmentedCapsule';
 import { useState, useEffect, useRef } from 'react';
-import { Palette, Type, Maximize2, Save, Undo2, Loader2 } from 'lucide-react';
+import { Palette, Type, Maximize2 } from 'lucide-react';
 import { ThemeSection, PendingTheme } from '@/components/settings/ThemeSection';
 import { UIScaleSelector } from '@/components/settings/UIScaleSelector';
 import { FontSelector } from '@/components/settings/FontSelector';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { FloatingSaveBar } from '@/components/ui/FloatingSaveBar';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppFont } from '@/hooks/use-app-font';
 import { useUIScale } from '@/hooks/use-ui-scale';
@@ -136,9 +137,9 @@ export default function Appearance() {
   ];
 
   return (
-    <div className="p-3 md:p-6 max-w-2xl mx-auto pb-28 pt-14 md:pt-4 space-y-5">
+    <div className="p-3 md:p-6 max-w-2xl mx-auto pb-32 pt-14 md:pt-4 space-y-5">
       {/* شريط تبويبات الإعدادات (المظهر والثيم، الخطوط، حجم الواجهة، والتخطيط) — كبسولة موحدة */}
-      <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-3 gap-1 border border-border/40 shadow-xs select-none">
+      <div className={capsuleOuter + " sm:w-full"}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -148,10 +149,10 @@ export default function Appearance() {
               type="button"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 select-none cursor-pointer min-h-11",
+                capsuleItem,
                 isActive
-                  ? "bg-gradient-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+                  ? capsuleActive
+                  : capsuleIdle
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -194,28 +195,7 @@ export default function Appearance() {
 
       </div>
 
-      {/* الشريط/الزر العائم الحصري عند حدوث أي تعديل غير محفوظ في السمة أو الخط أو الحجم */}
-      {hasUnsavedChanges && (
-        <div className="fixed bottom-20 end-4 md:bottom-8 md:end-8 z-50 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <Button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="rounded-full shadow-2xl h-12 px-6 gap-2 bg-primary text-primary-foreground font-bold text-sm"
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>{isRTL ? 'حفظ التعديلات' : 'Save Changes'}</span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleCancelAll}
-            disabled={isSaving}
-            className="rounded-full shadow-lg h-12 px-4 gap-1.5 border-border/80 bg-background/95 text-sm"
-          >
-            <Undo2 className="w-4 h-4" />
-            <span>{isRTL ? 'إلغاء' : 'Cancel'}</span>
-          </Button>
-        </div>
-      )}
+      <FloatingSaveBar visible={hasUnsavedChanges} saving={isSaving} onSave={handleSaveAll} onRevert={handleCancelAll} />
     </div>
   );
 }

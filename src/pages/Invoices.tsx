@@ -1,3 +1,4 @@
+import { capsuleOuter, capsuleOuterScroll, capsuleItem, capsuleActive, capsuleIdle } from '@/components/ui/SegmentedCapsule';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -2145,7 +2146,7 @@ export default function Invoices() {
 
           {/* 3. شريط بطاقات الفلاتر النشطة (Active Filter Chips Strip) */}
           {(filterPayment !== 'all' || filterType !== 'all' || displayCurrencyFilter !== 'stored' || showRefunded) && (
-            <div className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full border border-border/40 shadow-xs text-xs font-bold select-none">
+            <div className={capsuleOuterScroll + " sm:w-full"}>
               {filterPayment !== 'all' && (
                 <div className="bg-card border border-border/70 text-foreground px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-xs">
                   <span>
