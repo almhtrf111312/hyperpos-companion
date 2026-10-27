@@ -9,7 +9,7 @@
  */
 
 import { emitEvent, EVENTS } from './events';
-import { roundCurrency, addCurrency, subtractCurrency } from './utils';
+import { addCurrency, subtractCurrency, round8 as roundCurrency } from './utils';
 
 // Storage keys
 const PROFIT_RECORDS_KEY = 'hyperpos_profit_records_v1';

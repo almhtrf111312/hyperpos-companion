@@ -4,7 +4,7 @@
 // ولم تتضمن userId مما يتسبب في مسح ورديات الكاشير الأول عند تسجيل دخول آخر.
 import { getCurrentUserId } from './supabase-store';
 import { emitEvent, EVENTS } from './events';
-import { roundCurrency, addCurrency, subtractCurrency } from './utils';
+import { addCurrency, subtractCurrency, round8 as roundCurrency } from './utils';
 import { getEnabledCurrencies, roundForCurrency, fromUsd } from './money-engine';
 
 // المفاتيح القديمة (للتوافق مع البيانات المخزنة سابقاً — تُقرأ كـ fallback)
