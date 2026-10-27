@@ -115,3 +115,5 @@ See `.xgrok/BEST_PRACTICES.md` and `.xgrok/SECURITY.md`.
 - Offline writes (customers, expenses, debts, debt payments) queue via sync-queue with client UUIDs; expenses go through the add_expense_atomic RPC. Why: queue-first UI with retry-safe, duplicate-free sync.
 
 - Remote release control lives in `src/lib/remote-updates.ts` (config in app_settings key `release_config`, broadcasts in `app_broadcasts`, installs in `client_versions`); the Boss is never locked out. Why: one source for forced-update rules.
+
+- Keep active tab ancestors free of transforms and perspective; floating controls stay inline and viewport-fixed. Scroll visibility resets on page activation and ignores automatic layout/restoration scrolls so cached pages do not hide their controls on entry.

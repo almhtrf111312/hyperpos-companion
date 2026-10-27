@@ -2732,8 +2732,7 @@ html[data-perf="lite"] * {
 .native-instant-tab {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  perspective: 1000px;
-  transform: translateZ(0);
+  /* لا ننشئ حاوية تموضع جديدة: الأزرار العائمة تتبع الشاشة لا ارتفاع الصفحة. */
 }
 
 @media (max-width: 640px) {

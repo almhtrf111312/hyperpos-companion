@@ -1419,13 +1419,13 @@ export default function Expenses() {
       </AlertDialog>
 
       {/* Scroll-aware Smart FAB with Speed Dial Options عبر المكوّن الذكي الموحد */}
-      <SmartFab label={t('expenses.addExpense')} alwaysVisible>
+      <SmartFab label={t('expenses.addExpense')}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
+            <Button
               type="button"
               className={cn(
-                "pointer-events-auto flex items-center justify-center size-16 rounded-full",
+                "flex items-center justify-center size-16 rounded-full p-0",
                 "bg-gradient-primary hover:opacity-95 active:scale-95 text-primary-foreground font-bold",
                 "shadow-xl shadow-primary/35 hover:shadow-2xl border border-primary-foreground/25 ring-4 ring-primary/15 transition-[transform,opacity] duration-300 ease-out cursor-pointer"
               )}
@@ -1433,7 +1433,7 @@ export default function Expenses() {
               aria-label={t('expenses.addExpense')}
             >
               <Plus className="w-7 h-7 stroke-[2.5]" />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             side="top"
