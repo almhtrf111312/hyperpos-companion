@@ -57,6 +57,17 @@ export function BossReleasesPanel() {
     latest_version_name: CURRENT_VERSION_NAME, forced_since: new Date().toISOString(),
   });
 
+  const publishTelegram = async () => {
+    if (!cfg.update_url) return toast.error('أدخل رابط التحديث أولاً');
+    setBusy(true);
+    const { error } = await supabase.functions.invoke('publish-telegram-release', {
+      body: { version: `v${cfg.latest_version_name || CURRENT_VERSION_NAME}`, title: 'تحديث جديد متاح', notes: cfg.message, download_url: cfg.update_url },
+    });
+    setBusy(false);
+    if (error) return toast.error('فشل النشر في Telegram');
+    toast.success('تم النشر في القناة');
+  };
+
   const send = async () => {
     if (!draft.title.trim()) return toast.error('اكتب عنوان الإشعار');
     setBusy(true);
@@ -116,6 +127,9 @@ export function BossReleasesPanel() {
             <Button size="sm" className="flex-1 gap-1" disabled={busy} onClick={() => save(cfg)}><Save className="w-4 h-4" /> حفظ</Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={() => save({ ...cfg, min_version_code: 0, forced_since: null })}>إلغاء الإجبار</Button>
           </div>
+          <Button size="sm" variant="secondary" className="w-full gap-1" disabled={busy} onClick={publishTelegram}>
+            <Send className="w-4 h-4" /> نشر التحديث في قناة Telegram
+          </Button>
         </div>
 
         {/* Broadcast composer */}
