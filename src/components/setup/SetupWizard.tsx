@@ -56,7 +56,8 @@ import { emitEvent, EVENTS } from '@/lib/events';
 import { saveStoreSettings, getCurrentUserId, getCurrentUserName } from '@/lib/supabase-store';
 import { getDefaultCategories } from '@/lib/store-type-config';
 import { saveCategories, loadCategories, Category } from '@/lib/categories-store';
-import { PREDEFINED_CURRENCIES } from '@/lib/currencies';
+import { detectCurrencyCodeFromMeta, PREDEFINED_CURRENCIES } from '@/lib/currencies';
+import { toEnglishCurrencySymbol } from '@/lib/currency-symbols';
 import { openShift, loadShifts, getActiveShift } from '@/lib/cashbox-store';
 
 interface SetupWizardProps {
@@ -102,20 +103,30 @@ const getInitialCurrencies = () => {
   const candidateCodes = [...activeNonUsd, ...otherConfigured];
 
   // Resolve Secondary Currency 1
-  const c1Code = candidateCodes[0] || 'TRY';
+  const c1SourceCode = candidateCodes[0] || 'TRY';
+  const c1Code = detectCurrencyCodeFromMeta(
+    symbolsMap[c1SourceCode],
+    namesMap[c1SourceCode],
+    c1SourceCode
+  );
   const c1Predefined = PREDEFINED_CURRENCIES.find(c => c.code === c1Code);
-  const c1Enabled = enabledMap[c1Code] !== undefined ? !!enabledMap[c1Code] : true;
-  const c1Name = namesMap[c1Code] || c1Predefined?.name || (c1Code === 'TRY' ? 'ليرة تركية' : c1Code);
-  const c1Symbol = symbolsMap[c1Code] || c1Predefined?.symbol || (c1Code === 'TRY' ? '₺' : c1Code);
-  const c1Rate = Number(ratesMap[c1Code]) || c1Predefined?.suggestedRate || (c1Code === 'TRY' ? 34 : 1);
+  const c1Enabled = enabledMap[c1SourceCode] !== undefined ? !!enabledMap[c1SourceCode] : true;
+  const c1Name = namesMap[c1SourceCode] || namesMap[c1Code] || c1Predefined?.name || (c1Code === 'TRY' ? 'ليرة تركية' : c1Code);
+  const c1Symbol = toEnglishCurrencySymbol(symbolsMap[c1SourceCode] || symbolsMap[c1Code] || c1Predefined?.symbol || (c1Code === 'TRY' ? '₺' : c1Code), c1Code);
+  const c1Rate = Number(ratesMap[c1SourceCode] || ratesMap[c1Code]) || c1Predefined?.suggestedRate || (c1Code === 'TRY' ? 34 : 1);
 
   // Resolve Secondary Currency 2
-  const c2Code = candidateCodes[1] || (c1Code === 'SYP' ? 'TRY' : 'SYP');
+  const c2SourceCode = candidateCodes[1] || (c1SourceCode === 'SYP' ? 'TRY' : 'SYP');
+  const c2Code = detectCurrencyCodeFromMeta(
+    symbolsMap[c2SourceCode],
+    namesMap[c2SourceCode],
+    c2SourceCode
+  );
   const c2Predefined = PREDEFINED_CURRENCIES.find(c => c.code === c2Code);
-  const c2Enabled = enabledMap[c2Code] !== undefined ? !!enabledMap[c2Code] : (candidateCodes.length > 1 ? false : true);
-  const c2Name = namesMap[c2Code] || c2Predefined?.name || (c2Code === 'SYP' ? 'ليرة سورية' : c2Code);
-  const c2Symbol = symbolsMap[c2Code] || c2Predefined?.symbol || (c2Code === 'SYP' ? 'ل.س' : c2Code);
-  const c2Rate = Number(ratesMap[c2Code]) || c2Predefined?.suggestedRate || (c2Code === 'SYP' ? 14500 : 1);
+  const c2Enabled = enabledMap[c2SourceCode] !== undefined ? !!enabledMap[c2SourceCode] : (candidateCodes.length > 1 ? false : true);
+  const c2Name = namesMap[c2SourceCode] || namesMap[c2Code] || c2Predefined?.name || (c2Code === 'SYP' ? 'ليرة سورية' : c2Code);
+  const c2Symbol = toEnglishCurrencySymbol(symbolsMap[c2SourceCode] || symbolsMap[c2Code] || c2Predefined?.symbol || (c2Code === 'SYP' ? 'SYP' : c2Code), c2Code);
+  const c2Rate = Number(ratesMap[c2SourceCode] || ratesMap[c2Code]) || c2Predefined?.suggestedRate || (c2Code === 'SYP' ? 14500 : 1);
 
   return {
     primaryCurrency: settings?.primaryCurrency || 'USD',

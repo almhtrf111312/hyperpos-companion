@@ -69,6 +69,11 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **Canonical Currency Symbols (Phase 5):**
+  * Legacy Arabic currency symbols are displayed as their matching ISO code only when the currency identity is verified; intentional custom symbols and international glyphs remain unchanged.
+  * Legacy TRY/SYP storage slots are interpreted from their currency symbol before runtime display, and invoice history keeps its saved exchange rate.
+  * Updated currency catalog, settings, setup wizard, POS formatting, cash shifts, invoice currency cards, and the shared invoice symbol resolver used by print/share paths.
+  * No automatic localStorage/Supabase migration and no accounting, rate, or amount changes. Focused symbol and POS currency tests and production build pass; TypeScript check remains blocked by the pre-existing `inert` typing error in `Sidebar.tsx`, and ESLint reports pre-existing violations.
 * **2026-10-28:** Invoice Currency Card Deduplication:
   * Invoice currency-equation cards now render only enabled currencies and suppress duplicate codes, symbols, and names, including legacy metadata aliases for the Qatari riyal.
   * Qatar currency aliases display the canonical `ر.ق` symbol and `الريال القطري` name while retaining the invoice's saved exchange rate when applicable.

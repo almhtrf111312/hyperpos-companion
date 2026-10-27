@@ -14,8 +14,10 @@ import {
   getDefaultDecimals,
   getDefaultSymbolPosition,
 } from '@/lib/money-engine';
+import { toEnglishCurrencySymbol } from '@/lib/currency-symbols';
 
 export type { CurrencyDefinition };
+export { ARABIC_TO_ENGLISH_CURRENCY_SYMBOLS, toEnglishCurrencySymbol } from '@/lib/currency-symbols';
 
 export interface PredefinedCurrency {
   code: string;
@@ -28,26 +30,26 @@ export interface PredefinedCurrency {
 
 export const PREDEFINED_CURRENCIES: PredefinedCurrency[] = [
   // ─── الشرق الأوسط والخليج (Gulf & Middle East) ──────────────────────────
-  { code: 'SAR', symbol: 'ر.س', name: 'الريال السعودي', nameEn: 'Saudi Riyal', category: 'gulf_me', suggestedRate: 3.75 },
-  { code: 'AED', symbol: 'د.إ', name: 'الدرهم الإماراتي', nameEn: 'UAE Dirham', category: 'gulf_me', suggestedRate: 3.67 },
-  { code: 'KWD', symbol: 'د.ك', name: 'الدينار الكويتي', nameEn: 'Kuwaiti Dinar', category: 'gulf_me', suggestedRate: 0.31 },
-  { code: 'QAR', symbol: 'ر.ق', name: 'الريال القطري', nameEn: 'Qatari Riyal', category: 'gulf_me', suggestedRate: 3.64 },
-  { code: 'BHD', symbol: 'د.ب', name: 'الدينار البحريني', nameEn: 'Bahraini Dinar', category: 'gulf_me', suggestedRate: 0.38 },
-  { code: 'OMR', symbol: 'ر.ع', name: 'الريال العماني', nameEn: 'Omani Rial', category: 'gulf_me', suggestedRate: 0.38 },
-  { code: 'JOD', symbol: 'د.أ', name: 'الدينار الأردني', nameEn: 'Jordanian Dinar', category: 'gulf_me', suggestedRate: 0.71 },
-  { code: 'IQD', symbol: 'د.ع', name: 'الدينار العراقي', nameEn: 'Iraqi Dinar', category: 'gulf_me', suggestedRate: 1310 },
+  { code: 'SAR', symbol: 'SAR', name: 'الريال السعودي', nameEn: 'Saudi Riyal', category: 'gulf_me', suggestedRate: 3.75 },
+  { code: 'AED', symbol: 'AED', name: 'الدرهم الإماراتي', nameEn: 'UAE Dirham', category: 'gulf_me', suggestedRate: 3.67 },
+  { code: 'KWD', symbol: 'KWD', name: 'الدينار الكويتي', nameEn: 'Kuwaiti Dinar', category: 'gulf_me', suggestedRate: 0.31 },
+  { code: 'QAR', symbol: 'QAR', name: 'الريال القطري', nameEn: 'Qatari Riyal', category: 'gulf_me', suggestedRate: 3.64 },
+  { code: 'BHD', symbol: 'BHD', name: 'الدينار البحريني', nameEn: 'Bahraini Dinar', category: 'gulf_me', suggestedRate: 0.38 },
+  { code: 'OMR', symbol: 'OMR', name: 'الريال العماني', nameEn: 'Omani Rial', category: 'gulf_me', suggestedRate: 0.38 },
+  { code: 'JOD', symbol: 'JOD', name: 'الدينار الأردني', nameEn: 'Jordanian Dinar', category: 'gulf_me', suggestedRate: 0.71 },
+  { code: 'IQD', symbol: 'IQD', name: 'الدينار العراقي', nameEn: 'Iraqi Dinar', category: 'gulf_me', suggestedRate: 1310 },
   { code: 'TRY', symbol: '₺', name: 'الليرة التركية', nameEn: 'Turkish Lira', category: 'gulf_me', suggestedRate: 34 },
-  { code: 'SYP', symbol: 'ل.س', name: 'الليرة السورية', nameEn: 'Syrian Pound', category: 'gulf_me', suggestedRate: 14500 },
-  { code: 'LBP', symbol: 'ل.ل', name: 'الليرة اللبنانية', nameEn: 'Lebanese Pound', category: 'gulf_me', suggestedRate: 89500 },
-  { code: 'EGP', symbol: 'ج.م', name: 'الجنيه المصري', nameEn: 'Egyptian Pound', category: 'gulf_me', suggestedRate: 48 },
-  { code: 'YER', symbol: 'ر.ي', name: 'الريال اليمني', nameEn: 'Yemeni Rial', category: 'gulf_me', suggestedRate: 250 },
+  { code: 'SYP', symbol: 'SYP', name: 'الليرة السورية', nameEn: 'Syrian Pound', category: 'gulf_me', suggestedRate: 14500 },
+  { code: 'LBP', symbol: 'LBP', name: 'الليرة اللبنانية', nameEn: 'Lebanese Pound', category: 'gulf_me', suggestedRate: 89500 },
+  { code: 'EGP', symbol: 'EGP', name: 'الجنيه المصري', nameEn: 'Egyptian Pound', category: 'gulf_me', suggestedRate: 48 },
+  { code: 'YER', symbol: 'YER', name: 'الريال اليمني', nameEn: 'Yemeni Rial', category: 'gulf_me', suggestedRate: 250 },
 
   // ─── شمال أفريقيا (North Africa) ──────────────────────────────────────────
-  { code: 'LYD', symbol: 'د.ل', name: 'الدينار الليبي', nameEn: 'Libyan Dinar', category: 'north_africa', suggestedRate: 4.85 },
-  { code: 'TND', symbol: 'د.ت', name: 'الدينار التونسي', nameEn: 'Tunisian Dinar', category: 'north_africa', suggestedRate: 3.1 },
-  { code: 'DZD', symbol: 'د.ج', name: 'الدينار الجزائري', nameEn: 'Algerian Dinar', category: 'north_africa', suggestedRate: 134 },
-  { code: 'MAD', symbol: 'د.م', name: 'الدرهم المغربي', nameEn: 'Moroccan Dirham', category: 'north_africa', suggestedRate: 9.8 },
-  { code: 'SDG', symbol: 'ج.س', name: 'الجنيه السوداني', nameEn: 'Sudanese Pound', category: 'north_africa', suggestedRate: 600 },
+  { code: 'LYD', symbol: 'LYD', name: 'الدينار الليبي', nameEn: 'Libyan Dinar', category: 'north_africa', suggestedRate: 4.85 },
+  { code: 'TND', symbol: 'TND', name: 'الدينار التونسي', nameEn: 'Tunisian Dinar', category: 'north_africa', suggestedRate: 3.1 },
+  { code: 'DZD', symbol: 'DZD', name: 'الدينار الجزائري', nameEn: 'Algerian Dinar', category: 'north_africa', suggestedRate: 134 },
+  { code: 'MAD', symbol: 'MAD', name: 'الدرهم المغربي', nameEn: 'Moroccan Dirham', category: 'north_africa', suggestedRate: 9.8 },
+  { code: 'SDG', symbol: 'SDG', name: 'الجنيه السوداني', nameEn: 'Sudanese Pound', category: 'north_africa', suggestedRate: 600 },
 
   // ─── عملات عالمية (Global Currencies) ────────────────────────────────────
   { code: 'USD', symbol: '$', name: 'الدولار الأمريكي', nameEn: 'US Dollar', category: 'global', suggestedRate: 1 },
@@ -139,12 +141,12 @@ export function getPredefinedCurrency(code?: string): PredefinedCurrency | undef
 
 /**
  * الحصول على الرمز الفعلي للعملة (Symbol) بناءً على الكود
- * مثل: LBP -> ل.ل, TRY -> ₺, SYP -> ل.س, SAR -> ر.س, EUR -> €, USD -> $
+ * مثل: LBP -> LBP, TRY -> ₺, SYP -> SYP, SAR -> SAR, EUR -> €, USD -> $
  */
 export function getCurrencySymbolByCode(code?: string, fallback?: string): string {
   if (!code) return fallback || '$';
   const def = getCurrencyDef(code);
-  return def.symbol || fallback || def.code;
+  return toEnglishCurrencySymbol(def.symbol || fallback || def.code, code);
 }
 
 /**
@@ -247,9 +249,10 @@ export function resolveHistoricalCurrency(
 
   if (!isForeign) {
     // فاتورة بالدولار الأمريكي
-    const symbol = (rawSymbol && rawSymbol !== '')
-      ? rawSymbol
-      : (fallbackSettings?.currencySymbols?.USD || '$');
+    const symbol = toEnglishCurrencySymbol(
+      rawSymbol || fallbackSettings?.currencySymbols?.USD || '$',
+      'USD'
+    );
     return { code: 'USD', symbol, rate: 1 };
   }
 
@@ -283,7 +286,7 @@ export function resolveHistoricalCurrency(
     symbol = resolveInvoiceCurrencySymbol(code, rawSymbol);
   }
 
-  return { code, symbol, rate };
+  return { code, symbol: toEnglishCurrencySymbol(symbol, code), rate };
 }
 
 /**
@@ -311,12 +314,12 @@ export function resolveInvoiceCurrencySymbol(
       (trimmed === 'ل.س' && code !== 'SYP') ||
       (trimmed === '€' && code !== 'EUR');
     if (!isSuspicious) {
-      if (trimmed === 'TL') return def.symbol || '₺';
-      return trimmed;
+      if (trimmed === 'TL') return toEnglishCurrencySymbol(def.symbol || '₺', code);
+      return toEnglishCurrencySymbol(trimmed, code);
     }
   }
 
-  return def.symbol || code;
+  return toEnglishCurrencySymbol(def.symbol || code, code);
 }
 
 /**
@@ -402,6 +405,7 @@ export function resolveCurrencyMeta(
   if (isSuspicious) {
     symbol = def.symbol || (isUsd ? '$' : code);
   }
+  symbol = toEnglishCurrencySymbol(symbol, code);
 
   // 3. تحديد الاسم بدقة
   let name = (customName || '').trim();
@@ -616,7 +620,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     currencies[finalCode] = {
       code: finalCode,
       name: finalName,
-      symbol: finalSymbol,
+      symbol: toEnglishCurrencySymbol(finalSymbol, finalCode),
       rate: finalRate,
       decimals,
       enabled: !isExplicitlyDisabled,
@@ -649,7 +653,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     currencies[code] = {
       code,
       name: (name && name.trim()) || catalogItem?.name || code,
-      symbol: (sym && sym.trim()) || catalogItem?.symbol || code,
+      symbol: toEnglishCurrencySymbol((sym && sym.trim()) || catalogItem?.symbol || code, code),
       rate: Number.isFinite(rate) && rate > 0 ? rate : (catalogItem?.suggestedRate || 1),
       decimals: getDefaultDecimals(code),
       enabled: !isExplicitlyDisabled,

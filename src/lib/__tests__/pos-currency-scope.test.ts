@@ -166,7 +166,7 @@ test('Test 4: Store currency normalization gives QAR and EGP their true codes an
   const normQAR = normalizeCurrencySettings(legacyQARSettings);
   assertEqual(normQAR.primaryCurrencyCode, 'QAR', 'Primary currency must be QAR not TRY');
   assertEqual(normQAR.currencies.QAR?.code, 'QAR');
-  assertEqual(normQAR.currencies.QAR?.symbol, 'ر.ق');
+  assertEqual(normQAR.currencies.QAR?.symbol, 'QAR');
   assertEqual(normQAR.currencies.QAR?.name, 'الريال القطري');
   assertEqual(normQAR.currencies.QAR?.rate, 3.64);
   assertEqual(normQAR.currencies.TRY, undefined, 'TRY must not exist when it was only a slot for QAR');
@@ -183,7 +183,7 @@ test('Test 4: Store currency normalization gives QAR and EGP their true codes an
   const normEGP = normalizeCurrencySettings(legacyEGPSettings);
   assertEqual(normEGP.primaryCurrencyCode, 'EGP', 'Primary currency must be EGP not SYP');
   assertEqual(normEGP.currencies.EGP?.code, 'EGP');
-  assertEqual(normEGP.currencies.EGP?.symbol, 'ج.م');
+  assertEqual(normEGP.currencies.EGP?.symbol, 'EGP');
   assertEqual(normEGP.currencies.EGP?.name, 'الجنيه المصري');
   assertEqual(normEGP.currencies.EGP?.rate, 48);
   assertEqual(normEGP.currencies.SYP, undefined, 'SYP must not exist when it was only a slot for EGP');
@@ -207,7 +207,7 @@ test('Test 5: Explicit TRY & SYP settings preserve Turkish and Syrian lira prope
   assertEqual(norm.currencies.TRY?.symbol, '₺');
   assertEqual(norm.currencies.TRY?.name, 'ليرة تركية');
   assertEqual(norm.currencies.SYP?.code, 'SYP');
-  assertEqual(norm.currencies.SYP?.symbol, 'ل.س');
+  assertEqual(norm.currencies.SYP?.symbol, 'SYP');
   assertEqual(norm.currencies.SYP?.name, 'ليرة سورية');
 });
 
@@ -226,7 +226,7 @@ test('Test 6: Custom unknown currency preserves custom meta without forced TRY/S
   const norm = normalizeCurrencySettings(customSettings);
   assertEqual(norm.primaryCurrencyCode, 'KWD');
   assertEqual(norm.currencies.KWD?.code, 'KWD');
-  assertEqual(norm.currencies.KWD?.symbol, 'د.ك');
+  assertEqual(norm.currencies.KWD?.symbol, 'KWD');
   assertEqual(norm.currencies.KWD?.rate, 0.31);
   assertEqual(norm.currencies.TRY, undefined);
   assertEqual(norm.currencies.SYP, undefined);
