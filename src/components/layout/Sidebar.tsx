@@ -77,6 +77,7 @@ const navItems: NavItem[] = [
   { icon: Palette, translationKey: 'settings.theme', path: '/appearance', tourId: 'appearance', tooltipKey: 'tooltip.appearance' as TranslationKey },
   { icon: HelpCircle, translationKey: 'nav.help', path: '/help', tourId: 'help', tooltipKey: 'tooltip.help' as TranslationKey },
   { icon: MessageCircle, translationKey: 'license.contactDeveloper' as TranslationKey, path: '/contact', requiresContactSidebar: true, tourId: 'contact', tooltipKey: 'license.contactDeveloper' as TranslationKey },
+  { icon: Bell, translationKey: 'nav.notifications' as TranslationKey, path: '/notifications', tourId: 'notifications', tooltipKey: 'nav.notifications' as TranslationKey },
   { icon: Settings, translationKey: 'nav.settings', path: '/settings', adminOnly: true, tourId: 'settings', tooltipKey: 'tooltip.settings' as TranslationKey },
 ];
 
