@@ -1,0 +1,25 @@
+# ينشر إعلان التحديث في قناة Telegram عند دفع التعديلات إلى فرع النشرة العامة "public-release".
+# المطلوب مرة واحدة في GitHub → Settings → Secrets → Actions:
+#   TELEGRAM_BOT_TOKEN = توكن البوت @flowpos_helper_bot (البوت مشرف في القناة)
+name: Telegram public release
+on:
+  push:
+    branches: [public-release]
+  workflow_dispatch:
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send to channel
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHANNEL: '@flowpospro'
+        run: |
+          VERSION=$(node -p "const v=require('./version.json'); (v.versionName||v.version||'')+' (Build '+(v.versionCode||v.build||'')+')'")
+          NOTES=$(node -p "try{const c=require('./public/changelog.json');const e=Array.isArray(c)?c[0]:(c.entries||c.versions||[])[0];(e&&(e.changes||e.notes||[])).slice?.(0,10).map(x=>'• '+(x.text||x.title||x)).join('\n')||''}catch(e){''}")
+          URL="https://github.com/${{ github.repository }}/releases/latest"
+          TEXT=$(printf '🚀 تحديث جديد: Flow POS Pro\n🏷️ الإصدار: v%s\n\n%s' "$VERSION" "$NOTES")
+          jq -n --arg c "$CHANNEL" --arg t "$TEXT" --arg u "$URL" \
+            '{chat_id:$c,text:$t,reply_markup:{inline_keyboard:[[{text:"📥 تحميل التحديث",url:$u}]]}}' \
+          | curl -sf -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -H 'Content-Type: application/json' -d @-
