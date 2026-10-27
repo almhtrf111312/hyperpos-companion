@@ -114,26 +114,6 @@ export default function Expenses() {
   const [isPaying, setIsPaying] = useState(false);
   const savingRef = useRef(false);
 
-  // Scroll detection for Smart FAB
-  const [isFabVisible, setIsFabVisible] = useState(true);
-  const lastScrollTopRef = useRef(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollTop = window.scrollY || document.documentElement.scrollTop;
-      if (currentScrollTop < 40) {
-        setIsFabVisible(true);
-      } else if (currentScrollTop > lastScrollTopRef.current + 10) {
-        setIsFabVisible(false);
-      } else if (currentScrollTop < lastScrollTopRef.current - 10) {
-        setIsFabVisible(true);
-      }
-      lastScrollTopRef.current = currentScrollTop;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
@@ -572,6 +552,18 @@ export default function Expenses() {
       {/* Top Header with Fixed Add Button */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <PageHeader title={t('expenses.title')} className="mb-0 md:mb-0 min-h-0" />
+        <Button
+          type="button"
+          size="sm"
+          className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-xs font-bold shadow-sm"
+          onClick={() => {
+            resetForm();
+            setShowAddDialog(true);
+          }}
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          <span>{t('expenses.addExpense')}</span>
+        </Button>
       </div>
 
       {/* Top Search with Smart Mobile Clearance */}
@@ -685,11 +677,11 @@ export default function Expenses() {
             <span>{t('expenses.monthlyDistribution')}</span>
             <span className="text-[11px] font-mono">{Object.keys(stats.byType).length} {t('expenses.categories')}</span>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
             {Object.entries(stats.byType).map(([type, amount]) => (
-              <div key={type} className="px-2 py-1 bg-muted/60 border border-border/40 rounded-xl text-xs flex items-center gap-1.5">
-                <span className="text-muted-foreground">{getLocalizedExpenseType(type)}:</span>
-                <span className="font-bold font-mono text-foreground whitespace-nowrap">{m.fmt(amount)}</span>
+              <div key={type} className="min-w-0 px-2 py-1.5 bg-muted/60 border border-border/40 rounded-xl text-xs flex items-center justify-between gap-1.5">
+                <span className="min-w-0 truncate text-muted-foreground">{getLocalizedExpenseType(type)}:</span>
+                <span className="min-w-0 truncate font-bold font-mono text-foreground whitespace-nowrap" title={m.fmt(amount)}>{m.fmt(amount)}</span>
               </div>
             ))}
           </div>
@@ -1427,7 +1419,7 @@ export default function Expenses() {
       </AlertDialog>
 
       {/* Scroll-aware Smart FAB with Speed Dial Options عبر المكوّن الذكي الموحد */}
-      <SmartFab label={t('expenses.addExpense')}>
+      <SmartFab label={t('expenses.addExpense')} alwaysVisible>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

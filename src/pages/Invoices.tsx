@@ -2043,7 +2043,7 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiTotal}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
+                    "min-w-[130px] py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'total'
                       ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
@@ -2056,7 +2056,7 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiDebt}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
+                    "min-w-[130px] py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'debt'
                       ? "bg-orange-500/10 border-orange-500 ring-2 ring-orange-500/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-orange-500/40 shadow-xs"
@@ -2069,14 +2069,14 @@ export default function Invoices() {
                   type="button"
                   onClick={handleKpiToday}
                   className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
+                    "min-w-[130px] py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                     activeKpi === 'today'
                       ? "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs"
                       : "bg-background/80 border-border hover:border-emerald-500/40 shadow-xs"
                   )}
                 >
                   <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.todaySales', 'مبيعات اليوم')}</span>
-                  <span className="text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums whitespace-nowrap">
+                  <span className="text-[10px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono tabular-nums whitespace-nowrap">
                     {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
                   </span>
                 </button>
@@ -2085,14 +2085,14 @@ export default function Invoices() {
                     type="button"
                     onClick={handleKpiProfit}
                     className={cn(
-                      "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
+                      "min-w-[130px] py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
                       activeKpi === 'profit'
                         ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
                         : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
                     )}
                   >
                     <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.totalProfits', 'إجمالي الأرباح')}</span>
-                    <span className="text-[11px] sm:text-xs font-black text-primary font-mono tabular-nums whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs font-black text-primary font-mono tabular-nums whitespace-nowrap">
                       {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
                     </span>
                   </button>

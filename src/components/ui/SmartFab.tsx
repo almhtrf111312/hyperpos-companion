@@ -14,6 +14,7 @@ export interface SmartFabProps {
   className?: string;
   /** @deprecated الزر دائري دائماً */
   showLabelOnDesktop?: boolean;
+  alwaysVisible?: boolean;
   children?: React.ReactNode;
 }
 
@@ -21,24 +22,25 @@ export interface SmartFabProps {
 export function floatingSideClass(isRTL: boolean) {
   return isRTL ? 'right-5 sm:right-8' : 'left-5 sm:left-8';
 }
-export const floatingBottomClass = 'bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:bottom-10';
+export const floatingBottomClass = 'bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:bottom-8';
 
 export const SmartFab: React.FC<SmartFabProps> = ({
   onClick,
   label = 'إضافة',
   icon = <Plus className="w-7 h-7 stroke-[2.5]" />,
   className,
+  alwaysVisible = false,
   children,
 }) => {
   const { isRTL } = useLanguage();
   const scrollVisible = useScrollDirectionVisibility();
   const sidebarOpen = useSidebarOpenState();
-  const isVisible = scrollVisible && !sidebarOpen;
+  const isVisible = (alwaysVisible || scrollVisible) && !sidebarOpen;
 
   return (
     <div
       className={cn(
-        'fixed z-30 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+        'fixed z-40 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
         floatingSideClass(isRTL),
         floatingBottomClass,
         isVisible
