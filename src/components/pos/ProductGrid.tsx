@@ -273,7 +273,7 @@ export const ProductGrid = memo(function ProductGrid({
       {/* Grid Content */}
       <div className="flex-1 p-3 pt-0 md:p-5 overflow-y-auto pb-32">
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3">
             {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
@@ -281,17 +281,7 @@ export const ProductGrid = memo(function ProductGrid({
                 className="pos-item text-start fade-in group bg-card hover:bg-card/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow,background-color] duration-200 border border-border/60 flex flex-col"
                 style={{ animationDelay: `${index * 20}ms` }}
               >
-                {/* الصورة بإطار متناسق واحتواء كامل مع شارة المخزون العلوية */}
-                <div className="w-full aspect-[4/3] bg-muted/20 p-1 relative overflow-hidden shrink-0 flex items-center justify-center">
-                  <span 
-                    className={cn(
-                      "absolute top-2 start-2 px-1.5 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-tight shadow-sm transition-all z-10",
-                      "bg-background/90 text-foreground border border-border/80 backdrop-blur-md",
-                      "dark:bg-black/75 dark:text-white dark:border-white/10"
-                    )}
-                  >
-                    {product.quantity} {t('pos.piece') || 'قطعة'}
-                  </span>
+                <div className="w-full aspect-square bg-muted/20 relative overflow-hidden shrink-0 flex items-center justify-center">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
@@ -301,15 +291,17 @@ export const ProductGrid = memo(function ProductGrid({
                 </div>
 
                 {/* جسم البطاقة المستغل للمساحة بالكامل لاسم المنتج والسعر */}
-                <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 w-full">
-                  <h3 className="font-bold text-foreground text-xs md:text-sm line-clamp-2 leading-snug min-h-[2.5rem] w-full text-start" title={product.name}>
+                <div className="p-2 flex flex-col justify-between flex-1 gap-2 w-full">
+                  <h3 className="font-bold text-foreground text-sm leading-snug w-full text-start break-words" title={product.name}>
                     {product.name}
                   </h3>
 
-                  {/* السطر السفلي: السعر بكامل العرض لمنع أي قص أو التفاف */}
-                  <div className="w-full pt-1 border-t border-border/30 mt-auto text-start">
-                    <span className="text-primary font-black text-xs md:text-sm block truncate w-full">
+                  <div className="w-full pt-1.5 border-t border-border/30 mt-auto flex items-center justify-between gap-1.5">
+                    <span className="text-primary font-black text-sm min-w-0 break-words text-start">
                       {formatDisplayPrice(product.price)}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+                      {product.quantity} {t('pos.piece') || 'قطعة'}
                     </span>
                   </div>
                 </div>
@@ -318,9 +310,9 @@ export const ProductGrid = memo(function ProductGrid({
           </div>
         )}
 
-        {/* Dense View - 3 items side-by-side on mobile, 4-7 on desktop */}
+        {/* Dense View - 2 items side-by-side on mobile, 4-7 on desktop */}
         {viewMode === 'dense' && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
             {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
@@ -328,16 +320,7 @@ export const ProductGrid = memo(function ProductGrid({
                 className="pos-item text-start fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-[box-shadow,border-color] duration-200"
                 style={{ animationDelay: `${index * 15}ms` }}
               >
-                <div className="w-full aspect-square bg-muted/20 p-1 rounded-lg overflow-hidden mb-1.5 relative flex items-center justify-center">
-                  <span 
-                    className={cn(
-                      "absolute top-2 start-2 px-1.5 py-0.5 rounded-lg text-[10px] font-bold font-mono tracking-tight shadow-sm transition-all z-10",
-                      "bg-background/90 text-foreground border border-border/80 backdrop-blur-md",
-                      "dark:bg-black/75 dark:text-white dark:border-white/10"
-                    )}
-                  >
-                    {product.quantity} {t('pos.piece') || 'قطعة'}
-                  </span>
+                <div className="w-full aspect-square bg-muted/20 rounded-lg overflow-hidden mb-2 relative flex items-center justify-center">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
@@ -345,13 +328,16 @@ export const ProductGrid = memo(function ProductGrid({
                     iconClassName="w-5 h-5 text-muted-foreground/30"
                   />
                 </div>
-                <div className="space-y-1 w-full">
-                  <h4 className="font-bold text-[11px] text-foreground line-clamp-2 leading-tight min-h-[2rem] w-full text-start" title={product.name}>
+                <div className="space-y-1.5 w-full">
+                  <h4 className="font-bold text-xs text-foreground leading-snug w-full text-start break-words" title={product.name}>
                     {product.name}
                   </h4>
-                  <div className="w-full pt-0.5 border-t border-border/30 text-start">
-                    <span className="font-black text-primary text-[11px] block truncate w-full">
+                  <div className="w-full pt-1 border-t border-border/30 flex flex-wrap items-center justify-between gap-1">
+                    <span className="font-black text-primary text-xs min-w-0 break-words text-start">
                       {formatDisplayPrice(product.price)}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {product.quantity} {t('pos.piece') || 'قطعة'}
                     </span>
                   </div>
                 </div>

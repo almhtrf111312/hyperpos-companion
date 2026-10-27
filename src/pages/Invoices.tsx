@@ -2243,7 +2243,6 @@ export default function Invoices() {
               displayedInvoices.map((invoice) => {
                 const financials = getInvoiceFinancials(invoice);
                 const invUsdTotal = invoice.total || 0;
-                const invUsdProfit = financials.baseProfit || 0;
                 const invUpper = (invoice.currency || 'USD').toUpperCase();
                 const itemCount = invoice.items?.filter(it => !it.refunded && it.quantity > 0).length || 0;
                 const isFullyRefunded = invoice.status === 'refunded';
@@ -2419,31 +2418,6 @@ export default function Invoices() {
                         )}
                       </div>
 
-                      {canViewInvoiceProfit && (
-                        <div className="flex items-baseline gap-1 flex-wrap">
-                          <span className="text-[10px] text-muted-foreground font-medium">{t('invoices.netProfit') || 'الربح'}:</span>
-                          {financials.code === 'USD' ? (
-                            <span className={cn(
-                              "font-bold font-mono text-[11px] whitespace-nowrap",
-                              invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                            )}>
-                              {currencySymbols?.USD || '$'}{formatNumber(invUsdProfit, invUsdProfit % 1 === 0 ? 0 : 2)}
-                            </span>
-                          ) : (
-                            <div className="inline-flex items-baseline gap-1.5 flex-wrap">
-                              <span className={cn(
-                                "font-bold font-mono text-[11px] whitespace-nowrap",
-                                financials.displayProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                              )}>
-                                {formatNumber(financials.displayProfit, financials.decimals)} <span className="text-[9.5px] font-sans font-bold text-muted-foreground">{financials.symbol}</span>
-                              </span>
-                              <span className="text-[9px] font-mono text-muted-foreground/70 whitespace-nowrap" dir="ltr">
-                                ({currencySymbols?.USD || '$'}{formatNumber(invUsdProfit, invUsdProfit % 1 === 0 ? 0 : 2)})
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
 
                   </div>
@@ -2662,25 +2636,65 @@ export default function Invoices() {
                     <span className="text-muted-foreground text-[11px]">{t('invoices.valueInUSD') || 'القيمة بالدولار'}:</span>
                     <span className="font-bold text-foreground text-sm whitespace-nowrap" dir="ltr">{totalUsdStr}</span>
                   </div>
-                  {Object.entries(enabledCurrencies).map(([code, isEnabled]) => {
-                    const upper = code.toUpperCase();
-                    if (!isEnabled || upper === 'USD') return null;
-                    const r = (selectedInvoice.currency === upper && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
-                      ? selectedInvoice.exchangeRate
-                      : ((exchangeRates[upper] && exchangeRates[upper] > 0) ? exchangeRates[upper] : (upper === 'TRY' ? c1Rate : (upper === 'SYP' ? c2Rate : 1)));
-                    const rawSym = (selectedInvoice.currency === upper && selectedFinancials.code === upper)
-                      ? selectedFinancials.symbol
-                      : (currencySymbols?.[upper] || (upper === 'TRY' ? c1Symbol : (upper === 'SYP' ? c2Symbol : upper)));
-                    const sym = (rawSym && rawSym !== '$') ? rawSym : (currencySymbols?.[upper] || upper);
-                    const name = currencyNames?.[upper] || (upper === 'TRY' ? c1Name : (upper === 'SYP' ? c2Name : upper));
-                    const formatted = formatCurrency(baseInvTotal * r, sym, r >= 100 ? 0 : 2);
-                    return (
-                      <div key={upper} className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2 rounded-md border border-border/40">
-                        <span className="text-muted-foreground text-[11px]">القيمة بـ {name}:</span>
-                        <span className="font-bold text-foreground text-sm whitespace-nowrap">{formatted}</span>
-                      </div>
-                    );
-                  })}
+                  {(() => {
+                    const normalizeIdentity = (value: string) =>
+                      value.normalize('NFKC').toLocaleLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/\s+/g, '');
+                    const renderedCodes = new Set(['USD']);
+                    const renderedSymbols = new Set([normalizeIdentity('$')]);
+                    const renderedNames = new Set([
+                      normalizeIdentity(currencyNames?.USD || 'دولار أمريكي'),
+                      normalizeIdentity('دولار'),
+                      normalizeIdentity('دولار أمريكي'),
+                    ]);
+
+                    return Object.entries(enabledCurrencies).map(([code, isEnabled]) => {
+                      const upper = code.trim().toUpperCase();
+                      if (!isEnabled || !upper || renderedCodes.has(upper)) return null;
+
+                      const invoiceUsesCurrency = selectedFinancials.code === upper ||
+                        (selectedInvoice.currency || '').toUpperCase() === upper;
+                      const rate = invoiceUsesCurrency &&
+                        typeof selectedInvoice.exchangeRate === 'number' &&
+                        selectedInvoice.exchangeRate > 0
+                        ? selectedInvoice.exchangeRate
+                        : (exchangeRates[upper] && exchangeRates[upper] > 0
+                          ? exchangeRates[upper]
+                          : (upper === 'TRY' ? c1Rate : (upper === 'SYP' ? c2Rate : 1)));
+
+                      let symbol = (invoiceUsesCurrency && selectedFinancials.symbol) ||
+                        currencySymbols?.[upper] ||
+                        (upper === 'TRY' ? c1Symbol : (upper === 'SYP' ? c2Symbol : upper));
+                      let name = currencyNames?.[upper] ||
+                        (upper === 'TRY' ? c1Name : (upper === 'SYP' ? c2Name : upper));
+
+                      const normalizedSymbol = normalizeIdentity(symbol);
+                      const normalizedName = normalizeIdentity(name);
+                      const isQatariRiyal = upper === 'QAR' ||
+                        normalizedSymbol === normalizeIdentity('ر.ق') ||
+                        normalizedName.includes(normalizeIdentity('قطر')) ||
+                        normalizedName.includes('qatar');
+                      if (isQatariRiyal) {
+                        symbol = 'ر.ق';
+                        name = 'الريال القطري';
+                      }
+
+                      const symbolKey = normalizeIdentity(symbol);
+                      const nameKey = normalizeIdentity(name);
+                      if (renderedSymbols.has(symbolKey) || renderedNames.has(nameKey)) return null;
+
+                      renderedCodes.add(upper);
+                      renderedSymbols.add(symbolKey);
+                      renderedNames.add(nameKey);
+
+                      const formatted = formatCurrency(baseInvTotal * rate, symbol, rate >= 100 ? 0 : 2);
+                      return (
+                        <div key={upper} className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2.5 rounded-xl border border-border/50 shadow-xs">
+                          <span className="text-muted-foreground text-[11px] font-medium">القيمة بـ {name}:</span>
+                          <span className="font-bold text-foreground text-sm whitespace-nowrap" dir="ltr">{formatted}</span>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 

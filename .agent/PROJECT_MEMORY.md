@@ -1,8 +1,8 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-10-28
 **Current Version:** `v1.3.2 (Build 345)`
-**Repository Branch:** `main` (invoice privacy and analysis implementation: `4dcff8e1`)
+**Repository Branch:** Working checkout `main` at `399f24b2`; requested UI updates will be published to `event-or-artifact`.
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
 
@@ -69,6 +69,19 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-28:** Invoice Currency Card Deduplication:
+  * Invoice currency-equation cards now render only enabled currencies and suppress duplicate codes, symbols, and names, including legacy metadata aliases for the Qatari riyal.
+  * Qatar currency aliases display the canonical `ر.ق` symbol and `الريال القطري` name while retaining the invoice's saved exchange rate when applicable.
+  * Production build passes. No storage, sync, or backend changes.
+* **2026-10-27:** POS Mobile Product Grid:
+  * Changed the standard and dense POS product grids to two columns on narrow screens while retaining responsive column counts at larger breakpoints.
+  * Expanded product imagery to square card areas and moved quantity badges below the image into the product details, improving product-name and price readability.
+  * Production build passes. Targeted ESLint reports one pre-existing empty catch block at `ProductGrid.tsx:154`; no storage, sync, or backend changes.
+* **2026-10-27:** Invoice Profit UI Privacy Polish:
+  * Removed the per-invoice profit amount from every invoice list card, including admin/boss views; invoice profit remains available only through the protected analysis dialog.
+  * Added RTL-safe end padding to the profit dialog header and replaced the raw currency-code exchange-rate suffix with the invoice's display symbol.
+  * Rechecked customer print and share paths; no profit or cost is included in printable invoice content or `InvoiceShareData`.
+  * Production build and focused profit/financial-precision tests pass. No storage, sync, or backend changes.
 * **2026-10-27 (`4dcff8e1`):** Invoice Profit Privacy & Owner/Admin Analysis:
   * Removed profit and maintenance parts cost from the customer-facing invoice details and standard invoice printout. Invoice sharing text/image paths contain no profit or cost fields.
   * Restricted invoice profit KPIs, card-level profit figures, and the standalone invoice profit dialog to `boss` and `admin`; the dialog also checks the role before rendering.

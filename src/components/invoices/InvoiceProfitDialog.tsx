@@ -110,7 +110,7 @@ export function InvoiceProfitDialog({
   return (
     <Dialog open={open && (isBoss || isAdmin)} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b border-border/60 bg-muted/30 p-4">
+        <DialogHeader className="shrink-0 border-b border-border/60 bg-muted/30 p-4 pe-12">
           <div className="flex items-center gap-2">
             <div className="rounded-xl bg-primary/10 p-2 text-primary" aria-hidden="true">
               <TrendingUp className="h-5 w-5" />
@@ -217,9 +217,12 @@ export function InvoiceProfitDialog({
           )}
 
           {code !== 'USD' && (
-            <p className="text-[11px] text-muted-foreground">
-              {copy.usd}: ${netProfitUsd.toFixed(2)} · {rate} {code}/USD
-            </p>
+            <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+              <span>{copy.usd}:</span>
+              <span className="text-end font-mono font-bold text-foreground" dir="ltr">
+                ${netProfitUsd.toFixed(2)} USD <span className="font-normal text-muted-foreground">({rate} {financials.symbol} / $)</span>
+              </span>
+            </div>
           )}
         </div>
       </DialogContent>
