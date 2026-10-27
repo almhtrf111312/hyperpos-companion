@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { describe, it, expect, mock } from 'bun:test';
 mock.module('@/integrations/supabase/client', () => ({ supabase: {} }));
 (globalThis as any).__APP_VERSION__ = { versionName: '1.3.5', versionCode: 348, lastUpdated: '' };
