@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
+import { describe, it, expect, mock } from 'bun:test';
+mock.module('@/integrations/supabase/client', () => ({ supabase: {} }));
 (globalThis as any).__APP_VERSION__ = { versionName: '1.3.5', versionCode: 348, lastUpdated: '' };
 const { computeUpdateStatus, DEFAULT_RELEASE_CONFIG } = await import('../remote-updates');
 
