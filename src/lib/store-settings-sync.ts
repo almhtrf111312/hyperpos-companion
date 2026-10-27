@@ -594,7 +594,7 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
 
 /**
  * بناء حمولة الحفظ السحابي لجدول stores
- * - تستبعد تماماً المظهر والخطوط والمقياس لحمايتها من الكتابة العكسية بين المنصات
+ * - تحفظ المظهر والخطوط والمقياس في ملفات منفصلة لكل منصة لمنع الكتابة العكسية
  * - تدمج كائن sync_settings حاملاً إعدادات المتجر والعملات والضرائب والتشغيل و updatedAt
  */
 export function buildCloudStorePayload(
