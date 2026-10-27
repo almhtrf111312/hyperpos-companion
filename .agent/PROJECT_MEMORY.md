@@ -69,6 +69,10 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-28:** POS Product Price and Quantity Readability:
+  * Split the displayed currency symbol from the formatted amount with a visible divider, and increased product-stock count emphasis using theme semantic colors.
+  * Applied consistently across product-card views. Currency conversion, rounding, stock data, storage, and sync behavior are unchanged.
+  * Production build passes; no backend or accounting changes.
 * **Phase 6 — Explicit Currency Activation & Display Modes:**
   * USD remains the base currency; non-USD currencies are not enabled from missing flags or exchange-rate metadata alone. Legacy TRY/SYP slots still resolve their stored currency identity, while setup and cash shifts require explicit enablement (or a deliberately selected primary currency).
   * Added per-currency `symbol` / `name` / `both` settings to unified local/cloud settings and the existing offline settings queue. The choice changes presentation only.
