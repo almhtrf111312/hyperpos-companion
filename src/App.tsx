@@ -21,6 +21,7 @@ import { useUserRole } from "./hooks/use-user-role";
 import { Button } from "@/components/ui/button";
 import { Loader2, Store, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
 import { LicenseGuard } from "./components/license/LicenseGuard";
+import { RemoteUpdatesGate } from "./components/updates/RemoteUpdatesGate";
 import { LicenseWarningBadge } from "./components/license/LicenseWarningBadge";
 import { OfflineProtectionBanner } from "./components/license/OfflineProtectionBanner";
 import { DemoModeBanner } from "./components/demo/DemoModeBanner";
@@ -514,6 +515,7 @@ const App = () => (
                         <LicenseWarningBadge />
                         <OfflineProtectionBanner />
                         <DemoModeBanner />
+                        <RemoteUpdatesGate />
                         <LicenseGuard>
                           <AppContent />
                         </LicenseGuard>
