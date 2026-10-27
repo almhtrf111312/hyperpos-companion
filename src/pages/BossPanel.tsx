@@ -86,6 +86,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SystemDiagnostics } from '@/components/settings/SystemDiagnostics';
 import { ErrorRadarPanel } from '@/components/boss/ErrorRadarPanel';
 import { BossAIAssistant } from '@/components/boss/BossAIAssistant';
+import { BossReleasesPanel } from '@/components/boss/BossReleasesPanel';
+import { Rocket } from 'lucide-react';
 import { getUnresolvedErrorCount, subscribeToErrorRadar } from '@/lib/error-radar';
 
 interface CashierInfo {
@@ -1278,13 +1280,17 @@ export default function BossPanel() {
 
         {/* Tabs */}
         <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <TabsList className="flex items-center gap-1 overflow-x-auto scrollbar-none p-1 bg-muted/60 rounded-2xl w-full sm:grid sm:grid-cols-4 md:grid-cols-7 h-auto border border-border/40 shadow-xs select-none">
+          <TabsList className="flex items-center gap-1 overflow-x-auto scrollbar-none p-1 bg-muted/60 rounded-2xl w-full sm:grid sm:grid-cols-4 md:grid-cols-8 h-auto border border-border/40 shadow-xs select-none">
             <TabsTrigger
               value="users"
               className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
             >
               <Users className="w-4 h-4 shrink-0" />
               <span className="leading-tight">المستخدمين</span>
+            </TabsTrigger>
+            <TabsTrigger value="releases" className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer">
+              <Rocket className="w-4 h-4 shrink-0" />
+              <span className="leading-tight">التحديثات</span>
             </TabsTrigger>
             <TabsTrigger
               value="codes"
@@ -2319,6 +2325,10 @@ export default function BossPanel() {
           {/* Tab 6: Error Radar */}
           <TabsContent value="radar" className="space-y-4">
             <ErrorRadarPanel />
+          </TabsContent>
+
+          <TabsContent value="releases" className="space-y-4">
+            <BossReleasesPanel />
           </TabsContent>
 
           {/* Tab: Boss AI Assistant */}

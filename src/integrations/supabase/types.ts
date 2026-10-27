@@ -119,6 +119,42 @@ export type Database = {
         }
         Relationships: []
       }
+      app_broadcasts: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          link_url: string | null
+          title: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          link_url?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          link_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       app_licenses: {
         Row: {
           activated_at: string | null
@@ -379,6 +415,30 @@ export type Database = {
           id?: string
           name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      client_versions: {
+        Row: {
+          last_seen_at: string
+          platform: string | null
+          user_id: string
+          version_code: number
+          version_name: string
+        }
+        Insert: {
+          last_seen_at?: string
+          platform?: string | null
+          user_id: string
+          version_code?: number
+          version_name: string
+        }
+        Update: {
+          last_seen_at?: string
+          platform?: string | null
+          user_id?: string
+          version_code?: number
+          version_name?: string
         }
         Relationships: []
       }

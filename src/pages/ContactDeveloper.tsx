@@ -6,6 +6,8 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { ContactLinksSection } from '@/components/settings/ContactLinksSection';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { getCachedReleaseConfig, fetchReleaseConfig, openExternal, CURRENT_VERSION_NAME, type ReleaseConfig } from '@/lib/remote-updates';
+import { Download, Send } from 'lucide-react';
 import { InlineSupportChatPanel } from '@/components/support/InlineSupportChatPanel';
 
 interface DevInfo { name?: string; phone?: string; website?: string }
@@ -15,6 +17,8 @@ export default function ContactDeveloper() {
   const { isBoss } = useUserRole();
   const [info, setInfo] = useState<DevInfo>({});
   const [chatOpen, setChatOpen] = useState(false);
+  const [rel, setRel] = useState<ReleaseConfig>(getCachedReleaseConfig());
+  useEffect(() => { fetchReleaseConfig().then(setRel).catch(() => {}); }, []);
 
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'contact_links').maybeSingle().then(({ data }) => {
@@ -54,6 +58,22 @@ export default function ContactDeveloper() {
             </a>
           )}
         </div>
+      </div>
+
+      {/* App update */}
+      <div className="rounded-2xl border border-border bg-card p-4 flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-[8rem]">
+          <p className="text-sm font-bold text-foreground">تحديث التطبيق</p>
+          <p className="text-xs text-muted-foreground" dir="ltr">v{CURRENT_VERSION_NAME}{rel.latest_version_name ? ` → v${rel.latest_version_name}` : ''}</p>
+        </div>
+        <Button size="sm" className="gap-1.5" disabled={!rel.update_url && !rel.telegram_url} onClick={() => openExternal(rel.update_url || rel.telegram_url)}>
+          <Download className="w-3.5 h-3.5" /> تحديث التطبيق
+        </Button>
+        {rel.telegram_url && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => openExternal(rel.telegram_url)}>
+            <Send className="w-3.5 h-3.5" /> Telegram
+          </Button>
+        )}
       </div>
 
       {/* Live Support Chat CTA */}
