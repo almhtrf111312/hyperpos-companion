@@ -253,4 +253,5 @@ console.log('\n========================================');
 console.log(`Test Results: ${passed} passed, ${failed} failed`);
 console.log('========================================');
 
-if (failed > 0) process.exit(1);
+// Node/bun runtime global — declared locally to avoid requiring @types/node
+if (failed > 0) (globalThis as { process?: { exit(code: number): void } }).process?.exit(1);
