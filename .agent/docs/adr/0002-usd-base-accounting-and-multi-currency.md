@@ -29,6 +29,11 @@ Chosen option: **USD Invariant Accounting Base with Dynamic Conversion Presentat
 3. **Refund Integrity:**
    * Refunds calculate based on the snapshotted historical rate to prevent currency arbitrage during returns.
 
+4. **Canonical Currency Symbol Presentation:**
+   * Known legacy Arabic symbols are presented as their ISO currency codes only when the symbol matches the resolved currency identity.
+   * Custom store symbols and international glyphs remain unchanged unless they exactly match a known legacy symbol for that currency.
+   * Legacy settings are normalized in memory for display; no automatic storage migration or change to the USD accounting base, stored amounts, or historical exchange rates is performed.
+
 ### Consequences
 * **Positive:**
   * Clean balance sheets; capital and profit remain mathematically accurate over years.

@@ -80,7 +80,7 @@ import { cn, formatNumber, formatCurrency, formatMoney, formatDateTime, roundCur
 import { useLanguage } from '@/hooks/use-language';
 import { useCurrency, loadDefaultCurrencyCode } from '@/hooks/use-currency';
 import { useDebounce } from '@/hooks/use-debounce';
-import { getCurrencySymbolByCode, resolveHistoricalCurrency, resolveInvoiceCurrencySymbol, resolveInvoiceCurrencyName, PREDEFINED_CURRENCIES } from '@/lib/currencies';
+import { getCurrencySymbolByCode, resolveHistoricalCurrency, resolveInvoiceCurrencySymbol, resolveInvoiceCurrencyName, PREDEFINED_CURRENCIES, toEnglishCurrencySymbol } from '@/lib/currencies';
 import { emitEvent, EVENTS } from '@/lib/events';
 import {
   loadInvoicesCloud,
@@ -2672,11 +2672,14 @@ export default function Invoices() {
                       const normalizedName = normalizeIdentity(name);
                       const isQatariRiyal = upper === 'QAR' ||
                         normalizedSymbol === normalizeIdentity('ر.ق') ||
+                        normalizedSymbol === 'qar' ||
                         normalizedName.includes(normalizeIdentity('قطر')) ||
                         normalizedName.includes('qatar');
                       if (isQatariRiyal) {
-                        symbol = 'ر.ق';
+                        symbol = 'QAR';
                         name = 'الريال القطري';
+                      } else {
+                        symbol = toEnglishCurrencySymbol(symbol, upper);
                       }
 
                       const symbolKey = normalizeIdentity(symbol);

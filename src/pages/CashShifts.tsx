@@ -98,10 +98,10 @@ export default function CashShifts() {
   const currencySymbols = useMemo(() => ({
     USD: metaUSD.symbol || '$',
     TRY: metaTRY.symbol || '₺',
-    SYP: metaSYP.symbol || 'ل.س',
+    SYP: metaSYP.symbol || 'SYP',
     c1: metaUSD.symbol || '$',
     c2: metaTRY.symbol || '₺',
-    c3: metaSYP.symbol || 'ل.س',
+    c3: metaSYP.symbol || 'SYP',
   }), [metaUSD.symbol, metaTRY.symbol, metaSYP.symbol]);
 
   const currencyNames = useMemo(() => ({

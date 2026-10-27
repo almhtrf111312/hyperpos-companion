@@ -2307,7 +2307,7 @@ export default function Settings() {
                               value={currencySymbols[slot1Code] || ''}
                               onChange={(e) => setCurrencySymbols({ ...currencySymbols, [slot1Code]: e.target.value })}
                               className="h-7 text-xs font-bold px-2 bg-background/80 font-mono"
-                              placeholder={isRTL ? "مثال: ر.ق أو ₺" : "e.g. QAR or ₺"}
+                              placeholder={isRTL ? "مثال: QAR أو TRY" : "e.g. QAR or TRY"}
                             />
                           </div>
                         </div>
@@ -2429,7 +2429,7 @@ export default function Settings() {
                               value={currencySymbols[slot2Code] || ''}
                               onChange={(e) => setCurrencySymbols({ ...currencySymbols, [slot2Code]: e.target.value })}
                               className="h-7 text-xs font-bold px-2 bg-background/80 font-mono"
-                              placeholder={isRTL ? "مثال: ج.م أو د.ع" : "e.g. EGP or IQD"}
+                              placeholder={isRTL ? "مثال: EGP أو IQD" : "e.g. EGP or IQD"}
                             />
                           </div>
                         </div>

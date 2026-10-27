@@ -8,6 +8,7 @@ import {
   toUsd,
   formatActive,
 } from '@/lib/money-engine';
+import { toEnglishCurrencySymbol } from '@/lib/currency-symbols';
 
 export interface EnabledCurrencies {
   USD: boolean;
@@ -41,7 +42,7 @@ export const loadExchangeRates = (): Record<string, number> => {
 
 export const loadCurrencySymbols = (): CurrencySymbols => {
   const state = getMoneyState();
-  const syms: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'ل.س' };
+  const syms: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'SYP' };
   for (const [code, def] of Object.entries(state.currencies)) {
     syms[code] = def.symbol;
   }
@@ -76,7 +77,7 @@ export const useCurrency = () => {
   return useMemo(() => {
     const active = getCurrencyDef(state.activeCode);
     const rates: Record<string, number> = { TRY: 34, SYP: 14500 };
-    const symbols: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'ل.س' };
+    const symbols: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'SYP' };
     const names: Record<string, string> = { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
     const enabled: Record<string, boolean> = { USD: true, TRY: true, SYP: true };
 
@@ -121,7 +122,7 @@ export function formatInCurrency(
   const def = getCurrencyDef(code);
 
   const rate = customRate !== undefined && customRate > 0 ? customRate : def.rate;
-  const symbol = customSymbol || def.symbol;
+  const symbol = toEnglishCurrencySymbol(customSymbol || def.symbol, code);
 
   const convertedValue = (usdAmount || 0) * (rate || 1);
   const decimals = def.decimals;

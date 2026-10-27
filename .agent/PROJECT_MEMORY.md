@@ -69,6 +69,11 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **Canonical Currency Symbols (Phase 5):**
+  * Legacy Arabic currency symbols are displayed as their matching ISO code only when the currency identity is verified; intentional custom symbols and international glyphs remain unchanged.
+  * Legacy TRY/SYP storage slots are interpreted from their currency symbol before runtime display, and invoice history keeps its saved exchange rate.
+  * Updated currency catalog, settings, setup wizard, POS formatting, cash shifts, invoice currency cards, and the shared invoice symbol resolver used by print/share paths.
+  * No automatic localStorage/Supabase migration and no accounting, rate, or amount changes. Focused symbol and POS currency tests and production build pass; TypeScript check remains blocked by the pre-existing `inert` typing error in `Sidebar.tsx`, and ESLint reports pre-existing violations.
 * **2026-10-27:** Mobile Dialog, Invoice Actions & Sidebar:
   * Accounted for top and bottom safe areas in global dialog sizing; kept existing global overflow behavior to avoid clipping dialogs that rely on scrolling.
   * Separated invoice print/share/profit actions from the scrollable detail body and kept them in a safe-area-aware footer.

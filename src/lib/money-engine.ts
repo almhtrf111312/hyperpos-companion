@@ -1,4 +1,5 @@
 import { EVENTS } from '@/lib/events';
+import { getCurrencyCodeFromLegacySymbol, toEnglishCurrencySymbol } from '@/lib/currency-symbols';
 
 export interface CurrencyDefinition {
   code: string;
@@ -68,23 +69,23 @@ export function normalizeCurrencyCode(rawCode?: string | null): string {
 const DEFAULT_DEFINITIONS: Record<string, Omit<CurrencyDefinition, 'enabled'>> = {
   USD: { code: 'USD', symbol: '$', name: 'دولار أمريكي', rate: 1, decimals: 2, symbolPosition: 'before' },
   TRY: { code: 'TRY', symbol: '₺', name: 'ليرة تركية', rate: 34, decimals: 2, symbolPosition: 'after' },
-  SYP: { code: 'SYP', symbol: 'ل.س', name: 'ليرة سورية', rate: 14500, decimals: 0, symbolPosition: 'after' },
-  SAR: { code: 'SAR', symbol: 'ر.س', name: 'ريال سعودي', rate: 3.75, decimals: 2, symbolPosition: 'after' },
-  AED: { code: 'AED', symbol: 'د.إ', name: 'درهم إماراتي', rate: 3.67, decimals: 2, symbolPosition: 'after' },
-  EGP: { code: 'EGP', symbol: 'ج.م', name: 'جنيه مصري', rate: 49, decimals: 2, symbolPosition: 'after' },
-  IQD: { code: 'IQD', symbol: 'د.ع', name: 'دينار عراقي', rate: 1310, decimals: 0, symbolPosition: 'after' },
-  JOD: { code: 'JOD', symbol: 'د.أ', name: 'دينار أردني', rate: 0.71, decimals: 3, symbolPosition: 'after' },
-  LBP: { code: 'LBP', symbol: 'ل.ل', name: 'ليرة لبنانية', rate: 89500, decimals: 0, symbolPosition: 'after' },
-  KWD: { code: 'KWD', symbol: 'د.ك', name: 'دينار كويتي', rate: 0.31, decimals: 3, symbolPosition: 'after' },
-  QAR: { code: 'QAR', symbol: 'ر.ق', name: 'ريال قطري', rate: 3.64, decimals: 2, symbolPosition: 'after' },
-  BHD: { code: 'BHD', symbol: 'د.ب', name: 'دينار بحريني', rate: 0.38, decimals: 3, symbolPosition: 'after' },
-  OMR: { code: 'OMR', symbol: 'ر.ع', name: 'ريال عماني', rate: 0.38, decimals: 3, symbolPosition: 'after' },
-  YER: { code: 'YER', symbol: 'ر.ي', name: 'ريال يمني', rate: 250, decimals: 0, symbolPosition: 'after' },
-  LYD: { code: 'LYD', symbol: 'د.ل', name: 'دينار ليبي', rate: 4.85, decimals: 3, symbolPosition: 'after' },
-  TND: { code: 'TND', symbol: 'د.ت', name: 'دينار تونسي', rate: 3.1, decimals: 3, symbolPosition: 'after' },
-  DZD: { code: 'DZD', symbol: 'د.ج', name: 'دينار جزائري', rate: 134, decimals: 0, symbolPosition: 'after' },
-  MAD: { code: 'MAD', symbol: 'د.م', name: 'درهم مغربي', rate: 10, decimals: 2, symbolPosition: 'after' },
-  SDG: { code: 'SDG', symbol: 'ج.س', name: 'جنيه سوداني', rate: 600, decimals: 2, symbolPosition: 'after' },
+  SYP: { code: 'SYP', symbol: 'SYP', name: 'ليرة سورية', rate: 14500, decimals: 0, symbolPosition: 'after' },
+  SAR: { code: 'SAR', symbol: 'SAR', name: 'ريال سعودي', rate: 3.75, decimals: 2, symbolPosition: 'after' },
+  AED: { code: 'AED', symbol: 'AED', name: 'درهم إماراتي', rate: 3.67, decimals: 2, symbolPosition: 'after' },
+  EGP: { code: 'EGP', symbol: 'EGP', name: 'جنيه مصري', rate: 49, decimals: 2, symbolPosition: 'after' },
+  IQD: { code: 'IQD', symbol: 'IQD', name: 'دينار عراقي', rate: 1310, decimals: 0, symbolPosition: 'after' },
+  JOD: { code: 'JOD', symbol: 'JOD', name: 'دينار أردني', rate: 0.71, decimals: 3, symbolPosition: 'after' },
+  LBP: { code: 'LBP', symbol: 'LBP', name: 'ليرة لبنانية', rate: 89500, decimals: 0, symbolPosition: 'after' },
+  KWD: { code: 'KWD', symbol: 'KWD', name: 'دينار كويتي', rate: 0.31, decimals: 3, symbolPosition: 'after' },
+  QAR: { code: 'QAR', symbol: 'QAR', name: 'ريال قطري', rate: 3.64, decimals: 2, symbolPosition: 'after' },
+  BHD: { code: 'BHD', symbol: 'BHD', name: 'دينار بحريني', rate: 0.38, decimals: 3, symbolPosition: 'after' },
+  OMR: { code: 'OMR', symbol: 'OMR', name: 'ريال عماني', rate: 0.38, decimals: 3, symbolPosition: 'after' },
+  YER: { code: 'YER', symbol: 'YER', name: 'ريال يمني', rate: 250, decimals: 0, symbolPosition: 'after' },
+  LYD: { code: 'LYD', symbol: 'LYD', name: 'دينار ليبي', rate: 4.85, decimals: 3, symbolPosition: 'after' },
+  TND: { code: 'TND', symbol: 'TND', name: 'دينار تونسي', rate: 3.1, decimals: 3, symbolPosition: 'after' },
+  DZD: { code: 'DZD', symbol: 'DZD', name: 'دينار جزائري', rate: 134, decimals: 0, symbolPosition: 'after' },
+  MAD: { code: 'MAD', symbol: 'MAD', name: 'درهم مغربي', rate: 10, decimals: 2, symbolPosition: 'after' },
+  SDG: { code: 'SDG', symbol: 'SDG', name: 'جنيه سوداني', rate: 600, decimals: 2, symbolPosition: 'after' },
   EUR: { code: 'EUR', symbol: '€', name: 'يورو', rate: 0.92, decimals: 2, symbolPosition: 'before' },
   GBP: { code: 'GBP', symbol: '£', name: 'جنيه إسترليني', rate: 0.79, decimals: 2, symbolPosition: 'before' },
 };
@@ -126,21 +127,37 @@ function buildStateFromStorage(): MoneyEngineState {
 
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, any>;
-        const primary = normalizeCurrencyCode(parsed.primaryCurrency || parsed.currency || 'USD');
+        let primary = normalizeCurrencyCode(parsed.primaryCurrency || parsed.currency || 'USD');
         activeCode = primary;
 
-        const rates: Record<string, any> = parsed.exchangeRates || {};
-        const symbols: Record<string, any> = parsed.currencySymbols || {};
-        const names: Record<string, any> = parsed.currencyNames || {};
-        const enabledMap: Record<string, any> = parsed.enabledCurrencies || {};
+        const rates: Record<string, any> = { ...(parsed.exchangeRates || {}) };
+        const symbols: Record<string, any> = { ...(parsed.currencySymbols || {}) };
+        const names: Record<string, any> = { ...(parsed.currencyNames || {}) };
+        const enabledMap: Record<string, any> = { ...(parsed.enabledCurrencies || {}) };
         const customList: Array<Record<string, any>> = Array.isArray(parsed.customCurrencies)
           ? parsed.customCurrencies
           : [];
 
+        for (const legacySlot of ['TRY', 'SYP']) {
+          const detectedCode = getCurrencyCodeFromLegacySymbol(String(symbols[legacySlot] || ''));
+          if (!detectedCode || detectedCode === legacySlot) continue;
+
+          rates[detectedCode] ??= rates[legacySlot];
+          symbols[detectedCode] ??= detectedCode;
+          names[detectedCode] ??= names[legacySlot];
+          enabledMap[detectedCode] ??= enabledMap[legacySlot];
+          if (primary === legacySlot) primary = detectedCode;
+          delete rates[legacySlot];
+          delete symbols[legacySlot];
+          delete names[legacySlot];
+          delete enabledMap[legacySlot];
+        }
+        activeCode = primary;
+
         for (const item of customList) {
           if (!item || !item.code) continue;
           const code = normalizeCurrencyCode(item.code);
-          const symbol = String(item.symbol || code).trim();
+          const symbol = toEnglishCurrencySymbol(String(item.symbol || code), code);
           currencies[code] = {
             code,
             symbol,
@@ -170,7 +187,10 @@ function buildStateFromStorage(): MoneyEngineState {
           const rawName = names[code] ?? (code === 'BHD' ? names['BHR'] : undefined);
           const rawEnabled = enabledMap[code] ?? (code === 'BHD' ? enabledMap['BHR'] : undefined);
 
-          const resolvedSymbol = String(rawSymbol || existing?.symbol || (code === 'USD' ? '$' : code)).trim();
+          const resolvedSymbol = toEnglishCurrencySymbol(
+            String(rawSymbol || existing?.symbol || (code === 'USD' ? '$' : code)),
+            code
+          );
           const resolvedName = String(rawName || existing?.name || code).trim();
           const parsedRate = Number(rawRate);
           const resolvedRate =
