@@ -623,7 +623,6 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     const sym = symbolsMap[slotKey];
     const name = namesMap[slotKey];
     const rate = Number(ratesMap[slotKey]);
-    const isEnabled = enabledMap[slotKey] === true || enabledMap[detectedCode] === true;
 
     // إذا كانت الخانة فارغة كلياً، نتخطاها
     if (!sym && !name && !rate && enabledMap[slotKey] !== true) {
@@ -631,6 +630,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     }
 
     const detectedCode = detectCurrencyCodeFromMeta(sym, name, slotKey);
+    const isEnabled = enabledMap[slotKey] === true || enabledMap[detectedCode] === true;
     const catalogItem = getPredefinedCurrency(detectedCode);
 
     const finalCode = detectedCode;

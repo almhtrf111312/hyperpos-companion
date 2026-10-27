@@ -236,7 +236,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
       <aside 
         data-tour="sidebar"
         aria-hidden={isMobile && !isOpen}
-        inert={isMobile && !isOpen}
+        {...(isMobile && !isOpen ? { inert: '' } : {})}
         className={cn(
           "fixed z-50 transition-all duration-300 ease-in-out flex flex-col",
           "bg-sidebar pt-[env(safe-area-inset-top)]",

@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'bun:test';
 import { verifySignedLease } from '../offline-lease';
 
 const base = {
