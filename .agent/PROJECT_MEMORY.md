@@ -1,8 +1,8 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-26  
-**Current Version:** `v1.1.9 (Build 339)`  
-**Repository Branch:** `main` (Synced with `origin/main` & `origin/event-or-artifact` at commit `a4c245c`)  
+**Last Updated:** 2026-10-27  
+**Current Version:** `v1.3.2 (Build 345)`  
+**Repository Branch:** `main` (invoice privacy and analysis implementation: `4dcff8e1`)  
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
 
@@ -69,6 +69,11 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-27 (`4dcff8e1`):** Invoice Profit Privacy & Owner/Admin Analysis:
+  * Removed profit and maintenance parts cost from the customer-facing invoice details and standard invoice printout. Invoice sharing text/image paths contain no profit or cost fields.
+  * Restricted invoice profit KPIs, card-level profit figures, and the standalone invoice profit dialog to `boss` and `admin`; the dialog also checks the role before rendering.
+  * Added USD-based profit metrics, historical invoice-currency formatting, product/parts cost, net sales margin, and collected-versus-pending debt profit.
+  * Added four focused calculation tests. No storage, sync, Supabase schema, or RPC changes.
 * **2026-10-26 (v1.1.9 - Build 339 | Commit `a4c245c`):** Phase 1-6 Full POS & Reports Polish & Unified Export:
   * **POS Cart Currency Selector Isolation & Catalog Fixed Base:** Isolated `ProductGrid` currency display strictly to default store currency (`catalogCurrency`). Added elegant currency capsule buttons in `CartPanel.tsx` header for instant cart receipt currency selection and live total recalculation while preserving catalog prices.
   * **Reports Header Streamlining:** Merged financial reports title directly with Smart/Professional display mode capsule switcher on the same flex row (`whitespace-nowrap shrink-0`) to prevent wrapping and wasted space on mobile viewports.
