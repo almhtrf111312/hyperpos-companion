@@ -120,6 +120,8 @@ interface CartItem {
   costPrice?: number;
   bulkCostPrice?: number;
   laborCost?: number;
+  /** سعر يدوي (دولار) يتقدّم على سعر المفرق والجملة */
+  manualPrice?: number;
   expiryDate?: string;
   batchNumber?: string;
   /** عملة إدخال/عرض السعر لهذا السطر فقط */
@@ -1091,7 +1093,7 @@ export default function POS() {
     if (newPrice < 0) return;
     setCart(prev => prev.map(item =>
       item.id === id && item.unit === unit
-        ? { ...item, price: newPrice }
+        ? { ...item, manualPrice: newPrice }
         : item
     ));
   };
