@@ -1,106 +1,83 @@
-# تقرير الفحص الشامل وخطة الإصلاح (FlowPOS Pro)
+# خطة رفع أمان التطبيق ضد القرصنة والتشغيل غير المرخص
+# Anti-Piracy & Offline Hardening Plan
 
-## الخلاصة
-فحص الأنواع (TypeScript) يُظهر **50 خطأ**. معظمها ليس شكلياً: هناك متغيرات ودوال **غير معرّفة** في الشيفرة، وهذه تعطّل النافذة عند فتحها (ReferenceError → شاشة بيضاء أو نافذة لا تفتح). هذا هو سبب أعطال نافذة المشتريات وغيرها بعد آخر التعديلات (المراحل 2–6 للعملة الموحدة `money-engine`).
+## الحقيقة الأساسية / Core Truth
+لا يمكن منع قراءة كود يعمل على جهاز المستخدم بشكل كامل. الهدف: جعل النسخة المكسورة **عديمة القيمة** (لا بيانات سحابية، لا مزامنة، تتوقف بعد أيام) وجعل الكسر **مكلفاً** (فحوصات موزعة، تشفير مربوط بالخادم، تعتيم).
+Client code can always be read. Goal: a cracked copy must be useless (no cloud, no sync, expires in days) and expensive to produce.
 
-لا يلزم أي SQL في هذه الخطة؛ كل الأعطال في الواجهة. لا تُلمس الحسابات المالية ولا الخادم.
+---
 
-## الأعطال مرتبة حسب الخطورة
+## المرحلة 1: ربط البيانات المحلية بمفتاح من الخادم / Server-bound local encryption
+- الخادم يصدر مفتاح تشفير لكل جهاز (`device_key`) ضمن تذكرة الأوفلاين، ويحفظ داخل IndexedDB كمفتاح WebCrypto غير قابل للتصدير (`extractable: false`).
+- تشفير المنتجات والعملاء والسلة المحلية بـ AES-GCM بهذا المفتاح.
+- النتيجة: حذف صفحة الدخول لا يكفي؛ بدون تذكرة صالحة لا تُفك البيانات، والتطبيق يفتح فارغاً.
+- ترحيل تدريجي: البيانات القديمة غير المشفرة تُقرأ مرة واحدة ثم تُعاد كتابتها مشفرة (لا كسر للأجهزة الحالية).
 
-| # | الملف | المشكلة | الأثر على المستخدم |
-|---|---|---|---|
-| 1 | `src/components/purchases/PurchaseInvoiceViewDialog.tsx` سطر 1 | `useMemo` مستخدم وغير مستورد | نافذة تفاصيل فاتورة الشراء تنهار عند الفتح |
-| 2 | `src/lib/cashbox-store.ts` سطر 228–271 | `primaryCurrency` و`exchangeRate` غير معرّفين داخل `closeShift` | إغلاق الوردية ينهار |
-| 3 | `src/pages/CashShifts.tsx` سطر 267 و761 | يمرر 5 وسائط لـ`closeShift` (تقبل 3)، و`cn` غير مستورد | إغلاق الوردية + عرض الصفحة |
-| 4 | `src/pages/Customers.tsx` 821–887 | `expandedInvoices`, `toggleInvoiceExpand`, `currencyCode`, `exchangeRate`, `isNonUsd`, `cn` غير معرّفة | كشف حساب العميل ينهار (الصفحة المفتوحة لديك الآن) |
-| 5 | `src/lib/invoice-canvas-generator.ts` 652/659 و`src/lib/native-print.ts` 373/379 | `isEnabled` بدل `enabled` | العملات المفعلة لا تظهر في صورة/طباعة الفاتورة (قيمة دائماً undefined) |
-| 6 | `Invoices.tsx` 395–430، `InvoiceTracking.tsx` 135–138، `CartPanel.tsx` 805/1203 | استخدام `currency_code/currency_symbol/exchange_rate/total_in_currency` بينما نوع `Invoice` يستخدم `currencyCode/currencySymbol/exchangeRate/totalInCurrency` | عملة الفاتورة قد تظهر خاطئة أو تعود للدولار |
-| 7 | `src/pages/POS.tsx` 600 | `updateProducts(prev => …)` بينما الدالة تقبل مصفوفة فقط | تحديث المخزون الجزئي بعد الاسترداد يكتب دالة بدل قائمة → شبكة المنتجات تفرغ/تنهار بعد استرداد |
-| 8 | `Debts.tsx` 105/317، `Invoices.tsx` 1383 | نوع العملة `string` مقابل `'USD'|'TRY'|'SYP'` | أخطاء أنواع فقط؛ العملات المخصصة غير مدعومة في الديون |
+## المرحلة 2: تذكرة موقعة بتوقيع غير متماثل / Asymmetric signed lease
+- استبدال التحقق الحالي بتوقيع **Ed25519** من Edge Function `issue-offline-lease` بمفتاح خاص سري على الخادم؛ التطبيق يحمل المفتاح العام فقط.
+- محتوى التذكرة: user_id، device_id، plan، expires_at (حد أقصى 7 أيام)، max_offline_invoices، nonce، device_key المغلف.
+- لا يمكن لأي مطور تزوير تذكرة دون المفتاح الخاص.
 
-## المرحلة 1 — إيقاف الانهيارات (أولوية قصوى)
+## المرحلة 3: فحوصات موزعة ومتشابكة / Distributed integrity checks
+- بدل فحص واحد في `LicenseGuard`: إدخال التحقق داخل مسارات حرجة (حساب إجمالي السلة، حفظ الفاتورة، التصدير، الطباعة، المزامنة) عبر دوال بأسماء غير دالة.
+- كل فحص يستخدم ناتج التذكرة كمدخل حسابي (مثلاً مفتاح فك التشفير) وليس كشرط if فقط، فحذف الشرط يعطل الوظيفة.
+- فحص تأخيري عشوائي: اكتشاف التلاعب لا يعطل فوراً بل بعد عدد عشوائي من العمليات (يصعّب تحديد مكان الفحص).
+- كشف تراجع الوقت (موجود) + مقارنة بآخر وقت خادم + عداد عمليات أحادي.
 
-**1. نافذة المشتريات** — `PurchaseInvoiceViewDialog.tsx` سطر 1:
-```ts
-import { useState, useEffect, useMemo } from 'react';
+## المرحلة 4: الخادم هو المرجع / Server authority
+- المزامنة ترفض أي فاتورة بدون `lease_id` صالح وتسلسل عداد سليم → النسخ المكسورة لا تصل للسحابة.
+- تسجيل أحداث التلاعب في `security_events` وحظر الجهاز تلقائياً عند التكرار.
+- ربط الحساب بجهاز واحد (موجود) + إلغاء التذاكر عن بعد (`revoked_leases`).
+
+## المرحلة 5: حماية الحزم / Build hardening
+- `vite-plugin-javascript-obfuscator` لملفات الترخيص والتشفير فقط (لتفادي بطء التطبيق): control-flow flattening، string array encoding، self-defending.
+- Android: R8/ProGuard، فحص توقيع الـ APK داخلياً (Capacitor plugin) ورفض العمل إن تغيّر التوقيع، Play Integrity API عند الاتصال.
+- Electron: `asar` + `electron-builder` code signing، تعطيل DevTools في الإنتاج، فحص hash لملف `app.asar` يُرسل للخادم عند المزامنة.
+- إزالة source maps من الإنتاج.
+
+## المرحلة 6: التحقق والاختبار / Verification
+- اختبارات وحدة: تذكرة مزورة تُرفض، تذكرة منتهية تقفل البيع، تراجع الوقت يُكتشف، تجاوز حد الفواتير يقفل.
+- اختبار يدوي: حذف `LicenseGuard` في نسخة تجريبية → التطبيق يفتح بلا بيانات ولا بيع.
+- التأكد أن تسجيل دخول المالك والجهاز الحالي يعمل دون انقطاع.
+- رفع الإصدار وتحديث changelog.
+
+---
+
+## SQL المقترح (يُنفذ يدوياً بموافقتك فقط)
+```sql
+CREATE TABLE IF NOT EXISTS public.revoked_leases (
+  lease_id uuid PRIMARY KEY,
+  revoked_at timestamptz NOT NULL DEFAULT now(),
+  reason text
+);
+ALTER TABLE public.revoked_leases ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.revoked_leases TO authenticated;
+CREATE POLICY "read own revoked" ON public.revoked_leases
+  FOR SELECT TO authenticated USING (true);
+
+ALTER TABLE public.invoices
+  ADD COLUMN IF NOT EXISTS lease_id uuid,
+  ADD COLUMN IF NOT EXISTS offline_seq integer;
+
+CREATE OR REPLACE FUNCTION public.validate_invoice_lease()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.lease_id IS NOT NULL AND EXISTS
+     (SELECT 1 FROM public.revoked_leases WHERE lease_id = NEW.lease_id) THEN
+    RAISE EXCEPTION 'LEASE_REVOKED';
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_validate_invoice_lease ON public.invoices;
+CREATE TRIGGER trg_validate_invoice_lease
+  BEFORE INSERT ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.validate_invoice_lease();
 ```
+ملاحظة: الإلزام الكامل بـ lease_id يُفعّل بعد تحديث كل الأجهزة، لتجنب رفض فواتير قديمة.
 
-**2. إغلاق الوردية** — `src/lib/cashbox-store.ts` سطر 228:
-```ts
-export const closeShift = (
-  closingCash: number,
-  notes?: string,
-  currencyCounts?: { USD?: number; TRY?: number; SYP?: number },
-  primaryCurrency?: string,
-  exchangeRate?: number
-): { shift: Shift; discrepancy: number } | null => {
-```
-(السطران 270–271 يبقيان كما هما؛ التخزين يبقى بالدولار، العملة وسعر الصرف للمرجع فقط.) تأكد أن نوع `Shift` يحتوي `currency?: string; exchange_rate?: number;` وأضفهما إن لم يكونا موجودين.
-
-**3. صفحة الورديات** — `src/pages/CashShifts.tsx` أضف إلى الاستيرادات:
-```ts
-import { cn } from '@/lib/utils';
-```
-وتحقق أن الدالة المستدعاة `closeShiftFn` في سطر 262 تشير لـ`closeShift` الجديدة (خمسة وسائط) — إن كانت تمر عبر hook وسيط فأضف الوسيطين له بنفس الترتيب.
-
-**4. صفحة العملاء** — `src/pages/Customers.tsx` داخل المكوّن (بجانب باقي `useState`):
-```ts
-import { cn } from '@/lib/utils';
-import { useMoney } from '@/hooks/use-money';
-// داخل المكوّن:
-const [expandedInvoices, setExpandedInvoices] = useState<Record<string, boolean>>({});
-const toggleInvoiceExpand = (id: string) =>
-  setExpandedInvoices(prev => ({ ...prev, [id]: !prev[id] }));
-const money = useMoney();
-const currencyCode = money.activeCode;
-const exchangeRate = money.activeRate || 1;
-const isNonUsd = currencyCode !== 'USD';
-```
-ملاحظة: الفواتير القديمة يجب أن تعرض بسعر صرفها المحفوظ؛ إن كان `item` يحمل `exchangeRate` فاستخدم `item.exchangeRate ?? exchangeRate` في سطور 852–887.
-
-**5. صورة وطباعة الفاتورة** — في `invoice-canvas-generator.ts` (652، 659) و`native-print.ts` (373، 379): استبدل `.isEnabled` بـ`.enabled`.
-
-## المرحلة 2 — توحيد حقول عملة الفاتورة
-
-النوع المعتمد هو camelCase في `src/lib/cloud/invoices-cloud.ts` (سطر 90–178). في كل من:
-- `Invoices.tsx` 395–430: `inv.currency_code` → `inv.currencyCode`، `currency_symbol` → `currencySymbol`، `exchange_rate` → `exchangeRate`.
-- `InvoiceTracking.tsx` 118–138: نفس الاستبدال، و`total_in_currency` → `totalInCurrency`؛ سطر 118 حوّل القيمة `String(x ?? '')`.
-- `CartPanel.tsx` 805 و1203: احذف `currency_code: …` من كائن الفاتورة واستعمل `currencyCode: …` (إن كان موجوداً مسبقاً فاحذف المكرر فقط).
-
-التحويل من/إلى قاعدة البيانات (snake_case) يتم فقط داخل `invoices-cloud.ts` (سطر 585 مثلاً) — لا تغيّره.
-
-## المرحلة 3 — المخزون بعد الاسترداد في POS
-
-`src/pages/POS.tsx` سطر 600: `updateProducts` تقبل مصفوفة. الحل الأدق: اجعلها تقبل الشكلين في سطر 437:
-```ts
-const updateProducts = useCallback(
-  (next: POSProduct[] | ((prev: POSProduct[]) => POSProduct[])) => {
-    setProducts(prev => (typeof next === 'function' ? next(prev) : next));
-    // أبقِ أي منطق إضافي موجود داخل الدالة الحالية (كاش/مرجع) مطبقاً على القيمة الناتجة
-  }, []);
-```
-اقرأ جسم الدالة الحالي أولاً وحافظ على كل ما فيه (مثل تحديث `useRef`).
-
-## المرحلة 4 — أنواع العملة في الديون والفواتير
-- `Debts.tsx` 105: `useState<string>(() => …)` بدل النوع الضيق؛ وكذلك 317.
-- `Invoices.tsx` 1383: مرر `code as 'USD' | 'TRY' | 'SYP'` أو وسّع توقيع الدالة المستقبِلة إلى `string` (الأفضل التوسيع لدعم العملات المخصصة).
-
-## المرحلة 5 — التحقق (إلزامي)
-1. `npx tsgo --noEmit -p tsconfig.app.json` → يجب 0 أخطاء (حالياً 50).
-2. `npm run build` → exit 0.
-3. اختبار يدوي بعرض 390px و1280px:
-   - المشتريات: فتح تفاصيل فاتورة، شراء سريع، إضافة فاتورة.
-   - POS: بيع نقدي، بيع دين، دفع ناقص، ثم استرداد الفاتورة والتأكد أن المنتجات لا تختفي والمخزون يرجع.
-   - الفواتير: فاتورة بالتركي تبقى بالتركي بعد تغيير العملة الافتراضية.
-   - الورديات: فتح وإغلاق بعملة غير الدولار.
-   - العملاء: فتح كشف حساب وتوسيع فاتورة.
-   - مشاركة صورة الفاتورة وطباعتها.
-4. تحديث `version.json` و`public/changelog.json` (v1.0.73).
-
-## المرحلة 6 (اختيارية) — ميزة ذكاء اصطناعي
-لديك مساعد المدير (`boss-assistant`) يعمل عبر بوابة Lovable AI وكان متوقفاً بخطأ 403 بسبب تعطيل الذكاء الاصطناعي في مساحة العمل. بعد استقرار المراحل 1–5 يمكن إضافة "تحليل يومي ذكي" (ملخص المبيعات، المنتجات الراكدة، تنبيه نقص المخزون) فوق نفس الدالة. Claude غير متاح كنموذج داخل التطبيق عبر البوابة؛ البديل الجاهز Gemini/GPT دون مفتاح. هذه مرحلة منفصلة تحتاج موافقتك.
-
-## ملاحظات فنية
-- لا SQL مطلوب: كل الأعطال واجهة فقط.
-- الدولار يبقى أساس التخزين؛ لا تعديل على RPCs أو حسابات الربح.
-- السبب الجذري: تعديلات المراحل 2–6 الخارجية أُضيفت دون تشغيل فحص الأنواع، لأن Vite يبني رغم أخطاء TypeScript. يُنصح بإضافة `tsgo --noEmit` إلى خطوة CI قبل الرفع.
+## تفاصيل تقنية / Technical notes
+- ملفات: `src/lib/offline-lease.ts`، `src/lib/secure-store.ts` (جديد)، `src/lib/backup-encryption.ts` (بعد ضمان التوافق)، `CartPanel.tsx`، `CloudSyncProvider.tsx`، `LicenseGuard.tsx`، `vite.config.ts`، Edge Function جديدة `issue-offline-lease`.
+- سر جديد: `LEASE_SIGNING_PRIVATE_KEY` (Ed25519).
+- لا مساس بملفات المستودعات المجمدة. USD يبقى الأساس المحاسبي.
+- الرفع إلى GitHub بعد نجاح البناء.
