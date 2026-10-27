@@ -2451,7 +2451,7 @@ export default function Invoices() {
 
       {/* View Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="w-[min(calc(100vw-1.5rem),38rem)] max-h-[calc(100dvh-2rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
+        <DialogContent className="w-[min(calc(100vw-1.5rem),38rem)] flex flex-col p-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
           <DialogHeader className="shrink-0 p-4 pb-3 border-b border-border/50 text-start bg-muted/30">
             <DialogTitle className="flex items-center justify-between text-base font-bold">
               <div className="flex items-center gap-2 text-foreground">
@@ -2479,6 +2479,7 @@ export default function Invoices() {
             const totalUsdStr = formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2);
 
             return (
+            <>
             <div className="flex-1 min-h-0 space-y-4 p-4 sm:p-5 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -2698,9 +2699,14 @@ export default function Invoices() {
                 </div>
               </div>
 
-              <div className="pt-3 flex flex-col gap-2 sm:flex-row">
+            </div>
+
+              <div
+                className="shrink-0 flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/95 p-3"
+                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
+              >
                 <Button
-                  className="min-h-11 flex-1 bg-primary py-2.5 font-bold text-primary-foreground shadow-md transition-[colors,transform] hover:bg-primary/90 active:scale-98"
+                  className="min-h-11 flex-1 basis-full bg-primary py-2.5 font-bold text-primary-foreground shadow-md transition-[colors,transform] hover:bg-primary/90 active:scale-98 sm:basis-auto"
                   onClick={() => handlePrint(selectedInvoice)}
                 >
                   <Printer className="w-4 h-4" />
@@ -2708,7 +2714,10 @@ export default function Invoices() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="min-h-11 px-4 py-2.5 font-bold transition-[colors,transform] active:scale-98"
+                  className={cn(
+                    "min-h-11 flex-1 px-4 py-2.5 font-bold transition-[colors,transform] active:scale-98 sm:basis-auto",
+                    canViewInvoiceProfit ? "basis-[calc(50%-0.25rem)]" : "basis-full"
+                  )}
                   onClick={() => {
                     setShowViewDialog(false);
                     handleShare(selectedInvoice);
@@ -2721,7 +2730,7 @@ export default function Invoices() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="min-h-11 gap-1.5 border-emerald-500/40 px-3.5 font-bold text-emerald-700 transition-[colors,transform] hover:bg-emerald-500/10 active:scale-98 dark:text-emerald-300"
+                    className="min-h-11 flex-1 basis-[calc(50%-0.25rem)] gap-1.5 border-emerald-500/40 px-3.5 font-bold text-emerald-700 transition-[colors,transform] hover:bg-emerald-500/10 active:scale-98 dark:text-emerald-300 sm:basis-auto"
                     onClick={() => {
                       if (canViewInvoiceProfit) setShowProfitDialog(true);
                     }}
@@ -2732,7 +2741,7 @@ export default function Invoices() {
                   </Button>
                 )}
               </div>
-            </div>
+            </>
             );
           })()}
         </DialogContent>

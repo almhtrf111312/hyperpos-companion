@@ -1,8 +1,8 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-28
+**Last Updated:** 2026-10-27
 **Current Version:** `v1.3.2 (Build 345)`
-**Repository Branch:** Working checkout `main` at `399f24b2`; requested UI updates will be published to `event-or-artifact`.
+**Repository Branch:** `event-or-artifact` (latest published commit: `35745fd4`; mobile dialog/sidebar improvements in progress).
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
 
@@ -69,12 +69,20 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **2026-10-27:** Mobile Dialog, Invoice Actions & Sidebar:
+  * Accounted for top and bottom safe areas in global dialog sizing; kept existing global overflow behavior to avoid clipping dialogs that rely on scrolling.
+  * Separated invoice print/share/profit actions from the scrollable detail body and kept them in a safe-area-aware footer.
+  * Limited bottom-sheet positioning/animations to phone widths and centered those dialogs on larger screens.
+  * Added a mobile sidebar close button and made the closed sidebar inert and inaccessible to pointer and assistive-technology interaction.
+  * Restored a distinct three-column dense POS layout on phones. No storage, sync, backend, or financial calculation changes.
+  * Files: `src/components/ui/dialog.tsx`, `src/components/layout/Sidebar.tsx`, `src/components/pos/ProductGrid.tsx`, `src/pages/Invoices.tsx`, `src/index.css`.
+  * Production build and TypeScript check pass; 375px viewport smoke check has no horizontal overflow. ESLint still reports existing issues outside changed lines.
 * **2026-10-28:** Invoice Currency Card Deduplication:
   * Invoice currency-equation cards now render only enabled currencies and suppress duplicate codes, symbols, and names, including legacy metadata aliases for the Qatari riyal.
   * Qatar currency aliases display the canonical `ر.ق` symbol and `الريال القطري` name while retaining the invoice's saved exchange rate when applicable.
   * Production build passes. No storage, sync, or backend changes.
 * **2026-10-27:** POS Mobile Product Grid:
-  * Changed the standard and dense POS product grids to two columns on narrow screens while retaining responsive column counts at larger breakpoints.
+  * Changed the standard POS grid to two columns and later restored the dense POS mode to three columns on narrow screens, retaining responsive counts at larger breakpoints.
   * Expanded product imagery to square card areas and moved quantity badges below the image into the product details, improving product-name and price readability.
   * Production build passes. Targeted ESLint reports one pre-existing empty catch block at `ProductGrid.tsx:154`; no storage, sync, or backend changes.
 * **2026-10-27:** Invoice Profit UI Privacy Polish:

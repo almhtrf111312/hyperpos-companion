@@ -2095,36 +2095,56 @@ html {
   }
 }
 
-.bottom-sheet-content,
-.laser-sheet-content {
-  position: fixed !important;
-  inset-inline: 0 !important;
-  bottom: 0 !important;
-  top: auto !important;
-  left: 0 !important;
-  right: 0 !important;
-  margin-inline: auto !important;
-  transform: translateY(0) !important;
+@media (max-width: 639px) {
+  .bottom-sheet-content,
+  .laser-sheet-content {
+    position: fixed !important;
+    inset-inline: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin-inline: auto !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+    transform: translateY(0) !important;
+  }
+
+  .bottom-sheet-content[data-state="open"],
+  [data-state="open"].bottom-sheet-content {
+    animation: sheetUp 0.20s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  .bottom-sheet-content[data-state="closed"],
+  [data-state="closed"].bottom-sheet-content {
+    animation: sheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  }
+
+  .laser-sheet-content[data-state="open"],
+  [data-state="open"].laser-sheet-content {
+    animation: laserSheetUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  .laser-sheet-content[data-state="closed"],
+  [data-state="closed"].laser-sheet-content {
+    animation: sheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  }
 }
 
-.bottom-sheet-content[data-state="open"],
-[data-state="open"].bottom-sheet-content {
-  animation: sheetUp 0.20s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-}
-
-.bottom-sheet-content[data-state="closed"],
-[data-state="closed"].bottom-sheet-content {
-  animation: sheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
-}
-
-.laser-sheet-content[data-state="open"],
-[data-state="open"].laser-sheet-content {
-  animation: laserSheetUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-}
-
-.laser-sheet-content[data-state="closed"],
-[data-state="closed"].laser-sheet-content {
-  animation: sheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+@media (min-width: 640px) {
+  .bottom-sheet-content,
+  .laser-sheet-content {
+    position: fixed !important;
+    inset-inline: auto !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 1.25rem !important;
+    padding-bottom: 0 !important;
+  }
 }
 
 /* 3. Laser Lead Line (Dynamic Scene Primary Token) */
