@@ -17,7 +17,7 @@ jobs:
           CHANNEL: '@flowpospro'
         run: |
           VERSION=$(node -p "const v=require('./version.json'); v.versionName+' (Build '+v.versionCode+')'")
-          NOTES=$(node -p "try{const c=require('./public/changelog.json');const e=Array.isArray(c)?c[0]:(c.entries||c.versions||[])[0];(e&&e.changes||[]).map(x=>"• "+x).join("\n")}catch(e){''}")
+          NOTES=$(node -p "(require('./public/changelog.json')[0].changes||[]).map(x=>'• '+x).join('\\n')")
           URL="https://github.com/${{ github.repository }}/releases/latest"
           TEXT=$(printf '🚀 تحديث جديد: Flow POS Pro\n🏷️ الإصدار: v%s\n\n%s' "$VERSION" "$NOTES")
           jq -n --arg c "$CHANNEL" --arg t "$TEXT" --arg u "$URL" \
