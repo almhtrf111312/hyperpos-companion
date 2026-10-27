@@ -2685,7 +2685,7 @@ html {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-    transform: none !important;
+    /* لا نلغي transform هنا: النوافذ تعتمد عليه للتمركز وسط الشاشة */
   }
 }
 
