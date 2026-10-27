@@ -17,6 +17,44 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceKey, secureSet, secureGet, secureRemove } from './secure-storage';
+import { verifyAsync } from '@noble/ed25519';
+
+/** المفتاح العام لتوقيع Ed25519 — المفتاح الخاص لا يغادر الخادم أبداً */
+const LEASE_PUBLIC_KEY_B64 = '4LgiPzjwneJPJjg6ElvOEYh7yrGdyeAQwNb9mEgq7Dw=';
+const b64ToBytes = (b: string) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
+
+/** نتيجة التحقق من التوقيع: null = لم يُتحقق بعد */
+let verifiedSignature: string | null = null;
+let failedSignature: string | null = null;
+
+/** يتحقق من أن التذكرة موقعة من الخادم وأن حقولها مطابقة للحمولة الموقعة */
+export async function verifySignedLease(lease: OfflineLease | null): Promise<boolean> {
+  if (!lease?.signedPayload || !lease.edSignature) return false;
+  try {
+    const ok = await verifyAsync(
+      b64ToBytes(lease.edSignature),
+      new TextEncoder().encode(lease.signedPayload),
+      b64ToBytes(LEASE_PUBLIC_KEY_B64),
+    );
+    if (!ok) { failedSignature = lease.edSignature; return false; }
+    const p = JSON.parse(lease.signedPayload);
+    const consistent = p.license_id === lease.licenseId
+      && Number(p.valid_until_epoch) === lease.validUntilEpoch
+      && Number(p.max_offline_invoices) === lease.maxOfflineInvoices
+      && p.device_id === lease.deviceId;
+    if (!consistent) { failedSignature = lease.edSignature; return false; }
+    verifiedSignature = lease.edSignature;
+    return true;
+  } catch {
+    failedSignature = lease.edSignature;
+    return false;
+  }
+}
+
+// تحقق عند تحميل الوحدة
+if (typeof window !== 'undefined') {
+  setTimeout(() => { void verifySignedLease(getStoredLease()); }, 0);
+}
 
 export interface OfflineLease {
   licenseId: string;
@@ -27,6 +65,9 @@ export interface OfflineLease {
   signature: string;
   /** ثواني Unix — توقيت الخادم لحظة الإصدار */
   issuedAtEpoch: number;
+  /** الحمولة الموقعة بـ Ed25519 (v2) */
+  signedPayload?: string;
+  edSignature?: string;
 }
 
 export type OfflineLeaseBlockReason = 'tampered' | 'expired' | 'limit_reached';
@@ -133,8 +174,38 @@ export function resetOfflineInvoiceCounter(): void {
  * الخادم يتحقق من الترخيص وربط الجهاز ويوقّع التذكرة بسرّ لا يغادر قاعدة البيانات.
  * عند النجاح: تُحفظ التذكرة، تتقدم الساعة الموثوقة، ويُصفَّر عداد الفواتير.
  */
+async function fetchSignedLeaseV2(): Promise<OfflineLease | null> {
+  const invoke = supabase.functions.invoke('issue-signed-lease', { body: { device_id: getDeviceKey() } });
+  const timeout = new Promise<never>((_, r) => setTimeout(() => r(new Error('timeout')), LEASE_RPC_TIMEOUT_MS));
+  const { data, error } = await Promise.race([invoke, timeout]);
+  if (error || !data?.success || !data.payload || !data.signature) return null;
+  const p = JSON.parse(data.payload);
+  const lease: OfflineLease = {
+    licenseId: p.license_id,
+    deviceId: p.device_id,
+    validUntilEpoch: Number(p.valid_until_epoch),
+    maxOfflineInvoices: Number(p.max_offline_invoices),
+    signature: data.signature,
+    issuedAtEpoch: Number(p.issued_at_epoch),
+    signedPayload: data.payload,
+    edSignature: data.signature,
+  };
+  if (!(await verifySignedLease(lease))) {
+    console.warn('[OfflineLease] Server lease signature invalid');
+    return null;
+  }
+  return lease;
+}
+
 export async function fetchOfflineLease(): Promise<OfflineLease | null> {
   try {
+    const v2 = await fetchSignedLeaseV2().catch(() => null);
+    if (v2) {
+      saveLease(v2);
+      updateTrustedTime(v2.issuedAtEpoch);
+      resetOfflineInvoiceCounter();
+      return v2;
+    }
     const rpcPromise = (supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> })
       .rpc('issue_offline_lease', { p_device_id: getDeviceKey() });
 
@@ -201,6 +272,14 @@ export function getOfflineLeaseStatus(): OfflineLeaseStatus {
   // 2. لا تذكرة بعد (تثبيت قديم لم يتصل منذ الترقية) — نمط التوافق السابق
   if (!lease) {
     return { ...ok, legacy: true };
+  }
+
+  // 2.5 تذكرة v2: يجب أن يكون توقيعها صالحاً — أي تعديل يدوي يكسر التوقيع
+  if (lease.edSignature) {
+    if (failedSignature === lease.edSignature) {
+      return { ...ok, allowed: false, reason: 'tampered', message: BLOCK_MESSAGES.tampered };
+    }
+    if (verifiedSignature !== lease.edSignature) void verifySignedLease(lease);
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
