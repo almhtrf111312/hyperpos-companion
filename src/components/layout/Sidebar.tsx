@@ -227,7 +227,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
           aria-label="إغلاق القائمة"
           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
           className={cn(
-            "fixed inset-0 bg-black/70 z-40 transition-opacity duration-300 select-none outline-none focus:outline-none [touch-action:manipulation]",
+            "fixed inset-0 bg-black/70 z-[70] transition-opacity duration-300 select-none outline-none focus:outline-none [touch-action:manipulation]",
             "[-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]",
             isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           )}
@@ -240,7 +240,7 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
         aria-hidden={isMobile && !isOpen}
         {...(isMobile && !isOpen ? { inert: '' } : {})}
         className={cn(
-          "fixed z-50 transition-all duration-300 ease-in-out flex flex-col",
+          "fixed z-[80] transition-all duration-300 ease-in-out flex flex-col",
           "bg-sidebar pt-[env(safe-area-inset-top)]",
           isMobile 
             ? cn(
