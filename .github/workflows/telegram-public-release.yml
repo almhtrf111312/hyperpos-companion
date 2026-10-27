@@ -14,7 +14,7 @@ jobs:
       - name: Send to channel
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHANNEL: '@flowpospro'
+          CHANNEL: ${{ secrets.TELEGRAM_CHAT_ID || '@flowpospro' }}
         run: |
           VERSION=$(node -p "const v=require('./version.json'); v.versionName+' (Build '+v.versionCode+')'")
           NOTES=$(node -p "(require('./public/changelog.json')[0].changes||[]).map(x=>'• '+x).join('\\n')")
@@ -22,4 +22,4 @@ jobs:
           TEXT=$(printf '🚀 تحديث جديد: Flow POS Pro\n🏷️ الإصدار: v%s\n\n%s' "$VERSION" "$NOTES")
           jq -n --arg c "$CHANNEL" --arg t "$TEXT" --arg u "$URL" \
             '{chat_id:$c,text:$t,reply_markup:{inline_keyboard:[[{text:"📥 تحميل التحديث",url:$u}]]}}' \
-          | curl -sf -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -H 'Content-Type: application/json' -d @-
+          | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -H 'Content-Type: application/json' -d @-
