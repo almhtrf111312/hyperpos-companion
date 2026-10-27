@@ -860,9 +860,12 @@ export type Database = {
           operation_id: string | null
           payment_type: string | null
           profit: number | null
+          settlement_diff_usd: number
+          settlement_kind: string
           status: string | null
           subtotal: number | null
           tax_amount: number | null
+          tax_inclusive: boolean
           tax_rate: number | null
           time: string
           total: number | null
@@ -895,9 +898,12 @@ export type Database = {
           operation_id?: string | null
           payment_type?: string | null
           profit?: number | null
+          settlement_diff_usd?: number
+          settlement_kind?: string
           status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
+          tax_inclusive?: boolean
           tax_rate?: number | null
           time?: string
           total?: number | null
@@ -930,9 +936,12 @@ export type Database = {
           operation_id?: string | null
           payment_type?: string | null
           profit?: number | null
+          settlement_diff_usd?: number
+          settlement_kind?: string
           status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
+          tax_inclusive?: boolean
           tax_rate?: number | null
           time?: string
           total?: number | null
