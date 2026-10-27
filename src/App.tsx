@@ -56,6 +56,7 @@ const Appearance = lazy(() => import("./pages/Appearance"));
 const LibraryMembers = lazy(() => import("./pages/LibraryMembers"));
 const Help = lazy(() => import("./pages/Help"));
 const ContactDeveloper = lazy(() => import("./pages/ContactDeveloper"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Signup = lazy(() => import("./pages/Signup"));
 import { WarehouseProvider } from "./hooks/use-warehouse";
@@ -470,6 +471,7 @@ const PageFallback = () => (
           <Route path="/invoice-tracking" element={<FeatureErrorBoundary featureName="تتبع الفواتير"><InvoiceTracking /></FeatureErrorBoundary>} />
           <Route path="/cash-shifts" element={<FeatureErrorBoundary featureName="ورديات الصندوق"><CashShifts /></FeatureErrorBoundary>} />
           <Route path="/library" element={<FeatureErrorBoundary featureName="المكتبة"><LibraryMembers /></FeatureErrorBoundary>} />
+          <Route path="/notifications" element={<FeatureErrorBoundary featureName="الإشعارات"><Notifications /></FeatureErrorBoundary>} />
           <Route path="/contact" element={<FeatureErrorBoundary featureName="تواصل مع المطور"><ContactDeveloper /></FeatureErrorBoundary>} />
           {/* FROZEN: warehouses & stock transfer disabled — redirect home */}
           <Route path="/warehouses" element={<Navigate to="/" replace />} />

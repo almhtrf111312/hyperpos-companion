@@ -549,6 +549,7 @@ export const translations = {
     'stockTransfer.returnReceiptTitle': 'وصل استرداد عهدة',
 
     'nav.settings': 'الإعدادات',
+    'nav.notifications': 'الإشعارات',
 
     // Dashboard
     'dashboard.title': 'لوحة التحكم',
@@ -3054,6 +3055,7 @@ export const translations = {
     'nav.stockTransfer': 'Stock Transfer',
     'nav.reports': 'Reports',
     'nav.settings': 'Settings',
+    'nav.notifications': 'Notifications',
 
     // Warehouses
     'warehouses.title': 'Warehouse Management',
@@ -5720,6 +5722,7 @@ export const translations = {
     'nav.stockTransfer': 'Stok Transferi',
     'nav.reports': 'Raporlar',
     'nav.settings': 'Ayarlar',
+    'nav.notifications': 'Bildirimler',
     'nav.help': 'Yardım',
     'nav.library': 'Kütüphane',
     'tooltip.library': 'Üye ve ödünç yönetimi',
@@ -9358,6 +9361,7 @@ export const translations = {
     'nav.stockTransfer': 'انتقال موجودی',
     'nav.reports': 'گزارش‌ها',
     'nav.settings': 'تنظیمات',
+    'nav.notifications': 'اعلان‌ها',
     'nav.help': 'راهنما',
     'nav.library': 'کتابخانه',
     'tooltip.library': 'مدیریت اعضا و امانت‌ها',
@@ -11574,6 +11578,7 @@ export const translations = {
     'nav.stockTransfer': 'گواستنەوەی کاڵا',
     'nav.reports': 'ڕاپۆرتەکان',
     'nav.settings': 'ڕێکخستنەکان',
+    'nav.notifications': 'ئاگادارکردنەوەکان',
     'nav.help': 'یارمەتی',
     'nav.library': 'کتێبخانە',
     'tooltip.library': 'بەڕێوەبردنی ئەندام و قەرزدان',
