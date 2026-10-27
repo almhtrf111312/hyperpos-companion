@@ -542,6 +542,12 @@ export function CartPanel({
       return;
     }
 
+    // 💰 الزيادة في المقبوض تُعتمد دائماً كربح إضافي (لا يوجد باقٍ للزبون)
+    if (receivedUSD > total + 0.001) {
+      if (!onUpdateItemPrice) return;
+      handleApplySurplusAsProfit();
+    }
+
     setShowCashDialog(true);
   };
 
@@ -1465,8 +1471,8 @@ export function CartPanel({
         items: printCart.map(item => ({
           name: item.name,
           quantity: item.quantity,
-          price: roundForCurr(fromUsd(item.price, printCurrency.code, printCurrency.rate), printCurrency.code),
-          total: roundForCurr(fromUsd(item.price * item.quantity, printCurrency.code, printCurrency.rate), printCurrency.code),
+          price: roundForCurr(fromUsd(getItemPrice(item), printCurrency.code, printCurrency.rate), printCurrency.code),
+          total: roundForCurr(fromUsd(getItemPrice(item) * item.quantity, printCurrency.code, printCurrency.rate), printCurrency.code),
         })),
         subtotal: roundForCurr(fromUsd((data?.subtotal ?? (subtotal || 0)), printCurrency.code, printCurrency.rate), printCurrency.code),
         discount: printDiscountAmount,
@@ -1515,7 +1521,7 @@ export function CartPanel({
           ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">${t('pos.batchNumberLabel') || 'الدفعة'}: ${esc(item.batchNumber)}</small>` : ''}
         </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${esc(printCurrency.symbol)}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${esc(printCurrency.symbol)}${formatNumber(getItemPrice(item) * item.quantity * printCurrency.rate)}</td>
       </tr>
     `).join('');
 
@@ -1618,8 +1624,8 @@ export function CartPanel({
       items: shareCart.map(item => ({
         name: item.name,
         quantity: item.quantity,
-        unitPrice: roundForCurr(fromUsd(item.price, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
-        total: roundForCurr(fromUsd(item.price * item.quantity, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
+        unitPrice: roundForCurr(fromUsd(getItemPrice(item), shareCurrency.code, shareCurrency.rate), shareCurrency.code),
+        total: roundForCurr(fromUsd(getItemPrice(item) * item.quantity, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
       })),
       subtotal: roundForCurr(fromUsd(shareSubtotal, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
       discount: roundForCurr(fromUsd(shareDiscountAmount, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
@@ -2129,23 +2135,10 @@ export function CartPanel({
                     {t('pos.tax') || 'ض.'} {effectiveTaxRate}%: {formatCurrency(taxAmount * activeRate, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                   </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
-                  <div className="flex items-center justify-between gap-1 w-full flex-wrap">
-                    <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                      {t('pos.balance') || 'باقي للعميل'}: {formatCurrency(changeInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
-                      {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(changeUSD, 'USD')})`}
-                    </span>
-                    {receivedUSD > total + 0.001 && onUpdateItemPrice && (
-                      <button
-                        type="button"
-                        onClick={handleApplySurplusAsProfit}
-                        className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                        title={t('pos.setExtraProfit') || 'تعديل سعر الصنف واعتماد الزيادة كربح'}
-                      >
-                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+{formatMoney(round8(receivedUSD - total), 'USD')})</span>
-                      </button>
-                    )}
-                  </div>
+                {receivedAmount > 0 && receivedUSD > total + 0.001 && (
+                  <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
+                    {t('pos.acceptExtraProfit') || 'ربح إضافي'}: +{formatMoney(round8(receivedUSD - total), 'USD')}
+                  </span>
                 )}
                 {receivedAmount > 0 && receivedUSD < total - 0.001 && (
                   <div className="flex flex-col gap-1 w-full mt-1 animate-in fade-in zoom-in-95 duration-200">
