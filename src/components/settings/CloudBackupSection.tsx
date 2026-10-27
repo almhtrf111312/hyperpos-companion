@@ -15,6 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
+import { loadUnifiedStoreSettings, saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
+import { EVENTS } from '@/lib/events';
 import {
   uploadCloudBackup,
   listCloudBackups,
@@ -37,7 +39,7 @@ export default function CloudBackupSection({ onRestoreBackup }: CloudBackupSecti
   const [isUploading, setIsUploading] = useState(false);
   const [autoUpload, setAutoUpload] = useState(() => {
     try {
-      return localStorage.getItem('hp_cloud_auto_backup') === 'true';
+      return loadUnifiedStoreSettings().backupSettings.cloudAutoUpload === true;
     } catch { return false; }
   });
 
@@ -59,6 +61,12 @@ export default function CloudBackupSection({ onRestoreBackup }: CloudBackupSecti
   useEffect(() => {
     loadBackups();
   }, [loadBackups]);
+
+  useEffect(() => {
+    const refresh = () => setAutoUpload(loadUnifiedStoreSettings().backupSettings.cloudAutoUpload === true);
+    window.addEventListener(EVENTS.SETTINGS_UPDATED, refresh);
+    return () => window.removeEventListener(EVENTS.SETTINGS_UPDATED, refresh);
+  }, []);
 
   // Auto backup interval
   useEffect(() => {
@@ -165,7 +173,13 @@ export default function CloudBackupSection({ onRestoreBackup }: CloudBackupSecti
           <p className="font-medium text-foreground">{t('gdrive.autoUpload') || 'النسخ التلقائي'}</p>
           <p className="text-sm text-muted-foreground">{t('gdrive.autoUploadDesc') || 'نسخ احتياطي تلقائي كل 6 ساعات'}</p>
         </div>
-        <Switch checked={autoUpload} onCheckedChange={setAutoUpload} />
+        <Switch checked={autoUpload} onCheckedChange={(enabled) => {
+          setAutoUpload(enabled);
+          void saveUnifiedStoreSettings({ backupSettings: {
+            ...loadUnifiedStoreSettings().backupSettings,
+            cloudAutoUpload: enabled,
+          } });
+        }} />
       </div>
 
       {/* Upload button */}

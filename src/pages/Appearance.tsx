@@ -75,6 +75,7 @@ export default function Appearance() {
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
+      const committedTheme = draftTheme;
       // 1. Save Theme
       if (hasThemeChanged && draftTheme) {
         setFullTheme(draftTheme.mode, draftTheme.color, draftTheme.blur, draftTheme.transparency, draftTheme.style);
@@ -86,26 +87,18 @@ export default function Appearance() {
       if (hasFontChanged) {
         setFont(draftFont);
         savedFontRef.current = draftFont;
-        try {
-          await saveUnifiedStoreSettings({ appFont: draftFont });
-        } catch (e) {
-          console.warn('Sync font error:', e);
-        }
       }
 
       // 3. Save UI Scale
       if (hasScaleChanged) {
         setScale(draftScale);
         savedScaleRef.current = draftScale;
-        try {
-          await saveUnifiedStoreSettings({ uiScale: draftScale });
-        } catch (e) {
-          console.warn('Sync scale error:', e);
-        }
       }
-
-
-
+      await saveUnifiedStoreSettings({
+        appFont: draftFont,
+        uiScale: draftScale,
+        ...(committedTheme ? { theme: committedTheme.mode, themeSettings: committedTheme } : {}),
+      });
       showSmartToast({
         type: 'settings',
         title: t('common.saved') || 'تم الحفظ',

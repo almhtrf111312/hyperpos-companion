@@ -15,6 +15,7 @@ import {
   isValidAppFontId,
   applyAppFontToDOM,
   getStoredAppFont,
+  setStoredAppFont,
   getPlatformStoragePrefix,
 } from '@/lib/app-font-config';
 import {
@@ -27,7 +28,7 @@ import {
   setStoredUIScale,
   getStoredUIScale,
 } from '@/lib/ui-scale-config';
-import { applyTheme, applyBlurTheme, ThemeMode, ThemeColor, getThemeStorageKey, THEME_STORAGE_KEY } from '@/hooks/use-theme';
+import { applyTheme, applyBlurTheme, applyThemeStyle, ThemeMode, ThemeColor, ThemeStyle, getThemeStorageKey, THEME_STORAGE_KEY } from '@/hooks/use-theme';
 import { Language, setLanguage } from '@/lib/i18n';
 import { ProductFieldsConfig } from '@/lib/product-fields-config';
 import { CustomField } from '@/lib/custom-fields-config';
@@ -55,6 +56,7 @@ export interface FullThemeSettings {
   color: ThemeColor;
   blur: boolean;
   transparency: number;
+  style?: ThemeStyle;
 }
 
 export type CurrencyDisplayMode = 'symbol' | 'name' | 'both';
@@ -113,6 +115,7 @@ export interface UnifiedStoreSettings {
     keepDays: string;
     [key: string]: unknown;
   };
+  syncSettings?: Record<string, unknown>;
   productFieldsConfig?: ProductFieldsConfig | null;
   customFields?: CustomField[] | null;
 }
@@ -207,6 +210,7 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
           color: pt.color || 'emerald',
           blur: pt.blur ?? true,
           transparency: typeof pt.transparency === 'number' ? pt.transparency : 80,
+          style: pt.style === 'xiaomi' ? 'xiaomi' : 'standard',
         };
       }
     } catch {
@@ -294,8 +298,8 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       currencySymbols,
       currencyDisplayMode,
       language: (parsed?.language as Language) || 'ar',
-      theme: parsed?.theme || localThemeSettings.mode || 'dark',
-      themeSettings: parsed?.themeSettings || localThemeSettings,
+      theme: localThemeSettings.mode,
+      themeSettings: localThemeSettings,
       appearanceSettings: {
         dashboardDesign: localDesign,
         ...(parsed?.appearanceSettings || {}),
@@ -312,7 +316,12 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       initialCapital: Number(parsed?.initialCapital) || 0,
       notificationSettings: parsed?.notificationSettings || DEFAULT_UNIFIED_SETTINGS.notificationSettings,
       printSettings: parsed?.printSettings || {},
-      backupSettings: parsed?.backupSettings || DEFAULT_UNIFIED_SETTINGS.backupSettings,
+      backupSettings: {
+        ...DEFAULT_UNIFIED_SETTINGS.backupSettings,
+        ...(parsed?.backupSettings || {}),
+        cloudAutoUpload: parsed?.backupSettings?.cloudAutoUpload ?? (localStorage.getItem('hp_cloud_auto_backup') === 'true'),
+      },
+      syncSettings: parsed?.syncSettings || {},
       productFieldsConfig: parsed?.productFieldsConfig || null,
       customFields: parsed?.customFields || null,
     };
@@ -463,8 +472,8 @@ export function mergeStoreSettings(
   const mergedDiscountFixed = typeof cloudSync.discountFixedEnabled === 'boolean'
     ? cloudSync.discountFixedEnabled
     : (base.discountFixedEnabled ?? true);
-  const mergedBarcodeMode: 'search' | 'add' = cloudSync.barcodeScanMode === 'add'
-    ? 'add'
+  const mergedBarcodeMode: 'search' | 'add' = cloudSync.barcodeScanMode === 'add' || cloudSync.barcodeScanMode === 'search'
+    ? cloudSync.barcodeScanMode
     : (base.barcodeScanMode ?? 'search');
   const mergedHideMaintenance = typeof cloudSync.hideMaintenanceSection === 'boolean'
     ? cloudSync.hideMaintenanceSection
@@ -491,7 +500,7 @@ export function mergeStoreSettings(
 
   // 15. حقول المنتجات والحقول المخصصة
   const mergedProductFields = cloudSync.productFieldsConfig || base.productFieldsConfig || null;
-  const mergedCustomFields = (Array.isArray(cloudSync.customFields) && cloudSync.customFields.length > 0)
+  const mergedCustomFields = Array.isArray(cloudSync.customFields)
     ? cloudSync.customFields
     : (base.customFields || null);
 
@@ -521,6 +530,7 @@ export function mergeStoreSettings(
     notificationSettings: mergedNotifications,
     printSettings: mergedPrint,
     backupSettings: mergedBackup,
+    syncSettings: { ...base.syncSettings, ...(cloudSync.syncSettings || {}) },
     productFieldsConfig: mergedProductFields,
     customFields: mergedCustomFields,
   };
@@ -535,6 +545,14 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
   try {
     // 1. حفظ في SETTINGS_STORAGE_KEY
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+
+    // مفاتيح التشغيل القديمة يجب أن تتبع النسخة الموحدة أيضاً عند السحب من السحابة.
+    if (typeof settings.notificationSettings.durationSeconds === 'number') {
+      localStorage.setItem('hyperpos_toast_duration', String(settings.notificationSettings.durationSeconds * 1000));
+    }
+    if (typeof settings.backupSettings.cloudAutoUpload === 'boolean') {
+      localStorage.setItem('hp_cloud_auto_backup', String(settings.backupSettings.cloudAutoUpload));
+    }
 
     // 2. تطبيق الخط المحلي للمنصة
     const platformFont = getStoredAppFont();
@@ -582,13 +600,16 @@ export function buildCloudStorePayload(
   const mergedSync: Record<string, unknown> = {
     ...(existingCloudSync || {}),
     updatedAt: settings.updatedAt || Date.now(),
-    appearanceProfile: {
-      theme: (typeof window !== 'undefined' ? localStorage.getItem('hyperpos_theme') : null) || 'dark',
-      fullTheme: (typeof window !== 'undefined' ? localStorage.getItem('hyperpos_theme_v1') : null) || 'emerald',
-      appFont: settings.appFont || 'cairo',
-      uiScale: settings.uiScale || 'normal',
-      layoutMode: (typeof window !== 'undefined' ? localStorage.getItem('flowpos_layout_mode') : null) || 'compact',
-      updatedAt: Date.now(),
+    appearanceProfiles: {
+      ...((existingCloudSync?.appearanceProfiles as Record<string, unknown>) || {}),
+      [getPlatformStoragePrefix()]: {
+        theme: settings.themeSettings.mode,
+        fullTheme: settings.themeSettings,
+        appFont: settings.appFont,
+        uiScale: settings.uiScale,
+        appearanceSettings: settings.appearanceSettings,
+        updatedAt: settings.updatedAt || Date.now(),
+      },
     },
     primaryCurrency: settings.primaryCurrency,
     enabledCurrencies: settings.enabledCurrencies,
@@ -605,12 +626,13 @@ export function buildCloudStorePayload(
     trackCapital: settings.trackCapital,
     initialCapital: settings.initialCapital,
     backupSettings: settings.backupSettings,
+    syncSettings: settings.syncSettings || {},
   };
 
   if (settings.productFieldsConfig) {
     mergedSync.productFieldsConfig = settings.productFieldsConfig;
   }
-  if (settings.customFields && settings.customFields.length > 0) {
+  if (Array.isArray(settings.customFields)) {
     mergedSync.customFields = settings.customFields;
   }
 
@@ -641,16 +663,30 @@ export function buildCloudStorePayload(
 
 export const applyCloudStoreSettings = (cloudSettings: any) => {
   if (typeof window === 'undefined' || !cloudSettings) return;
-  const profile = cloudSettings?.sync_settings?.appearanceProfile;
+  // كل منصة تستعيد ملفها فقط؛ لا يتغير حجم الهاتف من حفظ إعدادات الكمبيوتر.
+  const profile = cloudSettings?.sync_settings?.appearanceProfiles?.[getPlatformStoragePrefix()];
   if (profile) {
-    if (profile.theme) localStorage.setItem('hyperpos_theme', profile.theme);
-    if (profile.fullTheme) localStorage.setItem('hyperpos_theme_v1', profile.fullTheme);
-    if (profile.layoutMode) localStorage.setItem('flowpos_layout_mode', profile.layoutMode);
+    const theme = profile.fullTheme;
+    if (theme && typeof theme === 'object' && (theme.mode === 'dark' || theme.mode === 'light')) {
+      const newValue = JSON.stringify(theme);
+      localStorage.setItem(getThemeStorageKey(), newValue);
+      localStorage.setItem('hyperpos_theme_v1', newValue);
+      applyTheme(theme.mode, theme.color);
+      applyBlurTheme(theme.blur, theme.mode, theme.transparency);
+      applyThemeStyle(theme.style === 'xiaomi' ? 'xiaomi' : 'standard');
+      window.dispatchEvent(new StorageEvent('storage', { key: getThemeStorageKey(), newValue }));
+    }
     if (profile.appFont && isValidAppFontId(profile.appFont)) {
-      applyAppFontToDOM(profile.appFont);
+      setStoredAppFont(profile.appFont);
     }
     if (profile.uiScale && isValidUIScaleId(profile.uiScale)) {
-      applyUIScaleToDOM(profile.uiScale);
+      setStoredUIScale(profile.uiScale);
+    }
+    if (profile.appearanceSettings && typeof profile.appearanceSettings === 'object') {
+      const current = loadUnifiedStoreSettings();
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
+        ...current, appearanceSettings: { ...current.appearanceSettings, ...profile.appearanceSettings },
+      }));
     }
     emitEvent(EVENTS.THEME_CHANGED);
   }
@@ -689,7 +725,7 @@ export async function pullStoreSettingsWithGuard(): Promise<UnifiedStoreSettings
     if (!localUpdatedAt || cloudUpdatedAt > localUpdatedAt) {
       console.log(`[StoreSettingsSync] Adopting cloud settings (cloud: ${cloudUpdatedAt}, local: ${localUpdatedAt})`);
       applyCloudStoreSettings(cloudSettings);
-      const merged = mergeStoreSettings(localSettings, cloudSettings);
+      const merged = mergeStoreSettings(loadUnifiedStoreSettings(), cloudSettings);
       merged.updatedAt = cloudUpdatedAt || Date.now();
       applySettingsToRuntime(merged);
       return merged;
@@ -732,6 +768,7 @@ export async function saveUnifiedStoreSettings(
       ...(partial.exchangeRates || {}),
     },
     currencyNames: {
+      ...current.currencyNames,
       USD: (typeof partial.currencyNames?.USD === 'string' && partial.currencyNames.USD.trim()) || current.currencyNames.USD || DEFAULT_UNIFIED_SETTINGS.currencyNames.USD,
       TRY: (typeof partial.currencyNames?.TRY === 'string' && partial.currencyNames.TRY.trim()) || current.currencyNames.TRY || DEFAULT_UNIFIED_SETTINGS.currencyNames.TRY,
       SYP: (typeof partial.currencyNames?.SYP === 'string' && partial.currencyNames.SYP.trim()) || current.currencyNames.SYP || DEFAULT_UNIFIED_SETTINGS.currencyNames.SYP,
@@ -740,6 +777,7 @@ export async function saveUnifiedStoreSettings(
       ) : {}),
     },
     currencySymbols: {
+      ...current.currencySymbols,
       USD: (typeof partial.currencySymbols?.USD === 'string' && partial.currencySymbols.USD.trim()) || current.currencySymbols.USD || DEFAULT_UNIFIED_SETTINGS.currencySymbols.USD,
       TRY: (typeof partial.currencySymbols?.TRY === 'string' && partial.currencySymbols.TRY.trim()) || current.currencySymbols.TRY || DEFAULT_UNIFIED_SETTINGS.currencySymbols.TRY,
       SYP: (typeof partial.currencySymbols?.SYP === 'string' && partial.currencySymbols.SYP.trim()) || current.currencySymbols.SYP || DEFAULT_UNIFIED_SETTINGS.currencySymbols.SYP,
@@ -771,6 +809,7 @@ export async function saveUnifiedStoreSettings(
       ...current.backupSettings,
       ...(partial.backupSettings || {}),
     },
+    syncSettings: { ...current.syncSettings, ...(partial.syncSettings || {}) },
   };
 
   // 2. تطبيق محلي فوري وشامل
