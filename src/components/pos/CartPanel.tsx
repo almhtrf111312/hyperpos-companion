@@ -1500,15 +1500,16 @@ export function CartPanel({
     const storeType = getCurrentStoreType();
     const isPharmacy = storeType === 'pharmacy';
 
+    const esc = (v: unknown): string => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const itemsHtml = printCart.map(item => `
       <tr>
         <td style="padding: 5px; border-bottom: 1px solid #eee;">
-          ${item.name}
-          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">${t('pos.expiryDateLabel') || 'الصلاحية'}: ${item.expiryDate}</small>` : ''}
-          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">${t('pos.batchNumberLabel') || 'الدفعة'}: ${item.batchNumber}</small>` : ''}
+          ${esc(item.name)}
+          ${isPharmacy && item.expiryDate ? `<br/><small style="color: #888;">${t('pos.expiryDateLabel') || 'الصلاحية'}: ${esc(item.expiryDate)}</small>` : ''}
+          ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">${t('pos.batchNumberLabel') || 'الدفعة'}: ${esc(item.batchNumber)}</small>` : ''}
         </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${printCurrency.symbol}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${esc(printCurrency.symbol)}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
       </tr>
     `).join('');
 
@@ -1536,15 +1537,15 @@ export function CartPanel({
         </head>
         <body>
           <div class="header">
-            ${storeLogo ? `<img src="${storeLogo}" alt="${t('pos.logo') || 'شعار'}" class="logo" />` : ''}
-            <div class="store-name">${storeName}</div>
-            ${storeAddress ? `<div class="store-info">${storeAddress}</div>` : ''}
-            ${storePhone ? `<div class="store-info">${storePhone}</div>` : ''}
+            ${storeLogo ? `<img src="${esc(storeLogo)}" alt="${t('pos.logo') || 'شعار'}" class="logo" />` : ''}
+            <div class="store-name">${esc(storeName)}</div>
+            ${storeAddress ? `<div class="store-info">${esc(storeAddress)}</div>` : ''}
+            ${storePhone ? `<div class="store-info">${esc(storePhone)}</div>` : ''}
           </div>
           <div class="invoice-info">
-            ${data?.invoiceNumber ? `<div><strong>${t('pos.invoiceNumberLabel') || 'رقم الفاتورة'}:</strong> #${data.invoiceNumber}</div>` : ''}
+            ${data?.invoiceNumber ? `<div><strong>${t('pos.invoiceNumberLabel') || 'رقم الفاتورة'}:</strong> #${esc(data.invoiceNumber)}</div>` : ''}
             <div><strong>${t('pos.dateLabel') || 'التاريخ'}:</strong> ${currentDate} - ${currentTime}</div>
-            <div><strong>${t('pos.customerLabel') || 'العميل'}:</strong> ${printCustomerName || t('pos.walkInCustomer') || 'عميل نقدي'}</div>
+            <div><strong>${t('pos.customerLabel') || 'العميل'}:</strong> ${esc(printCustomerName) || t('pos.walkInCustomer') || 'عميل نقدي'}</div>
           </div>
           <table>
             <thead>
@@ -1556,18 +1557,18 @@ export function CartPanel({
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${printDiscount > 0 ? `<div style="text-align: ${isRTL ? 'left' : 'right'}; color: #c00;">${t('pos.discountCol') || 'خصم'}: -${printCurrency.symbol}${formatNumber(printDiscountAmount)}</div>` : ''}
+          ${printDiscount > 0 ? `<div style="text-align: ${isRTL ? 'left' : 'right'}; color: #c00;">${t('pos.discountCol') || 'خصم'}: -${esc(printCurrency.symbol)}${formatNumber(printDiscountAmount)}</div>` : ''}
           <div class="total">
-            ${t('pos.totalLabel') || 'الإجمالي'}: ${printCurrency.symbol}${formatNumber(printTotalInCurrency)}
+            ${t('pos.totalLabel') || 'الإجمالي'}: ${esc(printCurrency.symbol)}${formatNumber(printTotalInCurrency)}
           </div>
           ${data?.paymentType === 'split' && data?.downPayment ? `
             <div style="margin-top: 8px; font-size: 0.9em; text-align: center; border-top: 1px dashed #333; padding-top: 6px;">
               <div>${t('pos.paymentMethodLabel') || 'طريقة الدفع'}: <strong>${t('pos.compositeSale') || 'بيع مركب'}</strong></div>
-              <div>${t('pos.cashPaid') || 'المقبوض نقداً'}: <strong>${printCurrency.symbol}${formatNumber(roundForCurr(fromUsd(data.downPayment, printCurrency.code, printCurrency.rate), printCurrency.code))}</strong></div>
-              <div style="color: #c00;">${t('pos.remainingAsDebt') || 'المتبقي كدين'}: <strong>${printCurrency.symbol}${formatNumber(roundForCurr(fromUsd(data.debtRemaining || 0, printCurrency.code, printCurrency.rate), printCurrency.code))}</strong></div>
+              <div>${t('pos.cashPaid') || 'المقبوض نقداً'}: <strong>${esc(printCurrency.symbol)}${formatNumber(roundForCurr(fromUsd(data.downPayment, printCurrency.code, printCurrency.rate), printCurrency.code))}</strong></div>
+              <div style="color: #c00;">${t('pos.remainingAsDebt') || 'المتبقي كدين'}: <strong>${esc(printCurrency.symbol)}${formatNumber(roundForCurr(fromUsd(data.debtRemaining || 0, printCurrency.code, printCurrency.rate), printCurrency.code))}</strong></div>
             </div>
           ` : ''}
-          <div class="footer">${footer}</div>
+          <div class="footer">${esc(footer)}</div>
         </body>
       </html>
     `;
