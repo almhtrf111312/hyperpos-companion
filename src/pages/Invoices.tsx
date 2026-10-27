@@ -107,6 +107,7 @@ import {
   Debt,
 } from '@/lib/cloud/debts-cloud';
 import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
 import { addActivityLog } from '@/lib/activity-log';
 import { confirmPendingProfit } from '@/lib/partners-store';
 import { confirmPendingProfitCloud } from '@/lib/cloud/partners-cloud';
@@ -121,6 +122,7 @@ import { addToQueueIfNotExists } from '@/lib/sync-queue';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getCurrentUserRole } from '@/lib/supabase-store';
 import { PurchaseInvoicesListTab } from '@/components/purchases/PurchaseInvoicesListTab';
+import { InvoiceProfitDialog } from '@/components/invoices/InvoiceProfitDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { usePageActivity } from '@/contexts/PageActivityContext';
 
@@ -277,6 +279,8 @@ export function isInvoiceInRange(createdAt?: string | null, from?: string, to?: 
 export default function Invoices() {
   const { t, language, isRTL } = useLanguage();
   const { isActive: isPageActive } = usePageActivity();
+  const { isBoss, isAdmin } = useUserRole();
+  const canViewInvoiceProfit = isBoss || isAdmin;
 
   // Helper to ensure clean Arabic text and eliminate translation key leaks
   const tx = useCallback((key: string, arabicFallback: string): string => {
@@ -311,6 +315,7 @@ export default function Invoices() {
   const [activeKpi, setActiveKpi] = useState<'total' | 'debt' | 'today' | 'profit' | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showProfitDialog, setShowProfitDialog] = useState(false);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
   const [showShareSheet, setShowShareSheet] = useState(false);
@@ -824,6 +829,7 @@ export default function Invoices() {
   };
 
   const handleKpiProfit = () => {
+    if (!canViewInvoiceProfit) return;
     setActiveKpi('profit');
     setDateQuickFilter('today');
     setDateFilter(todayStr);
@@ -1594,9 +1600,7 @@ export default function Invoices() {
         `).join('')
       : `<tr><td colspan="3" style="padding: 10px;">
           <div style="margin-bottom: 5px;"><strong>وصف الخدمة:</strong> ${escapeHtml(invoice.serviceDescription) || 'صيانة'}</div>
-          ${invoice.partsCost ? `<div style="margin-bottom: 5px;"><strong>تكلفة القطع:</strong> ${formatCurrency(invoice.partsCost * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
           <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals)}</div>
-          ${printFinancials.displayProfit > 0 ? `<div style="color: green;"><strong>صافي الربح:</strong> ${formatCurrency(printFinancials.displayProfit, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
         </td></tr>`;
 
     const printContent = `
@@ -2070,21 +2074,23 @@ export default function Invoices() {
                     {formatCurrency(todaySalesDisplay, statCurrencySymbol, statDecimals)}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleKpiProfit}
-                  className={cn(
-                    "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
-                    activeKpi === 'profit'
-                      ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
-                      : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
-                  )}
-                >
-                  <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.totalProfits', 'إجمالي الأرباح')}</span>
-                  <span className="text-[11px] sm:text-xs font-black text-primary font-mono tabular-nums whitespace-nowrap">
-                    {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
-                  </span>
-                </button>
+                {canViewInvoiceProfit && (
+                  <button
+                    type="button"
+                    onClick={handleKpiProfit}
+                    className={cn(
+                      "py-2 px-1 rounded-xl border text-center transition-colors select-none hover:shadow-xs cursor-pointer",
+                      activeKpi === 'profit'
+                        ? "bg-primary/10 border-primary ring-2 ring-primary/40 shadow-xs"
+                        : "bg-background/80 border-border hover:border-primary/40 shadow-xs"
+                    )}
+                  >
+                    <span className="text-[9.5px] text-muted-foreground font-medium block truncate">{tx('invoices.totalProfits', 'إجمالي الأرباح')}</span>
+                    <span className="text-[11px] sm:text-xs font-black text-primary font-mono tabular-nums whitespace-nowrap">
+                      {formatCurrency(totalProfitDisplay, statCurrencySymbol, statDecimals)}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2413,30 +2419,31 @@ export default function Invoices() {
                         )}
                       </div>
 
-                      {/* يسار: صافي الربح بدون حشو نصي وبألوان دلالية واضحة */}
-                      <div className="flex items-baseline gap-1 flex-wrap">
-                        <span className="text-[10px] text-muted-foreground font-medium">{t('invoices.netProfit') || 'الربح'}:</span>
-                        {financials.code === 'USD' ? (
-                          <span className={cn(
-                            "font-bold font-mono text-[11px] whitespace-nowrap",
-                            invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                          )}>
-                            {currencySymbols?.USD || '$'}{formatNumber(invUsdProfit, invUsdProfit % 1 === 0 ? 0 : 2)}
-                          </span>
-                        ) : (
-                          <div className="inline-flex items-baseline gap-1.5 flex-wrap">
+                      {canViewInvoiceProfit && (
+                        <div className="flex items-baseline gap-1 flex-wrap">
+                          <span className="text-[10px] text-muted-foreground font-medium">{t('invoices.netProfit') || 'الربح'}:</span>
+                          {financials.code === 'USD' ? (
                             <span className={cn(
                               "font-bold font-mono text-[11px] whitespace-nowrap",
-                              financials.displayProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                              invUsdProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                             )}>
-                              {formatNumber(financials.displayProfit, financials.decimals)} <span className="text-[9.5px] font-sans font-bold text-muted-foreground">{financials.symbol}</span>
+                              {currencySymbols?.USD || '$'}{formatNumber(invUsdProfit, invUsdProfit % 1 === 0 ? 0 : 2)}
                             </span>
-                            <span className="text-[9px] font-mono text-muted-foreground/70 whitespace-nowrap" dir="ltr">
-                              ({currencySymbols?.USD || '$'}{formatNumber(invUsdProfit, invUsdProfit % 1 === 0 ? 0 : 2)})
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                          ) : (
+                            <div className="inline-flex items-baseline gap-1.5 flex-wrap">
+                              <span className={cn(
+                                "font-bold font-mono text-[11px] whitespace-nowrap",
+                                financials.displayProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                              )}>
+                                {formatNumber(financials.displayProfit, financials.decimals)} <span className="text-[9.5px] font-sans font-bold text-muted-foreground">{financials.symbol}</span>
+                              </span>
+                              <span className="text-[9px] font-mono text-muted-foreground/70 whitespace-nowrap" dir="ltr">
+                                ({currencySymbols?.USD || '$'}{formatNumber(invUsdProfit, invUsdProfit % 1 === 0 ? 0 : 2)})
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                   </div>
@@ -2568,18 +2575,6 @@ export default function Invoices() {
                     <span className="text-muted-foreground">{t('pos.receivedAmount') || 'المبلغ المقبوض'}:</span>
                     <span className="font-medium">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
-                  {selectedInvoice.partsCost !== undefined && selectedInvoice.partsCost > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{t('invoices.partsCost') || 'تكلفة القطع علينا'}:</span>
-                      <span className="font-medium text-destructive">{formatCurrency((selectedInvoice.partsCost || 0) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
-                    </div>
-                  )}
-                  {selectedFinancials.displayProfit > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{t('invoices.netProfit')}:</span>
-                      <span className="font-medium text-success">{formatCurrency(selectedFinancials.displayProfit, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -2652,12 +2647,6 @@ export default function Invoices() {
                     <span className="font-semibold">{formatCurrency(((selectedInvoice.debtRemaining !== undefined && selectedInvoice.debtRemaining !== null) ? selectedInvoice.debtRemaining : (selectedInvoice.total - (selectedInvoice.debtPaid || 0))) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
                   </div>
                 )}
-                {selectedFinancials.displayProfit > 0 && (
-                  <div className="flex justify-between text-sm text-success">
-                    <span>{t('invoices.profit') || 'صافي الربح'}:</span>
-                    <span className="font-semibold">{formatCurrency(selectedFinancials.displayProfit, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
-                  </div>
-                )}
               </div>
 
               {/* قسم معادلة العملات أسفل الجدول والملخص المالي */}
@@ -2695,9 +2684,9 @@ export default function Invoices() {
                 </div>
               </div>
 
-              <div className="pt-3 flex items-center gap-2">
+              <div className="pt-3 flex flex-col gap-2 sm:flex-row">
                 <Button
-                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2.5 h-auto rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-98 transition-[colors,transform] cursor-pointer"
+                  className="min-h-11 flex-1 bg-primary py-2.5 font-bold text-primary-foreground shadow-md transition-[colors,transform] hover:bg-primary/90 active:scale-98"
                   onClick={() => handlePrint(selectedInvoice)}
                 >
                   <Printer className="w-4 h-4" />
@@ -2705,7 +2694,7 @@ export default function Invoices() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="px-4 py-2.5 h-auto rounded-2xl flex items-center justify-center gap-2 border-border font-bold active:scale-98 transition-[colors,transform] cursor-pointer"
+                  className="min-h-11 px-4 py-2.5 font-bold transition-[colors,transform] active:scale-98"
                   onClick={() => {
                     setShowViewDialog(false);
                     handleShare(selectedInvoice);
@@ -2714,12 +2703,35 @@ export default function Invoices() {
                   <Share2 className="w-4 h-4" />
                   <span>{t('common.share') || 'مشاركة'}</span>
                 </Button>
+                {canViewInvoiceProfit && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 gap-1.5 border-emerald-500/40 px-3.5 font-bold text-emerald-700 transition-[colors,transform] hover:bg-emerald-500/10 active:scale-98 dark:text-emerald-300"
+                    onClick={() => {
+                      if (canViewInvoiceProfit) setShowProfitDialog(true);
+                    }}
+                    title={language === 'en' ? 'Open invoice profit analysis' : language === 'tr' ? 'Fatura kâr analizini aç' : 'عرض أرباح الفاتورة السرية'}
+                  >
+                    <TrendingUp className="h-4 w-4" aria-hidden="true" />
+                    <span>{language === 'en' ? 'Invoice profit' : language === 'tr' ? 'Fatura kârı' : 'أرباح الفاتورة'}</span>
+                  </Button>
+                )}
               </div>
             </div>
             );
           })()}
         </DialogContent>
       </Dialog>
+
+      {selectedInvoice && (
+        <InvoiceProfitDialog
+          open={canViewInvoiceProfit && showProfitDialog}
+          onOpenChange={open => setShowProfitDialog(canViewInvoiceProfit && open)}
+          invoice={selectedInvoice}
+          financials={getInvoiceFinancials(selectedInvoice, true)}
+        />
+      )}
 
       {/* Share Bottom Sheet */}
       <Dialog open={showShareSheet} onOpenChange={showShareSheet => setShowShareSheet(showShareSheet)}>
@@ -3688,4 +3700,3 @@ export default function Invoices() {
     </div>
   );
 }
-
