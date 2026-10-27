@@ -1,90 +1,63 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
+import { useScrollDirectionVisibility, useSidebarOpenState } from '@/hooks/use-scroll-visibility';
 
 export interface SmartFabProps {
   onClick?: () => void;
   label?: string;
   icon?: React.ReactNode;
+  /** @deprecated يتم الاستماع لكل حاويات التمرير تلقائياً */
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
   className?: string;
+  /** @deprecated الزر دائري دائماً */
   showLabelOnDesktop?: boolean;
   children?: React.ReactNode;
 }
 
+/** موضع الأزرار العائمة الموحد: يمين بالعربي، يسار بالإنجليزي */
+export function floatingSideClass(isRTL: boolean) {
+  return isRTL ? 'right-5 sm:right-8' : 'left-5 sm:left-8';
+}
+export const floatingBottomClass = 'bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:bottom-10';
+
 export const SmartFab: React.FC<SmartFabProps> = ({
   onClick,
   label = 'إضافة',
-  icon = <Plus className="w-6 h-6" />,
-  scrollContainerRef,
+  icon = <Plus className="w-7 h-7 stroke-[2.5]" />,
   className,
-  showLabelOnDesktop = true,
   children,
 }) => {
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollTopRef = useRef(0);
-
-  const handleScroll = useCallback((scrollTop: number) => {
-    if (scrollTop < 40) {
-      setIsVisible(true);
-    } else if (scrollTop > lastScrollTopRef.current + 12) {
-      setIsVisible(false); // إخفاء عند التمرير للأسفل
-    } else if (scrollTop < lastScrollTopRef.current - 12) {
-      setIsVisible(true); // إظهار عند التمرير للأعلى
-    }
-    lastScrollTopRef.current = scrollTop;
-  }, []);
-
-  useEffect(() => {
-    const onWindowScroll = () => {
-      const top = window.scrollY || document.documentElement.scrollTop;
-      handleScroll(top);
-    };
-    window.addEventListener('scroll', onWindowScroll, { passive: true });
-
-    const target = scrollContainerRef?.current;
-    let onTargetScroll: (() => void) | undefined;
-    if (target) {
-      onTargetScroll = () => handleScroll(target.scrollTop);
-      target.addEventListener('scroll', onTargetScroll, { passive: true });
-    }
-
-    return () => {
-      window.removeEventListener('scroll', onWindowScroll);
-      if (target && onTargetScroll) {
-        target.removeEventListener('scroll', onTargetScroll);
-      }
-    };
-  }, [scrollContainerRef, handleScroll]);
+  const { isRTL } = useLanguage();
+  const scrollVisible = useScrollDirectionVisibility();
+  const sidebarOpen = useSidebarOpenState();
+  const isVisible = scrollVisible && !sidebarOpen;
 
   return (
     <div
       className={cn(
-        'fixed z-40 transition-all duration-300 ease-in-out',
-        // موضع ذكي: يحترم RTL وأشرطة التنقل السفلية للهواتف
-        'inset-inline-end-4 sm:inset-inline-end-8 end-4 sm:end-8',
-        'bottom-20 sm:bottom-8',
+        'fixed z-30 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+        floatingSideClass(isRTL),
+        floatingBottomClass,
         isVisible
-          ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
-          : 'opacity-0 translate-y-8 scale-90 pointer-events-none'
+          ? 'opacity-100 translate-y-0 pointer-events-auto'
+          : 'opacity-0 translate-y-[calc(100%+2rem)] pointer-events-none'
       )}
     >
       {children || (
         <Button
           onClick={onClick}
-          size="lg"
+          title={label}
+          aria-label={label}
           className={cn(
-            'h-14 rounded-full shadow-xl bg-gradient-primary text-primary-foreground font-semibold',
-            'hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 px-4 sm:px-6',
+            'size-16 rounded-full p-0 bg-gradient-primary text-primary-foreground',
+            'shadow-xl shadow-primary/30 ring-4 ring-primary/15 hover:shadow-2xl hover:scale-105 active:scale-95 transition-transform duration-200',
             className
           )}
-          aria-label={label}
         >
           {icon}
-          {showLabelOnDesktop && (
-            <span className="hidden sm:inline text-sm font-medium">{label}</span>
-          )}
         </Button>
       )}
     </div>
