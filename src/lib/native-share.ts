@@ -258,9 +258,13 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
   const formatInvoiceAmount = (amount: number) =>
     formatCurrency(amount, currencySymbol, undefined, data.currency, data.currencyName);
 
+  // عزل اتجاه النص: الاسم (عربي/إنجليزي) معزول، والأرقام دائماً LTR، والسطر يبدأ RTL
+  const RLM = '\u200F';
+  const iso = (s: string) => `\u2068${s}\u2069`;
+  const ltr = (s: string) => `\u2066${s}\u2069`;
   const itemsList = type !== 'maintenance'
-    ? items.map(item =>
-      `• ${item.name} × ${item.quantity} = ${formatInvoiceAmount(item.total)}`
+    ? items.map((item, i) =>
+      `${RLM}${i + 1}. ${iso(item.name)}\n${RLM}    ${ltr(`${item.quantity} × ${formatInvoiceAmount(item.unitPrice ?? (item.total / (item.quantity || 1)))} = ${formatInvoiceAmount(item.total)}`)}`
     ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
