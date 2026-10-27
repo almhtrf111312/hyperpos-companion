@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { formatDate, formatDateTime } from './utils';
-import { getReportCurrency } from './currencies';
+import { getCurrencyDisplayLabel, getReportCurrency } from './currencies';
 import { roundForCurrency } from './money-engine';
 
 export interface ExportCurrencySnapshot {
@@ -157,6 +157,11 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
     rate: reportCurr.isUsd ? 1 : reportCurr.rate,
     decimals: 2,
   };
+  const currencyLabel = getCurrencyDisplayLabel(
+    currencySnapshot.code,
+    currencySnapshot.symbol,
+    currencySnapshot.name
+  );
 
   const store = storeName ? { name: storeName, phone: storePhone, address: storeAddress } : getStoreInfo();
 
@@ -190,7 +195,7 @@ export const exportToExcel = async (options: ExcelExportOptions): Promise<void> 
       ws.addRow([`نوع التقرير: ${reportType}`]);
       ws.lastRow!.font = { name: 'Segoe UI', size: 12, bold: true };
   }
-  ws.addRow([`عملة التقرير: ${currencySnapshot.name} (${currencySnapshot.symbol}) - سعر الصرف: ${currencySnapshot.rate}`]);
+  ws.addRow([`عملة التقرير: ${currencyLabel} - سعر الصرف: ${currencySnapshot.rate}`]);
   ws.lastRow!.font = { name: 'Segoe UI', size: 10, italic: true };
   ws.addRow([`تاريخ الإصدار: ${formatLocalDateTime()}`]);
   ws.addRow([]);
@@ -661,7 +666,7 @@ export const exportSalesReportToExcel = async (
     store.address ? [`العنوان: ${store.address}`] : [],
     [],
     [`نوع التقرير: تقرير المبيعات التفصيلي`],
-    [`عملة التقرير: ${reportCurr.name} (${reportCurr.symbol}) - سعر الصرف: ${reportCurr.rate}`],
+    [`عملة التقرير: ${getCurrencyDisplayLabel(reportCurr.code, reportCurr.symbol, reportCurr.name)} - سعر الصرف: ${reportCurr.rate}`],
     [`تاريخ الإصدار: ${formatLocalDateTime()}`],
     [],
     ['تقرير المبيعات التفصيلي'],

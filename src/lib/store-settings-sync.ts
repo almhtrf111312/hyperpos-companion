@@ -57,6 +57,8 @@ export interface FullThemeSettings {
   transparency: number;
 }
 
+export type CurrencyDisplayMode = 'symbol' | 'name' | 'both';
+
 export interface UnifiedStoreSettings {
   updatedAt?: number;
   storeSettings: StoreInfo;
@@ -85,6 +87,7 @@ export interface UnifiedStoreSettings {
     SYP?: string;
     [code: string]: string | undefined;
   };
+  currencyDisplayMode: Record<string, CurrencyDisplayMode>;
   language: Language;
   theme: ThemeMode;
   themeSettings: FullThemeSettings;
@@ -145,6 +148,7 @@ export const DEFAULT_UNIFIED_SETTINGS: UnifiedStoreSettings = {
     TRY: '₺',
     SYP: 'ل.س',
   },
+  currencyDisplayMode: { USD: 'symbol' },
   language: 'ar',
   theme: 'dark',
   themeSettings: {
@@ -231,6 +235,9 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       USD: (typeof rawNames.USD === 'string' && rawNames.USD.trim()) ? rawNames.USD.trim() : DEFAULT_UNIFIED_SETTINGS.currencyNames.USD,
       TRY: (typeof rawNames.TRY === 'string' && rawNames.TRY.trim()) ? rawNames.TRY.trim() : DEFAULT_UNIFIED_SETTINGS.currencyNames.TRY,
       SYP: (typeof rawNames.SYP === 'string' && rawNames.SYP.trim()) ? rawNames.SYP.trim() : DEFAULT_UNIFIED_SETTINGS.currencyNames.SYP,
+      ...Object.fromEntries(Object.entries(rawNames).filter(([code, value]) =>
+        !['USD', 'TRY', 'SYP'].includes(code) && typeof value === 'string' && value.trim()
+      ).map(([code, value]) => [code.toUpperCase(), (value as string).trim()])),
     };
 
     const rawSyms = parsed?.currencySymbols || {};
@@ -238,6 +245,9 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       USD: (typeof rawSyms.USD === 'string' && rawSyms.USD.trim()) ? rawSyms.USD.trim() : DEFAULT_UNIFIED_SETTINGS.currencySymbols.USD,
       TRY: (typeof rawSyms.TRY === 'string' && rawSyms.TRY.trim()) ? rawSyms.TRY.trim() : DEFAULT_UNIFIED_SETTINGS.currencySymbols.TRY,
       SYP: (typeof rawSyms.SYP === 'string' && rawSyms.SYP.trim()) ? rawSyms.SYP.trim() : DEFAULT_UNIFIED_SETTINGS.currencySymbols.SYP,
+      ...Object.fromEntries(Object.entries(rawSyms).filter(([code, value]) =>
+        !['USD', 'TRY', 'SYP'].includes(code) && typeof value === 'string' && value.trim()
+      ).map(([code, value]) => [code.toUpperCase(), (value as string).trim()])),
     };
 
     const rawRates = parsed?.exchangeRates || {};
@@ -245,14 +255,24 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       USD: 1,
       TRY: Number(rawRates.TRY) > 0 ? Number(rawRates.TRY) : DEFAULT_UNIFIED_SETTINGS.exchangeRates.TRY,
       SYP: Number(rawRates.SYP) > 0 ? Number(rawRates.SYP) : DEFAULT_UNIFIED_SETTINGS.exchangeRates.SYP,
+      ...Object.fromEntries(Object.entries(rawRates).filter(([code, value]) =>
+        !['USD', 'TRY', 'SYP'].includes(code) && Number(value) > 0
+      ).map(([code, value]) => [code.toUpperCase(), Number(value)])),
     };
 
     const rawEnabled = parsed?.enabledCurrencies || {};
     const enabledCurrencies = {
       USD: rawEnabled.USD !== false,
-      TRY: rawEnabled.TRY !== false,
-      SYP: rawEnabled.SYP !== false,
+      ...Object.fromEntries(Object.entries(rawEnabled)
+        .filter(([code]) => code.toUpperCase() !== 'USD')
+        .map(([code, enabled]) => [code.toUpperCase(), enabled === true])),
     };
+    const rawDisplayModes = parsed?.currencyDisplayMode || {};
+    const currencyDisplayMode = Object.fromEntries(
+      Object.entries(rawDisplayModes)
+        .filter(([, mode]) => mode === 'symbol' || mode === 'name' || mode === 'both')
+        .map(([code, mode]) => [code.toUpperCase(), mode])
+    ) as Record<string, CurrencyDisplayMode>;
 
     const rawStore = parsed?.storeSettings || {};
     const storeSettings: StoreInfo = {
@@ -272,6 +292,7 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       exchangeRates,
       currencyNames,
       currencySymbols,
+      currencyDisplayMode,
       language: (parsed?.language as Language) || 'ar',
       theme: parsed?.theme || localThemeSettings.mode || 'dark',
       themeSettings: parsed?.themeSettings || localThemeSettings,
@@ -343,45 +364,68 @@ export function mergeStoreSettings(
   // 3. العملات المفعلة
   const cloudEnabled = cloudSync.enabledCurrencies || {};
   const localEnabled = base.enabledCurrencies || DEFAULT_UNIFIED_SETTINGS.enabledCurrencies;
-  const mergedEnabled = {
-    USD: cloudEnabled.USD !== undefined ? Boolean(cloudEnabled.USD) : localEnabled.USD !== false,
-    TRY: cloudEnabled.TRY !== undefined ? Boolean(cloudEnabled.TRY) : localEnabled.TRY !== false,
-    SYP: cloudEnabled.SYP !== undefined ? Boolean(cloudEnabled.SYP) : localEnabled.SYP !== false,
-  };
-  // ضمان تفعيل عملة واحدة على الأقل
-  if (!mergedEnabled.USD && !mergedEnabled.TRY && !mergedEnabled.SYP) {
-    mergedEnabled.USD = true;
-  }
+  const currencyCodes = new Set([...Object.keys(cloudEnabled), ...Object.keys(localEnabled)]);
+  const mergedEnabled: Record<string, boolean> = { USD: true };
+  currencyCodes.forEach((code) => {
+    if (code.toUpperCase() === 'USD') return;
+    const cloudValue = cloudEnabled[code];
+    mergedEnabled[code.toUpperCase()] = cloudValue !== undefined
+      ? cloudValue === true
+      : localEnabled[code] === true;
+  });
 
   // 4. أسماء العملات (منع الفراغ دائماً)
   const cloudNames = cloudSync.currencyNames || {};
   const localNames = base.currencyNames || DEFAULT_UNIFIED_SETTINGS.currencyNames;
-  const mergedNames = {
+  const mergedNames: Record<string, string> = {
     USD: (typeof cloudNames.USD === 'string' && cloudNames.USD.trim()) || localNames.USD || DEFAULT_UNIFIED_SETTINGS.currencyNames.USD,
     TRY: (typeof cloudNames.TRY === 'string' && cloudNames.TRY.trim()) || localNames.TRY || DEFAULT_UNIFIED_SETTINGS.currencyNames.TRY,
     SYP: (typeof cloudNames.SYP === 'string' && cloudNames.SYP.trim()) || localNames.SYP || DEFAULT_UNIFIED_SETTINGS.currencyNames.SYP,
   };
+  new Set([...Object.keys(cloudNames), ...Object.keys(localNames)]).forEach((code) => {
+    const cloudName = cloudNames[code];
+    const localName = localNames[code];
+    const name = (typeof cloudName === 'string' && cloudName.trim()) || localName;
+    if (typeof name === 'string' && name.trim()) mergedNames[code.toUpperCase()] = name.trim();
+  });
 
   // 5. رموز العملات (منع الفراغ دائماً)
   const cloudSyms = cloudSync.currencySymbols || {};
   const localSyms = base.currencySymbols || DEFAULT_UNIFIED_SETTINGS.currencySymbols;
   const directSymbol = (typeof cloud.currency_symbol === 'string' && cloud.currency_symbol.trim()) ? cloud.currency_symbol.trim() : undefined;
-  const mergedSymbols = {
+  const mergedSymbols: Record<string, string> = {
     USD: (typeof cloudSyms.USD === 'string' && cloudSyms.USD.trim()) || localSyms.USD || (mergedPrimary === 'USD' ? directSymbol : undefined) || DEFAULT_UNIFIED_SETTINGS.currencySymbols.USD,
     TRY: (typeof cloudSyms.TRY === 'string' && cloudSyms.TRY.trim()) || localSyms.TRY || (mergedPrimary === 'TRY' ? directSymbol : undefined) || DEFAULT_UNIFIED_SETTINGS.currencySymbols.TRY,
     SYP: (typeof cloudSyms.SYP === 'string' && cloudSyms.SYP.trim()) || localSyms.SYP || (mergedPrimary === 'SYP' ? directSymbol : undefined) || DEFAULT_UNIFIED_SETTINGS.currencySymbols.SYP,
   };
+  new Set([...Object.keys(cloudSyms), ...Object.keys(localSyms)]).forEach((code) => {
+    const cloudSymbol = cloudSyms[code];
+    const localSymbol = localSyms[code];
+    const symbol = (typeof cloudSymbol === 'string' && cloudSymbol.trim()) || localSymbol;
+    if (typeof symbol === 'string' && symbol.trim()) mergedSymbols[code.toUpperCase()] = symbol.trim();
+  });
 
   // 6. أسعار الصرف
   const cloudRates = (cloud.exchange_rates && typeof cloud.exchange_rates === 'object') ? (cloud.exchange_rates as Record<string, any>) : {};
   const localRates = base.exchangeRates || DEFAULT_UNIFIED_SETTINGS.exchangeRates;
   const tryRate = Number(cloudRates.TRY) > 0 ? Number(cloudRates.TRY) : (Number(localRates.TRY) > 0 ? Number(localRates.TRY) : DEFAULT_UNIFIED_SETTINGS.exchangeRates.TRY);
   const sypRate = Number(cloudRates.SYP) > 0 ? Number(cloudRates.SYP) : (Number(localRates.SYP) > 0 ? Number(localRates.SYP) : DEFAULT_UNIFIED_SETTINGS.exchangeRates.SYP);
-  const mergedRates = {
-    USD: 1,
-    TRY: tryRate,
-    SYP: sypRate,
-  };
+  const mergedRates: Record<string, number> = { USD: 1, TRY: tryRate, SYP: sypRate };
+  new Set([...Object.keys(cloudRates), ...Object.keys(localRates)]).forEach((code) => {
+    if (code.toUpperCase() === 'USD') return;
+    const cloudRate = Number(cloudRates[code]);
+    const localRate = Number(localRates[code]);
+    const rate = cloudRate > 0 ? cloudRate : localRate;
+    if (rate > 0) mergedRates[code.toUpperCase()] = rate;
+  });
+  const cloudDisplayModes = cloudSync.currencyDisplayMode || {};
+  const localDisplayModes = base.currencyDisplayMode || DEFAULT_UNIFIED_SETTINGS.currencyDisplayMode;
+  const mergedDisplayModes: Record<string, CurrencyDisplayMode> = { ...localDisplayModes };
+  Object.entries(cloudDisplayModes).forEach(([code, mode]) => {
+    if (mode === 'symbol' || mode === 'name' || mode === 'both') {
+      mergedDisplayModes[code.toUpperCase()] = mode;
+    }
+  });
 
   // 7. اللغة
   const mergedLanguage: Language = (typeof cloud.language === 'string' && cloud.language.trim())
@@ -459,6 +503,7 @@ export function mergeStoreSettings(
     exchangeRates: mergedRates,
     currencyNames: mergedNames,
     currencySymbols: mergedSymbols,
+    currencyDisplayMode: mergedDisplayModes,
     language: mergedLanguage,
     theme: mergedMode,
     themeSettings: mergedThemeSettings,
@@ -549,6 +594,7 @@ export function buildCloudStorePayload(
     enabledCurrencies: settings.enabledCurrencies,
     currencyNames: settings.currencyNames,
     currencySymbols: settings.currencySymbols,
+    currencyDisplayMode: settings.currencyDisplayMode,
     exchangeRates: settings.exchangeRates,
     taxEnabled: settings.taxEnabled,
     taxRate: settings.taxRate,
@@ -580,9 +626,8 @@ export function buildCloudStorePayload(
     primary_currency: settings.primaryCurrency,
     currency_symbol: primarySym,
     exchange_rates: {
+      ...settings.exchangeRates,
       USD: 1,
-      TRY: settings.exchangeRates.TRY,
-      SYP: settings.exchangeRates.SYP,
     },
     language: settings.language,
     tax_enabled: settings.taxEnabled,
@@ -680,6 +725,7 @@ export async function saveUnifiedStoreSettings(
     enabledCurrencies: {
       ...current.enabledCurrencies,
       ...(partial.enabledCurrencies || {}),
+      USD: true,
     },
     exchangeRates: {
       ...current.exchangeRates,
@@ -700,6 +746,10 @@ export async function saveUnifiedStoreSettings(
       ...(partial.currencySymbols ? Object.fromEntries(
         Object.entries(partial.currencySymbols).filter(([_, v]) => typeof v === 'string' && v.trim() !== '')
       ) : {}),
+    },
+    currencyDisplayMode: {
+      ...current.currencyDisplayMode,
+      ...(partial.currencyDisplayMode || {}),
     },
     themeSettings: {
       ...current.themeSettings,

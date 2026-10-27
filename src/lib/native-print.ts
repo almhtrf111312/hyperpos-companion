@@ -143,6 +143,7 @@ export interface PrintableInvoice {
   tax?: number;
   total: number;
   currencySymbol: string;
+  currencyName?: string;
   currency?: string;
   currency_code?: string;
   currency_symbol?: string;
@@ -158,14 +159,14 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
   const printSettings = getPrintSettings();
 
   const rawSymbol = (invoice.currencySymbol || '').trim();
-  const rawCurrency = (invoice.currency || '').toUpperCase();
+  const rawCurrency = (invoice.currency_code || invoice.currency || '').toUpperCase();
   const effectiveSymbol = resolveInvoiceCurrencySymbol(rawCurrency, rawSymbol);
 
   const itemsHTML = invoice.items.map(item => `
     <tr>
       <td style="text-align: right; padding: 4px 0; font-size: 12px;">${item.name}</td>
       <td style="text-align: center; padding: 4px 0; font-size: 12px;">${item.quantity}</td>
-      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${formatCurrency(item.total, effectiveSymbol)}</td>
+      <td style="text-align: left; padding: 4px 0; font-size: 12px;">${formatCurrency(item.total, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}</td>
     </tr>
   `).join('');
 
@@ -348,27 +349,27 @@ export function generateReceiptHTML(invoice: PrintableInvoice): string {
       ${invoice.items.length > 1 ? `
         <div class="total-row">
           <span>المجموع الفرعي:</span>
-          <span>${formatCurrency(invoice.subtotal, effectiveSymbol)}</span>
+          <span>${formatCurrency(invoice.subtotal, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}</span>
         </div>
       ` : ''}
       
       ${invoice.discountAmount && invoice.discountAmount > 0 ? `
         <div class="total-row">
           <span>الخصم${invoice.discount ? ` (${invoice.discount}%)` : ''}:</span>
-          <span>-${formatCurrency(invoice.discountAmount!, effectiveSymbol)}</span>
+          <span>-${formatCurrency(invoice.discountAmount!, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}</span>
         </div>
       ` : ''}
 
       ${invoice.tax && invoice.tax > 0 ? `
         <div class="total-row">
           <span>الضريبة:</span>
-          <span>${formatCurrency(invoice.tax!, effectiveSymbol)}</span>
+          <span>${formatCurrency(invoice.tax!, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}</span>
         </div>
       ` : ''}
 
       <div class="total-row grand-total">
         <span>الإجمالي:</span>
-        <span>${formatCurrency(invoice.total, effectiveSymbol)}</span>
+        <span>${formatCurrency(invoice.total, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}</span>
       </div>
 
       ${(() => {
@@ -565,7 +566,7 @@ export function invoiceToReceiptLines(invoice: PrintableInvoice): ReceiptLine[] 
   const store = getStoreSettings();
   const printSettings = getPrintSettings();
   const rawSymbol = (invoice.currencySymbol || '').trim();
-  const rawCurrency = (invoice.currency || '').toUpperCase();
+  const rawCurrency = (invoice.currency_code || invoice.currency || '').toUpperCase();
   const effectiveSymbol = resolveInvoiceCurrencySymbol(rawCurrency, rawSymbol);
 
   const lines: ReceiptLine[] = [];
@@ -602,7 +603,7 @@ export function invoiceToReceiptLines(invoice: PrintableInvoice): ReceiptLine[] 
 
   // 4. Items List
   for (const item of invoice.items) {
-    const formattedPrice = formatCurrency(item.total, effectiveSymbol);
+    const formattedPrice = formatCurrency(item.total, effectiveSymbol, undefined, rawCurrency, invoice.currencyName);
     lines.push({
       text: `${item.name.slice(0, 16)}  ×${item.quantity}  ${formattedPrice}`,
       align: 'right',
@@ -612,19 +613,19 @@ export function invoiceToReceiptLines(invoice: PrintableInvoice): ReceiptLine[] 
   lines.push({ text: '--------------------------------', align: 'center' });
 
   // 5. Totals
-  lines.push({ text: `المجموع الفرعي: ${formatCurrency(invoice.subtotal, effectiveSymbol)}`, align: 'right' });
+  lines.push({ text: `المجموع الفرعي: ${formatCurrency(invoice.subtotal, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}`, align: 'right' });
 
   if (invoice.discount && invoice.discount > 0) {
     const discountVal = invoice.discountAmount ?? invoice.discount;
-    lines.push({ text: `الخصم: -${formatCurrency(discountVal, effectiveSymbol)}`, align: 'right' });
+    lines.push({ text: `الخصم: -${formatCurrency(discountVal, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}`, align: 'right' });
   }
 
   if (invoice.tax && invoice.tax > 0) {
-    lines.push({ text: `الضريبة: ${formatCurrency(invoice.tax, effectiveSymbol)}`, align: 'right' });
+    lines.push({ text: `الضريبة: ${formatCurrency(invoice.tax, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}`, align: 'right' });
   }
 
   lines.push({
-    text: `الإجمالي النهائي: ${formatCurrency(invoice.total, effectiveSymbol)}`,
+    text: `الإجمالي النهائي: ${formatCurrency(invoice.total, effectiveSymbol, undefined, rawCurrency, invoice.currencyName)}`,
     align: 'right',
     bold: true,
     size: 1.2,

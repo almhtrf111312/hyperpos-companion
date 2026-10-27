@@ -1,6 +1,6 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-10-28
 **Current Version:** `v1.3.2 (Build 345)`
 **Repository Branch:** `event-or-artifact` (latest published commit: `35745fd4`; mobile dialog/sidebar improvements in progress).
 **Base Accounting Currency:** `USD`  
@@ -69,6 +69,11 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **Phase 6 — Explicit Currency Activation & Display Modes:**
+  * USD remains the base currency; non-USD currencies are not enabled from missing flags or exchange-rate metadata alone. Legacy TRY/SYP slots still resolve their stored currency identity, while setup and cash shifts require explicit enablement (or a deliberately selected primary currency).
+  * Added per-currency `symbol` / `name` / `both` settings to unified local/cloud settings and the existing offline settings queue. The choice changes presentation only.
+  * Applied mode-aware formatting to POS received amounts and USD equivalents, invoice details/refunds/print/share/canvas, cash-shift summaries, report screens, and PDF/Excel currency headers. Removed the redundant POS invoice-currency panel and fixed the received-amount field and total spacing.
+  * No accounting, stored amount, historical exchange-rate, SQL/RPC, database, or IndexedDB changes. `npx tsc --noEmit`, `npm run build`, and `git diff --check` pass. No package test script is configured; ESLint still reports existing violations in touched legacy files.
 * **Canonical Currency Symbols (Phase 5):**
   * Legacy Arabic currency symbols are displayed as their matching ISO code only when the currency identity is verified; intentional custom symbols and international glyphs remain unchanged.
   * Legacy TRY/SYP storage slots are interpreted from their currency symbol before runtime display, and invoice history keeps its saved exchange rate.

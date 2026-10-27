@@ -356,7 +356,8 @@ export default function Invoices() {
     currencyNames,
     exchangeRate,
     exchangeRates,
-    enabledCurrencies
+    enabledCurrencies,
+    currencyDisplayMode
   } = useCurrency();
 
   const [displayCurrencyFilter, setDisplayCurrencyFilter] = useState<'stored' | string>('stored');
@@ -474,27 +475,28 @@ export default function Invoices() {
     }
     const displayProfit = roundCurrency(baseProfit * rate);
 
-    const invUpper = (inv.currency || 'USD').toUpperCase();
-    const tryRate = (invUpper === 'TRY' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 0)
-      ? inv.exchangeRate
-      : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 1);
-
-    const sypRate = (invUpper === 'SYP' && typeof inv.exchangeRate === 'number' && inv.exchangeRate > 0)
-      ? inv.exchangeRate
-      : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 1);
-
     return {
       code,
       rate,
       symbol,
+      name: currencyNames?.[code] || resolveInvoiceCurrencyName(code),
       decimals,
       displayTotal,
       displayProfit,
       baseProfit,
-      tryRate,
-      sypRate,
     };
   };
+
+  const formatFinancialAmount = (
+    amount: number,
+    financials?: { code: string; symbol: string; decimals: number; name: string }
+  ) => formatCurrency(
+    amount,
+    financials?.symbol || currencySymbols?.USD || '$',
+    financials?.decimals ?? 2,
+    financials?.code || 'USD',
+    financials?.name || currencyNames?.USD
+  );
 
   const statCurrencyCode = displayCurrencyFilter !== 'stored'
     ? displayCurrencyFilter
@@ -1582,6 +1584,7 @@ export default function Invoices() {
         discount: invoice.discount ? invoice.discount * printFinancials.rate : undefined,
         total: printFinancials.displayTotal,
         currencySymbol: printFinancials.symbol,
+        currencyName: printFinancials.name,
         currency: printFinancials.code,
         paymentType: invoice.paymentType,
         notes: (invoice as any).notes,
@@ -1595,12 +1598,12 @@ export default function Invoices() {
           <tr>
             <td style="padding: 5px; border-bottom: 1px solid #eee;">${escapeHtml(item.name)}</td>
             <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: left;">${formatCurrency(item.total * printFinancials.rate, printFinancials.symbol, printFinancials.decimals, printFinancials.code, printFinancials.name)}</td>
           </tr>
         `).join('')
       : `<tr><td colspan="3" style="padding: 10px;">
           <div style="margin-bottom: 5px;"><strong>وصف الخدمة:</strong> ${escapeHtml(invoice.serviceDescription) || 'صيانة'}</div>
-          <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals)}</div>
+          <div><strong>المبلغ المقبوض:</strong> ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals, printFinancials.code, printFinancials.name)}</div>
         </td></tr>`;
 
     const printContent = `
@@ -1782,10 +1785,10 @@ export default function Invoices() {
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
-          ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals)}</div>` : ''}
+          ${invoice.discount > 0 ? `<div class="discount-row">خصم: ${formatCurrency(invoice.discount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals, printFinancials.code, printFinancials.name)}</div>` : ''}
+          ${invoice.taxAmount && invoice.taxAmount > 0 ? `<div class="discount-row" style="color: #555;">ضريبة${invoice.taxRate ? ` (${invoice.taxRate}%)` : ''}: ${formatCurrency(invoice.taxAmount * printFinancials.rate, printFinancials.symbol, printFinancials.decimals, printFinancials.code, printFinancials.name)}</div>` : ''}
           <div class="total">
-            الإجمالي: ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals)}
+            الإجمالي: ${formatCurrency(printFinancials.displayTotal, printFinancials.symbol, printFinancials.decimals, printFinancials.code, printFinancials.name)}
             ${printFinancials.code !== 'USD' ? `<div style="font-size: 11px; font-weight: normal; color: #555; margin-top: 3px; font-family: monospace;" dir="ltr">(ما يعادل بالدولار: ${currencySymbols?.USD || '$'}${formatNumber(invoice.total || 0, 2)})</div>` : ''}
           </div>
           <div class="footer">${footer}</div>
@@ -1848,6 +1851,7 @@ export default function Invoices() {
         discount: (invoice.discount || 0) * rate,
         total: shareFinancials.displayTotal,
         currencySymbol,
+        currencyName: shareFinancials.name,
         currency: shareFinancials.code,
         exchangeRate: rate,
         totalUSD: invoice.total,
@@ -1920,6 +1924,7 @@ export default function Invoices() {
         discount: (invoice.discount || 0) * rate,
         total: shareFinancials.displayTotal,
         currencySymbol: shareFinancials.symbol,
+        currencyName: shareFinancials.name,
         currency: shareFinancials.code,
         exchangeRate: rate,
         totalUSD: invoice.total,
@@ -2404,15 +2409,15 @@ export default function Invoices() {
                         <span className="text-[10px] text-muted-foreground font-medium">{t('common.total') || 'الإجمالي'}:</span>
                         {financials.code === 'USD' ? (
                           <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-[13px] whitespace-nowrap">
-                            {currencySymbols?.USD || '$'}{formatNumber(invUsdTotal, invUsdTotal % 1 === 0 ? 0 : 2)}
+                            {formatFinancialAmount(invUsdTotal, financials)}
                           </span>
                         ) : (
                           <div className="inline-flex items-baseline gap-1.5 flex-wrap">
                             <span className="font-black text-foreground font-mono text-[13px] whitespace-nowrap">
-                              {formatNumber(financials.displayTotal, financials.decimals)} <span className="text-[10.5px] font-sans font-bold text-muted-foreground">{financials.symbol}</span>
+                              {formatFinancialAmount(financials.displayTotal, financials)}
                             </span>
                             <span className="text-[9.5px] font-mono text-muted-foreground/80 whitespace-nowrap" dir="ltr">
-                              ({currencySymbols?.USD || '$'}{formatNumber(invUsdTotal, invUsdTotal % 1 === 0 ? 0 : 2)})
+                              ({formatCurrency(invUsdTotal, currencySymbols?.USD || '$', invUsdTotal % 1 === 0 ? 0 : 2, 'USD', currencyNames?.USD)})
                             </span>
                           </div>
                         )}
@@ -2464,19 +2469,7 @@ export default function Invoices() {
           {selectedInvoice && (() => {
             const selectedFinancials = getInvoiceFinancials(selectedInvoice, true);
             const baseInvTotal = selectedInvoice.total || 0;
-            const c1Name = currencyNames?.TRY || 'ليرة تركية';
-            const c2Name = currencyNames?.SYP || 'ليرة سورية';
-            const c1Rate = (selectedInvoice.currency === 'TRY' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
-              ? selectedInvoice.exchangeRate
-              : ((exchangeRates.TRY && exchangeRates.TRY > 0) ? exchangeRates.TRY : 1);
-            const c2Rate = (selectedInvoice.currency === 'SYP' && typeof selectedInvoice.exchangeRate === 'number' && selectedInvoice.exchangeRate > 0)
-              ? selectedInvoice.exchangeRate
-              : ((exchangeRates.SYP && exchangeRates.SYP > 0) ? exchangeRates.SYP : 1);
-
-            const c1Symbol = resolveInvoiceCurrencySymbol('TRY', selectedInvoice.currency === 'TRY' ? (selectedInvoice.currencySymbol || currencySymbols?.TRY) : currencySymbols?.TRY);
-            const c2Symbol = resolveInvoiceCurrencySymbol('SYP', selectedInvoice.currency === 'SYP' ? (selectedInvoice.currencySymbol || currencySymbols?.SYP) : currencySymbols?.SYP);
-
-            const totalUsdStr = formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2);
+            const totalUsdStr = formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2, 'USD', currencyNames?.USD);
 
             return (
             <>
@@ -2548,7 +2541,7 @@ export default function Invoices() {
                   )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t('pos.receivedAmount') || 'المبلغ المقبوض'}:</span>
-                    <span className="font-medium">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    <span className="font-medium">{formatFinancialAmount(selectedFinancials.displayTotal, selectedFinancials)}</span>
                   </div>
                 </div>
               )}
@@ -2576,8 +2569,8 @@ export default function Invoices() {
                               )}
                             </td>
                             <td className="px-2 py-2 text-center whitespace-nowrap">{item.quantity}</td>
-                            <td className="px-2 py-2 text-center whitespace-nowrap font-mono sm:font-sans">{formatCurrency(item.price * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
-                            <td className="px-2 py-2 text-left font-medium whitespace-nowrap font-mono sm:font-sans">{formatCurrency((item.refunded ? 0 : (item.price * item.quantity)) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</td>
+                            <td className="px-2 py-2 text-center whitespace-nowrap font-mono sm:font-sans">{formatFinancialAmount(item.price * selectedFinancials.rate, selectedFinancials)}</td>
+                            <td className="px-2 py-2 text-left font-medium whitespace-nowrap font-mono sm:font-sans">{formatFinancialAmount((item.refunded ? 0 : (item.price * item.quantity)) * selectedFinancials.rate, selectedFinancials)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2590,22 +2583,22 @@ export default function Invoices() {
                 {selectedInvoice.subtotal !== undefined && selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{t('invoices.subtotal') || 'المجموع قبل الخصم'}:</span>
-                    <span>{formatCurrency(selectedInvoice.subtotal * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    <span>{formatFinancialAmount(selectedInvoice.subtotal * selectedFinancials.rate, selectedFinancials)}</span>
                   </div>
                 )}
                 {selectedInvoice.discount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span>{t('invoices.discount')}{selectedInvoice.discountPercentage ? ` (${selectedInvoice.discountPercentage}%)` : ''}:</span>
-                    <span className="text-destructive">-{formatCurrency(selectedInvoice.discount * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    <span className="text-destructive">-{formatFinancialAmount(selectedInvoice.discount * selectedFinancials.rate, selectedFinancials)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-baseline text-lg font-bold">
                   <span>{t('invoices.total')}:</span>
                   <div className="text-left">
-                    <span className="text-primary">{formatCurrency(selectedFinancials.displayTotal, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    <span className="text-primary">{formatFinancialAmount(selectedFinancials.displayTotal, selectedFinancials)}</span>
                     {selectedFinancials.code !== 'USD' && (
                       <p className="text-xs font-normal text-muted-foreground" dir="ltr">
-                        (ما يعادل بالدولار: {formatCurrency(baseInvTotal, currencySymbols?.USD || '$', 2)})
+                        (ما يعادل بالدولار: {formatFinancialAmount(baseInvTotal, { code: 'USD', symbol: currencySymbols?.USD || '$', decimals: 2, name: currencyNames?.USD || 'دولار أمريكي' })})
                       </p>
                     )}
                   </div>
@@ -2613,13 +2606,13 @@ export default function Invoices() {
                 {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && selectedInvoice.debtPaid !== undefined && selectedInvoice.debtPaid > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{t('invoices.paidCash') || 'المدفوع نقداً'}:</span>
-                    <span className="font-medium text-success">{formatCurrency((selectedInvoice.debtPaid || 0) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    <span className="font-medium text-success">{formatFinancialAmount((selectedInvoice.debtPaid || 0) * selectedFinancials.rate, selectedFinancials)}</span>
                   </div>
                 )}
                 {selectedInvoice.paymentType === 'debt' && selectedInvoice.status === 'pending' && (
                   <div className="flex justify-between text-sm text-destructive">
                     <span>{t('invoices.debtRemaining') || 'المتبقي (دين)'}:</span>
-                    <span className="font-semibold">{formatCurrency(((selectedInvoice.debtRemaining !== undefined && selectedInvoice.debtRemaining !== null) ? selectedInvoice.debtRemaining : (selectedInvoice.total - (selectedInvoice.debtPaid || 0))) * selectedFinancials.rate, selectedFinancials.symbol, selectedFinancials.decimals)}</span>
+                    <span className="font-semibold">{formatFinancialAmount(((selectedInvoice.debtRemaining !== undefined && selectedInvoice.debtRemaining !== null) ? selectedInvoice.debtRemaining : (selectedInvoice.total - (selectedInvoice.debtPaid || 0))) * selectedFinancials.rate, selectedFinancials)}</span>
                   </div>
                 )}
               </div>
@@ -2658,15 +2651,14 @@ export default function Invoices() {
                         typeof selectedInvoice.exchangeRate === 'number' &&
                         selectedInvoice.exchangeRate > 0
                         ? selectedInvoice.exchangeRate
-                        : (exchangeRates[upper] && exchangeRates[upper] > 0
-                          ? exchangeRates[upper]
-                          : (upper === 'TRY' ? c1Rate : (upper === 'SYP' ? c2Rate : 1)));
+                        : exchangeRates[upper];
+                      if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) return null;
 
                       let symbol = (invoiceUsesCurrency && selectedFinancials.symbol) ||
                         currencySymbols?.[upper] ||
-                        (upper === 'TRY' ? c1Symbol : (upper === 'SYP' ? c2Symbol : upper));
+                        upper;
                       let name = currencyNames?.[upper] ||
-                        (upper === 'TRY' ? c1Name : (upper === 'SYP' ? c2Name : upper));
+                        upper;
 
                       const normalizedSymbol = normalizeIdentity(symbol);
                       const normalizedName = normalizeIdentity(name);
@@ -2690,10 +2682,13 @@ export default function Invoices() {
                       renderedSymbols.add(symbolKey);
                       renderedNames.add(nameKey);
 
-                      const formatted = formatCurrency(baseInvTotal * rate, symbol, rate >= 100 ? 0 : 2);
+                      const formatted = formatCurrency(baseInvTotal * rate, symbol, rate >= 100 ? 0 : 2, upper, name);
+                      const displayMode = currencyDisplayMode?.[upper] || 'symbol';
                       return (
                         <div key={upper} className="flex justify-between items-center sm:flex-col sm:items-start bg-background/80 p-2.5 rounded-xl border border-border/50 shadow-xs">
-                          <span className="text-muted-foreground text-[11px] font-medium">القيمة بـ {name}:</span>
+                          <span className="text-muted-foreground text-[11px] font-medium">
+                            {displayMode === 'symbol' ? `القيمة بـ ${symbol}:` : 'القيمة:'}
+                          </span>
                           <span className="font-bold text-foreground text-sm whitespace-nowrap" dir="ltr">{formatted}</span>
                         </div>
                       );
@@ -2806,7 +2801,7 @@ export default function Invoices() {
                       </span>
                       {shareFin.code !== 'USD' && (
                         <span className="text-xs text-muted-foreground" dir="ltr">
-                          ({formatCurrency(invoiceToShare.total || 0, currencySymbols?.USD || '$', (invoiceToShare.total || 0) % 1 === 0 ? 0 : 2)})
+                          ({formatCurrency(invoiceToShare.total || 0, currencySymbols?.USD || '$', (invoiceToShare.total || 0) % 1 === 0 ? 0 : 2, 'USD', currencyNames?.USD)})
                         </span>
                       )}
                     </div>
@@ -2927,11 +2922,11 @@ export default function Invoices() {
                 <div className="grid grid-cols-2 gap-2 py-1 bg-white/70 dark:bg-black/20 rounded p-2 text-xs">
                   <div>
                     <span className="text-muted-foreground">{t('invoices.paidPreviously')} </span>
-                    <span className="font-bold text-success">{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                    <span className="font-bold text-success">{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t('invoices.remainingCustomerDebt')} </span>
-                    <span className="font-bold text-destructive">{formatCurrency((invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid || 0))) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                    <span className="font-bold text-destructive">{formatCurrency((invoiceToRefund.debtRemaining ?? (invoiceToRefund.total - (invoiceToRefund.debtPaid || 0))) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                   </div>
                 </div>
                 <p className="leading-relaxed">
@@ -2939,23 +2934,23 @@ export default function Invoices() {
                     (invoiceToRefund.debtPaid || 0) > 0 ? (
                       language === 'en' ? (
                         <>
-                          ⚠️ <strong>Cash refund to customer:</strong> The customer previously paid <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong>. This amount must be paid to the customer in cash, <strong>and will be automatically deducted from the cash drawer / current shift</strong>, canceling all remaining debt.
+                          ⚠️ <strong>Cash refund to customer:</strong> The customer previously paid <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</strong>. This amount must be paid to the customer in cash, <strong>and will be automatically deducted from the cash drawer / current shift</strong>, canceling all remaining debt.
                         </>
                       ) : language === 'tr' ? (
                         <>
-                          ⚠️ <strong>Müşteriye Nakit İade:</strong> Müşteri daha önce <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> ödedi. Bu tutar müşteriye nakit olarak ödenmeli <strong>ve otomatik olarak kasa çekmecesinden / mevcut vardiyadan düşülecektir</strong>, kalan borç tamamen silinecektir.
+                          ⚠️ <strong>Müşteriye Nakit İade:</strong> Müşteri daha önce <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</strong> ödedi. Bu tutar müşteriye nakit olarak ödenmeli <strong>ve otomatik olarak kasa çekmecesinden / mevcut vardiyadan düşülecektir</strong>, kalan borç tamamen silinecektir.
                         </>
                       ) : language === 'fa' ? (
                         <>
-                          ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> مشتری قبلاً <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> پرداخت کرده است. این مبلغ باید نقداً به مشتری پرداخت شود، <strong>و به طور خودکار از کشوی صندوق / شیفت فعلی کسر می‌شود</strong>، و باقیمانده بدهی کاملاً تسویه خواهد شد.
+                          ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> مشتری قبلاً <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</strong> پرداخت کرده است. این مبلغ باید نقداً به مشتری پرداخت شود، <strong>و به طور خودکار از کشوی صندوق / شیفت فعلی کسر می‌شود</strong>، و باقیمانده بدهی کاملاً تسویه خواهد شد.
                         </>
                       ) : language === 'ku' ? (
                         <>
-                          ⚠️ <strong>گەڕاندنەوەی نەختینە بۆ کڕیار:</strong> کڕیار پێشتر بڕی <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong>ی داوە. پێویستە ئەم بڕە بە نەختینە بدرێتەوە بە کڕیار، <strong>و بە شێوەیەکی خۆکار لە سندووقی کاشێر / شیفتی ئێستا دەبڕدرێت</strong>، و تەواوی قەرزەکەی دەسڕدرێتەوە.
+                          ⚠️ <strong>گەڕاندنەوەی نەختینە بۆ کڕیار:</strong> کڕیار پێشتر بڕی <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</strong>ی داوە. پێویستە ئەم بڕە بە نەختینە بدرێتەوە بە کڕیار، <strong>و بە شێوەیەکی خۆکار لە سندووقی کاشێر / شیفتی ئێستا دەبڕدرێت</strong>، و تەواوی قەرزەکەی دەسڕدرێتەوە.
                         </>
                       ) : (
                         <>
-                          ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
+                          ⚠️ <strong>إرجاع نقدي للعميل:</strong> قام العميل بسداد <strong>{formatCurrency((invoiceToRefund.debtPaid || 0) * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</strong> سابقاً. يجب تسليم هذا المبلغ للعميل نقداً، <strong>وسيتم خصمه تلقائياً من درج الكاشير / الوردية الحالية</strong>، وشطب باقي الدين بالكامل.
                         </>
                       )
                     ) : (
@@ -2973,35 +2968,35 @@ export default function Invoices() {
                     partialRefundStats.cashToReturn > 0 ? (
                       language === 'en' ? (
                         <>
-                          ⚠️ <strong>Cash refund to customer:</strong> The return value ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) exceeds remaining debt. The debt will be cleared and the difference <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) returned in cash and deducted from current shift</strong>.
+                          ⚠️ <strong>Cash refund to customer:</strong> The return value ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) exceeds remaining debt. The debt will be cleared and the difference <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) returned in cash and deducted from current shift</strong>.
                         </>
                       ) : language === 'tr' ? (
                         <>
-                          ⚠️ <strong>Müşteriye Nakit İade:</strong> İade tutarı ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) kalan borcu aşıyor. Borç tamamen kapatılacak ve fark <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) müşteriye nakit iade edilip mevcut vardiyadan düşülecektir</strong>.
+                          ⚠️ <strong>Müşteriye Nakit İade:</strong> İade tutarı ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) kalan borcu aşıyor. Borç tamamen kapatılacak ve fark <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) müşteriye nakit iade edilip mevcut vardiyadan düşülecektir</strong>.
                         </>
                       ) : language === 'fa' ? (
                         <>
-                          ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> ارزش مرجوعی ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) از بدهی باقیمانده بیشتر است. بدهی تسویه شده و مابه‌التفاوت <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً به مشتری پرداخت و از شیفت فعلی کسر می‌شود</strong>.
+                          ⚠️ <strong>بازپرداخت نقدی به مشتری:</strong> ارزش مرجوعی ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) از بدهی باقیمانده بیشتر است. بدهی تسویه شده و مابه‌التفاوت <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) نقداً به مشتری پرداخت و از شیفت فعلی کسر می‌شود</strong>.
                         </>
                       ) : language === 'ku' ? (
                         <>
-                          ⚠️ <strong>گەڕاندنەوەی نەختینە بۆ کڕیار:</strong> نرخی گەڕاوە ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) لە قەرزی ماوە زیاترە. قەرزەکە بە تەواوی پاکتاو دەکرێت و جیاوازییەکەی <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) بە نەختینە دەگەڕێنرێتەوە بۆ کڕیار و لە شیفتی ئێستا دەبڕدرێت</strong>.
+                          ⚠️ <strong>گەڕاندنەوەی نەختینە بۆ کڕیار:</strong> نرخی گەڕاوە ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) لە قەرزی ماوە زیاترە. قەرزەکە بە تەواوی پاکتاو دەکرێت و جیاوازییەکەی <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) بە نەختینە دەگەڕێنرێتەوە بۆ کڕیار و لە شیفتی ئێستا دەبڕدرێت</strong>.
                         </>
                       ) : (
                         <>
-                          ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
+                          ⚠️ <strong>إرجاع نقدي للعميل:</strong> قيمة المرتجع ({formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) تتجاوز الدين المتبقي. سيتم تصفية الدين بالكامل وإرجاع الفارق <strong>({formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}) نقداً للعميل وخصمه من الوردية الحالية</strong>.
                         </>
                       )
                     ) : (
                       language === 'en'
-                        ? `${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} will be deducted from remaining customer debt without affecting the cash drawer.`
+                        ? `${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)} will be deducted from remaining customer debt without affecting the cash drawer.`
                         : language === 'tr'
-                        ? `Kalan müşteri borcundan ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} düşülecek, kasa etkilenmeyecektir.`
+                        ? `Kalan müşteri borcundan ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)} düşülecek, kasa etkilenmeyecektir.`
                         : language === 'fa'
-                        ? `مبلغ ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} از بدهی باقیمانده کسر می‌شود بدون تأثیر بر کشوی صندوق.`
+                        ? `مبلغ ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)} از بدهی باقیمانده کسر می‌شود بدون تأثیر بر کشوی صندوق.`
                         : language === 'ku'
-                        ? `بڕی ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} لە باڵانسی قەرزی ماوەی کڕیار کەمدەکرێتەوە بەبێ کاریگەری لەسەر سندووقی کاشێر.`
-                        : `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
+                        ? `بڕی ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)} لە باڵانسی قەرزی ماوەی کڕیار کەمدەکرێتەوە بەبێ کاریگەری لەسەر سندووقی کاشێر.`
+                        : `سيتم تخفيض ${formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)} من رصيد دين العميل المتبقي دون التأثير على درج الكاشير.`
                     )
                   )}
                 </p>
@@ -3017,7 +3012,7 @@ export default function Invoices() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t('invoices.total') || 'إجمالي الفاتورة'}:</span>
-                    <span className="font-bold">{formatCurrency(refundFinancials ? refundFinancials.displayTotal : 0, refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                    <span className="font-bold">{formatCurrency(refundFinancials ? refundFinancials.displayTotal : 0, refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t('invoices.itemsAndUnits')}</span>
@@ -3052,7 +3047,7 @@ export default function Invoices() {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{item.name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                            <span>{formatCurrency(item.price * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)} {t('common.perPiece')}</span>
+                            <span>{formatCurrency(item.price * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)} {t('common.perPiece')}</span>
                             <span>•</span>
                             <span>{t('invoices.qtyInInvoice')} <strong className="text-foreground">{item.quantity}</strong></span>
                           </div>
@@ -3105,27 +3100,27 @@ export default function Invoices() {
                   </div>
                   <div className="flex justify-between items-center text-sm font-bold border-t pt-1.5">
                     <span>{t('invoices.totalRefundValue')}</span>
-                    <span className="text-orange-600">{formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                    <span className="text-orange-600">{formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                   </div>
                   {invoiceToRefund?.paymentType === 'debt' ? (
                     <>
                       {partialRefundStats.debtReduction > 0 && (
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
                           <span>{t('invoices.debtDeduction')}</span>
-                          <span className="font-semibold text-destructive">-{formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                          <span className="font-semibold text-destructive">-{formatCurrency(partialRefundStats.debtReduction * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                         </div>
                       )}
                       {partialRefundStats.cashToReturn > 0 && (
                         <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                           <span>{t('invoices.cashReturnToCustomer')}</span>
-                          <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                          <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                       <span>{t('invoices.cashReturnToCustomer')}</span>
-                      <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)}</span>
+                      <span>{formatCurrency(partialRefundStats.cashToReturn * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)}</span>
                     </div>
                   )}
                 </div>
@@ -3158,7 +3153,7 @@ export default function Invoices() {
                 <Layers className={cn('w-4 h-4', refundGuard.isRunning && 'animate-spin')} />
                 {refundGuard.isRunning
                   ? (t('common.loading') || 'جاري الاسترداد...')
-                  : `${t('invoices.confirmPartialRefund') || 'تأكيد الاسترداد الجزئي'} (${formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals)})`}
+                  : `${t('invoices.confirmPartialRefund') || 'تأكيد الاسترداد الجزئي'} (${formatCurrency(partialRefundStats.totalRefundAmount * (refundFinancials?.rate || 1), refundFinancials?.symbol || '$', refundFinancials?.decimals, refundFinancials?.code || 'USD', refundFinancials?.name)})`}
               </Button>
             )}
           </DialogFooter>

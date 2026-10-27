@@ -97,7 +97,13 @@ export function InvoiceProfitDialog({
   const decimals = currency.decimals;
   const toDisplay = (amountUsd: number) =>
     roundForCurrency(fromUsd(amountUsd, code, rate), code, decimals);
-  const formatUsd = (amountUsd: number) => formatCurrency(toDisplay(amountUsd), financials.symbol, decimals);
+  const formatUsd = (amountUsd: number) => formatCurrency(
+    toDisplay(amountUsd),
+    financials.symbol,
+    decimals,
+    code,
+    currency.name
+  );
 
   const netProfitUsd = Number.isFinite(financials.baseProfit)
     ? financials.baseProfit

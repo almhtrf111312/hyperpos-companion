@@ -7,7 +7,7 @@ import { Share } from '@capacitor/share';
 import { loadArabicFont, ARABIC_FONT_NAME } from './fonts/cairo-font';
 import { getCurrentLanguage } from './i18n';
 import ArabicReshaper from 'arabic-reshaper';
-import { getReportCurrency } from './currencies';
+import { getCurrencyDisplayLabel, getReportCurrency } from './currencies';
 import { roundForCurrency } from './money-engine';
 
 export interface ExportCurrencySnapshot {
@@ -174,6 +174,11 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     rate: reportCurr.isUsd ? 1 : reportCurr.rate,
     decimals: 2,
   };
+  const currencyLabel = getCurrencyDisplayLabel(
+    currencySnapshot.code,
+    currencySnapshot.symbol,
+    currencySnapshot.name
+  );
 
   // Create PDF document
   const doc = new jsPDF({
@@ -262,7 +267,7 @@ export const exportToPDF = async (options: PDFExportOptions): Promise<void> => {
     }
     doc.setFontSize(7.5);
     doc.setTextColor(203, 213, 225); // #CBD5E1
-    doc.text(processRTL(`عملة التقرير: ${currencySnapshot.name} (${currencySnapshot.symbol})`), leftX, yPosition + 12.5, { align: 'left' });
+    doc.text(processRTL(`عملة التقرير: ${currencyLabel}`), leftX, yPosition + 12.5, { align: 'left' });
     doc.text(processRTL(`تاريخ الإصدار: ${formatLocalDateTime()}`), leftX, yPosition + 17.5, { align: 'left' });
   } else {
     // --- LTR Header Layout ---

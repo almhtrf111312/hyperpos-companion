@@ -110,7 +110,9 @@ const getInitialCurrencies = () => {
     c1SourceCode
   );
   const c1Predefined = PREDEFINED_CURRENCIES.find(c => c.code === c1Code);
-  const c1Enabled = enabledMap[c1SourceCode] !== undefined ? !!enabledMap[c1SourceCode] : true;
+  const c1Enabled = enabledMap[c1SourceCode] === true
+    || settings?.primaryCurrency === c1SourceCode
+    || settings?.primaryCurrency === c1Code;
   const c1Name = namesMap[c1SourceCode] || namesMap[c1Code] || c1Predefined?.name || (c1Code === 'TRY' ? 'ليرة تركية' : c1Code);
   const c1Symbol = toEnglishCurrencySymbol(symbolsMap[c1SourceCode] || symbolsMap[c1Code] || c1Predefined?.symbol || (c1Code === 'TRY' ? '₺' : c1Code), c1Code);
   const c1Rate = Number(ratesMap[c1SourceCode] || ratesMap[c1Code]) || c1Predefined?.suggestedRate || (c1Code === 'TRY' ? 34 : 1);
@@ -123,7 +125,9 @@ const getInitialCurrencies = () => {
     c2SourceCode
   );
   const c2Predefined = PREDEFINED_CURRENCIES.find(c => c.code === c2Code);
-  const c2Enabled = enabledMap[c2SourceCode] !== undefined ? !!enabledMap[c2SourceCode] : (candidateCodes.length > 1 ? false : true);
+  const c2Enabled = enabledMap[c2SourceCode] === true
+    || settings?.primaryCurrency === c2SourceCode
+    || settings?.primaryCurrency === c2Code;
   const c2Name = namesMap[c2SourceCode] || namesMap[c2Code] || c2Predefined?.name || (c2Code === 'SYP' ? 'ليرة سورية' : c2Code);
   const c2Symbol = toEnglishCurrencySymbol(symbolsMap[c2SourceCode] || symbolsMap[c2Code] || c2Predefined?.symbol || (c2Code === 'SYP' ? 'SYP' : c2Code), c2Code);
   const c2Rate = Number(ratesMap[c2SourceCode] || ratesMap[c2Code]) || c2Predefined?.suggestedRate || (c2Code === 'SYP' ? 14500 : 1);

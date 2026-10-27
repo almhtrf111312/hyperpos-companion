@@ -1466,6 +1466,7 @@ export function CartPanel({
         discount: printDiscountAmount,
         total: printTotalInCurrency,
         currencySymbol: printCurrency.symbol || '$',
+        currencyName: printCurrency.name,
         currency: printCurrency.code,
         paymentType: data?.paymentType === 'split' ? 'split' : data?.paymentType === 'debt' ? 'debt' : 'cash',
       };
@@ -1617,6 +1618,7 @@ export function CartPanel({
       discount: roundForCurr(fromUsd(shareDiscountAmount, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
       total: shareTotalInCurrency,
       currencySymbol: shareCurrency.symbol,
+      currencyName: shareCurrency.name,
       currency: shareCurrency.code,
       exchangeRate: shareCurrency.rate,
       totalUSD: round8(data.subtotal - data.discountAmount + data.taxAmount),
@@ -1967,7 +1969,7 @@ export function CartPanel({
                 {/* إجمالي السطر بعملة السلة العامة */}
                 <div className="flex items-center shrink-0 text-left">
                   <span className={cn("font-bold text-xs md:text-sm tabular-nums min-w-[3.4rem] text-left", wholesaleMode ? "text-warning" : "text-primary")}>
-                    {selectedCurrency.symbol}{formatNumber(roundForCurr(fromUsd(getItemPrice(item) * item.quantity, selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code))}
+                    {formatCurrency(roundForCurr(fromUsd(getItemPrice(item) * item.quantity, selectedCurrency.code, selectedCurrency.rate), selectedCurrency.code), selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                   </span>
                 </div>
               </div>
@@ -1977,35 +1979,20 @@ export function CartPanel({
 
         {/* Cart Footer - Modern & Compact */}
         <div className="border-t border-border/60 bg-card p-2.5 space-y-2">
-          {/* Row 1: Invoice Currency Badge (from store settings) + Tax Toggle */}
-          <div className="flex items-center gap-1.5">
-            {/* Invoice Currency Badge - Non-interactive, showing store settings default currency */}
-            <div className="flex items-center justify-between px-2.5 py-1.5 bg-muted/60 rounded-lg border border-border/50 flex-1 shadow-2xs">
-              <span className="text-[10px] font-bold text-muted-foreground">
-                {t('pos.invoiceCurrency') || 'عملة الفاتورة'}:
+          {/* Tax Toggle Switch - only show when tax is enabled */}
+          {storeTaxEnabled && storeTaxRate > 0 && (
+            <div className="flex items-center justify-between px-2 py-1 bg-muted/40 rounded-lg text-xs">
+              <span className="text-[10px] text-muted-foreground">
+                {t('pos.tax') || 'الضريبة'}: {storeTaxRate}%
+                <span className="ms-1">{taxMode === 'gross' ? (t('pos.inclusive') || 'شامل') : (t('pos.exclusive') || 'غير شامل')}</span>
               </span>
-              <span className="text-[11px] font-black text-foreground flex items-center gap-1">
-                <span className="text-primary font-mono">{selectedCurrency.symbol}</span>
-                <span>{selectedCurrency.name || selectedCurrency.code}</span>
-                <span className="text-[9px] font-sans font-normal text-muted-foreground/75">
-                  ({t('pos.fromSettings') || 'من الإعدادات'})
-                </span>
-              </span>
+              <Switch
+                checked={taxMode === 'gross'}
+                onCheckedChange={(checked) => setTaxMode(checked ? 'gross' : 'net')}
+                className="scale-75"
+              />
             </div>
-            {/* Tax Toggle Switch - only show when tax is enabled */}
-            {storeTaxEnabled && storeTaxRate > 0 && (
-              <div className="flex items-center gap-1 flex-shrink-0 bg-muted/60 rounded-lg px-1.5 py-0.5">
-                <Switch
-                  checked={taxMode === 'gross'}
-                  onCheckedChange={(checked) => setTaxMode(checked ? 'gross' : 'net')}
-                  className="scale-75"
-                />
-                <span className="text-[9px] text-muted-foreground leading-tight font-medium">
-                  {storeTaxRate}%
-                </span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Row 2: Discount (only if enabled) - unified pill design */}
           {(settingsDiscountPercentEnabled || settingsDiscountFixedEnabled) && (
@@ -2092,23 +2079,18 @@ export function CartPanel({
               )} />
               <Input
                 type="number"
-                placeholder={`${t('pos.receivedAmount') || 'المبلغ المقبوض'} (${activeReceivedCurrency.symbol})`}
-                value={receivedAmount || ''}
-                onChange={(e) => setReceivedAmount(Number(e.target.value))}
+                placeholder={t('pos.receivedAmount') || 'المبلغ المقبوض'}
+                value={receivedAmount === 0 ? '' : receivedAmount}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                  setReceivedAmount(Number.isFinite(value) ? value : 0);
+                }}
                 className={cn(
                   "box-border h-full min-w-0 w-0 flex-1 border-0 bg-transparent p-0 text-xs text-foreground shadow-none outline-none placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
                   wholesaleMode ? "font-semibold text-warning" : receivedAmount > 0 ? "font-semibold text-primary" : ""
                 )}
                 min="0"
               />
-              <span className={cn(
-                "flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md text-[11px] font-bold flex-shrink-0 transition-colors select-none",
-                receivedAmount > 0
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted/50 text-muted-foreground border border-border/60"
-              )}>
-                {activeReceivedCurrency.symbol}
-              </span>
             </div>
 
             {/* بيان توضيحي لقيمة المقبوض بالدولار إذا أُدخل بعملة ثانوية */}
@@ -2127,24 +2109,24 @@ export function CartPanel({
               <div className="flex flex-wrap gap-1 text-[9px]">
                 {subtotal !== total && (
                   <span className="bg-muted/70 text-muted-foreground px-1.5 py-0.5 rounded">
-                    {wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.subtotal') || 'المجموع')}: {selectedCurrency.symbol}{formatNumber(subtotal * activeRate)}
+                    {wholesaleMode ? (t('pos.wholesale') || 'جملة') : (t('pos.subtotal') || 'المجموع')}: {formatCurrency(subtotal * activeRate, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                   </span>
                 )}
                 {discount > 0 && (
                   <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-medium">
-                    {t('pos.discount') || 'خصم'}: -{discountType === 'fixed' ? `${selectedCurrency.symbol}${formatNumber(discount)}` : `${selectedCurrency.symbol}${formatNumber(discountAmount * activeRate)}`}
+                    {t('pos.discount') || 'خصم'}: -{formatCurrency(discountType === 'fixed' ? discount : discountAmount * activeRate, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                   </span>
                 )}
                 {storeTaxEnabled && effectiveTaxRate > 0 && taxAmount > 0 && (
                   <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded">
-                    {t('pos.tax') || 'ض.'} {effectiveTaxRate}%: {selectedCurrency.symbol}{formatNumber(taxAmount * activeRate)}
+                    {t('pos.tax') || 'ض.'} {effectiveTaxRate}%: {formatCurrency(taxAmount * activeRate, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                   </span>
                 )}
                 {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
                   <div className="flex items-center justify-between gap-1 w-full flex-wrap">
                     <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                      {t('pos.balance') || 'باقي للعميل'}: {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                      {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(changeUSD)})`}
+                      {t('pos.balance') || 'باقي للعميل'}: {formatCurrency(changeInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
+                      {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(changeUSD, 'USD')})`}
                     </span>
                     {receivedUSD > total + 0.001 && onUpdateItemPrice && (
                       <button
@@ -2153,7 +2135,7 @@ export function CartPanel({
                         className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
                         title={t('pos.setExtraProfit') || 'تعديل سعر الصنف واعتماد الزيادة كربح'}
                       >
-                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+{usdSymbol}{formatNumber(round8(receivedUSD - total))})</span>
+                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+{formatMoney(round8(receivedUSD - total), 'USD')})</span>
                       </button>
                     )}
                   </div>
@@ -2165,14 +2147,14 @@ export function CartPanel({
                       {t('pos.shortageAlert') || 'المبلغ المقبوض أقل من الإجمالي - هل ترغب بالمتابعة؟'}
                     </span>
                     <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded font-bold text-center text-xs">
-                      {t('pos.received') || 'مقبوض'}: {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)} — {t('pos.remaining') || 'متبقٍ'}: {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
+                      {t('pos.received') || 'مقبوض'}: {formatCurrency(receivedAmount, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)} — {t('pos.remaining') || 'متبقٍ'}: {formatCurrency(remainingInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
                     </span>
                   </div>
                 )}
 
                 {receivedAmount > 0 && wholesaleMode && (
                   <span className={cn("px-1.5 py-0.5 rounded font-bold", wholesaleProfit && wholesaleProfit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
-                    {t('pos.profit') || 'ربح'}: {formatCurrency(wholesaleProfit || 0, usdSymbol)}
+                    {t('pos.profit') || 'ربح'}: {formatMoney(wholesaleProfit || 0, 'USD')}
                   </span>
                 )}
               </div>
@@ -2190,7 +2172,7 @@ export function CartPanel({
                 </button>
               </div>
               <span className={cn("text-xl font-bold tabular-nums", wholesaleMode ? "text-warning" : "text-primary")}>
-                {selectedCurrency.symbol}{formatNumber(totalInCurrency)}
+                {formatCurrency(totalInCurrency, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
               </span>
             </div>
           </div>
@@ -2201,7 +2183,7 @@ export function CartPanel({
               <div className="flex items-center justify-between gap-1 font-bold">
                 <div className="flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <span>{t('pos.receivedShortage')} {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)} ({usdSymbol}{formatNumber(remainingUSD)})</span>
+                  <span>{t('pos.receivedShortage')} {formatCurrency(remainingInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)} ({formatMoney(remainingUSD, 'USD')})</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -2213,7 +2195,7 @@ export function CartPanel({
                   className="flex-1 h-7 text-[11px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-500/40 rounded-lg"
                   title={t('pos.acceptAsDiscount') || 'اعتماد كخصم'}
                 >
-                  {t('pos.acceptAsDiscount') || 'اعتماد كخصم'} (-{usdSymbol}{formatNumber(remainingUSD)})
+                  {t('pos.acceptAsDiscount') || 'اعتماد كخصم'} (-{formatMoney(remainingUSD, 'USD')})
                 </Button>
                 <Button
                   type="button"
@@ -2282,7 +2264,7 @@ export function CartPanel({
               <div className="flex justify-between items-center text-lg font-bold border-t border-border pt-2 mt-2 gap-2">
                 <span className="shrink-0">{t('pos.total') || 'الإجمالي'}:</span>
                 <span className="text-primary font-mono tabular-nums text-base sm:text-lg shrink-0" dir="ltr">
-                  {formatCurrency(totalInCurrency, selectedCurrency.symbol)}
+                  {formatCurrency(totalInCurrency, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                 </span>
               </div>
               {receivedAmount > 0 && (
@@ -2290,8 +2272,8 @@ export function CartPanel({
                   <div className="flex justify-between text-muted-foreground">
                     <span>{t('pos.receivedAmount') || 'المبلغ المقبوض'}:</span>
                     <span className="font-semibold text-foreground">
-                      {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                      {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(receivedUSD)})`}
+                      {formatCurrency(receivedAmount, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
+                      {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(receivedUSD, 'USD')})`}
                     </span>
                   </div>
                   {changeInReceivedCurrency > 0 && (
@@ -2299,8 +2281,8 @@ export function CartPanel({
                       <div className="flex justify-between text-success font-bold text-sm">
                         <span>{t('pos.balance') || 'الباقي للعميل'}:</span>
                         <span>
-                          {activeReceivedCurrency.symbol}{formatNumber(changeInReceivedCurrency)}
-                          {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(changeUSD)})`}
+                          {formatCurrency(changeInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
+                          {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(changeUSD, 'USD')})`}
                         </span>
                       </div>
                       {onUpdateItemPrice && receivedUSD > total + 0.001 && (
@@ -2323,7 +2305,7 @@ export function CartPanel({
                     <div className="flex flex-col gap-1.5 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/30 text-amber-800 dark:text-amber-300">
                       <div className="flex justify-between font-bold text-sm">
                         <span>{t('pos.shortageInReceived')}</span>
-                        <span>{activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}</span>
+                        <span>{formatCurrency(remainingInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}</span>
                       </div>
                       <Button
                         type="button"
@@ -2370,15 +2352,15 @@ export function CartPanel({
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 space-y-2 text-sm text-foreground">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('pos.invoiceTotalLabel')}</span>
-                <span className="font-bold">{activeReceivedCurrency.symbol}{formatNumber(totalInReceivedCurrency)}</span>
+                <span className="font-bold">{formatCurrency(totalInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('pos.receivedAmount')}:</span>
-                <span className="font-bold text-success">{activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}</span>
+                <span className="font-bold text-success">{formatCurrency(receivedAmount, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}</span>
               </div>
               <div className="flex justify-between border-t border-amber-500/20 pt-2 text-amber-700 dark:text-amber-300 font-bold text-base">
                 <span>{t('pos.shortageAmountLabel')}</span>
-                <span>{activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}</span>
+                <span>{formatCurrency(remainingInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}</span>
               </div>
             </div>
 
@@ -2469,16 +2451,16 @@ export function CartPanel({
                 <div className="flex justify-between text-sm text-success font-semibold bg-success/10 p-2 rounded-lg">
                   <span>{t('pos.downPaymentCash')}</span>
                   <span>
-                    {activeReceivedCurrency.symbol}{formatNumber(receivedAmount)}
-                    {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(receivedUSD)})`}
+                    {formatCurrency(receivedAmount, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
+                    {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(receivedUSD, 'USD')})`}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-bold border-t border-border pt-2 mt-2 text-warning">
                 <span>{t('pos.debtAmount') || 'مبلغ الدين'}:</span>
                 <span>
-                  {activeReceivedCurrency.symbol}{formatNumber(remainingInReceivedCurrency)}
-                  {activeReceivedCurrency.code !== 'USD' && ` (${usdSymbol}${formatNumber(remainingUSD)})`}
+                  {formatCurrency(remainingInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
+                  {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(remainingUSD, 'USD')})`}
                 </span>
               </div>
             </div>
@@ -2579,7 +2561,3 @@ export function CartPanel({
     </>
   );
 }
-
-
-
-

@@ -9,7 +9,7 @@ import { formatNumber } from './utils';
 import { isGuestDemoMode } from './demo-data';
 import { getStoreSettings, getPrintSettings } from './print-utils';
 import { resolveInvoiceCurrencySymbol, getActiveCurrencyCode } from './currencies';
-import { getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
+import { getCurrencyDef, getCurrencyDisplayMode, getEnabledCurrencies, formatAmount, fromUsd, toUsd } from './money-engine';
 
 export interface InvoiceCanvasItem {
   name: string;
@@ -37,6 +37,7 @@ export interface InvoiceCanvasData {
   taxRate?: number;
   total: number;
   currencySymbol: string;
+  currencyName?: string;
   currency?: string;
   currency_code?: string;
   currency_symbol?: string;
@@ -74,6 +75,7 @@ export interface DebtStatementCanvasData {
   totalPaid: number;
   totalDebt: number;
   currencySymbol: string;
+  currencyName?: string;
   currency?: string;
   exchangeRate?: number;
   transactions: DebtStatementCanvasItem[];
@@ -175,14 +177,20 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
 /**
  * دالة مساعدة لتنسيق الأسعار والعملات على الكانفاس بدون تكرار أو كتابة دولار أمام العملات المحلية
  */
-function formatCanvasPrice(amount: number, symbol: string, decimals?: number): string {
+function formatCanvasPrice(amount: number, symbol: string, decimals?: number, currencyCode?: string, currencyName?: string): string {
   const cleanSymbol = (symbol || '').trim();
+  const definition = currencyCode ? getCurrencyDef(currencyCode) : undefined;
+  const displayName = currencyName?.trim() || definition?.name;
+  const displayMode = currencyCode ? getCurrencyDisplayMode(currencyCode) : 'symbol';
   const numDecimals = decimals !== undefined ? decimals : ((cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') ? 2 : (amount >= 100 ? 0 : 2));
   const numStr = formatNumber(amount, numDecimals);
-  if (cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') {
-    return `${cleanSymbol}${numStr}`;
-  }
-  return `${numStr} ${cleanSymbol}`;
+  if (displayMode === 'name' && displayName) return `${numStr} ${displayName}`;
+  const withSymbol = cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£'
+    ? `${cleanSymbol}${numStr}`
+    : `${numStr} ${cleanSymbol}`;
+  return displayMode === 'both' && displayName
+    ? `${withSymbol} (${displayName})`
+    : withSymbol;
 }
 
 /**
@@ -194,7 +202,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   const printSettings = getPrintSettings();
 
   const rawSymbol = (data.currencySymbol || '').trim();
-  const rawCurrency = (data.currency || '').toUpperCase();
+  const rawCurrency = (data.currency_code || data.currency || '').toUpperCase();
   const effectiveSymbol = resolveInvoiceCurrencySymbol(rawCurrency, rawSymbol);
 
   const storeName = data.storeName || storeSettings.name || 'FlowPOS Pro';
@@ -489,7 +497,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       ctx.fillStyle = '#334155';
       ctx.font = `12.5px ${FONT_FAMILY}`;
       ctx.textAlign = 'center';
-      ctx.fillText(formatCanvasPrice(item.unitPrice, effectiveSymbol), colPriceX, centerY);
+      ctx.fillText(formatCanvasPrice(item.unitPrice, effectiveSymbol, undefined, rawCurrency, data.currencyName), colPriceX, centerY);
 
       // الكمية
       ctx.fillStyle = '#0f172a';
@@ -501,7 +509,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       ctx.fillStyle = '#0f172a';
       ctx.font = `bold 13px ${FONT_FAMILY}`;
       ctx.textAlign = 'center';
-      ctx.fillText(formatCanvasPrice(item.total, effectiveSymbol), colTotalX, centerY);
+      ctx.fillText(formatCanvasPrice(item.total, effectiveSymbol, undefined, rawCurrency, data.currencyName), colTotalX, centerY);
 
       currentY += ROW_HEIGHT;
     });
@@ -530,7 +538,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.textAlign = 'left';
   ctx.fillStyle = '#0f172a';
   ctx.font = `bold 14px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(data.subtotal, effectiveSymbol), financeLeftX, lineY);
+  ctx.fillText(formatCanvasPrice(data.subtotal, effectiveSymbol, undefined, rawCurrency, data.currencyName), financeLeftX, lineY);
 
   // الخصم (بارز بلون أخضر زمردي مع علامة سالب)
   if (data.discount && data.discount > 0) {
@@ -542,7 +550,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
 
     ctx.textAlign = 'left';
     ctx.font = `bold 14px ${FONT_FAMILY}`;
-    ctx.fillText(`-${formatCanvasPrice(data.discount, effectiveSymbol)}`, financeLeftX, lineY);
+    ctx.fillText(`-${formatCanvasPrice(data.discount, effectiveSymbol, undefined, rawCurrency, data.currencyName)}`, financeLeftX, lineY);
   }
 
   // الضريبة (إن وجدت)
@@ -556,7 +564,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
     ctx.textAlign = 'left';
     ctx.fillStyle = '#0f172a';
     ctx.font = `bold 14px ${FONT_FAMILY}`;
-    ctx.fillText(`+${formatCanvasPrice(data.taxAmount, effectiveSymbol)}`, financeLeftX, lineY);
+    ctx.fillText(`+${formatCanvasPrice(data.taxAmount, effectiveSymbol, undefined, rawCurrency, data.currencyName)}`, financeLeftX, lineY);
   }
 
   // شريط الإجمالي النهائي الكحلي العريض في الأسفل
@@ -573,7 +581,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
   ctx.fillStyle = '#38bdf8';
   ctx.font = `bold 20px ${FONT_FAMILY}`;
   ctx.textAlign = 'left';
-  ctx.fillText(formatCanvasPrice(data.total, effectiveSymbol), financeLeftX, totalRibbonY + (totalRibbonHeight / 2));
+  ctx.fillText(formatCanvasPrice(data.total, effectiveSymbol, undefined, rawCurrency, data.currencyName), financeLeftX, totalRibbonY + (totalRibbonHeight / 2));
 
   // ب) صندوق تفاصيل الدفع وبيانات المتجر في اليمين
   const detailsBoxX = 30 + boxWidth + 16;
@@ -602,19 +610,19 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       detailsY += 24;
       ctx.fillStyle = '#16a34a';
       ctx.font = `12px ${FONT_FAMILY}`;
-      ctx.fillText(`المدفوع نقداً: ${formatCanvasPrice(data.downPayment, effectiveSymbol)}`, detailsRightX, detailsY);
+      ctx.fillText(`المدفوع نقداً: ${formatCanvasPrice(data.downPayment, effectiveSymbol, undefined, rawCurrency, data.currencyName)}`, detailsRightX, detailsY);
 
       detailsY += 20;
       ctx.fillStyle = '#dc2626';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
       const debtAmount = data.debtRemaining !== undefined && data.debtRemaining !== null ? data.debtRemaining : (data.total - data.downPayment);
-      ctx.fillText(`المتبقي كدين: ${formatCanvasPrice(debtAmount, effectiveSymbol)}`, detailsRightX, detailsY);
+      ctx.fillText(`المتبقي كدين: ${formatCanvasPrice(debtAmount, effectiveSymbol, undefined, rawCurrency, data.currencyName)}`, detailsRightX, detailsY);
     } else {
       detailsY += 24;
       ctx.fillStyle = '#dc2626';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
       const debtAmount = data.debtRemaining !== undefined && data.debtRemaining !== null ? data.debtRemaining : data.total;
-      ctx.fillText(`مستحق كدين: ${formatCanvasPrice(debtAmount, effectiveSymbol)}`, detailsRightX, detailsY);
+      ctx.fillText(`مستحق كدين: ${formatCanvasPrice(debtAmount, effectiveSymbol, undefined, rawCurrency, data.currencyName)}`, detailsRightX, detailsY);
     }
   }
 
@@ -658,7 +666,7 @@ export async function generateInvoiceCanvas(data: InvoiceCanvasData): Promise<HT
       for (const curr of enabledList) {
         if (curr.code === invCurrency || !curr.enabled || curr.code === 'USD') continue;
         const altAmount = fromUsd(baseUSD, curr.code);
-        parts.push(`${curr.name}: ${formatCanvasPrice(altAmount, curr.symbol, curr.decimals)}`);
+        parts.push(`${curr.name}: ${formatCanvasPrice(altAmount, curr.symbol, curr.decimals, curr.code, curr.name)}`);
       }
 
       if (parts.length > 0) {
@@ -742,7 +750,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   const storeLogoUrl = data.storeLogo || storeSettings.logo || '';
   const footerNote = data.footerNote || printSettings.footer || 'نرجو التواصل لتسوية المبلغ المطلوب. شاكرين تعاونكم معنا 🙏';
 
-  const statementCurrency = (data as any).currency || (data as any).currencyCode || 'USD';
+  const statementCurrency = (data.currency || 'USD').toUpperCase();
   const statementRate = (data.exchangeRate && data.exchangeRate > 0 && statementCurrency !== 'USD')
     ? data.exchangeRate
     : 1;
@@ -911,7 +919,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('إجمالي التعاملات', card1X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = '#0284c7';
   ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(displayTotalPurchases, effectiveDebtSymbol), card1X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(displayTotalPurchases, effectiveDebtSymbol, undefined, statementCurrency, data.currencyName), card1X + (cardW / 2), summaryCardsY + 52);
 
   // بطاقة 2: إجمالي المسدد
   const card2X = 30 + cardW + 10;
@@ -921,7 +929,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('إجمالي المسدد', card2X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = '#16a34a';
   ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(displayTotalPaid, effectiveDebtSymbol), card2X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(displayTotalPaid, effectiveDebtSymbol, undefined, statementCurrency, data.currencyName), card2X + (cardW / 2), summaryCardsY + 52);
 
   // بطاقة 3: الرصيد المتبقي (الديون)
   const card3X = 30;
@@ -931,7 +939,7 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
   ctx.fillText('الرصيد المتبقي (الديون)', card3X + (cardW / 2), summaryCardsY + 24);
   ctx.fillStyle = data.totalDebt > 0 ? '#dc2626' : '#16a34a';
   ctx.font = `bold 19px ${FONT_FAMILY}`;
-  ctx.fillText(formatCanvasPrice(displayTotalDebt, effectiveDebtSymbol), card3X + (cardW / 2), summaryCardsY + 52);
+  ctx.fillText(formatCanvasPrice(displayTotalDebt, effectiveDebtSymbol, undefined, statementCurrency, data.currencyName), card3X + (cardW / 2), summaryCardsY + 52);
 
   // 4. جدول حركات الحساب
   const tableY = summaryCardsY + SUMMARY_CARDS_HEIGHT + 14;
@@ -1001,15 +1009,15 @@ export async function generateDebtStatementCanvas(data: DebtStatementCanvasData)
 
       ctx.fillStyle = '#0f172a';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
-      ctx.fillText(formatCanvasPrice(tx.total, effectiveDebtSymbol), col5, centerY);
+      ctx.fillText(formatCanvasPrice(tx.total, effectiveDebtSymbol, undefined, statementCurrency, data.currencyName), col5, centerY);
 
       ctx.fillStyle = '#16a34a';
       ctx.font = `12px ${FONT_FAMILY}`;
-      ctx.fillText(formatCanvasPrice(tx.paid, effectiveDebtSymbol), col6, centerY);
+      ctx.fillText(formatCanvasPrice(tx.paid, effectiveDebtSymbol, undefined, statementCurrency, data.currencyName), col6, centerY);
 
       ctx.fillStyle = tx.remaining > 0 ? '#dc2626' : '#16a34a';
       ctx.font = `bold 12px ${FONT_FAMILY}`;
-      ctx.fillText(formatCanvasPrice(tx.remaining, effectiveDebtSymbol), col7, centerY);
+      ctx.fillText(formatCanvasPrice(tx.remaining, effectiveDebtSymbol, undefined, statementCurrency, data.currencyName), col7, centerY);
 
       currentY += ROW_HEIGHT;
     });

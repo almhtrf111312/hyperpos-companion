@@ -33,6 +33,10 @@ Chosen option: **USD Invariant Accounting Base with Dynamic Conversion Presentat
    * Known legacy Arabic symbols are presented as their ISO currency codes only when the symbol matches the resolved currency identity.
    * Custom store symbols and international glyphs remain unchanged unless they exactly match a known legacy symbol for that currency.
    * Legacy settings are normalized in memory for display; no automatic storage migration or change to the USD accounting base, stored amounts, or historical exchange rates is performed.
+5. **Explicit Currency Activation and Display Mode:**
+   * USD remains enabled as the accounting base. A non-USD currency is available as metadata but is included in active currency lists and converted-currency cards only when explicitly enabled or selected as the store's primary currency; an exchange rate or legacy metadata alone does not activate it.
+   * Each currency's presentation mode is stored in the existing unified store settings as `symbol`, `name`, or `both`. The selected mode affects display formatting, reports, PDF/Excel metadata, print, and share output only; it does not change monetary values or historical invoice snapshots.
+   * Existing local/cloud settings carry the display mode through the current `sync_settings` payload and offline settings queue. No schema, SQL/RPC, or database migration is introduced.
 
 ### Consequences
 * **Positive:**

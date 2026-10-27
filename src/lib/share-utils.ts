@@ -1,5 +1,5 @@
 // Enhanced Share Utility - Uses Web Share API with rich text formatting
-import { formatNumber } from './utils';
+import { formatCurrency } from './utils';
 import { resolveInvoiceCurrencySymbol } from './currencies';
 
 export interface ShareInvoiceData {
@@ -20,6 +20,8 @@ export interface ShareInvoiceData {
   discount?: number;
   total: number;
   currencySymbol: string;
+  currencyName?: string;
+  currency?: string;
   paymentType: 'cash' | 'debt';
   serviceDescription?: string;
   type: 'sale' | 'maintenance';
@@ -44,11 +46,13 @@ export const generateInvoiceShareText = (data: ShareInvoiceData): string => {
     type,
   } = data;
 
-  const currencySymbol = resolveInvoiceCurrencySymbol((data as any).currency, rawCurrencySymbol);
+  const currencySymbol = resolveInvoiceCurrencySymbol(data.currency, rawCurrencySymbol);
+  const formatInvoiceAmount = (amount: number) =>
+    formatCurrency(amount, currencySymbol, undefined, data.currency, data.currencyName);
 
   const itemsList = type === 'sale'
     ? items.map(item =>
-      `• ${item.name} × ${item.quantity} = ${currencySymbol}${formatNumber(item.total)}`
+      `• ${item.name} × ${item.quantity} = ${formatInvoiceAmount(item.total)}`
     ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
@@ -70,7 +74,7 @@ ${type === 'sale' ? '🛒 *المشتريات:*' : '🔧 *الخدمة:*'}
 ${itemsList}
 
 ━━━━━━━━━━━━━━━━━━━━━
-${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${currencySymbol}${formatNumber(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${currencySymbol}${formatNumber(discount)}\n` : ''}💰 *الإجمالي:* ${currencySymbol}${formatNumber(total)}
+${type === 'sale' && items.length > 1 ? `📊 *المجموع الفرعي:* ${formatInvoiceAmount(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ *الخصم:* ${formatInvoiceAmount(discount)}\n` : ''}💰 *الإجمالي:* ${formatInvoiceAmount(total)}
 💳 *طريقة الدفع:* ${paymentLabel}
 
 ━━━━━━━━━━━━━━━━━━━━━
