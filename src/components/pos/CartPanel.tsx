@@ -588,6 +588,9 @@ export function CartPanel({
     setShowDebtDialog(true);
   };
 
+  // 🧾 نقص المقبوض يُسجَّل كمصروف «فرق سعر» عند اختيار الكاشير ذلك
+  const shortageAsExpenseRef = useRef(false);
+
   const confirmCashSale = async () => {
     // ✅ حماية مزدوجة: state + ref لمنع التكرارات
     if (isSaving || savingRef.current) return;
@@ -616,7 +619,9 @@ export function CartPanel({
     const cartSnapshot = [...cart];
     // 🛡️ لا يُحوَّل نقص المقبوض إلى خصم صامت بعد اليوم.
     // البيع النقدي يُسجَّل بقيمته الكاملة؛ النقص يُعالج كخصم صريح أو كبيع مركب مع عميل.
-    if (receivedUSD > 0 && receivedUSD < total - 0.001) {
+    const shortageExpenseUSD = shortageAsExpenseRef.current ? round8(total - receivedUSD) : 0;
+    shortageAsExpenseRef.current = false;
+    if (receivedUSD > 0 && receivedUSD < total - 0.001 && shortageExpenseUSD <= 0) {
       savingRef.current = false;
       setIsSaving(false);
       setShowCashDialog(false);
@@ -890,6 +895,17 @@ export function CartPanel({
         debtRemaining: 0,
         invoiceNumber,
       };
+
+      if (shortageExpenseUSD > 0.001) {
+        const itemNames = cartSnapshot.map(i => `${i.name} ×${i.quantity}`).join('، ');
+        addExpenseCloud({
+          type: 'other',
+          customType: 'فرق سعر بيع',
+          amount: shortageExpenseUSD,
+          notes: `فرق سعر على الفاتورة ${invoiceNumber} - العميل: ${customerNameSnapshot || 'عميل نقدي'} - البنود: ${itemNames} - الإجمالي ${formatNumber(totalSnapshot)}$ والمقبوض ${formatNumber(receivedUSD)}$`,
+          date: new Date().toISOString().split('T')[0],
+        }).catch(err => console.error('[POS] shortage expense failed', err));
+      }
 
       showToast.success('فاتورة مكتملة', {
         operation: 'فاتورة مكتملة',
@@ -2369,12 +2385,12 @@ export function CartPanel({
                 type="button"
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                 onClick={() => {
-                  handleApplyDeficitAsDiscount();
+                  shortageAsExpenseRef.current = true;
                   setShowDeficitDialog(false);
-                  setShowCashDialog(true);
+                  confirmCashSale();
                 }}
               >
-                {t('pos.applyShortageAsDiscountBtn')}
+                تسجيل الفرق كمصروف (فرق سعر)
               </Button>
 
               {isRealCustomerSelected(customerName) ? (
