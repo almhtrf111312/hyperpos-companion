@@ -79,23 +79,6 @@ const loadHideMaintenanceSetting = (): boolean => {
     return false;
   }
 };
-const loadExchangeRates = () => {
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { TRY: 32, SYP: 14500 };
-    const parsed = JSON.parse(raw);
-    const ex = parsed?.exchangeRates;
-    const TRY = Number(ex?.TRY ?? 32);
-    const SYP = Number(ex?.SYP ?? 14500);
-    return {
-      TRY: Number.isFinite(TRY) && TRY > 0 ? TRY : 32,
-      SYP: Number.isFinite(SYP) && SYP > 0 ? SYP : 14500,
-    };
-  } catch {
-    return { TRY: 32, SYP: 14500 };
-  }
-};
-
 const loadDefaultCurrencyCode = (): string => {
   try {
     const normalized = loadNormalizedCurrencySettings();
@@ -108,20 +91,17 @@ const loadDefaultCurrencyCode = (): string => {
 const loadEnabledCurrencies = () => {
   try {
     const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { USD: true, TRY: true, SYP: true };
+    if (!raw) return { USD: true };
     const parsed = JSON.parse(raw);
-    const enabled = parsed?.enabledCurrencies;
-    const isUsd = enabled?.USD !== false;
-    const isTry = enabled?.TRY !== false;
-    const isSyp = enabled?.SYP !== false;
-    if (!isUsd && !isTry && !isSyp) return { USD: true, TRY: false, SYP: false };
+    const enabled = parsed?.enabledCurrencies || {};
     return {
-      USD: isUsd,
-      TRY: isTry,
-      SYP: isSyp,
+      USD: true,
+      ...Object.fromEntries(Object.entries(enabled)
+        .filter(([code, value]) => code.toUpperCase() !== 'USD' && value === true)
+        .map(([code]) => [code.toUpperCase(), true])),
     };
   } catch {
-    return { USD: true, TRY: true, SYP: true };
+    return { USD: true };
   }
 };
 

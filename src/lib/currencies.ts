@@ -9,6 +9,7 @@ import {
   getMoneyState,
   getCurrencyDef,
   getActiveCurrencyDef,
+  getCurrencyDisplayMode,
   normalizeCurrencyCode,
   CurrencyDefinition,
   getDefaultDecimals,
@@ -368,9 +369,21 @@ export function convertUsdToDisplay(
 export interface ResolvedCurrencyMeta {
   code: string;
   symbol: string;
+  displayLabel: string;
   name: string;
   rate: number;
   isUsd: boolean;
+}
+
+export function getCurrencyDisplayLabel(code: string, symbol?: string, name?: string): string {
+  const definition = getCurrencyDef(code);
+  const actualSymbol = (symbol || definition.symbol).trim();
+  const actualName = (name || definition.name).trim();
+  const mode = getCurrencyDisplayMode(code);
+
+  if (mode === 'name' && actualName) return actualName;
+  if (mode === 'both' && actualName) return `${actualSymbol} (${actualName})`;
+  return actualSymbol;
 }
 
 /**
@@ -429,7 +442,8 @@ export function resolveCurrencyMeta(
     }
   }
 
-  return { code, symbol, name, rate, isUsd };
+  const displayLabel = getCurrencyDisplayLabel(code, symbol, name);
+  return { code, symbol, displayLabel, name, rate, isUsd };
 }
 
 /**
@@ -438,18 +452,22 @@ export function resolveCurrencyMeta(
 export function formatCurrencyWithMeta(
   amount: number,
   meta: { symbol: string; name?: string },
-  options?: { showName?: boolean; decimals?: number }
+  options?: { showName?: boolean; decimals?: number; mode?: 'symbol' | 'name' | 'both' }
 ): string {
   if (typeof amount !== 'number' || isNaN(amount)) return '0.00';
   const decimals = options?.decimals ?? 2;
+  const mode = options?.mode || 'symbol';
   const numStr = amount.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-  if (options?.showName && meta.name) {
-    return `${numStr} ${meta.symbol} (${meta.name})`;
+  if (mode === 'name' && meta.name) {
+    return `${numStr} ${meta.name}`;
   }
-  return `${numStr} ${meta.symbol}`;
+  const withSymbol = `${numStr} ${meta.symbol}`;
+  return (mode === 'both' || options?.showName) && meta.name
+    ? `${withSymbol} (${meta.name})`
+    : withSymbol;
 }
 
 /**
@@ -481,6 +499,7 @@ export function getReportCurrency(): ResolvedCurrencyMeta {
   return {
     code: def.code,
     symbol: def.symbol,
+    displayLabel: getCurrencyDisplayLabel(def.code, def.symbol, def.name),
     name: def.name,
     rate: def.rate,
     isUsd: def.code === 'USD',
@@ -498,11 +517,14 @@ export function formatReportAmount(amountUsd: number): string {
     maximumFractionDigits: decimals,
   });
 
+  const mode = getCurrencyDisplayMode(active.code);
+  if (mode === 'name' && def.name) return `${numStr}\u00A0${def.name}`;
   const cleanSymbol = (active.symbol || '').trim();
-  if (cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£') {
-    return `${cleanSymbol}${numStr}`;
-  }
-  return `${numStr}\u00A0${cleanSymbol}`;
+  const formattedWithSymbol = cleanSymbol === '$' || cleanSymbol === '€' || cleanSymbol === '£'
+    ? `${cleanSymbol}${numStr}`
+    : `${numStr}\u00A0${cleanSymbol}`;
+  if (mode === 'both' && def.name) return `${formattedWithSymbol} (${def.name})`;
+  return formattedWithSymbol;
 }
 
 export interface StoreCurrencyConfig {
@@ -579,7 +601,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
   const namesMap = settings?.currencyNames || {};
   const symbolsMap = settings?.currencySymbols || {};
   const ratesMap = settings?.exchangeRates || {};
-  let rawPrimary = (settings?.primaryCurrency || 'USD') as string;
+  let rawPrimary = normalizeCurrencyCode((settings?.primaryCurrency || 'USD') as string);
 
   const currencies: Record<string, StoreCurrencyConfig> = {};
 
@@ -590,7 +612,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     symbol: (symbolsMap.USD && symbolsMap.USD.trim()) || '$',
     rate: 1,
     decimals: 2,
-    enabled: enabledMap.USD !== false,
+    enabled: true,
   };
 
   const processedRealCodes = new Set<string>(['USD']);
@@ -601,7 +623,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     const sym = symbolsMap[slotKey];
     const name = namesMap[slotKey];
     const rate = Number(ratesMap[slotKey]);
-    const isExplicitlyDisabled = enabledMap[slotKey] === false;
+    const isEnabled = enabledMap[slotKey] === true || enabledMap[detectedCode] === true;
 
     // إذا كانت الخانة فارغة كلياً، نتخطاها
     if (!sym && !name && !rate && enabledMap[slotKey] !== true) {
@@ -623,7 +645,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
       symbol: toEnglishCurrencySymbol(finalSymbol, finalCode),
       rate: finalRate,
       decimals,
-      enabled: !isExplicitlyDisabled,
+      enabled: isEnabled || rawPrimary === slotKey || rawPrimary === detectedCode,
     };
     processedRealCodes.add(finalCode);
 
@@ -647,7 +669,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     const sym = symbolsMap[rawCode] || symbolsMap[code];
     const name = namesMap[rawCode] || namesMap[code];
     const rate = Number(ratesMap[rawCode] ?? ratesMap[code]);
-    const isExplicitlyDisabled = enabledMap[rawCode] === false || enabledMap[code] === false;
+    const isEnabled = enabledMap[rawCode] === true || enabledMap[code] === true;
 
     const catalogItem = getPredefinedCurrency(code);
     currencies[code] = {
@@ -656,7 +678,7 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
       symbol: toEnglishCurrencySymbol((sym && sym.trim()) || catalogItem?.symbol || code, code),
       rate: Number.isFinite(rate) && rate > 0 ? rate : (catalogItem?.suggestedRate || 1),
       decimals: getDefaultDecimals(code),
-      enabled: !isExplicitlyDisabled,
+      enabled: isEnabled || rawPrimary.toUpperCase() === code || code === 'USD',
     };
     processedRealCodes.add(code);
   }

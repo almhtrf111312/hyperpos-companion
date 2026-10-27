@@ -191,6 +191,7 @@ export interface PersistedSettings {
   exchangeRates?: Record<string, string | number>;
   currencyNames?: Record<string, string>;
   currencySymbols?: Record<string, string>;
+  currencyDisplayMode?: Record<string, 'symbol' | 'name' | 'both'>;
   syncSettings?: Partial<SyncSettingsType>;
   notificationSettings?: Partial<NotificationSettingsType>;
   printSettings?: Partial<PrintSettingsType>;
@@ -526,6 +527,39 @@ export default function Settings() {
     }
     return base;
   });
+  const [currencyDisplayMode, setCurrencyDisplayMode] = useState<Record<string, 'symbol' | 'name' | 'both'>>(
+    () => initialUnified?.currencyDisplayMode || {}
+  );
+  const renderCurrencyDisplayOptions = (code: string) => {
+    const labels = isRTL
+      ? { symbol: 'الرمز فقط', name: 'الاسم فقط', both: 'كلاهما' }
+      : { symbol: 'Symbol', name: 'Name', both: 'Both' };
+    const selectedMode = currencyDisplayMode[code] || 'symbol';
+
+    return (
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/30 mt-2">
+        <span className="text-[10px] text-muted-foreground font-medium">
+          {isRTL ? 'طريقة العرض:' : 'Display:'}
+        </span>
+        <div className="flex items-center gap-1 rounded-lg border border-border/40 bg-muted/60 p-0.5">
+          {(['symbol', 'name', 'both'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={selectedMode === mode}
+              onClick={() => setCurrencyDisplayMode(prev => ({ ...prev, [code]: mode }))}
+              className={cn(
+                "min-h-7 rounded-md px-2 text-[9px] font-bold transition-colors",
+                selectedMode === mode ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {labels[mode]}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   // Sync settings
   const [syncSettings, setSyncSettings] = useState({
@@ -760,6 +794,7 @@ export default function Settings() {
     exchangeRates: typeof exchangeRates;
     currencyNames: typeof currencyNames;
     currencySymbols: typeof currencySymbols;
+    currencyDisplayMode: typeof currencyDisplayMode;
     notificationSettings: typeof notificationSettings;
     printSettings: typeof printSettings;
     backupSettings: typeof backupSettings;
@@ -812,6 +847,7 @@ export default function Settings() {
           setExchangeRates(loadedRates);
           setCurrencyNames(loadedNames);
           setCurrencySymbols(loadedSymbols);
+          setCurrencyDisplayMode(merged.currencyDisplayMode || {});
           setEnabledCurrencies(loadedEnabled);
 
           setDiscountPercentEnabled(merged.discountPercentEnabled);
@@ -840,6 +876,7 @@ export default function Settings() {
             exchangeRates: { ...merged.exchangeRates } as any,
             currencyNames: { ...merged.currencyNames } as any,
             currencySymbols: { ...merged.currencySymbols } as any,
+            currencyDisplayMode: { ...merged.currencyDisplayMode },
             notificationSettings: { ...(merged.notificationSettings as unknown as typeof notificationSettings) },
             printSettings: { ...(merged.printSettings as typeof printSettings) },
             backupSettings: {
@@ -888,6 +925,7 @@ export default function Settings() {
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         currencySymbols: { ...currencySymbols },
+        currencyDisplayMode: { ...currencyDisplayMode },
         notificationSettings: { ...notificationSettings },
         printSettings: { ...printSettings },
         backupSettings: { ...backupSettings },
@@ -1084,6 +1122,7 @@ export default function Settings() {
         JSON.stringify(exchangeRates) !== JSON.stringify(snap.exchangeRates) ||
         JSON.stringify(currencyNames) !== JSON.stringify(snap.currencyNames) ||
         JSON.stringify(currencySymbols) !== JSON.stringify(snap.currencySymbols) ||
+        JSON.stringify(currencyDisplayMode) !== JSON.stringify(snap.currencyDisplayMode) ||
         hideMaintenanceSection !== snap.hideMaintenanceSection ||
         taxEnabled !== snap.taxEnabled ||
         taxRate !== snap.taxRate ||
@@ -1127,6 +1166,7 @@ export default function Settings() {
     setExchangeRates({ ...snap.exchangeRates });
     setCurrencyNames({ ...snap.currencyNames });
     setCurrencySymbols({ ...snap.currencySymbols });
+    setCurrencyDisplayMode({ ...snap.currencyDisplayMode });
     setNotificationSettings({ ...snap.notificationSettings });
     setPrintSettings({ ...snap.printSettings });
     setBackupSettings({ ...snap.backupSettings });
@@ -1235,6 +1275,7 @@ export default function Settings() {
         })() as any,
         currencyNames,
         currencySymbols,
+        currencyDisplayMode,
         taxEnabled,
         taxRate,
         discountPercentEnabled,
@@ -1266,6 +1307,7 @@ export default function Settings() {
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         currencySymbols: { ...currencySymbols },
+        currencyDisplayMode: { ...currencyDisplayMode },
         notificationSettings: { ...notificationSettings },
         printSettings: { ...printSettings },
         backupSettings: { ...backupSettings },
@@ -2211,6 +2253,7 @@ export default function Settings() {
                         <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
                           يبقى الدولار المرجع المحاسبي في قاعدة البيانات حتى عند إخفائه من نقاط البيع والفواتير.
                         </p>
+                        {renderCurrencyDisplayOptions('USD')}
                       </div>
                     </div>
 
@@ -2326,6 +2369,7 @@ export default function Settings() {
                             placeholder="3.64"
                           />
                         </div>
+                        {renderCurrencyDisplayOptions(slot1Code)}
                         <div className="flex items-center justify-between pt-1 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs font-medium text-foreground">{isRTL ? 'تفعيل العملة:' : 'Enable Currency:'}</span>
                           <Switch
@@ -2448,6 +2492,7 @@ export default function Settings() {
                             placeholder="48"
                           />
                         </div>
+                        {renderCurrencyDisplayOptions(slot2Code)}
                         <div className="flex items-center justify-between pt-1 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
                           <span className="text-xs font-medium text-foreground">{isRTL ? 'تفعيل العملة:' : 'Enable Currency:'}</span>
                           <Switch

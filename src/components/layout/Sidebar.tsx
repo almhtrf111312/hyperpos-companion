@@ -235,16 +235,18 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
 
       <aside 
         data-tour="sidebar"
+        aria-hidden={isMobile && !isOpen}
+        inert={isMobile && !isOpen}
         className={cn(
           "fixed z-50 transition-all duration-300 ease-in-out flex flex-col",
           "bg-sidebar pt-[env(safe-area-inset-top)]",
           isMobile 
             ? cn(
-                "top-0 h-screen w-64",
+                "top-0 h-[100dvh] w-72 max-w-[85vw]",
                 isRTL 
                   ? "right-0 left-auto border-l border-sidebar-border" 
                   : "left-0 right-auto border-r border-sidebar-border",
-                isOpen ? "translate-x-0" : isRTL ? "translate-x-full" : "-translate-x-full"
+                isOpen ? "translate-x-0 pointer-events-auto visible" : isRTL ? "translate-x-full pointer-events-none" : "-translate-x-full pointer-events-none"
               )
             : cn(
                 "top-2 rounded-2xl shadow-xl border border-sidebar-border/50 h-[calc(100vh-16px)]",
@@ -281,8 +283,18 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                     <h1 className="font-bold text-sm text-foreground leading-tight tracking-tight">FlowPOS Pro</h1>
                   </div>
                 </div>
-                <div className="flex items-center gap-0.5 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <SyncStatusMenu />
+                  {isMobile && (
+                    <button
+                      type="button"
+                      onClick={onToggle}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+                      aria-label={t('common.close') || 'إغلاق القائمة'}
+                    >
+                      <X className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

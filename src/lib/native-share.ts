@@ -219,6 +219,7 @@ export interface InvoiceShareData {
   discount?: number;
   total: number;
   currencySymbol: string;
+  currencyName?: string;
   currency?: string;
   exchangeRate?: number;
   totalUSD?: number;
@@ -254,10 +255,12 @@ export function generateInvoiceShareText(data: InvoiceShareData): string {
   } = data;
 
   const currencySymbol = resolveInvoiceCurrencySymbol(data.currency, rawCurrencySymbol);
+  const formatInvoiceAmount = (amount: number) =>
+    formatCurrency(amount, currencySymbol, undefined, data.currency, data.currencyName);
 
   const itemsList = type !== 'maintenance'
     ? items.map(item =>
-      `• ${item.name} × ${item.quantity} = ${formatCurrency(item.total, currencySymbol)}`
+      `• ${item.name} × ${item.quantity} = ${formatInvoiceAmount(item.total)}`
     ).join('\n')
     : `🔧 ${serviceDescription || 'خدمة صيانة'}`;
 
@@ -283,9 +286,9 @@ ${type !== 'maintenance' ? '🛒 المواد:' : '🔧 الخدمة:'}
 ${itemsList}
 
 ────────────────
-${items.length > 1 ? `📊 المجموع الفرعي: ${formatCurrency(subtotal, currencySymbol)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: -${formatCurrency(discount, currencySymbol)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${formatCurrency(data.taxAmount, currencySymbol)}\n` : ''}💰 الإجمالي: ${formatCurrency(total, currencySymbol)}${data.currency && data.currency !== 'USD' && data.totalUSD ? ` (المعادل: ${formatMoney(data.totalUSD, 'USD', 2)})` : ''}
+${items.length > 1 ? `📊 المجموع الفرعي: ${formatInvoiceAmount(subtotal)}\n` : ''}${discount && discount > 0 ? `✂️ الخصم: -${formatInvoiceAmount(discount)}\n` : ''}${data.taxAmount && data.taxAmount > 0 ? `🧾 الضريبة${data.taxRate ? ` (${data.taxRate}%)` : ''}: ${formatInvoiceAmount(data.taxAmount)}\n` : ''}💰 الإجمالي: ${formatInvoiceAmount(total)}${data.currency && data.currency !== 'USD' && data.totalUSD ? ` (المعادل: ${formatMoney(data.totalUSD, 'USD', 2)})` : ''}
 💳 طريقة الدفع: ${paymentLabel}
-${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPayment > 0)) ? (downPayment && downPayment > 0 ? `💵 المدفوع نقداً: ${formatCurrency(downPayment, currencySymbol)}\n📋 المتبقي كدين: ${formatCurrency(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : (total - downPayment), currencySymbol)}\n` : `📋 مستحق كدين: ${formatCurrency(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : total, currencySymbol)}\n`) : ''}
+${(paymentType === 'split' || paymentType === 'debt' || (downPayment && downPayment > 0)) ? (downPayment && downPayment > 0 ? `💵 المدفوع نقداً: ${formatInvoiceAmount(downPayment)}\n📋 المتبقي كدين: ${formatInvoiceAmount(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : (total - downPayment))}\n` : `📋 مستحق كدين: ${formatInvoiceAmount(debtRemaining !== undefined && debtRemaining !== null ? debtRemaining : total)}\n`) : ''}
 
 ────────────────
 ${storePhone ? `📞 للتواصل: ${storePhone}` : ''}
@@ -322,6 +325,7 @@ export async function shareInvoice(data: InvoiceShareData): Promise<boolean> {
       taxRate: data.taxRate,
       total: data.total,
       currencySymbol: data.currencySymbol,
+      currencyName: data.currencyName,
       currency: data.currency,
       exchangeRate: data.exchangeRate,
       totalUSD: data.totalUSD,
@@ -384,6 +388,7 @@ export interface DebtShareData {
   totalDebt: number;
   remainingDebt: number;
   currencySymbol: string;
+  currencyName?: string;
   currency?: string;
   exchangeRate?: number;
   invoiceId?: string;
@@ -407,8 +412,8 @@ export function generateDebtShareText(data: DebtShareData): string {
 ${customerPhone ? `📱 الهاتف: ${customerPhone}` : ''}
 ${invoiceId ? `📄 رقم الفاتورة: ${invoiceId}` : ''}
 
-💰 إجمالي الدين: ${formatCurrency(totalDebt, currencySymbol)}
-💵 المتبقي: ${formatCurrency(remainingDebt, currencySymbol)}
+💰 إجمالي الدين: ${formatCurrency(totalDebt, currencySymbol, undefined, data.currency, data.currencyName)}
+💵 المتبقي: ${formatCurrency(remainingDebt, currencySymbol, undefined, data.currency, data.currencyName)}
 ${dueDate ? `📅 تاريخ الاستحقاق: ${dueDate}` : ''}
 
 ────────────────

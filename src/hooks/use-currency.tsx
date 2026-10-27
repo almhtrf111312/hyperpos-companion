@@ -12,28 +12,22 @@ import { toEnglishCurrencySymbol } from '@/lib/currency-symbols';
 
 export interface EnabledCurrencies {
   USD: boolean;
-  TRY: boolean;
-  SYP: boolean;
   [key: string]: boolean;
 }
 
 export interface CurrencySymbols {
   USD: string;
-  TRY: string;
-  SYP: string;
   [key: string]: string;
 }
 
 export interface CurrencyNames {
   USD: string;
-  TRY: string;
-  SYP: string;
   [key: string]: string;
 }
 
 export const loadExchangeRates = (): Record<string, number> => {
   const state = getMoneyState();
-  const rates: Record<string, number> = { TRY: 34, SYP: 14500 };
+  const rates: Record<string, number> = { USD: 1 };
   for (const [code, def] of Object.entries(state.currencies)) {
     rates[code] = def.rate;
   }
@@ -42,7 +36,7 @@ export const loadExchangeRates = (): Record<string, number> => {
 
 export const loadCurrencySymbols = (): CurrencySymbols => {
   const state = getMoneyState();
-  const syms: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'SYP' };
+  const syms: Record<string, string> = { USD: '$' };
   for (const [code, def] of Object.entries(state.currencies)) {
     syms[code] = def.symbol;
   }
@@ -51,7 +45,7 @@ export const loadCurrencySymbols = (): CurrencySymbols => {
 
 export const loadCurrencyNames = (): CurrencyNames => {
   const state = getMoneyState();
-  const names: Record<string, string> = { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
+  const names: Record<string, string> = { USD: 'دولار' };
   for (const [code, def] of Object.entries(state.currencies)) {
     names[code] = def.name;
   }
@@ -64,7 +58,7 @@ export const loadDefaultCurrencyCode = (): string => {
 
 export const loadEnabledCurrencies = (): EnabledCurrencies => {
   const state = getMoneyState();
-  const enabled: Record<string, boolean> = { USD: true, TRY: true, SYP: true };
+  const enabled: Record<string, boolean> = { USD: true };
   for (const [code, def] of Object.entries(state.currencies)) {
     enabled[code] = def.enabled;
   }
@@ -76,10 +70,10 @@ export const useCurrency = () => {
 
   return useMemo(() => {
     const active = getCurrencyDef(state.activeCode);
-    const rates: Record<string, number> = { TRY: 34, SYP: 14500 };
-    const symbols: Record<string, string> = { USD: '$', TRY: '₺', SYP: 'SYP' };
-    const names: Record<string, string> = { USD: 'دولار', TRY: 'ليرة تركية', SYP: 'ليرة سورية' };
-    const enabled: Record<string, boolean> = { USD: true, TRY: true, SYP: true };
+    const rates: Record<string, number> = { USD: 1 };
+    const symbols: Record<string, string> = { USD: '$' };
+    const names: Record<string, string> = { USD: 'دولار' };
+    const enabled: Record<string, boolean> = { USD: true };
 
     for (const [code, def] of Object.entries(state.currencies)) {
       rates[code] = def.rate;
@@ -97,6 +91,7 @@ export const useCurrency = () => {
       currencySymbols: symbols as CurrencySymbols,
       currencyNames: names as CurrencyNames,
       enabledCurrencies: enabled as EnabledCurrencies,
+      currencyDisplayMode: state.currencyDisplayMode,
       decimals: active.decimals,
       convertFromUSD: (usd: number, code?: string) => fromUsd(usd, code || active.code),
       convertToUSD: (amount: number, code?: string) => toUsd(amount, code || active.code),

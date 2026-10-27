@@ -20,10 +20,13 @@ export interface CurrencySnapshot {
   decimals: number;
 }
 
+export type CurrencyDisplayMode = 'symbol' | 'name' | 'both';
+
 export interface MoneyEngineState {
   activeCode: string;
   reportCode: string;
   currencies: Record<string, CurrencyDefinition>;
+  currencyDisplayMode: Record<string, CurrencyDisplayMode>;
   inputPrefs: Record<string, string>;
   version: number;
 }
@@ -108,6 +111,7 @@ function ensureSettingsBackup(rawSettingsJson: string | null): void {
 function buildStateFromStorage(): MoneyEngineState {
   stateVersion += 1;
   const currencies: Record<string, CurrencyDefinition> = {};
+  const currencyDisplayMode: Record<string, CurrencyDisplayMode> = {};
 
   for (const [code, def] of Object.entries(DEFAULT_DEFINITIONS)) {
     currencies[code] = {
@@ -134,6 +138,12 @@ function buildStateFromStorage(): MoneyEngineState {
         const symbols: Record<string, any> = { ...(parsed.currencySymbols || {}) };
         const names: Record<string, any> = { ...(parsed.currencyNames || {}) };
         const enabledMap: Record<string, any> = { ...(parsed.enabledCurrencies || {}) };
+        const displayModes: Record<string, unknown> = { ...(parsed.currencyDisplayMode || {}) };
+        for (const [code, mode] of Object.entries(displayModes)) {
+          if (mode === 'symbol' || mode === 'name' || mode === 'both') {
+            currencyDisplayMode[normalizeCurrencyCode(code)] = mode;
+          }
+        }
         const customList: Array<Record<string, any>> = Array.isArray(parsed.customCurrencies)
           ? parsed.customCurrencies
           : [];
@@ -165,7 +175,7 @@ function buildStateFromStorage(): MoneyEngineState {
             rate: code === 'USD' ? 1 : Math.max(0.000001, Number(item.rate || item.exchangeRate) || 1),
             decimals: typeof item.decimals === 'number' ? item.decimals : getDefaultDecimals(code),
             symbolPosition: item.symbolPosition || getDefaultSymbolPosition(code, symbol),
-            enabled: item.enabled !== false,
+            enabled: item.enabled === true,
             isCustom: true,
           };
         }
@@ -213,7 +223,7 @@ function buildStateFromStorage(): MoneyEngineState {
               code === 'USD' ||
               code === activeCode ||
               rawEnabled === true ||
-              (rawEnabled === undefined && Number.isFinite(parsedRate) && parsedRate > 0 && parsedRate !== 1),
+              existing?.enabled === true,
             isCustom: existing?.isCustom ?? !DEFAULT_DEFINITIONS[code],
           };
         }
@@ -255,6 +265,7 @@ function buildStateFromStorage(): MoneyEngineState {
     activeCode,
     reportCode: currencies[reportCode] ? reportCode : activeCode,
     currencies,
+    currencyDisplayMode,
     inputPrefs,
     version: stateVersion,
   };
@@ -265,6 +276,11 @@ export function getMoneyState(): MoneyEngineState {
     cachedState = buildStateFromStorage();
   }
   return cachedState;
+}
+
+export function getCurrencyDisplayMode(code?: string | null): CurrencyDisplayMode {
+  const normalized = normalizeCurrencyCode(code || getMoneyState().activeCode);
+  return getMoneyState().currencyDisplayMode[normalized] || 'symbol';
 }
 
 export function refreshMoneyState(): MoneyEngineState {

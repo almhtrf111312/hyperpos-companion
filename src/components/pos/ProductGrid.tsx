@@ -310,34 +310,34 @@ export const ProductGrid = memo(function ProductGrid({
           </div>
         )}
 
-        {/* Dense View - 2 items side-by-side on mobile, 4-7 on desktop */}
+        {/* Dense View - 3 items side-by-side on mobile, 4-7 on desktop */}
         {viewMode === 'dense' && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-1.5 sm:gap-2">
             {visibleProducts.map((product, index) => (
               <button
                 key={product.id}
                 {...pressHandlers(product)}
-                className="pos-item text-start fade-in group bg-card rounded-xl p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-[box-shadow,border-color] duration-200"
+                className="pos-item text-start fade-in group bg-card rounded-xl p-1.5 sm:p-2 shadow-xs hover:shadow-sm border border-border/50 flex flex-col justify-between transition-[box-shadow,border-color] duration-200"
                 style={{ animationDelay: `${index * 15}ms` }}
               >
-                <div className="w-full aspect-square bg-muted/20 rounded-lg overflow-hidden mb-2 relative flex items-center justify-center">
+                <div className="w-full aspect-square bg-muted/20 rounded-lg overflow-hidden mb-1.5 sm:mb-2 relative flex items-center justify-center">
                   <ProductImage
                     imageUrl={product.image}
                     alt={product.name}
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform"
-                    iconClassName="w-5 h-5 text-muted-foreground/30"
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                    iconClassName="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground/30"
                   />
                 </div>
-                <div className="space-y-1.5 w-full">
-                  <h4 className="font-bold text-xs text-foreground leading-snug w-full text-start break-words" title={product.name}>
+                <div className="space-y-1 w-full">
+                  <h4 className="font-bold text-[11px] text-foreground leading-tight line-clamp-1 w-full text-start" title={product.name}>
                     {product.name}
                   </h4>
-                  <div className="w-full pt-1 border-t border-border/30 flex flex-wrap items-center justify-between gap-1">
-                    <span className="font-black text-primary text-xs min-w-0 break-words text-start">
+                  <div className="w-full pt-1 border-t border-border/30 flex items-center justify-between gap-0.5">
+                    <span className="font-black text-primary text-[11px] tabular-nums min-w-0 truncate text-start">
                       {formatDisplayPrice(product.price)}
                     </span>
-                    <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {product.quantity} {t('pos.piece') || 'قطعة'}
+                    <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-bold text-muted-foreground">
+                      {product.quantity}
                     </span>
                   </div>
                 </div>

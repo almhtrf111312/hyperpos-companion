@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-10-28
 **Current Version:** `v1.3.2 (Build 345)`
-**Repository Branch:** Working checkout `main` at `399f24b2`; requested UI updates will be published to `event-or-artifact`.
+**Repository Branch:** `event-or-artifact` (latest published commit: `35745fd4`; mobile dialog/sidebar improvements in progress).
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
 
@@ -69,17 +69,30 @@
 ---
 
 ## 🕒 Recent Implementations & Changelog Log
+* **Phase 6 — Explicit Currency Activation & Display Modes:**
+  * USD remains the base currency; non-USD currencies are not enabled from missing flags or exchange-rate metadata alone. Legacy TRY/SYP slots still resolve their stored currency identity, while setup and cash shifts require explicit enablement (or a deliberately selected primary currency).
+  * Added per-currency `symbol` / `name` / `both` settings to unified local/cloud settings and the existing offline settings queue. The choice changes presentation only.
+  * Applied mode-aware formatting to POS received amounts and USD equivalents, invoice details/refunds/print/share/canvas, cash-shift summaries, report screens, and PDF/Excel currency headers. Removed the redundant POS invoice-currency panel and fixed the received-amount field and total spacing.
+  * No accounting, stored amount, historical exchange-rate, SQL/RPC, database, or IndexedDB changes. `npx tsc --noEmit`, `npm run build`, and `git diff --check` pass. No package test script is configured; ESLint still reports existing violations in touched legacy files.
 * **Canonical Currency Symbols (Phase 5):**
   * Legacy Arabic currency symbols are displayed as their matching ISO code only when the currency identity is verified; intentional custom symbols and international glyphs remain unchanged.
   * Legacy TRY/SYP storage slots are interpreted from their currency symbol before runtime display, and invoice history keeps its saved exchange rate.
   * Updated currency catalog, settings, setup wizard, POS formatting, cash shifts, invoice currency cards, and the shared invoice symbol resolver used by print/share paths.
   * No automatic localStorage/Supabase migration and no accounting, rate, or amount changes. Focused symbol and POS currency tests and production build pass; TypeScript check remains blocked by the pre-existing `inert` typing error in `Sidebar.tsx`, and ESLint reports pre-existing violations.
+* **2026-10-27:** Mobile Dialog, Invoice Actions & Sidebar:
+  * Accounted for top and bottom safe areas in global dialog sizing; kept existing global overflow behavior to avoid clipping dialogs that rely on scrolling.
+  * Separated invoice print/share/profit actions from the scrollable detail body and kept them in a safe-area-aware footer.
+  * Limited bottom-sheet positioning/animations to phone widths and centered those dialogs on larger screens.
+  * Added a mobile sidebar close button and made the closed sidebar inert and inaccessible to pointer and assistive-technology interaction.
+  * Restored a distinct three-column dense POS layout on phones. No storage, sync, backend, or financial calculation changes.
+  * Files: `src/components/ui/dialog.tsx`, `src/components/layout/Sidebar.tsx`, `src/components/pos/ProductGrid.tsx`, `src/pages/Invoices.tsx`, `src/index.css`.
+  * Production build and TypeScript check pass; 375px viewport smoke check has no horizontal overflow. ESLint still reports existing issues outside changed lines.
 * **2026-10-28:** Invoice Currency Card Deduplication:
   * Invoice currency-equation cards now render only enabled currencies and suppress duplicate codes, symbols, and names, including legacy metadata aliases for the Qatari riyal.
   * Qatar currency aliases display the canonical `ر.ق` symbol and `الريال القطري` name while retaining the invoice's saved exchange rate when applicable.
   * Production build passes. No storage, sync, or backend changes.
 * **2026-10-27:** POS Mobile Product Grid:
-  * Changed the standard and dense POS product grids to two columns on narrow screens while retaining responsive column counts at larger breakpoints.
+  * Changed the standard POS grid to two columns and later restored the dense POS mode to three columns on narrow screens, retaining responsive counts at larger breakpoints.
   * Expanded product imagery to square card areas and moved quantity badges below the image into the product details, improving product-name and price readability.
   * Production build passes. Targeted ESLint reports one pre-existing empty catch block at `ProductGrid.tsx:154`; no storage, sync, or backend changes.
 * **2026-10-27:** Invoice Profit UI Privacy Polish:
