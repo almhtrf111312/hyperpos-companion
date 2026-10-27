@@ -29,9 +29,9 @@ import {
   getStoredUIScale,
 } from '@/lib/ui-scale-config';
 import { applyTheme, applyBlurTheme, applyThemeStyle, ThemeMode, ThemeColor, ThemeStyle, getThemeStorageKey, THEME_STORAGE_KEY } from '@/hooks/use-theme';
-import { Language, setLanguage } from '@/lib/i18n';
-import { ProductFieldsConfig } from '@/lib/product-fields-config';
-import { CustomField } from '@/lib/custom-fields-config';
+import { Language, setLanguage, getCurrentLanguage } from '@/lib/i18n';
+import type { ProductFieldsConfig } from '@/lib/product-fields-config';
+import type { CustomField } from '@/lib/custom-fields-config';
 import {
   StoreSettingsRow,
   saveStoreSettingsDirect,
@@ -297,12 +297,13 @@ export function loadUnifiedStoreSettings(): UnifiedStoreSettings {
       currencyNames,
       currencySymbols,
       currencyDisplayMode,
-      language: (parsed?.language as Language) || 'ar',
+      language: (parsed?.language as Language) || getCurrentLanguage(),
       theme: localThemeSettings.mode,
       themeSettings: localThemeSettings,
       appearanceSettings: {
         dashboardDesign: localDesign,
         ...(parsed?.appearanceSettings || {}),
+        settingsLayout: localStorage.getItem('settings_layout_mode') || parsed?.appearanceSettings?.settingsLayout || 'grid',
       },
       appFont: localFont,
       uiScale: localScale,
@@ -545,6 +546,9 @@ export function applySettingsToRuntime(settings: UnifiedStoreSettings): void {
   try {
     // 1. حفظ في SETTINGS_STORAGE_KEY
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    if (['ar', 'en', 'tr', 'fa', 'ku'].includes(settings.language)) {
+      setLanguage(settings.language);
+    }
 
     // مفاتيح التشغيل القديمة يجب أن تتبع النسخة الموحدة أيضاً عند السحب من السحابة.
     if (typeof settings.notificationSettings.durationSeconds === 'number') {
@@ -683,6 +687,8 @@ export const applyCloudStoreSettings = (cloudSettings: any) => {
       setStoredUIScale(profile.uiScale);
     }
     if (profile.appearanceSettings && typeof profile.appearanceSettings === 'object') {
+      const layout = profile.appearanceSettings.settingsLayout;
+      if (layout === 'grid' || layout === 'list') localStorage.setItem('settings_layout_mode', layout);
       const current = loadUnifiedStoreSettings();
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
         ...current, appearanceSettings: { ...current.appearanceSettings, ...profile.appearanceSettings },

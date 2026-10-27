@@ -267,6 +267,7 @@ export default function Settings() {
     setSettingsLayout(mode);
     try {
       localStorage.setItem('settings_layout_mode', mode);
+      void saveUnifiedStoreSettings({ appearanceSettings: { settingsLayout: mode } });
     } catch {
       // ignore storage errors
     }
@@ -823,6 +824,7 @@ export default function Settings() {
         const localSettings = restoredSettings;
         if (restoredSettings) {
           const merged = restoredSettings;
+          setSettingsLayout(merged.appearanceSettings.settingsLayout === 'list' ? 'list' : 'grid');
           const restoredSync = {
             interval: Number(merged.syncSettings?.interval ?? 10),
             showSuccessNotification: merged.syncSettings?.showSuccessNotification !== false,

@@ -1,8 +1,6 @@
 // Product Fields Configuration - Dynamic fields based on store type and user preferences
 
 import { emitEvent, EVENTS } from './events';
-import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUserId, getOwnerIdForInsert } from './supabase-store';
 
 export interface ProductFieldsConfig {
   expiryDate: boolean;

@@ -1,8 +1,6 @@
 // Custom Fields Configuration - User-defined fields for products
 
 import { emitEvent, EVENTS } from './events';
-import { supabase } from '@/integrations/supabase/client';
-import { getOwnerIdForInsert } from './supabase-store';
 
 export type CustomFieldType = 'text' | 'number' | 'select';
 

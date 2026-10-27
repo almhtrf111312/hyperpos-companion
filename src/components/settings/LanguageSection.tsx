@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Globe, Check, Save } from 'lucide-react';
 import { toast } from '@/lib/sonner-bridge';
 import { Language } from '@/lib/i18n';
+import { saveUnifiedStoreSettings } from '@/lib/store-settings-sync';
 
 export function LanguageSection() {
   const { language, setLanguage, t, languages } = useLanguage();
@@ -24,8 +25,9 @@ export function LanguageSection() {
     setPendingLanguage(value as Language);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setLanguage(pendingLanguage);
+    await saveUnifiedStoreSettings({ language: pendingLanguage });
     toast.success(t('settings.languageChanged', pendingLanguage));
   };
 
