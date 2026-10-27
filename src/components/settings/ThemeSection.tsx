@@ -17,7 +17,7 @@ export interface PendingTheme {
 }
 
 interface ThemeSectionProps {
-  onPendingChange?: (pending: PendingTheme, hasChanges: boolean) => void;
+  onPendingChange?: (pending: PendingTheme) => void;
   resetSignal?: number; // increment to trigger reset
 }
 
@@ -46,8 +46,7 @@ export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps
   }, [resetSignal, mode, color, blurEnabled, transparencyLevel, themeStyle]);
 
   const notifyChange = (m: ThemeMode, c: ThemeColor, b: boolean, tr: number, s: ThemeStyle) => {
-    const hasChanges = m !== mode || c !== color || b !== blurEnabled || tr !== transparencyLevel || s !== (themeStyle || 'standard');
-    onPendingChange?.({ mode: m, color: c, blur: b, transparency: tr, style: s }, hasChanges);
+    onPendingChange?.({ mode: m, color: c, blur: b, transparency: tr, style: s });
   };
 
   const handleModeChange = (newMode: ThemeMode) => {

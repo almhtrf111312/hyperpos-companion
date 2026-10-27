@@ -88,7 +88,23 @@ export const ProductGrid = memo(function ProductGrid({
     const converted = roundForCurr(fromUsd(usdPrice, code, rate), code);
     const decimals = (rate >= 100) ? 0 : 2;
 
-    return `${symbol}${formatNumber(converted, decimals)}`;
+    return { symbol, amount: formatNumber(converted, decimals) };
+  };
+
+  const renderDisplayPrice = (usdPrice: number, sizeClassName: string) => {
+    const { symbol, amount } = formatDisplayPrice(usdPrice);
+
+    return (
+      <span
+        className={cn('inline-flex max-w-full min-w-0 items-center gap-1 whitespace-nowrap text-start tabular-nums', sizeClassName)}
+        dir="ltr"
+        title={`${symbol} ${amount}`}
+      >
+        <span className="shrink-0 text-[0.75em] font-semibold text-muted-foreground">{symbol}</span>
+        <span aria-hidden="true" className="h-3 w-px shrink-0 bg-muted-foreground/50" />
+        <span className="min-w-0 truncate font-black text-primary">{amount}</span>
+      </span>
+    );
   };
 
   const cycleViewMode = () => {
@@ -297,10 +313,8 @@ export const ProductGrid = memo(function ProductGrid({
                   </h3>
 
                   <div className="w-full pt-1.5 border-t border-border/30 mt-auto flex items-center justify-between gap-1.5">
-                    <span className="text-primary font-black text-sm min-w-0 break-words text-start">
-                      {formatDisplayPrice(product.price)}
-                    </span>
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+                    {renderDisplayPrice(product.price, 'text-sm')}
+                    <span className="inline-flex h-8 min-w-[2.75rem] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary px-2 text-[1.125rem] font-black leading-none tabular-nums text-primary-foreground shadow-sm">
                       {product.quantity} {t('pos.piece') || 'قطعة'}
                     </span>
                   </div>
@@ -333,10 +347,8 @@ export const ProductGrid = memo(function ProductGrid({
                     {product.name}
                   </h4>
                   <div className="w-full pt-1 border-t border-border/30 flex items-center justify-between gap-0.5">
-                    <span className="font-black text-primary text-[11px] tabular-nums min-w-0 truncate text-start">
-                      {formatDisplayPrice(product.price)}
-                    </span>
-                    <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-bold text-muted-foreground">
+                    {renderDisplayPrice(product.price, 'text-[11px]')}
+                    <span className="inline-flex h-8 min-w-[2.75rem] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary px-2 text-[1.125rem] font-black leading-none tabular-nums text-primary-foreground shadow-sm">
                       {product.quantity}
                     </span>
                   </div>
@@ -373,7 +385,7 @@ export const ProductGrid = memo(function ProductGrid({
                       smallUnit={product.smallUnit}
                     />
                   </div>
-                  <p className="text-primary font-black text-sm md:text-base tabular-nums">{formatDisplayPrice(product.price)}</p>
+                  {renderDisplayPrice(product.price, 'text-sm md:text-base')}
                 </div>
               </button>
             ))}
@@ -392,7 +404,7 @@ export const ProductGrid = memo(function ProductGrid({
               >
                 <div className="flex-1 min-w-0 pe-2 overflow-hidden text-start">
                   <h3 className="font-bold text-xs text-foreground truncate" title={product.name}>{product.name}</h3>
-                  <p className="text-primary font-bold text-xs mt-0.5 tabular-nums">{formatDisplayPrice(product.price)}</p>
+                  {renderDisplayPrice(product.price, 'text-xs mt-0.5')}
                 </div>
                 <div className="text-[10px] bg-muted/50 rounded-lg px-2 py-1 shrink-0 font-medium">
                   <DualUnitDisplayCompact

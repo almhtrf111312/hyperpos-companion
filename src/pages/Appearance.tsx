@@ -160,9 +160,15 @@ export default function Appearance() {
         {activeTab === 'theme' && (
           <ThemeSection
             resetSignal={resetSignal}
-            onPendingChange={(pending, changed) => {
-              setDraftTheme(changed ? pending : null);
-              if (changed) {
+            onPendingChange={(pending) => {
+              const savedTheme = savedThemeRef.current;
+              const hasThemeChanges = pending.mode !== savedTheme.mode ||
+                pending.color !== savedTheme.color ||
+                pending.blur !== savedTheme.blur ||
+                pending.transparency !== savedTheme.transparency ||
+                pending.style !== savedTheme.style;
+              setDraftTheme(hasThemeChanges ? pending : null);
+              if (hasThemeChanges) {
                 previewTheme(pending.mode, pending.color, pending.blur, pending.transparency, pending.style);
               } else {
                 revertTheme();
