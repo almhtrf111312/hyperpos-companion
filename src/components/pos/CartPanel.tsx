@@ -1984,7 +1984,7 @@ export function CartPanel({
             <div className="flex items-center justify-between px-2 py-1 bg-muted/40 rounded-lg text-xs">
               <span className="text-[10px] text-muted-foreground">
                 {t('pos.tax') || 'الضريبة'}: {storeTaxRate}%
-                <span className="ms-1">{taxMode === 'gross' ? (t('pos.inclusive') || 'شامل') : (t('pos.exclusive') || 'غير شامل')}</span>
+                <span className="ms-1">{taxMode === 'gross' ? (t('pos.inclusive' as never) || 'شامل') : (t('pos.exclusive' as never) || 'غير شامل')}</span>
               </span>
               <Switch
                 checked={taxMode === 'gross'}

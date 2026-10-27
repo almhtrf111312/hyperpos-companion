@@ -1,5 +1,5 @@
 // Enhanced Share Utility - Uses Web Share API with rich text formatting
-import { formatCurrency } from './utils';
+import { formatCurrency, formatNumber } from './utils';
 import { resolveInvoiceCurrencySymbol } from './currencies';
 
 export interface ShareInvoiceData {

@@ -109,6 +109,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    sourcemap: false,
     // base './' needed for Electron file:// protocol
     ...(process.env.ELECTRON_BUILD === 'true' ? {} : {}),
     rollupOptions: {

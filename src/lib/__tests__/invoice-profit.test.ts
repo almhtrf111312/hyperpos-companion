@@ -31,7 +31,7 @@ function test(name: string, run: () => void) {
     console.log(`[PASS] ${name}`);
   } catch (error) {
     console.error(`[FAIL] ${name}`, error);
-    process.exitCode = 1;
+    (globalThis as { process?: { exitCode?: number } }).process!.exitCode = 1;
   }
 }
 
