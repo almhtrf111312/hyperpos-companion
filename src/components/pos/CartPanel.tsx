@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { addExpenseCloud } from '@/lib/cloud/expenses-cloud';
 import {
   Wrench,
   AlertCircle,
