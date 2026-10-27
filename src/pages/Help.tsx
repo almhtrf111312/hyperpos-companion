@@ -107,7 +107,7 @@ export default function HelpPage() {
         />
 
         {/* Modern 2-Button Segmented Navigation Tabs — Unified Capsule */}
-        <div className="bg-muted/60 p-1 rounded-2xl grid grid-cols-2 gap-1 border border-border/40 shadow-xs select-none w-full sm:w-fit sm:min-w-[20rem]">
+        <div className={capsuleOuter}>
           <button
             type="button"
             onClick={() => setActiveTab('features')}

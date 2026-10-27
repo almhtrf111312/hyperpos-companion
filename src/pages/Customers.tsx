@@ -1,3 +1,5 @@
+import { capsuleOuter, capsuleOuterScroll, capsuleTrigger, capsuleItem, capsuleActive, capsuleIdle } from '@/components/ui/SegmentedCapsule';
+import { SmartFab } from '@/components/ui/SmartFab';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -387,17 +389,17 @@ export default function Customers() {
       {/* Top Navigation Tabs - lifted with smart mobile clearance */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-3">
         <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-          <TabsList className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none h-auto">
+          <TabsList className={capsuleOuter}>
               <TabsTrigger
                 value="customers"
-                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
+                className={capsuleTrigger}
               >
                 <User className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabCustomers' as any) || 'العملاء'}</span>
               </TabsTrigger>
               <TabsTrigger
                 value="debts"
-                className="rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-colors duration-200 select-none cursor-pointer w-auto flex-shrink-0 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground"
+                className={capsuleTrigger}
               >
                 <CreditCard className="w-3.5 h-3.5 shrink-0" />
                 <span>{t('customers.tabDebts' as any) || 'الديون'}</span>
@@ -406,19 +408,8 @@ export default function Customers() {
         </div>
 
         <TabsContent value="customers" className="space-y-3 m-0">
-          {/* Add Customer Action directly under Customers tab */}
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              className="bg-gradient-primary hover:brightness-105 active:scale-95 text-primary-foreground font-bold h-9 px-4 rounded-xl shadow-sm text-xs gap-1.5 transition-[colors,transform] cursor-pointer"
-              onClick={() => {
-                setFormData({ name: '', phone: '', email: '', address: '' });
-                setShowAddDialog(true);
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('customers.addCustomer')}</span>
-            </Button>
-          </div>
+          <SmartFab label={t('customers.addCustomer')} onClick={() => { setFormData({ name: '', phone: '', email: '', address: '' }); setShowAddDialog(true); }} />
+          
           {/* Compact Stats Strip (Compressed 4-Metric Grid saving significant vertical space) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center select-none">
             <div className="bg-card py-2 px-1 rounded-xl border border-border shadow-xs">

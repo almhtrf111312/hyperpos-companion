@@ -1,3 +1,4 @@
+import { SmartFab } from '@/components/ui/SmartFab';
 import { useState, useEffect } from 'react';
 import {
   Search,
@@ -553,17 +554,7 @@ export default function Services() {
             {t('services.title') || 'إدارة الصيانة'}
           </h2>
         </div>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-9 px-3.5 rounded-xl shadow-xs text-xs gap-1.5 shrink-0 transition-[colors,box-shadow] cursor-pointer"
-          onClick={() => {
-            resetForm();
-            setShowAddDialog(true);
-          }}
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{t('services.newRequest')}</span>
-          <span className="sm:hidden">{t('common.add') || 'طلب جديد'}</span>
-        </Button>
+        <SmartFab label={t('services.newRequest')} onClick={() => { resetForm(); setShowAddDialog(true); }} />
       </div>
 
       {/* استبدال الحاوية الأفقية القديمة بشبكة أزرار متجاوبة سطرين */}

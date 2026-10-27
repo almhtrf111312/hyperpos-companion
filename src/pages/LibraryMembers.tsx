@@ -1,3 +1,4 @@
+import { capsuleOuter, capsuleOuterScroll, capsuleTrigger, capsuleItem, capsuleActive, capsuleIdle } from '@/components/ui/SegmentedCapsule';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Users, Plus, Search, Edit, Trash2, BookOpen, X, Save,
@@ -180,17 +181,17 @@ export default function LibraryMembers() {
       {/* Top Tabs with smart mobile clearance */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-3">
         <div className="flex items-center justify-between gap-2 rtl:pr-14 ltr:pl-14 md:rtl:pr-0 md:ltr:pl-0">
-          <TabsList className="bg-muted/60 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto scrollbar-none w-full sm:w-fit border border-border/40 shadow-xs select-none h-auto">
+          <TabsList className={capsuleOuter}>
               <TabsTrigger
                 value="members"
-                className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer"
+                className={capsuleTrigger}
               >
                 <Users className="w-3.5 h-3.5" />
                 <span>الأعضاء</span>
               </TabsTrigger>
               <TabsTrigger
                 value="loans"
-                className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 cursor-pointer"
+                className={capsuleTrigger}
               >
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>الإعارات</span>
