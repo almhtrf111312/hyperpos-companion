@@ -49,9 +49,11 @@ const updateSW = Capacitor.isNativePlatform() ? null : registerSW({
     console.log('[SW] Registered:', registration?.scope);
     // Periodic check for updates (every 60 min)
     if (registration) {
-      setInterval(() => {
-        registration.update();
-      }, 60 * 60 * 1000);
+      // Check for a newer published version often, and whenever the tab regains focus,
+      // so the laptop never stays on an old build.
+      const check = () => { registration.update().catch(() => {}); };
+      setInterval(check, 5 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
     }
   },
   onRegisterError(error) {

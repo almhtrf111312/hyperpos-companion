@@ -9,6 +9,7 @@ import {
   Wrench, 
   BarChart3, 
   Settings, 
+  Bell,
   ChevronLeft,
   ChevronRight,
   LogOut,

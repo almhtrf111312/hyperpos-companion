@@ -11,6 +11,8 @@ import {
 } from '@/lib/remote-updates';
 
 const FORCED_DISMISS_KEY = 'hp_forced_update_dismissed_day';
+const NOTIFIED_KEY = 'hp_notified_broadcasts';
+const POLL_MS = 60 * 1000;
 
 export function RemoteUpdatesGate() {
   const { user } = useAuth();
@@ -28,8 +30,14 @@ export function RemoteUpdatesGate() {
       const list = await fetchActiveBroadcasts();
       const seen = new Set(getSeenBroadcasts());
       const fresh = list.filter(b => !seen.has(b.id));
-      for (const b of fresh) sendLocalNotification(b.title, b.body, b.kind === 'info' ? 'system' : 'critical').catch(() => {});
+      const notified = new Set<string>(JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'));
+      for (const b of fresh.filter(x => !notified.has(x.id))) {
+        notified.add(b.id);
+        sendLocalNotification(b.title, b.body, b.kind === 'info' ? 'system' : 'critical').catch(() => {});
+      }
+      localStorage.setItem(NOTIFIED_KEY, JSON.stringify([...notified].slice(-200)));
       setBanners(fresh);
+      window.dispatchEvent(new Event('hp-broadcasts-updated'));
     } catch { /* offline: keep cached */ }
   }, [user?.id]);
 
@@ -37,8 +45,20 @@ export function RemoteUpdatesGate() {
     refresh();
     const onOnline = () => refresh();
     window.addEventListener('online', onOnline);
-    const t = setInterval(refresh, 15 * 60 * 1000);
-    return () => { window.removeEventListener('online', onOnline); clearInterval(t); };
+    // Poll every minute while the app is visible, and immediately on resume/focus
+    const t = setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, POLL_MS);
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    let resumeHandle: { remove: () => void } | null = null;
+    import('@capacitor/app').then(({ App }) => App.addListener('resume', () => refresh()))
+      .then(h => { resumeHandle = h; }).catch(() => {});
+    return () => {
+      window.removeEventListener('online', onOnline); clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      resumeHandle?.remove();
+    };
   }, [refresh]);
 
   if (!user) return null;
@@ -94,6 +114,7 @@ export function RemoteUpdatesGate() {
               </div>
               <button aria-label="إغلاق" className="text-muted-foreground hover:text-foreground" onClick={() => {
                 markBroadcastSeen(b.id); setBanners(p => p.filter(x => x.id !== b.id));
+                window.dispatchEvent(new Event('hp-broadcasts-updated'));
               }}><X className="w-4 h-4" /></button>
             </div>
           ))}
