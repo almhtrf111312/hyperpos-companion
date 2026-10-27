@@ -1,8 +1,8 @@
 # 🧠 FlowPOS Pro — Persistent Project Memory (Project State & Ledger)
 
-**Last Updated:** 2026-10-27  
-**Current Version:** `v1.3.2 (Build 345)`  
-**Repository Branch:** `main` (invoice privacy and analysis implementation: `4dcff8e1`)  
+**Last Updated:** 2026-10-27
+**Current Version:** `v1.3.2 (Build 345)`
+**Repository Branch:** `main` (invoice privacy and analysis implementation: `4dcff8e1`)
 **Base Accounting Currency:** `USD`  
 **Primary Language / Direction:** Arabic (`ar`) RTL (with EN/TR support)
 

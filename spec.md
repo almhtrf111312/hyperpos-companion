@@ -1,7 +1,7 @@
 # [FEATURE/FIX]: حماية أرباح الفواتير وإضافة تحليل مالي خاص بالإدارة
 
-**Document Status:** Approved by User  
-**Date:** 2026-10-27  
+**Document Status:** Approved by User
+**Date:** 2026-10-27
 **Target Branch:** `main` (the user explicitly requested publishing the finished update to this branch)
 
 ## 1. الهدف والسياق
