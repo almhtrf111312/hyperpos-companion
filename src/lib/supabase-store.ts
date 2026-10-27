@@ -673,6 +673,10 @@ export async function saveStoreSettingsDirect(settings: Record<string, unknown>)
         payloadToSave.sync_settings = {
           ...existingSync,
           ...(settings.sync_settings as Record<string, unknown>),
+          appearanceProfiles: {
+            ...((existingSync.appearanceProfiles as Record<string, unknown>) || {}),
+            ...(((settings.sync_settings as Record<string, unknown>).appearanceProfiles as Record<string, unknown>) || {}),
+          },
         };
       }
 

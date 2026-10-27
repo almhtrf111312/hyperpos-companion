@@ -115,6 +115,7 @@ import {
   mergeStoreSettings,
   applySettingsToRuntime,
   saveUnifiedStoreSettings,
+  pullStoreSettingsWithGuard,
   StoreSettingsSaveStatus,
 } from '@/lib/store-settings-sync';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -266,6 +267,7 @@ export default function Settings() {
     setSettingsLayout(mode);
     try {
       localStorage.setItem('settings_layout_mode', mode);
+      void saveUnifiedStoreSettings({ appearanceSettings: { settingsLayout: mode } });
     } catch {
       // ignore storage errors
     }
@@ -563,11 +565,11 @@ export default function Settings() {
 
   // Sync settings
   const [syncSettings, setSyncSettings] = useState({
-    interval: 10,
-    showSuccessNotification: true,
-    showErrorNotification: true,
-    showSyncStatus: true,
-    lastSync: '2024-01-15 14:30',
+    interval: Number(initialUnified.syncSettings?.interval ?? persisted?.syncSettings?.interval ?? 10),
+    showSuccessNotification: initialUnified.syncSettings?.showSuccessNotification !== false,
+    showErrorNotification: initialUnified.syncSettings?.showErrorNotification !== false,
+    showSyncStatus: initialUnified.syncSettings?.showSyncStatus !== false,
+    lastSync: String(initialUnified.syncSettings?.lastSync ?? persisted?.syncSettings?.lastSync ?? ''),
   });
 
   // Notification settings
@@ -798,6 +800,7 @@ export default function Settings() {
     notificationSettings: typeof notificationSettings;
     printSettings: typeof printSettings;
     backupSettings: typeof backupSettings;
+    syncSettings: typeof syncSettings;
     hideMaintenanceSection: boolean;
     productFieldsConfig: ProductFieldsConfig | null;
     taxEnabled: boolean;
@@ -815,12 +818,21 @@ export default function Settings() {
     let isMounted = true;
     const loadFromCloud = async () => {
       try {
-        const cloudData = await fetchStoreSettings();
+        const restoredSettings = await pullStoreSettingsWithGuard();
         if (!isMounted) return;
 
-        const localSettings = loadUnifiedStoreSettings();
-        if (cloudData) {
-          const merged = mergeStoreSettings(localSettings, cloudData);
+        const localSettings = restoredSettings;
+        if (restoredSettings) {
+          const merged = restoredSettings;
+          setSettingsLayout(merged.appearanceSettings.settingsLayout === 'list' ? 'list' : 'grid');
+          const restoredSync = {
+            interval: Number(merged.syncSettings?.interval ?? 10),
+            showSuccessNotification: merged.syncSettings?.showSuccessNotification !== false,
+            showErrorNotification: merged.syncSettings?.showErrorNotification !== false,
+            showSyncStatus: merged.syncSettings?.showSyncStatus !== false,
+            lastSync: String(merged.syncSettings?.lastSync ?? ''),
+          };
+          setSyncSettings(restoredSync);
 
           setStoreSettings(merged.storeSettings);
           setTaxEnabled(merged.taxEnabled);
@@ -871,6 +883,7 @@ export default function Settings() {
           // ✅ Update snapshot with the EXACT identical fresh values
           settingsSnapshotRef.current = {
             storeSettings: { ...merged.storeSettings },
+            syncSettings: restoredSync,
             primaryCurrency: merged.primaryCurrency,
             enabledCurrencies: { ...merged.enabledCurrencies },
             exchangeRates: { ...merged.exchangeRates } as any,
@@ -920,6 +933,7 @@ export default function Settings() {
     if (!settingsSnapshotRef.current) {
       settingsSnapshotRef.current = {
         storeSettings: { ...storeSettings },
+        syncSettings: { ...syncSettings },
         primaryCurrency,
         enabledCurrencies: { ...enabledCurrencies },
         exchangeRates: { ...exchangeRates },
@@ -1104,7 +1118,7 @@ export default function Settings() {
   ], [t, isRTL, isBoss, isOwnerAdmin, primaryCurrency, syncSettings?.lastSync, notificationPerm, printSettings?.paperSize, users?.length]);
 
   // Independent tabs that have no saveable settings form state
-  const INDEPENDENT_TABS = ['licenses', 'activity', 'backup', 'archive', 'license', 'contact', 'reset', 'about', 'users', 'partners', 'profile'];
+  const INDEPENDENT_TABS = ['licenses', 'activity', 'archive', 'license', 'contact', 'reset', 'about', 'users', 'partners', 'profile'];
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = (() => {
@@ -1151,6 +1165,11 @@ export default function Settings() {
       return JSON.stringify(printSettings) !== JSON.stringify(snap.printSettings);
     }
 
+    if (activeTab === 'backup') {
+      return JSON.stringify(backupSettings) !== JSON.stringify(snap.backupSettings) ||
+        JSON.stringify(syncSettings) !== JSON.stringify(snap.syncSettings);
+    }
+
     return false;
   })();
 
@@ -1170,6 +1189,7 @@ export default function Settings() {
     setNotificationSettings({ ...snap.notificationSettings });
     setPrintSettings({ ...snap.printSettings });
     setBackupSettings({ ...snap.backupSettings });
+    setSyncSettings({ ...snap.syncSettings });
     setHideMaintenanceSection(snap.hideMaintenanceSection);
     setTrackCapital(snap.trackCapital ?? false);
     setInitialCapital(snap.initialCapital ?? 0);
@@ -1287,6 +1307,7 @@ export default function Settings() {
         notificationSettings: notificationSettings as unknown as Record<string, unknown>,
         printSettings,
         backupSettings,
+        syncSettings,
         productFieldsConfig: existingProductFields,
         customFields: existingCustomFields,
       });
@@ -1311,6 +1332,7 @@ export default function Settings() {
         notificationSettings: { ...notificationSettings },
         printSettings: { ...printSettings },
         backupSettings: { ...backupSettings },
+        syncSettings: { ...syncSettings },
         hideMaintenanceSection,
         productFieldsConfig: existingProductFields ? { ...existingProductFields } : null,
         taxEnabled,

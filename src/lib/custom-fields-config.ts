@@ -1,8 +1,6 @@
 // Custom Fields Configuration - User-defined fields for products
 
 import { emitEvent, EVENTS } from './events';
-import { supabase } from '@/integrations/supabase/client';
-import { getOwnerIdForInsert } from './supabase-store';
 
 export type CustomFieldType = 'text' | 'number' | 'select';
 
@@ -41,27 +39,9 @@ export const saveCustomFields = async (fields: CustomField[]): Promise<boolean> 
     emitEvent(EVENTS.CUSTOM_FIELDS_UPDATED, fields);
 
     // Sync to cloud
-    const ownerId = await getOwnerIdForInsert();
-    if (ownerId) {
-      const { data: storeData } = await supabase
-        .from('stores')
-        .select('sync_settings')
-        .eq('user_id', ownerId)
-        .maybeSingle();
-
-      const existingSync = (storeData?.sync_settings as Record<string, unknown>) || {};
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
-        .from('stores')
-        .update({
-          sync_settings: {
-            ...existingSync,
-            customFields: fields,
-          }
-        })
-        .eq('user_id', ownerId);
-    }
-    return true;
+    const { saveUnifiedStoreSettings } = await import('./store-settings-sync');
+    const result = await saveUnifiedStoreSettings({ customFields: fields });
+    return result.success;
   } catch (error) {
     console.error('Failed to save custom fields:', error);
     return false;
@@ -71,19 +51,9 @@ export const saveCustomFields = async (fields: CustomField[]): Promise<boolean> 
 // Load custom fields from cloud and sync to localStorage
 export const syncCustomFieldsFromCloud = async (): Promise<CustomField[] | null> => {
   try {
-    const ownerId = await getOwnerIdForInsert();
-    if (!ownerId) return null;
-
-    const { data, error } = await supabase
-      .from('stores')
-      .select('sync_settings')
-      .eq('user_id', ownerId)
-      .maybeSingle();
-
-    if (error) return null;
-
-    const syncSettings = data?.sync_settings as { customFields?: CustomField[] } | null;
-    const cloudFields = syncSettings?.customFields;
+    const { pullStoreSettingsWithGuard } = await import('./store-settings-sync');
+    const settings = await pullStoreSettingsWithGuard();
+    const cloudFields = settings.customFields;
 
     if (cloudFields && Array.isArray(cloudFields)) {
       localStorage.setItem(CUSTOM_FIELDS_STORAGE_KEY, JSON.stringify(cloudFields));

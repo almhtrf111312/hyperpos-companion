@@ -117,3 +117,6 @@ See `.xgrok/BEST_PRACTICES.md` and `.xgrok/SECURITY.md`.
 - Remote release control lives in `src/lib/remote-updates.ts` (config in app_settings key `release_config`, broadcasts in `app_broadcasts`, installs in `client_versions`); the Boss is never locked out. Why: one source for forced-update rules.
 
 - Keep active tab ancestors free of transforms and perspective; floating controls stay inline and viewport-fixed. Scroll visibility resets on page activation and ignores automatic layout/restoration scrolls so cached pages do not hide their controls on entry.
+
+- Save and restore portable settings and product/custom-field preferences through the unified settings module and its offline queue; preserve explicit empty arrays and use timestamp-guarded pulls. Why: independent writes or unguarded realtime pulls can lose offline edits.
+- Store appearance profiles by platform within stores.sync_settings and merge profiles when saving; keep printer pairing and notification permission device-local. Why: restore appearance without one platform overwriting another or copying hardware identities.

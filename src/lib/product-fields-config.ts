@@ -1,8 +1,6 @@
 // Product Fields Configuration - Dynamic fields based on store type and user preferences
 
 import { emitEvent, EVENTS } from './events';
-import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUserId, getOwnerIdForInsert } from './supabase-store';
 
 export interface ProductFieldsConfig {
   expiryDate: boolean;
@@ -109,37 +107,9 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
     emitEvent(EVENTS.PRODUCT_FIELDS_UPDATED, config);
 
     // Sync to cloud - merge with existing sync_settings instead of overwriting
-    const ownerId = await getOwnerIdForInsert();
-    if (ownerId) {
-      // First read existing sync_settings
-      const { data: storeData } = await supabase
-        .from('stores')
-        .select('sync_settings')
-        .eq('user_id', ownerId)
-        .maybeSingle();
-
-      const existingSyncSettings = (storeData?.sync_settings as Record<string, unknown>) || {};
-
-      // Merge productFieldsConfig into existing settings
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from('stores')
-        .update({
-          sync_settings: {
-            ...existingSyncSettings,
-            productFieldsConfig: config
-          }
-        })
-        .eq('user_id', ownerId);
-
-      if (error) {
-        console.error('Failed to sync product fields to cloud:', error);
-      } else {
-        console.log('[ProductFields] Synced to cloud successfully');
-      }
-    }
-
-    return true;
+    const { saveUnifiedStoreSettings } = await import('./store-settings-sync');
+    const result = await saveUnifiedStoreSettings({ productFieldsConfig: config });
+    return result.success;
   } catch (error) {
     console.error('Failed to save product fields config:', error);
     return false;
@@ -149,22 +119,9 @@ export const saveProductFieldsConfig = async (config: ProductFieldsConfig): Prom
 // Load product fields from cloud and sync to localStorage
 export const syncProductFieldsFromCloud = async (): Promise<ProductFieldsConfig | null> => {
   try {
-    const ownerId = await getOwnerIdForInsert();
-    if (!ownerId) return null;
-
-    const { data, error } = await supabase
-      .from('stores')
-      .select('sync_settings')
-      .eq('user_id', ownerId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Failed to fetch product fields from cloud:', error);
-      return null;
-    }
-
-    const syncSettings = data?.sync_settings as { productFieldsConfig?: ProductFieldsConfig } | null;
-    const cloudConfig = syncSettings?.productFieldsConfig;
+    const { pullStoreSettingsWithGuard } = await import('./store-settings-sync');
+    const settings = await pullStoreSettingsWithGuard();
+    const cloudConfig = settings.productFieldsConfig;
 
     if (cloudConfig) {
       // Sync to localStorage

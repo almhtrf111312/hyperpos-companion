@@ -10,6 +10,7 @@ import {
   loadUnifiedStoreSettings,
   mergeStoreSettings,
   applySettingsToRuntime,
+  pullStoreSettingsWithGuard,
 } from '@/lib/store-settings-sync';
 
 const SETTINGS_STORAGE_KEY = 'hyperpos_settings_v1';
@@ -46,6 +47,7 @@ export function useRealtimeSync() {
     
     console.log(`[Realtime] Triggering global refresh due to: ${reason}`);
     await invalidateAllCaches();
+    await pullStoreSettingsWithGuard();
     
     // Emit events to trigger UI re-fetches
     SYNC_TABLES.forEach(table => emitEvent(table.event));
@@ -107,12 +109,9 @@ export function useRealtimeSync() {
         filter: `user_id=eq.${ownerId}`
       }, async (payload) => {
         console.log('[Realtime] Store settings changed:', payload.eventType);
-        const settings = await fetchStoreSettings();
-        if (settings) {
+        if (isMounted) {
           try {
-            const localSettings = loadUnifiedStoreSettings();
-            const merged = mergeStoreSettings(localSettings, settings);
-            applySettingsToRuntime(merged);
+            await pullStoreSettingsWithGuard();
             console.log('[Realtime] Unified store settings updated & applied to runtime');
           } catch (e) {
             console.error('[Realtime] Failed to update local settings:', e);
