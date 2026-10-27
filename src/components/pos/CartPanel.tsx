@@ -111,6 +111,8 @@ interface CartItem {
   costPrice?: number;
   bulkCostPrice?: number;
   wholesalePrice?: number;
+  /** سعر يدوي (دولار) يتقدّم على سعر المفرق والجملة */
+  manualPrice?: number;
   laborCost?: number;
   // Pharmacy fields
   expiryDate?: string;
@@ -337,6 +339,9 @@ export function CartPanel({
   }, [cart.length]);
 
   const getItemPrice = (item: CartItem) => {
+    if (item.manualPrice !== undefined && Number.isFinite(item.manualPrice) && item.manualPrice >= 0) {
+      return item.manualPrice;
+    }
     let price = item.price;
 
     if (wholesaleMode) {
@@ -515,7 +520,7 @@ export function CartPanel({
       const currentSubtotal = subtotal > 0 ? subtotal : 1;
       const ratio = targetSubtotalUSD / currentSubtotal;
       cart.forEach((item) => {
-        const newUnitPrice = round8(item.price * ratio);
+        const newUnitPrice = round8(getItemPrice(item) * ratio);
         onUpdateItemPrice(item.id, newUnitPrice, item.unit);
       });
       showToast.success(`${t('pos.surplusAppliedSuccess') || 'تم تعديل السعر واعتماد الزيادة كربح إضافي'} (${formatNumber(extraProfitUSD)})`);
@@ -532,9 +537,15 @@ export function CartPanel({
     }
 
     // إذا كان هناك عجز في المقبوض، نفتح حوار المعالجة (خصم فوري أو دين) بدلاً من window.confirm المانع لتجميد WebView
-    if (!wholesaleMode && receivedUSD > 0 && receivedUSD < total - 0.001) {
+    if (receivedUSD > 0 && receivedUSD < total - 0.001) {
       setShowDeficitDialog(true);
       return;
+    }
+
+    // 💰 الزيادة في المقبوض تُعتمد دائماً كربح إضافي (لا يوجد باقٍ للزبون)
+    if (receivedUSD > total + 0.001) {
+      if (!onUpdateItemPrice) return;
+      handleApplySurplusAsProfit();
     }
 
     setShowCashDialog(true);
@@ -605,7 +616,7 @@ export function CartPanel({
     const cartSnapshot = [...cart];
     // 🛡️ لا يُحوَّل نقص المقبوض إلى خصم صامت بعد اليوم.
     // البيع النقدي يُسجَّل بقيمته الكاملة؛ النقص يُعالج كخصم صريح أو كبيع مركب مع عميل.
-    if (!wholesaleMode && receivedUSD > 0 && receivedUSD < total - 0.001) {
+    if (receivedUSD > 0 && receivedUSD < total - 0.001) {
       savingRef.current = false;
       setIsSaving(false);
       setShowCashDialog(false);
@@ -687,7 +698,7 @@ export function CartPanel({
           itemCostPrice = (item.costPrice && item.costPrice > 0) ? item.costPrice : getFallbackCostPrice(item.id);
         }
 
-        const itemPrice = wholesaleMode ? getItemPrice(item) : item.price;
+        const itemPrice = getItemPrice(item);
         const itemNetPrice = taxMode === 'gross' && effectiveTaxRate > 0 ? itemPrice / (1 + effectiveTaxRate / 100) : itemPrice;
         const itemProfit = round8((itemNetPrice - itemCostPrice) * item.quantity);
         const itemCOGS = round8(itemCostPrice * item.quantity);
@@ -711,7 +722,7 @@ export function CartPanel({
 
       const discountRatio = subtotal > 0 ? Math.min(1, effectiveDiscountAmount / subtotal) : 0;
       // الربح = المجموع − الخصم − التكلفة بدقة 8 منازل
-      const discountedProfit = round8(totalProfit - effectiveDiscountAmount);
+      const discountedProfit = round8(totalProfit - effectiveDiscountAmount * (taxMode === 'gross' && effectiveTaxRate > 0 ? 1 / (1 + effectiveTaxRate / 100) : 1));
 
       const stockItemsLocal = cartSnapshot.map(item => ({
         productId: item.id,
@@ -1060,7 +1071,8 @@ export function CartPanel({
           itemCostPrice = (item.costPrice && item.costPrice > 0) ? item.costPrice : getFallbackCostPrice(item.id);
         }
 
-        const itemNetPrice = taxMode === 'gross' && effectiveTaxRate > 0 ? item.price / (1 + effectiveTaxRate / 100) : item.price;
+        const linePrice = getItemPrice(item);
+        const itemNetPrice = taxMode === 'gross' && effectiveTaxRate > 0 ? linePrice / (1 + effectiveTaxRate / 100) : linePrice;
         const itemProfit = round8((itemNetPrice - itemCostPrice) * item.quantity);
         const itemCOGS = round8(itemCostPrice * item.quantity);
 
@@ -1072,19 +1084,19 @@ export function CartPanel({
         return {
           id: item.id,
           name: item.name,
-          price: item.price,
+          price: linePrice,
           quantity: item.quantity,
           unit: item.unit,
           costPrice: itemCostPrice,
           conversionFactor: item.conversionFactor,
           category: cat,
-          total: round8(item.price * item.quantity),
-          profit: round8(itemProfit - (item.price * item.quantity) * (subtotal > 0 ? discountAmount / subtotal : 0)),
+          total: round8(linePrice * item.quantity),
+          profit: round8(itemProfit - (linePrice * item.quantity) * (subtotal > 0 ? discountAmount / subtotal : 0) * (taxMode === 'gross' && effectiveTaxRate > 0 ? 1 / (1 + effectiveTaxRate / 100) : 1)),
         };
       });
 
       const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
-      const discountedProfit = round8(totalProfit - discountAmount);
+      const discountedProfit = round8(totalProfit - discountAmount * (taxMode === 'gross' && effectiveTaxRate > 0 ? 1 / (1 + effectiveTaxRate / 100) : 1));
 
       const stockItemsLocal = cartSnapshot.map(item => ({
         productId: item.id,
@@ -1459,8 +1471,8 @@ export function CartPanel({
         items: printCart.map(item => ({
           name: item.name,
           quantity: item.quantity,
-          price: roundForCurr(fromUsd(item.price, printCurrency.code, printCurrency.rate), printCurrency.code),
-          total: roundForCurr(fromUsd(item.price * item.quantity, printCurrency.code, printCurrency.rate), printCurrency.code),
+          price: roundForCurr(fromUsd(getItemPrice(item), printCurrency.code, printCurrency.rate), printCurrency.code),
+          total: roundForCurr(fromUsd(getItemPrice(item) * item.quantity, printCurrency.code, printCurrency.rate), printCurrency.code),
         })),
         subtotal: roundForCurr(fromUsd((data?.subtotal ?? (subtotal || 0)), printCurrency.code, printCurrency.rate), printCurrency.code),
         discount: printDiscountAmount,
@@ -1509,7 +1521,7 @@ export function CartPanel({
           ${isPharmacy && item.batchNumber ? `<br/><small style="color: #888;">${t('pos.batchNumberLabel') || 'الدفعة'}: ${esc(item.batchNumber)}</small>` : ''}
         </td>
         <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${esc(printCurrency.symbol)}${formatNumber(item.price * item.quantity * printCurrency.rate)}</td>
+        <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: ${isRTL ? 'left' : 'right'};">${esc(printCurrency.symbol)}${formatNumber(getItemPrice(item) * item.quantity * printCurrency.rate)}</td>
       </tr>
     `).join('');
 
@@ -1612,8 +1624,8 @@ export function CartPanel({
       items: shareCart.map(item => ({
         name: item.name,
         quantity: item.quantity,
-        unitPrice: roundForCurr(fromUsd(item.price, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
-        total: roundForCurr(fromUsd(item.price * item.quantity, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
+        unitPrice: roundForCurr(fromUsd(getItemPrice(item), shareCurrency.code, shareCurrency.rate), shareCurrency.code),
+        total: roundForCurr(fromUsd(getItemPrice(item) * item.quantity, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
       })),
       subtotal: roundForCurr(fromUsd(shareSubtotal, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
       discount: roundForCurr(fromUsd(shareDiscountAmount, shareCurrency.code, shareCurrency.rate), shareCurrency.code),
@@ -2123,25 +2135,12 @@ export function CartPanel({
                     {t('pos.tax') || 'ض.'} {effectiveTaxRate}%: {formatCurrency(taxAmount * activeRate, selectedCurrency.symbol, undefined, selectedCurrency.code, selectedCurrency.name)}
                   </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedUSD >= total - 0.001 && (
-                  <div className="flex items-center justify-between gap-1 w-full flex-wrap">
-                    <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
-                      {t('pos.balance') || 'باقي للعميل'}: {formatCurrency(changeInReceivedCurrency, activeReceivedCurrency.symbol, undefined, activeReceivedCurrency.code, activeReceivedCurrency.name)}
-                      {activeReceivedCurrency.code !== 'USD' && ` (${formatMoney(changeUSD, 'USD')})`}
-                    </span>
-                    {receivedUSD > total + 0.001 && onUpdateItemPrice && (
-                      <button
-                        type="button"
-                        onClick={handleApplySurplusAsProfit}
-                        className="text-[9px] font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                        title={t('pos.setExtraProfit') || 'تعديل سعر الصنف واعتماد الزيادة كربح'}
-                      >
-                        <span>{t('pos.acceptExtraProfit') || 'اعتماد كربح إضافي'} (+{formatMoney(round8(receivedUSD - total), 'USD')})</span>
-                      </button>
-                    )}
-                  </div>
+                {receivedAmount > 0 && receivedUSD > total + 0.001 && (
+                  <span className="bg-success/10 text-success px-1.5 py-0.5 rounded font-bold">
+                    {t('pos.acceptExtraProfit') || 'ربح إضافي'}: +{formatMoney(round8(receivedUSD - total), 'USD')}
+                  </span>
                 )}
-                {receivedAmount > 0 && !wholesaleMode && receivedUSD < total - 0.01 && (
+                {receivedAmount > 0 && receivedUSD < total - 0.001 && (
                   <div className="flex flex-col gap-1 w-full mt-1 animate-in fade-in zoom-in-95 duration-200">
                     <span className="bg-destructive/15 text-destructive px-2 py-1.5 rounded-md text-xs font-bold text-center border border-destructive/30 shadow-sm flex items-center justify-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5" />
@@ -2179,7 +2178,7 @@ export function CartPanel({
           </div>
 
           {/* شريط معالجة عجز المبلغ المقبوض مع خيارات الاعتماد كخصم أو دين */}
-          {!wholesaleMode && receivedAmount > 0 && receivedUSD < total - 0.001 && (
+          {receivedAmount > 0 && receivedUSD < total - 0.001 && (
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex flex-col gap-2 shadow-xs">
               <div className="flex items-center justify-between gap-1 font-bold">
                 <div className="flex items-center gap-1.5">
