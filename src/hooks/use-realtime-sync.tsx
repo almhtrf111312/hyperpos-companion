@@ -154,5 +154,5 @@ export function useRealtimeSync() {
         channelRef.current = null;
       }
     };
-  }, [user]);
+  }, [user?.id]);
 }

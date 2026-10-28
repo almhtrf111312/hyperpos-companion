@@ -1,8 +1,14 @@
 {
-  "versionCode": 360,
-  "versionName": "1.4.7",
-  "lastUpdated": "2026-10-28T22:56:11.742Z",
+  "versionCode": 361,
+  "versionName": "1.4.8",
+  "lastUpdated": "2026-10-29T02:01:08.000Z",
   "buildHistory": [
+    {
+      "versionCode": 361,
+      "versionName": "1.4.8",
+      "date": "2026-10-29",
+      "description": "إصلاح جذري لقناة Realtime: تغيير dependency array من [user] إلى [user?.id] لمنع إعادة تشغيل الـ Effect عند تغيّر كائن المستخدم مع ثبات الـ ID، مما كان يسبب خطأ cannot add postgres_changes callbacks after subscribe()."
+    },
     {
       "versionCode": 360,
       "versionName": "1.4.7",
