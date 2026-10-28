@@ -1,3 +1,7 @@
+# ملف Workflow موحد وجاهز للنسخ بالكامل إلى:
+# .github/workflows/telegram-public-release.yml
+# تم إصلاح مشكلة curl: (26) عند استخدام معرف قناة يبدأ بـ @ مثل @flowpospro
+
 name: Telegram public release
 
 on:
@@ -45,7 +49,7 @@ jobs:
           RAW_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "::error::المتغير السري TELEGRAM_BOT_TOKEN غير موجود في GitHub Secrets!"
+            echo "Error: TELEGRAM_BOT_TOKEN is missing in GitHub Secrets"
             exit 1
           fi
 
@@ -54,33 +58,29 @@ jobs:
 
           if [ -n "$RAW_CHAT" ]; then
             CANDIDATES="$RAW_CHAT"
-            # إذا كان رقماً موجباً فقط، نجرب صيغة القناة الخاصة (-100) أيضاً
             if echo "$RAW_CHAT" | grep -qE '^[0-9]+$'; then
               CANDIDATES="$CANDIDATES -100$RAW_CHAT"
             fi
-            # إذا كان اسم مستخدم بدون @، نضيف @ تلقائياً
             if echo "$RAW_CHAT" | grep -qE '^[A-Za-z][A-Za-z0-9_]+$'; then
               CANDIDATES="$CANDIDATES @$RAW_CHAT"
             fi
           fi
 
-          # استخراج آخر المحادثات أو القنوات التي تفاعلت مع البوت تلقائياً من getUpdates كخيار احتياطي
-          AUTO_CHATS=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getUpdates" \
-            | jq -r '.result[] | (.message.chat.id // .channel_post.chat.id // .my_chat_member.chat.id) | select(. != null)' 2>/dev/null | tac | uniq | tr '\n' ' ')
+          AUTO_CHATS=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getUpdates" | jq -r '.result[]? | (.message.chat.id // .channel_post.chat.id // .my_chat_member.chat.id) | select(. != null)' 2>/dev/null | tac | uniq | tr '\n' ' ' || true)
 
           CANDIDATES="$CANDIDATES $AUTO_CHATS @flowpospro"
 
           for C in $CANDIDATES; do
-            R=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getChat" --data-urlencode "chat_id=$C")
+            R=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getChat" --data-urlencode "chat_id=$C" || true)
             if echo "$R" | grep -q '"ok":true'; then
-              echo "✅ تم التحقق من وجهة الإرسال بنجاح: $C"
+              echo "Verified Telegram target: $C"
               echo "CHANNEL=$C" >> "$GITHUB_ENV"
               exit 0
             fi
-            echo "⚠️ تجربة الوجهة ($C) لم تنجح: $R"
+            echo "Target ($C) check failed: $R"
           done
 
-          echo "::error::لم يتمكن البوت من العثور على القناة أو المحادثة! أضف البوت كمشرف (Admin) في قناتك، أو افتح البوت واضغط /start وأرسل له رسالة، أو ضع TELEGRAM_CHAT_ID الصحيح في GitHub Secrets."
+          echo "Error: Bot cannot access the channel or chat. Add the bot as Admin in your channel, send /start to the bot, or set TELEGRAM_CHAT_ID in GitHub Secrets."
           exit 1
 
       - name: Install dependencies
@@ -132,35 +132,9 @@ jobs:
           fi
           FINAL_NAME="FlowPOS-Pro-v${{ env.VER }}.apk"
           cp "$SRC_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
+          ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
           echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
           echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
-
-      - name: Send APK to Telegram Channel
-        shell: bash
-        env:
-          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHANNEL: ${{ env.CHANNEL }}
-        run: |
-          if [ -f "scripts/telegram-release-notes.cjs" ]; then
-            TEXT=$(node scripts/telegram-release-notes.cjs)
-          else
-            TEXT="📥 Flow POS Pro v${{ env.VER }}"
-          fi
-
-          if [ ${#TEXT} -le 1000 ]; then
-            curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
-              -F chat_id="$CHANNEL" \
-              -F document=@"$APK_PATH" \
-              -F caption="$TEXT"
-          else
-            jq -n --arg c "$CHANNEL" --arg t "$TEXT" '{chat_id:$c,text:$t}' \
-              | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
-                -H 'Content-Type: application/json' -d @-
-            curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
-              -F chat_id="$CHANNEL" \
-              -F document=@"$APK_PATH" \
-              -F caption="📥 Flow POS Pro v${{ env.VER }}"
-          fi
 
       - name: Archive in GitHub Releases
         uses: softprops/action-gh-release@v2
@@ -168,3 +142,37 @@ jobs:
           tag_name: v${{ env.VER }}
           name: Flow POS Pro v${{ env.VER }}
           files: ${{ env.APK_PATH }}
+
+      - name: Send APK to Telegram Channel
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHANNEL: ${{ env.CHANNEL }}
+          APK_PATH: ${{ env.APK_PATH }}
+        run: |
+          if [ ! -f "$APK_PATH" ]; then
+            echo "Error: APK file not found at $APK_PATH"
+            exit 1
+          fi
+
+          if [ -f "scripts/telegram-release-notes.cjs" ]; then
+            TEXT=$(node scripts/telegram-release-notes.cjs)
+          else
+            TEXT="📥 Flow POS Pro v${{ env.VER }}"
+          fi
+
+          # ملاحظة هامة: استخدام --form-string مع chat_id و caption يمنع curl من اعتبار @flowpospro ملفاً محلياً (الخطأ 26)
+          if [ ${#TEXT} -le 1000 ]; then
+            curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
+              --form-string "chat_id=${CHANNEL}" \
+              -F "document=@${APK_PATH}" \
+              --form-string "caption=${TEXT}"
+          else
+            jq -n --arg c "$CHANNEL" --arg t "$TEXT" '{chat_id:$c,text:$t}' \
+              | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+                -H 'Content-Type: application/json' -d @-
+            curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
+              --form-string "chat_id=${CHANNEL}" \
+              -F "document=@${APK_PATH}" \
+              --form-string "caption=📥 Flow POS Pro v${{ env.VER }}"
+          fi
