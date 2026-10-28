@@ -6,7 +6,6 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-# إلغاء أي عملية بناء قديمة قيد التشغيل لنفس الفرع إذا تم دفع تعديل جديد
 concurrency:
   group: build-apk-${{ github.ref }}
   cancel-in-progress: true
@@ -43,20 +42,22 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Read and update application version
+      - name: Read and update application version (Smart Decimal System)
         shell: bash
         run: |
           if [ -f "./version.json" ]; then
             BASE_CODE=$(node -p "require('./version.json').versionCode || 256")
-            BASE_NAME=$(node -p "require('./version.json').versionName || '1.0.26'")
           else
             BASE_CODE="256"
-            BASE_NAME="1.0.26"
           fi
 
-          # الاعتماد على عدد الـ Commits الفعلي لضمان تطابق الإصدار 100% في جميع ملفات الورك فلو
+          # حساب عدد التعديلات وتحويله لنظام فواصل (كل 10 إصلاحات ترفع الرقم الأوسط)
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          VERSION_NAME="${BASE_NAME}-b${COMMIT_COUNT}"
+          MAJOR=1
+          MINOR=$(( COMMIT_COUNT / 10 ))
+          PATCH=$(( COMMIT_COUNT % 10 ))
+
+          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
           VERSION_CODE=$(( BASE_CODE + COMMIT_COUNT ))
 
           if [ -f "./version.json" ]; then
@@ -71,7 +72,7 @@ jobs:
 
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
-          echo " building version: $VERSION_NAME (code: $VERSION_CODE)"
+          echo "Unified Version: v$VERSION_NAME (Code: $VERSION_CODE)"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -86,12 +87,10 @@ jobs:
 
       - name: Setup release signing key
         shell: bash
-        # Always sign with the SAME committed key so new APKs install over old ones
         run: |
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
           KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
 
-          # Verify if KEYSTORE_PASS can unlock the existing keystore, otherwise use fallback password (by owner decision)
           if [ -f "android/app/flowpos-release.keystore" ]; then
             if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
               KEYSTORE_PASS="flowpos123"
@@ -139,32 +138,15 @@ jobs:
           
           find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
           
-          # حفظ بيانات الإصدار بجانب الـ APK ليتمكن ورك فلو التليجرام من قراءتها فوراً دون إعادة بناء
-          cat <<EOF > "$RELEASE_DIR/release-meta.env"
-          VERSION_NAME=${{ env.VERSION_NAME }}
-          VERSION_CODE=${{ env.VERSION_CODE }}
-          FINAL_APK_NAME=${FINAL_APK}
-          COMMIT_SHA=${{ github.sha }}
-          EOF
-
           echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
           echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
           ls -lh "$RELEASE_DIR"
 
-      - name: Upload APK artifact (Versioned)
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: FlowPOS-v${{ env.VERSION_NAME }}
           path: ${{ env.FINAL_APK_PATH }}
-          retention-days: 30
-
-      - name: Upload Latest Ready APK for Telegram
-        uses: actions/upload-artifact@v4
-        with:
-          name: FlowPOS-latest-apk
-          path: |
-            ${{ env.FINAL_APK_PATH }}
-            android/app/build/outputs/apk/release/release-meta.env
           retention-days: 30
 
       - name: Create tagged release
