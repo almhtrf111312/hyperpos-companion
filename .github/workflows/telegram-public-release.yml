@@ -1,6 +1,6 @@
 # ملف Workflow موحد وجاهز للنسخ بالكامل إلى:
 # .github/workflows/telegram-public-release.yml
-# تم إصلاح مشكلة curl: (26) عند استخدام معرف قناة يبدأ بـ @ مثل @flowpospro
+# متطابق 100% في حساب الإصدار والبناء مع build-apk.yml مع الحفاظ على إعدادات النشر في تليجرام
 
 name: Telegram public release
 
@@ -22,37 +22,79 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
     if: github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true
     runs-on: ubuntu-24.04
+    env:
+      VERSION_CODE: '256'
+      VERSION_NAME: '1.0.26'
+      FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          clean: true
           ref: ${{ inputs.source_branch }}
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
-      - name: Read application version
+      - name: Read and update application version (Synced with Main Build)
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          VER=$(node -p "try { require('./version.json').versionName || '1.4.1' } catch(e) { '1.4.1' }")
-          echo "VER=$VER" >> "$GITHUB_ENV"
+          if [ -f "./version.json" ]; then
+            BASE_CODE=$(node -p "require('./version.json').versionCode || 256")
+            BASE_NAME=$(node -p "require('./version.json').versionName || '1.0.26'")
+          else
+            BASE_CODE="256"
+            BASE_NAME="1.0.26"
+          fi
+
+          # جلب آخر run_number من الورك فلو الأساسي (build-apk.yml) ليتطابق الإصدار 100%
+          MAIN_RUN_NUM=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-apk.yml/runs?branch=${{ inputs.source_branch }}&per_page=1" \
+            | jq -r '.workflow_runs[0].run_number // empty' || true)
+
+          # في حال تعذر الجلب لأي سبب، نستخدم الرقم الحالي
+          if [ -z "$MAIN_RUN_NUM" ] || [ "$MAIN_RUN_NUM" = "null" ]; then
+            RUN_NUM="${{ github.run_number }}"
+          else
+            RUN_NUM="$MAIN_RUN_NUM"
+          fi
+
+          VERSION_NAME="${BASE_NAME}-b${RUN_NUM}"
+          VERSION_CODE=$(( BASE_CODE + RUN_NUM ))
+
+          if [ -f "./version.json" ]; then
+            node -e "
+              const fs = require('fs');
+              const v = JSON.parse(fs.readFileSync('./version.json', 'utf8'));
+              v.versionCode = $VERSION_CODE;
+              v.versionName = '$VERSION_NAME';
+              fs.writeFileSync('./version.json', JSON.stringify(v, null, 2));
+            "
+          fi
+
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VER=$VERSION_NAME" >> "$GITHUB_ENV"
 
       - name: Verify and resolve Telegram Chat ID
         shell: bash
@@ -98,10 +140,12 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build web app
+      - name: Build embedded web application
+        env:
+          VITE_BUILD_COMMIT: ${{ github.sha }}
         run: npm run build
 
-      - name: Sync to Android
+      - name: Sync embedded files to Android
         run: npx cap sync android
 
       - name: Setup release signing key
@@ -115,6 +159,9 @@ jobs:
               KEYSTORE_PASS="flowpos123"
               KEY_PASS="flowpos123"
             fi
+          else
+            echo "::error::Release keystore file android/app/flowpos-release.keystore is missing from repository. Build aborted to protect signing key integrity."
+            exit 1
           fi
 
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
@@ -125,6 +172,8 @@ jobs:
       - name: Build signed release APK
         working-directory: android
         env:
+          APP_VERSION_CODE: ${{ env.VERSION_CODE }}
+          APP_VERSION_NAME: ${{ env.VERSION_NAME }}
           KEYSTORE_PATH: flowpos-release.keystore
           KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
           KEY_ALIAS: flowpos
@@ -137,16 +186,22 @@ jobs:
         shell: bash
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
+          VERSION="${{ env.VERSION_NAME }}"
+          FINAL_NAME="FlowPOS-v${VERSION}.apk"
+          
           SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
           if [ -z "$SRC_APK" ]; then
             echo "Error: No APK found in $RELEASE_DIR"
             exit 1
           fi
-          FINAL_NAME="FlowPOS-Pro-v${{ env.VER }}.apk"
+          
           cp "$SRC_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
           ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
+          
           echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
           echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
+          echo "FINAL_APK_NAME=$FINAL_NAME" >> "$GITHUB_ENV"
+          echo "FINAL_APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
 
       - name: Archive in GitHub Releases
         uses: softprops/action-gh-release@v2
