@@ -5,22 +5,35 @@
 name: Telegram public release
 
 on:
-  push:
-    branches:
-      - public-release
   workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'الفرع الذي تريد بناء نسخته وإرسالها للمستخدمين'
+        required: true
+        default: public-release
+        type: choice
+        options:
+          - public-release
+          - main
+      confirm_publish:
+        description: 'أؤكد إرسال ملف التطبيق إلى قناة Telegram الآن'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.source_branch }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
