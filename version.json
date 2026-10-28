@@ -1,8 +1,14 @@
 {
-  "versionCode": 355,
-  "versionName": "1.4.2",
-  "lastUpdated": "2026-10-28T07:53:00.000Z",
+  "versionCode": 356,
+  "versionName": "1.4.3",
+  "lastUpdated": "2026-10-28T08:20:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 356,
+      "versionName": "1.4.3",
+      "date": "2026-10-28",
+      "description": "زر نشر مباشر في لوحة Boss يحدّث فرع public-release ويبدأ البناء والإرسال للقناة."
+    },
     {
       "versionCode": 355,
       "versionName": "1.4.2",

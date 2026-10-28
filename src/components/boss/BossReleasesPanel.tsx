@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Send, Save, Trash2, Zap } from 'lucide-react';
+import { RefreshCw, Rocket, Send, Save, Trash2, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -68,6 +68,19 @@ export function BossReleasesPanel() {
     toast.success('تم النشر في القناة');
   };
 
+  const publishNow = async () => {
+    if (!window.confirm(`سيتم نشر v${CURRENT_VERSION_NAME} من main إلى المستخدمين وإرسال الملف للقناة. متابعة؟`)) return;
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke('trigger-public-release', { body: {} });
+    setBusy(false);
+    if (error) {
+      const ctx = (error as { context?: Response }).context;
+      const details = ctx?.text ? await ctx.text().catch(() => '') : '';
+      return toast.error('فشل بدء النشر: ' + (details || error.message));
+    }
+    toast.success(`بدأ البناء (${data?.sha}) — سيصل الملف للقناة خلال دقائق`);
+  };
+
   const send = async () => {
     if (!draft.title.trim()) return toast.error('اكتب عنوان الإشعار');
     setBusy(true);
@@ -129,6 +142,9 @@ export function BossReleasesPanel() {
           </div>
           <Button size="sm" variant="secondary" className="w-full gap-1" disabled={busy} onClick={publishTelegram}>
             <Send className="w-4 h-4" /> نشر التحديث في قناة Telegram
+          </Button>
+          <Button size="sm" className="w-full gap-1" disabled={busy} onClick={publishNow}>
+            <Rocket className="w-4 h-4" /> نشر مباشر للمستخدمين (بناء وإرسال الملف)
           </Button>
         </div>
 
