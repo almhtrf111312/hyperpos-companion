@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.4.3",
+    "date": "2026-10-28",
+    "changes": [
+      "زر نشر مباشر في لوحة Boss يحدّث public-release من main ويشغّل بناء Telegram."
+    ],
+    "public": {
+      "new": [],
+      "improved": [],
+      "fixed": []
+    }
+  },
+  {
     "version": "1.4.2",
     "date": "2026-10-28",
     "changes": [
