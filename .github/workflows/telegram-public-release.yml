@@ -1,3 +1,6 @@
+# ملف Workflow موحد وجاهز للنسخ بالكامل إلى:
+# .github/workflows/telegram-public-release.yml
+# تم إصلاح مشكلة curl: (26) عند استخدام معرف قناة يبدأ بـ @ مثل @flowpospro
 
 name: Telegram public release
 
@@ -16,37 +19,36 @@ on:
         required: true
         default: false
         type: boolean
-      custom_notes:
-        description: 'ملاحظات التحديث لتليجرام (اختياري - اتركه فارغاً لاستخدام الملاحظات التلقائية)'
-        required: false
-        default: ''
-        type: string
-      force_rebuild:
-        description: 'إجبار إعادة البناء من الصفر بدلاً من سحب النسخة الجاهزة'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   release:
     if: github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true
     runs-on: ubuntu-24.04
-    env:
-      VERSION_CODE: '256'
-      VERSION_NAME: '1.0.26'
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          clean: true
           ref: ${{ inputs.source_branch }}
 
-      - name: Calculate unified application version
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Read application version
         shell: bash
         run: |
           if [ -f "./version.json" ]; then
@@ -57,7 +59,6 @@ jobs:
             BASE_NAME="1.0.26"
           fi
 
-          # نفس معادلة الورك فلو الأساسي لضمان التطابق 100%
           COMMIT_COUNT=$(git rev-list --count HEAD)
           VERSION_NAME="${BASE_NAME}-b${COMMIT_COUNT}"
           VERSION_CODE=$(( BASE_CODE + COMMIT_COUNT ))
@@ -75,7 +76,6 @@ jobs:
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VER=$VERSION_NAME" >> "$GITHUB_ENV"
-          echo "Target Version: $VERSION_NAME (Code: $VERSION_CODE)"
 
       - name: Verify and resolve Telegram Chat ID
         shell: bash
@@ -118,72 +118,18 @@ jobs:
           echo "Error: Bot cannot access the channel or chat. Add the bot as Admin in your channel, send /start to the bot, or set TELEGRAM_CHAT_ID in GitHub Secrets."
           exit 1
 
-      - name: Try downloading ready APK from main build workflow
-        id: fetch_artifact
-        if: ${{ inputs.force_rebuild != true }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "Searching for a ready APK matching commit ${{ github.sha }}..."
-          RUN_ID=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-apk.yml/runs?branch=${{ inputs.source_branch }}&status=success&per_page=5" \
-            | jq -r --arg sha "${{ github.sha }}" '.workflow_runs[] | select(.head_sha == $sha) | .id' | head -n 1 || true)
-
-          if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
-            echo "Found matching successful build run ID: $RUN_ID"
-            mkdir -p /tmp/ready-artifact
-            if gh run download "$RUN_ID" -n "FlowPOS-latest-apk" -D /tmp/ready-artifact --repo "${{ github.repository }}" 2>/dev/null; then
-              READY_APK=$(ls /tmp/ready-artifact/*.apk 2>/dev/null | head -n 1)
-              if [ -n "$READY_APK" ] && [ -f "$READY_APK" ]; then
-                FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
-                cp "$READY_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
-                echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
-                echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
-                echo "ARTIFACT_FOUND=true" >> "$GITHUB_ENV"
-                echo "Successfully fetched pre-built APK: $FINAL_NAME"
-                exit 0
-              fi
-            fi
-          fi
-
-          echo "No pre-built APK found for this commit (or download skipped). Proceeding with full build..."
-          echo "ARTIFACT_FOUND=false" >> "$GITHUB_ENV"
-
-      - name: Setup Java
-        if: env.ARTIFACT_FOUND != 'true'
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Setup Node.js
-        if: env.ARTIFACT_FOUND != 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Setup Gradle
-        if: env.ARTIFACT_FOUND != 'true'
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Install dependencies
-        if: env.ARTIFACT_FOUND != 'true'
         run: npm install --legacy-peer-deps
 
       - name: Build web app
-        if: env.ARTIFACT_FOUND != 'true'
         env:
           VITE_BUILD_COMMIT: ${{ github.sha }}
         run: npm run build
 
       - name: Sync to Android
-        if: env.ARTIFACT_FOUND != 'true'
         run: npx cap sync android
 
       - name: Setup release signing key
-        if: env.ARTIFACT_FOUND != 'true'
         shell: bash
         run: |
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
@@ -194,9 +140,6 @@ jobs:
               KEYSTORE_PASS="flowpos123"
               KEY_PASS="flowpos123"
             fi
-          else
-            echo "::error::Release keystore file android/app/flowpos-release.keystore is missing from repository. Build aborted to protect signing key integrity."
-            exit 1
           fi
 
           echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
@@ -205,7 +148,6 @@ jobs:
           echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
-        if: env.ARTIFACT_FOUND != 'true'
         working-directory: android
         env:
           APP_VERSION_CODE: ${{ env.VERSION_CODE }}
@@ -218,8 +160,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --warning-mode=all
 
-      - name: Prepare APK file (from fallback build)
-        if: env.ARTIFACT_FOUND != 'true'
+      - name: Prepare APK file
         shell: bash
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
@@ -228,18 +169,11 @@ jobs:
             echo "Error: No APK found in $RELEASE_DIR"
             exit 1
           fi
-          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
+          FINAL_NAME="FlowPOS-Pro-v${{ env.VER }}.apk"
           cp "$SRC_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
           ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
           echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
           echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
-
-      - name: Archive in GitHub Releases
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ env.VER }}
-          name: Flow POS Pro v${{ env.VER }}
-          files: ${{ env.APK_PATH }}
 
       - name: Send APK to Telegram Channel
         shell: bash
@@ -247,24 +181,16 @@ jobs:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL: ${{ env.CHANNEL }}
           APK_PATH: ${{ env.APK_PATH }}
-          CUSTOM_NOTES: ${{ inputs.custom_notes }}
         run: |
           if [ ! -f "$APK_PATH" ]; then
             echo "Error: APK file not found at $APK_PATH"
             exit 1
           fi
 
-          if [ -n "$CUSTOM_NOTES" ]; then
-            TEXT="📥 Flow POS Pro v${{ env.VER }}
-
-          📝 التحديثات:
-          ${CUSTOM_NOTES}"
-          elif [ -f "scripts/telegram-release-notes.cjs" ]; then
+          if [ -f "scripts/telegram-release-notes.cjs" ]; then
             TEXT=$(node scripts/telegram-release-notes.cjs)
           else
-            LAST_COMMIT=$(git log -1 --pretty=format:"%s")
-            TEXT="📥 Flow POS Pro v${{ env.VER }} (Code: ${{ env.VERSION_CODE }})
-          🔹 آخر تعديل: ${LAST_COMMIT}"
+            TEXT="📥 Flow POS Pro v${{ env.VER }}"
           fi
 
           # ملاحظة هامة: استخدام --form-string مع chat_id و caption يمنع curl من اعتبار @flowpospro ملفاً محلياً (الخطأ 26)
@@ -282,3 +208,4 @@ jobs:
               -F "document=@${APK_PATH}" \
               --form-string "caption=📥 Flow POS Pro v${{ env.VER }}"
           fi
+ 
