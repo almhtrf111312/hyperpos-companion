@@ -1,8 +1,14 @@
 {
-  "versionCode": 362,
-  "versionName": "1.4.9",
-  "lastUpdated": "2026-10-29T02:15:07.000Z",
+  "versionCode": 363,
+  "versionName": "1.5.0",
+  "lastUpdated": "2026-10-29T02:30:00.000Z",
   "buildHistory": [
+    {
+      "versionCode": 363,
+      "versionName": "1.5.0",
+      "date": "2026-10-29",
+      "description": "لوحة نشر التحديثات تقرأ أحدث نسخة من main تلقائياً وتعرض تنبيه نسخة جديدة مع زر نشر مباشر."
+    },
     {
       "versionCode": 362,
       "versionName": "1.4.9",

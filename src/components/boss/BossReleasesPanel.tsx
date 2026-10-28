@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  CURRENT_VERSION_NAME,
-  CURRENT_VERSION_CODE,
+  CURRENT_VERSION_NAME as BUNDLED_VERSION_NAME,
+  CURRENT_VERSION_CODE as BUNDLED_VERSION_CODE,
   fetchReleaseConfig,
   saveReleaseConfig,
   type ReleaseConfig,
@@ -79,6 +79,28 @@ export function BossReleasesPanel() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isPublishingTelegramOnly, setIsPublishingTelegramOnly] = useState(false);
+
+  // أحدث نسخة مدفوعة إلى main (تُقرأ من GitHub مباشرة، لا من نسخة التطبيق المثبتة)
+  const [mainVersion, setMainVersion] = useState<{ versionName: string; versionCode: number; sha: string | null; notes: string[] } | null>(null);
+  const [mainError, setMainError] = useState<string | null>(null);
+  const loadMainVersion = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-main-version', { body: {} });
+      if (error || !data?.versionCode) throw new Error(data?.error || error?.message || 'تعذر القراءة');
+      setMainVersion(data);
+      setMainError(null);
+    } catch (e: any) {
+      setMainError(e.message);
+    }
+  };
+  useEffect(() => {
+    loadMainVersion();
+    const t = setInterval(loadMainVersion, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const CURRENT_VERSION_NAME = mainVersion?.versionName ?? BUNDLED_VERSION_NAME;
+  const CURRENT_VERSION_CODE = mainVersion?.versionCode ?? BUNDLED_VERSION_CODE;
+  const hasNewOnMain = (mainVersion?.versionCode ?? 0) > (cfg?.latest_version_code ?? 0);
 
   // Broadcast Composer State
   const [broadcastDraft, setBroadcastDraft] = useState({
@@ -304,6 +326,29 @@ export function BossReleasesPanel() {
 
   return (
     <div className="space-y-4 max-w-xl mx-auto pb-6">
+      {/* 0. تنبيه وجود نسخة جديدة على main لم تُنشر بعد */}
+      {hasNewOnMain && (
+        <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3 flex items-center justify-between gap-2">
+          <div className="text-xs">
+            <p className="font-bold text-primary">
+              نسخة جديدة جاهزة على main: <span dir="ltr">v{mainVersion?.versionName} (Build {mainVersion?.versionCode})</span>
+            </p>
+            <p className="text-muted-foreground mt-0.5">
+              المنشور حالياً: <span dir="ltr">Build {cfg?.latest_version_code || '—'}</span>
+              {mainVersion?.sha ? <> · <span dir="ltr" className="font-mono">{mainVersion.sha}</span></> : null}
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setIsConfirmModalOpen(true)}>
+            <Rocket className="w-4 h-4 me-1" /> نشر
+          </Button>
+        </div>
+      )}
+      {mainError && (
+        <p className="text-[11px] text-muted-foreground text-center">
+          تعذر قراءة أحدث نسخة من main ({mainError}) — تُعرض نسخة هذا التطبيق.
+        </p>
+      )}
+
       {/* 1. بطاقة إحصاءات الإصدارات الحالية */}
       <div className="grid grid-cols-3 gap-2.5 text-center">
         <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-xs">

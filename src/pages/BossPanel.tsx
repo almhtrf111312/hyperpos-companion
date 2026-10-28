@@ -2381,7 +2381,7 @@ export default function BossPanel() {
                 size="sm"
                 variant="outline"
                 className="text-xs h-8 rounded-lg shrink-0"
-                onClick={loadOwners}
+                onClick={() => fetchData()}
               >
                 <RefreshCw className="w-3.5 h-3.5 gap-1" />
                 تحديث الفحص

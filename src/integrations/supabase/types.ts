@@ -2313,6 +2313,7 @@ export type Database = {
         Returns: Json
       }
       can_add_cashier: { Args: { _owner_id: string }; Returns: boolean }
+      clean_old_error_logs: { Args: never; Returns: number }
       count_owner_cashiers: { Args: { _owner_id: string }; Returns: number }
       deduct_product_quantity: {
         Args: { _amount: number; _product_id: string }
