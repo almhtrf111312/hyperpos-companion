@@ -1,8 +1,8 @@
 # Settings synchronization
 
 ## Manual Telegram publication
-- [ ] Change Telegram release to manual-only publication with explicit source-branch selection.
-- [ ] Check publication trigger rules without sending a real update.
+- [x] Change Telegram release to manual-only publication with explicit source-branch selection.
+- [x] Check publication trigger rules without sending a real update (3 focused tests passed; preview build OK).
 
 - [x] Repair portable settings save/restore, including backup preferences, language, disabled barcode mode, and cleared custom fields.
 - [x] Restore appearance preferences by platform without copying printer pairing between devices.
