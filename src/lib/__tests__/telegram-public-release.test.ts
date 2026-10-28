@@ -20,9 +20,9 @@ describe('manual Telegram publication', () => {
     expect(workflow.jobs.release.if).toBe("github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true");
   });
 
-  it('builds the selected main or public-release branch instead of the dispatch branch', () => {
-    expect(workflow.on.workflow_dispatch.inputs.source_branch.options).toEqual(['public-release', 'main']);
-    expect(workflow.on.workflow_dispatch.inputs.source_branch.default).toBe('public-release');
+  it('builds main only instead of the dispatch branch', () => {
+    expect(workflow.on.workflow_dispatch.inputs.source_branch.options).toEqual(['main']);
+    expect(workflow.on.workflow_dispatch.inputs.source_branch.default).toBe('main');
     const checkout = workflow.jobs.release.steps.find((step: { name: string }) => step.name === 'Checkout source');
     expect(checkout?.with.ref).toBe('${{ inputs.source_branch }}');
   });

@@ -10,10 +10,9 @@ on:
       source_branch:
         description: 'الفرع الذي تريد بناء نسخته وإرسالها للمستخدمين'
         required: true
-        default: public-release
+        default: main
         type: choice
         options:
-          - public-release
           - main
       confirm_publish:
         description: 'أؤكد إرسال ملف التطبيق إلى قناة Telegram الآن'

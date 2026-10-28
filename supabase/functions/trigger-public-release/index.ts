@@ -35,12 +35,8 @@ Deno.serve(async (req) => {
     if (!main.ok) return json({ error: 'تعذر قراءة فرع main', status: main.status, details: main.text }, 502);
     const sha = main.data.object.sha as string;
 
-    let up = await gh('PATCH', 'git/refs/heads/public-release', { sha, force: true });
-    if (up.status === 422 || up.status === 404) up = await gh('POST', 'git/refs', { ref: 'refs/heads/public-release', sha });
-    if (!up.ok) return json({ error: 'تعذر تحديث فرع public-release', status: up.status, details: up.text }, 502);
-
     const run = await gh('POST', 'actions/workflows/telegram-public-release.yml/dispatches', {
-      ref: 'public-release', inputs: { source_branch: 'public-release', confirm_publish: true },
+      ref: 'main', inputs: { source_branch: 'main', confirm_publish: true },
     });
     if (!run.ok) return json({ error: 'تعذر بدء البناء', status: run.status, details: run.text }, 502);
     return json({ success: true, sha: sha.slice(0, 7) });
