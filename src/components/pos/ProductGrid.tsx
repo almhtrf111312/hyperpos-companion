@@ -314,7 +314,7 @@ export const ProductGrid = memo(function ProductGrid({
 
                   <div className="w-full pt-1.5 border-t border-border/30 mt-auto flex items-center justify-between gap-1.5">
                     {renderDisplayPrice(product.price, 'text-sm')}
-                    <span className="inline-flex h-8 min-w-[2.75rem] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary px-2 text-[1.125rem] font-black leading-none tabular-nums text-primary-foreground shadow-sm">
+                    <span className="inline-flex h-7 min-w-[2.25rem] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary px-1.5 text-[0.875rem] font-black leading-none tabular-nums text-primary-foreground shadow-sm">
                       {product.quantity} {t('pos.piece') || 'قطعة'}
                     </span>
                   </div>
@@ -348,7 +348,7 @@ export const ProductGrid = memo(function ProductGrid({
                   </h4>
                   <div className="w-full pt-1 border-t border-border/30 flex items-center justify-between gap-0.5">
                     {renderDisplayPrice(product.price, 'text-[11px]')}
-                    <span className="inline-flex h-8 min-w-[2.75rem] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary px-2 text-[1.125rem] font-black leading-none tabular-nums text-primary-foreground shadow-sm">
+                    <span className="inline-flex h-7 min-w-[2.25rem] shrink-0 items-center justify-center rounded-lg border border-primary bg-primary px-1.5 text-[0.875rem] font-black leading-none tabular-nums text-primary-foreground shadow-sm">
                       {product.quantity}
                     </span>
                   </div>

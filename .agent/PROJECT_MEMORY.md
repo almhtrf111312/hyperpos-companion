@@ -72,6 +72,7 @@
 * **2026-10-28:** Appearance Draft Tracking and POS Card Readability:
   * Appearance compares all pending theme fields with its saved baseline; ThemeSection emits the full theme draft while existing preview, save, and revert behavior remains unchanged.
   * POS product cards render the currency symbol and amount with a visible divider and emphasize stock counts using theme semantic colors.
+  * Refined the stock-count badge to a 12.25px number in a 24.5px-high capsule, slightly larger than adjacent price text while retaining theme colors.
   * No accounting, stored data, database, or sync behavior changes. Production build passes.
 * **Phase 6 — Explicit Currency Activation & Display Modes:**
   * USD remains the base currency; non-USD currencies are not enabled from missing flags or exchange-rate metadata alone. Legacy TRY/SYP slots still resolve their stored currency identity, while setup and cash shifts require explicit enablement (or a deliberately selected primary currency).
