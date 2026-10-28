@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  CURRENT_VERSION_NAME,
-  CURRENT_VERSION_CODE,
+  CURRENT_VERSION_NAME as BUNDLED_VERSION_NAME,
+  CURRENT_VERSION_CODE as BUNDLED_VERSION_CODE,
   fetchReleaseConfig,
   saveReleaseConfig,
   type ReleaseConfig,
@@ -79,6 +79,28 @@ export function BossReleasesPanel() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isPublishingTelegramOnly, setIsPublishingTelegramOnly] = useState(false);
+
+  // أحدث نسخة مدفوعة إلى main (تُقرأ من GitHub مباشرة، لا من نسخة التطبيق المثبتة)
+  const [mainVersion, setMainVersion] = useState<{ versionName: string; versionCode: number; sha: string | null; notes: string[] } | null>(null);
+  const [mainError, setMainError] = useState<string | null>(null);
+  const loadMainVersion = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-main-version', { body: {} });
+      if (error || !data?.versionCode) throw new Error(data?.error || error?.message || 'تعذر القراءة');
+      setMainVersion(data);
+      setMainError(null);
+    } catch (e: any) {
+      setMainError(e.message);
+    }
+  };
+  useEffect(() => {
+    loadMainVersion();
+    const t = setInterval(loadMainVersion, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const CURRENT_VERSION_NAME = mainVersion?.versionName ?? BUNDLED_VERSION_NAME;
+  const CURRENT_VERSION_CODE = mainVersion?.versionCode ?? BUNDLED_VERSION_CODE;
+  const hasNewOnMain = (mainVersion?.versionCode ?? 0) > (cfg?.latest_version_code ?? 0);
 
   // Broadcast Composer State
   const [broadcastDraft, setBroadcastDraft] = useState({
