@@ -1,10 +1,9 @@
-# عند الدفع إلى فرع "public-release": يبني APK موقّعاً ويرسله مباشرة إلى قناة Telegram.
-# أسرار مطلوبة: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID (@اسم_القناة أو -100xxxxxxxxxx)
 name: Telegram public release
 
 on:
   push:
-    branches: [ public-release ]
+    branches:
+      - public-release
   workflow_dispatch:
 
 permissions:
@@ -14,49 +13,74 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout source
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-java@v5
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: actions/setup-node@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - uses: gradle/actions/setup-gradle@v5
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Read version
-        run: echo "VER=$(node -p "require('./version.json').versionName")" >> "$GITHUB_ENV"
+      - name: Read application version
+        shell: bash
+        run: |
+          VER=$(node -p "try { require('./version.json').versionName || '1.4.1' } catch(e) { '1.4.1' }")
+          echo "VER=$VER" >> "$GITHUB_ENV"
 
-      - name: Check Telegram channel access
+      - name: Verify and resolve Telegram Chat ID
+        shell: bash
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           RAW_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::المتغير السري TELEGRAM_BOT_TOKEN غير موجود في GitHub Secrets!"
+            exit 1
+          fi
+
           RAW_CHAT=$(echo "$RAW_CHAT" | tr -d '[:space:]')
           CANDIDATES=""
+
           if [ -n "$RAW_CHAT" ]; then
             CANDIDATES="$RAW_CHAT"
-            # رقم بدون -100 → جرّب صيغة القناة أيضاً
-            if echo "$RAW_CHAT" | grep -qE '^[0-9]+$'; then CANDIDATES="$CANDIDATES -100$RAW_CHAT"; fi
-            # اسم بدون @ → أضفها
-            if echo "$RAW_CHAT" | grep -qE '^[A-Za-z][A-Za-z0-9_]+$'; then CANDIDATES="$CANDIDATES @$RAW_CHAT"; fi
+            # إذا كان رقماً موجباً فقط، نجرب صيغة القناة الخاصة (-100) أيضاً
+            if echo "$RAW_CHAT" | grep -qE '^[0-9]+$'; then
+              CANDIDATES="$CANDIDATES -100$RAW_CHAT"
+            fi
+            # إذا كان اسم مستخدم بدون @، نضيف @ تلقائياً
+            if echo "$RAW_CHAT" | grep -qE '^[A-Za-z][A-Za-z0-9_]+$'; then
+              CANDIDATES="$CANDIDATES @$RAW_CHAT"
+            fi
           fi
-          CANDIDATES="$CANDIDATES @flowpospro"
+
+          # استخراج آخر المحادثات أو القنوات التي تفاعلت مع البوت تلقائياً من getUpdates كخيار احتياطي
+          AUTO_CHATS=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getUpdates" \
+            | jq -r '.result[] | (.message.chat.id // .channel_post.chat.id // .my_chat_member.chat.id) | select(. != null)' 2>/dev/null | tac | uniq | tr '\n' ' ')
+
+          CANDIDATES="$CANDIDATES $AUTO_CHATS @flowpospro"
+
           for C in $CANDIDATES; do
             R=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getChat" --data-urlencode "chat_id=$C")
             if echo "$R" | grep -q '"ok":true'; then
-              echo "✅ القناة موجودة: $C"
+              echo "✅ تم التحقق من وجهة الإرسال بنجاح: $C"
               echo "CHANNEL=$C" >> "$GITHUB_ENV"
               exit 0
             fi
-            echo "❌ $C → $R"
+            echo "⚠️ تجربة الوجهة ($C) لم تنجح: $R"
           done
-          echo "::error::البوت لا يرى القناة. ضع في TELEGRAM_CHAT_ID اسم القناة مثل @flowpospro أو رقماً يبدأ بـ -100، وأضف البوت مشرفاً في القناة مع صلاحية النشر."
+
+          echo "::error::لم يتمكن البوت من العثور على القناة أو المحادثة! أضف البوت كمشرف (Admin) في قناتك، أو افتح البوت واضغط /start وأرسل له رسالة، أو ضع TELEGRAM_CHAT_ID الصحيح في GitHub Secrets."
           exit 1
 
       - name: Install dependencies
@@ -68,45 +92,74 @@ jobs:
       - name: Sync to Android
         run: npx cap sync android
 
-      - name: Setup signing key
+      - name: Setup release signing key
+        shell: bash
         run: |
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
           KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
-          if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
-            KEYSTORE_PASS="flowpos123"; KEY_PASS="flowpos123"
+
+          if [ -f "android/app/flowpos-release.keystore" ]; then
+            if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
+              KEYSTORE_PASS="flowpos123"
+              KEY_PASS="flowpos123"
+            fi
           fi
+
+          echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
           echo "KEYSTORE_PASSWORD=$KEYSTORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
           echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
 
-      - name: Build signed APK
+      - name: Build signed release APK
         working-directory: android
         env:
           KEYSTORE_PATH: flowpos-release.keystore
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
           KEY_ALIAS: flowpos
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --warning-mode=all
 
-      - name: Prepare APK
+      - name: Prepare APK file
+        shell: bash
         run: |
-          SRC=$(ls android/app/build/outputs/apk/release/*.apk | head -n 1)
-          NAME="FlowPOS-Pro-v${VER}.apk"
-          cp "$SRC" "$NAME"
-          echo "APK_PATH=$GITHUB_WORKSPACE/$NAME" >> "$GITHUB_ENV"
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
+          if [ -z "$SRC_APK" ]; then
+            echo "Error: No APK found in $RELEASE_DIR"
+            exit 1
+          fi
+          FINAL_NAME="FlowPOS-Pro-v${{ env.VER }}.apk"
+          cp "$SRC_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
+          echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
+          echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
 
-      - name: Send APK to Telegram channel
+      - name: Send APK to Telegram Channel
+        shell: bash
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHANNEL: ${{ env.CHANNEL }}
         run: |
-          TEXT=$(node scripts/telegram-release-notes.cjs)
+          if [ -f "scripts/telegram-release-notes.cjs" ]; then
+            TEXT=$(node scripts/telegram-release-notes.cjs)
+          else
+            TEXT="📥 Flow POS Pro v${{ env.VER }}"
+          fi
+
           if [ ${#TEXT} -le 1000 ]; then
             curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
-              -F chat_id="$CHANNEL" -F document=@"$APK_PATH" -F caption="$TEXT"
+              -F chat_id="$CHANNEL" \
+              -F document=@"$APK_PATH" \
+              -F caption="$TEXT"
           else
             jq -n --arg c "$CHANNEL" --arg t "$TEXT" '{chat_id:$c,text:$t}' \
-              | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" -H 'Content-Type: application/json' -d @-
+              | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+                -H 'Content-Type: application/json' -d @-
             curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
-              -F chat_id="$CHANNEL" -F document=@"$APK_PATH" -F caption="📥 Flow POS Pro v${VER}"
+              -F chat_id="$CHANNEL" \
+              -F document=@"$APK_PATH" \
+              -F caption="📥 Flow POS Pro v${{ env.VER }}"
           fi
 
       - name: Archive in GitHub Releases
