@@ -262,6 +262,12 @@ export default function BossPanel() {
   // Error Radar unresolved issues badge counter
   const [unresolvedErrorsCount, setUnresolvedErrorsCount] = useState<number>(0);
 
+  // Boss Panel 5-Screen Calm Navigation States
+  type BossTab = 'home' | 'users' | 'releases' | 'health' | 'more';
+  const [activeTab, setActiveTab] = useState<BossTab>('home');
+  const [usersSubTab, setUsersSubTab] = useState<'accounts' | 'codes'>('accounts');
+  const [healthSubTab, setHealthSubTab] = useState<'diagnostics' | 'radar' | 'issues'>('diagnostics');
+
   useEffect(() => {
     setUnresolvedErrorsCount(getUnresolvedErrorCount());
     const unsub = subscribeToErrorRadar(() => {
@@ -1279,76 +1285,398 @@ export default function BossPanel() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="users" className="space-y-4" dir={direction}>
-          <TabsList className="flex items-center gap-1 overflow-x-auto scrollbar-none p-1 bg-muted/60 rounded-2xl w-full sm:grid sm:grid-cols-4 md:grid-cols-8 h-auto border border-border/40 shadow-xs select-none">
-            <TabsTrigger
-              value="users"
-              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <Users className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">المستخدمين</span>
-            </TabsTrigger>
-            <TabsTrigger value="releases" className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer">
-              <Rocket className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">التحديثات</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="codes"
-              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <Key className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">الأكواد</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="issues"
-              className="relative flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">التراخيص</span>
-              {licenseIssueOwners.length > 0 && (
-                <span className="absolute top-1 end-1 sm:static w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                  {licenseIssueOwners.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="contact"
-              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <MessageCircle className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">التواصل</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="system"
-              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <Wrench className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">النظام</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="radar"
-              className="relative flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <Terminal className="w-4 h-4 shrink-0" />
-              <span className="leading-tight">رادار الأخطاء</span>
-              {unresolvedErrorsCount > 0 && (
-                <span className="absolute top-1 end-1 sm:static w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                  {unresolvedErrorsCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="ai-assistant"
-              className="flex-col sm:flex-row shrink-0 min-w-[5rem] sm:min-w-0 sm:w-full py-2 px-1.5 sm:px-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 gap-1 sm:gap-1.5 data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground hover:bg-card/60 whitespace-nowrap cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
-              <span className="leading-tight">المساعد الذكي</span>
-            </TabsTrigger>
-          </TabsList>
+                {/* 1. شريط التنقل العلوي الكبسولي للشاشات الكبيرة واللوحية */}
+        <div className="flex items-center justify-between gap-1 sm:gap-2 p-1.5 bg-muted/60 rounded-2xl border border-border/50 shadow-xs select-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab('home')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              activeTab === 'home'
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            )}
+          >
+            <span className="text-sm sm:text-base">🏠</span>
+            <span className="whitespace-nowrap">الرئيسية</span>
+          </button>
 
-          {/* Tab 1: Users */}
-          <TabsContent value="users" className="space-y-4">
-            {/* Stats Cards */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('users')}
+            className={cn(
+              "relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              activeTab === 'users'
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            )}
+          >
+            <span className="text-sm sm:text-base">👥</span>
+            <span className="whitespace-nowrap">المستخدمون</span>
+            {licenseIssueOwners.length > 0 && (
+              <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                {licenseIssueOwners.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('releases')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              activeTab === 'releases'
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            )}
+          >
+            <span className="text-sm sm:text-base">🚀</span>
+            <span className="whitespace-nowrap">الإصدارات</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('health')}
+            className={cn(
+              "relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              activeTab === 'health'
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            )}
+          >
+            <span className="text-sm sm:text-base">🩺</span>
+            <span className="whitespace-nowrap">الصحة</span>
+            {unresolvedErrorsCount > 0 && (
+              <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                {unresolvedErrorsCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('more')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+              activeTab === 'more'
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            )}
+          >
+            <span className="text-sm sm:text-base">☰</span>
+            <span className="whitespace-nowrap">المزيد</span>
+          </button>
+        </div>
+
+        {/* ===================== SCREEN 1: الرئيسية (Home) ===================== */}
+        {activeTab === 'home' && (
+          <div className="space-y-4 animate-in fade-in pb-16 md:pb-6">
+            {/* بطاقات الإحصاءات الفورية */}
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-4">
+              <Card className="overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 shadow-xs">
+                <CardContent className="p-3.5 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-600 dark:text-blue-400">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xl md:text-2xl font-black">{totalUsers}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">إجمالي المستخدمين</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-xs">
+                <CardContent className="p-3.5 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0 text-emerald-600 dark:text-emerald-400">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xl md:text-2xl font-black">{owners.filter(o => o.role !== 'boss' && o.is_active && !o.license_revoked).length}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">التراخيص النشطة</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={cn(
+                "overflow-hidden border shadow-xs transition-colors",
+                licenseIssueOwners.length > 0
+                  ? "border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5"
+                  : "border-border/60 bg-card"
+              )}>
+                <CardContent className="p-3.5 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                      licenseIssueOwners.length > 0 ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground"
+                    )}>
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn("text-xl md:text-2xl font-black", licenseIssueOwners.length > 0 && "text-amber-600 dark:text-amber-400")}>
+                        {licenseIssueOwners.length}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">تنبيهات التراخيص</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={cn(
+                "overflow-hidden border shadow-xs transition-colors",
+                unresolvedErrorsCount > 0
+                  ? "border-destructive/30 bg-gradient-to-br from-destructive/10 to-destructive/5"
+                  : "border-border/60 bg-card"
+              )}>
+                <CardContent className="p-3.5 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                      unresolvedErrorsCount > 0 ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"
+                    )}>
+                      <Terminal className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn("text-xl md:text-2xl font-black", unresolvedErrorsCount > 0 && "text-destructive")}>
+                        {unresolvedErrorsCount}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">أخطاء الرادار</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* بطاقة يحتاج انتباهك الآن */}
+            {(licenseIssueOwners.length > 0 || unresolvedErrorsCount > 0) ? (
+              <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-foreground">يحتاج انتباهك الآن</h3>
+                    <p className="text-xs text-muted-foreground">تنبيهات فورية تتطلب مراجعة أو تمديد من البوس</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {licenseIssueOwners.length > 0 && (
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/70 shadow-xs">
+                      <div>
+                        <p className="font-bold text-xs text-foreground">تراخيص منتهية أو بحاجة لتمديد</p>
+                        <p className="text-[11px] text-muted-foreground">{licenseIssueOwners.length} حساب متجر بحاجة لمراجعة الترخيص</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs font-semibold h-8 rounded-lg shrink-0"
+                        onClick={() => { setActiveTab('users'); setUsersSubTab('accounts'); }}
+                      >
+                        معاينة الحسابات
+                      </Button>
+                    </div>
+                  )}
+
+                  {unresolvedErrorsCount > 0 && (
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/70 shadow-xs">
+                      <div>
+                        <p className="font-bold text-xs text-foreground">أخطاء غير محلولة في رادار النظام</p>
+                        <p className="text-[11px] text-muted-foreground">{unresolvedErrorsCount} خطأ برمجياً مسجلاً في الرادار</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs font-semibold h-8 rounded-lg shrink-0"
+                        onClick={() => { setActiveTab('health'); setHealthSubTab('radar'); }}
+                      >
+                        فتح الرادار
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-4 flex items-center gap-3 shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">النظام مستقر وسليم بنسبة 100%</h3>
+                  <p className="text-xs text-muted-foreground">جميع التراخيص سارية، ولا توجد أي أخطاء أو بلاغات برمجية مسجلة في الوقت الحالي.</p>
+                </div>
+              </div>
+            )}
+
+            {/* الإجراءات السريعة بنقرتين (Two-Tap Administration) */}
+            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-sm font-bold text-foreground">إجراءات سريعة بنقرتين</h3>
+                </div>
+                <span className="text-[11px] text-muted-foreground">العمليات الأكثر استخداماً</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateOwnerDialog(true)}
+                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs text-foreground">إضافة متجر جديد</p>
+                    <p className="text-[10px] text-muted-foreground">إنشاء حساب مالك</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowNewCodeDialog(true)}
+                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs text-foreground">توليد كود تفعيل</p>
+                    <p className="text-[10px] text-muted-foreground">أكواد اشتراك وترخيص</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('releases')}
+                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs text-foreground">نشر تحديث جديد</p>
+                    <p className="text-[10px] text-muted-foreground">بناء ورفع الـ APK</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('health'); setHealthSubTab('diagnostics'); }}
+                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Wrench className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs text-foreground">فحص صحة النظام</p>
+                    <p className="text-[10px] text-muted-foreground">تشخيص قاعدة البيانات</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* أحدث الحسابات المسجلة */}
+            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">أحدث الحسابات المسجلة</h3>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs h-7 text-primary hover:text-primary font-bold"
+                  onClick={() => { setActiveTab('users'); setUsersSubTab('accounts'); }}
+                >
+                  عرض جميع الحسابات ({owners.length})
+                </Button>
+              </div>
+
+              <div className="divide-y divide-border/40">
+                {owners.slice(0, 5).map((owner) => {
+                  const daysLeft = calculateDaysRemaining(owner.license_expires);
+                  const isExpiringSoon = daysLeft > 0 && daysLeft <= 7;
+                  const isExpired = daysLeft === 0;
+
+                  return (
+                    <div key={owner.user_id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-foreground truncate">{owner.full_name || 'بدون اسم'}</p>
+                          <Badge variant={owner.role === 'boss' ? 'default' : 'secondary'} className="text-[10px] py-0">
+                            {owner.role === 'boss' ? 'بوس' : 'مالك متجر'}
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground font-mono text-[11px] truncate" dir="ltr">{owner.email}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {owner.role !== 'boss' && (
+                          <Badge
+                            variant={isExpired ? 'destructive' : isExpiringSoon ? 'outline' : 'secondary'}
+                            className={cn("text-[10px]", isExpiringSoon && "border-amber-500 text-amber-600")}
+                          >
+                            {isExpired ? 'منتهي' : `${daysLeft} يوم`}
+                          </Badge>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => { setActiveTab('users'); setUsersSubTab('accounts'); setSearchTerm(owner.email || ''); }}
+                        >
+                          إدارة
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== SCREEN 2: المستخدمون والأكواد (Users & Codes) ===================== */}
+        {activeTab === 'users' && (
+          <div className="space-y-4 animate-in fade-in pb-16 md:pb-6">
+            {/* الكبسولة الثنائية للتنقل بين المستخدمين والأكواد */}
+            <div className="flex bg-muted/60 p-1 rounded-2xl gap-1 border border-border/50 shadow-xs max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => setUsersSubTab('accounts')}
+                className={cn(
+                  "flex-1 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                  usersSubTab === 'accounts'
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                )}
+              >
+                <Users className="w-4 h-4" />
+                <span>حسابات المتاجر ({owners.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUsersSubTab('codes')}
+                className={cn(
+                  "flex-1 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                  usersSubTab === 'codes'
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                )}
+              >
+                <Key className="w-4 h-4" />
+                <span>أكواد التفعيل ({codes.length})</span>
+              </button>
+            </div>
+
+            {usersSubTab === 'accounts' && (
+              <div className="space-y-4">
+{/* Stats Cards */}
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
               <Card className="overflow-hidden bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
                 <CardContent className="p-3 md:p-4">
@@ -1850,67 +2178,12 @@ export default function BossPanel() {
                   )}
                 </div>
               </CardContent>
-            </Card>
-          </TabsContent>
+            </Card>              </div>
+            )}
 
-          {/* Tab 2: Activation Codes */}
-          <TabsContent value="codes" className="space-y-4">
-            {/* Default trial period — applies to new accounts only */}
-            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
-              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-border/50">
-                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0 text-emerald-600 dark:text-emerald-400">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <span>المدة الافتراضية للفترة التجريبية</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 md:px-6 space-y-3">
-                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
-                  تُطبَّق هذه المدة على الحسابات الجديدة فقط. الحسابات المفعّلة سابقاً تحتفظ بتاريخ انتهائها ولا يتأثر ترخيصها عند التغيير.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={3650}
-                      value={trialDaysInput}
-                      onChange={(e) => setTrialDaysInput(e.target.value)}
-                      className="h-10 w-28 rounded-xl text-center font-bold"
-                    />
-                    <span className="text-sm text-muted-foreground">يوم</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[30, 60, 90, 180].map((d) => (
-                      <Button
-                        key={d}
-                        type="button"
-                        variant={trialDaysInput === String(d) ? 'default' : 'outline'}
-                        size="sm"
-                        className="h-8 rounded-lg text-xs"
-                        onClick={() => setTrialDaysInput(String(d))}
-                      >
-                        {d} يوم
-                      </Button>
-                    ))}
-                  </div>
-                  <Button
-                    onClick={handleSaveTrialDays}
-                    disabled={isSavingTrialDays}
-                    size="sm"
-                    className="h-10 rounded-xl sm:ms-auto font-semibold"
-                  >
-                    {isSavingTrialDays ? 'جارٍ الحفظ...' : 'حفظ المدة'}
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  المدة الحالية المعتمدة: <span className="font-bold text-foreground">{defaultTrialDays} يوم</span>
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+            {usersSubTab === 'codes' && (
+              <div className="space-y-4">
+<Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
                 <div className="flex items-center justify-between w-full sm:w-auto">
                   <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
@@ -2061,12 +2334,127 @@ export default function BossPanel() {
                   )}
                 </div>
               </CardContent>
-            </Card>
-          </TabsContent>
+            </Card>              </div>
+            )}
+          </div>
+        )}
 
-          {/* Tab 3: License Issues */}
-          <TabsContent value="issues" className="space-y-4">
-            <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+        {/* ===================== SCREEN 3: الإصدارات والتحديثات (Releases) ===================== */}
+        {activeTab === 'releases' && (
+          <div className="animate-in fade-in pb-16 md:pb-6">
+            <BossReleasesPanel />
+          </div>
+        )}
+
+        {/* ===================== SCREEN 4: صحة النظام والرادار (Health & Radar) ===================== */}
+        {activeTab === 'health' && (
+          <div className="space-y-4 animate-in fade-in pb-16 md:pb-6">
+            {/* لافتة عليا خضراء / حمراء تطمينية */}
+            <div className={cn(
+              "rounded-2xl border p-4 flex items-center justify-between gap-3 shadow-xs transition-colors",
+              unresolvedErrorsCount > 0
+                ? "border-destructive/30 bg-destructive/5 text-destructive"
+                : "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                  unresolvedErrorsCount > 0 ? "bg-destructive/20 text-destructive" : "bg-emerald-500/20 text-emerald-600"
+                )}>
+                  {unresolvedErrorsCount > 0 ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground">
+                    {unresolvedErrorsCount > 0
+                      ? `رادار الأخطاء: ${unresolvedErrorsCount} خطأ بحاجة لمراجعة`
+                      : 'حالة النظام: سليم ومستقر 100%'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {unresolvedErrorsCount > 0
+                      ? 'تم تسجيل استثناءات في رادار النظام، يرجى فحص التفاصيل'
+                      : 'الاتصال السحابي، قواعد البيانات، ومزامنة التطبيق تعمل بأقصى كفاءة'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-8 rounded-lg shrink-0"
+                onClick={loadOwners}
+              >
+                <RefreshCw className="w-3.5 h-3.5 gap-1" />
+                تحديث الفحص
+              </Button>
+            </div>
+
+            {/* كبسولة ثلاثية للتبديل السلس */}
+            <div className="flex bg-muted/60 p-1 rounded-2xl gap-1 border border-border/50 shadow-xs max-w-lg mx-auto">
+              <button
+                type="button"
+                onClick={() => setHealthSubTab('diagnostics')}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                  healthSubTab === 'diagnostics'
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                )}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                <span>تشخيص النظام</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHealthSubTab('radar')}
+                className={cn(
+                  "relative flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                  healthSubTab === 'radar'
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                )}
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                <span>رادار الأخطاء</span>
+                {unresolvedErrorsCount > 0 && (
+                  <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center">
+                    {unresolvedErrorsCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHealthSubTab('issues')}
+                className={cn(
+                  "relative flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                  healthSubTab === 'issues'
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                )}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>تنبيهات التراخيص</span>
+                {licenseIssueOwners.length > 0 && (
+                  <span className="w-4 h-4 bg-amber-500 text-white text-[10px] font-bold rounded-full inline-flex items-center justify-center">
+                    {licenseIssueOwners.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {healthSubTab === 'diagnostics' && (
+              <Card className="border border-border/80 shadow-sm rounded-2xl">
+                <CardContent className="p-4 md:p-6">
+                  <SystemDiagnostics />
+                </CardContent>
+              </Card>
+            )}
+
+            {healthSubTab === 'radar' && (
+              <ErrorRadarPanel />
+            )}
+
+            {healthSubTab === 'issues' && (
+              <div className="space-y-4">
+<Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 bg-gradient-to-br from-destructive/8 via-destructive/3 to-transparent border-b border-border/50">
                 <div className="flex items-center justify-between w-full sm:w-auto">
                   <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold text-destructive">
@@ -2270,12 +2658,72 @@ export default function BossPanel() {
                   </div>
                 )}
               </CardContent>
-            </Card>
-          </TabsContent>
+            </Card>              </div>
+            )}
+          </div>
+        )}
 
-          {/* Tab 4: Contact channels */}
-          <TabsContent value="contact" className="space-y-4">
+        {/* ===================== SCREEN 5: المزيد (More) ===================== */}
+        {activeTab === 'more' && (
+          <div className="space-y-4 animate-in fade-in max-w-2xl mx-auto pb-16 md:pb-6">
+            {/* بطاقة الفترة التجريبية الافتراضية */}
+{/* Default trial period — applies to new accounts only */}
             <Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
+              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-border/50">
+                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0 text-emerald-600 dark:text-emerald-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <span>المدة الافتراضية للفترة التجريبية</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 md:px-6 space-y-3">
+                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+                  تُطبَّق هذه المدة على الحسابات الجديدة فقط. الحسابات المفعّلة سابقاً تحتفظ بتاريخ انتهائها ولا يتأثر ترخيصها عند التغيير.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={trialDaysInput}
+                      onChange={(e) => setTrialDaysInput(e.target.value)}
+                      className="h-10 w-28 rounded-xl text-center font-bold"
+                    />
+                    <span className="text-sm text-muted-foreground">يوم</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[30, 60, 90, 180].map((d) => (
+                      <Button
+                        key={d}
+                        type="button"
+                        variant={trialDaysInput === String(d) ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-8 rounded-lg text-xs"
+                        onClick={() => setTrialDaysInput(String(d))}
+                      >
+                        {d} يوم
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={handleSaveTrialDays}
+                    disabled={isSavingTrialDays}
+                    size="sm"
+                    className="h-10 rounded-xl sm:ms-auto font-semibold"
+                  >
+                    {isSavingTrialDays ? 'جارٍ الحفظ...' : 'حفظ المدة'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  المدة الحالية المعتمدة: <span className="font-bold text-foreground">{defaultTrialDays} يوم</span>
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* بطاقة قنوات التواصل والدعم الفني */}
+<Card className="overflow-hidden border border-border/80 shadow-sm rounded-2xl">
               <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent border-b border-border/50">
                 <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
                   <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0 text-primary">
@@ -2311,31 +2759,85 @@ export default function BossPanel() {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Tab 5: System */}
-          <TabsContent value="system" className="space-y-4">
-            <Card className="border border-border/80 shadow-sm rounded-2xl">
+            {/* المساعد الذكي للبوس */}
+            <Card className="border border-border/80 shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="p-4 md:px-6 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border-b border-border/50">
+                <CardTitle className="flex items-center gap-2.5 text-base md:text-lg font-bold">
+                  <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
+                  <span>المساعد الذكي للبوس (Boss AI Assistant)</span>
+                </CardTitle>
+              </CardHeader>
               <CardContent className="p-4 md:p-6">
-                <SystemDiagnostics />
+                <BossAIAssistant />
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
+        )}
 
-          {/* Tab 6: Error Radar */}
-          <TabsContent value="radar" className="space-y-4">
-            <ErrorRadarPanel />
-          </TabsContent>
-
-          <TabsContent value="releases" className="space-y-4">
-            <BossReleasesPanel />
-          </TabsContent>
-
-          {/* Tab: Boss AI Assistant */}
-          <TabsContent value="ai-assistant" className="space-y-4">
-            <BossAIAssistant />
-          </TabsContent>
-        </Tabs>
+        {/* شريط التنقل السفلي المخصص للموبايل والكمبيوتر (Bottom Navigation Bar) */}
+        <nav className="fixed inset-x-0 bottom-0 bg-card/95 backdrop-blur-md border-t border-border z-40 flex justify-around py-1.5 px-2 shadow-lg safe-bottom md:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveTab('home')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all",
+              activeTab === 'home' ? "text-primary scale-105" : "text-muted-foreground"
+            )}
+          >
+            <span className="text-base">🏠</span>
+            <span className="text-[10px] mt-0.5">الرئيسية</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('users')}
+            className={cn(
+              "relative flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all",
+              activeTab === 'users' ? "text-primary scale-105" : "text-muted-foreground"
+            )}
+          >
+            <span className="text-base">👥</span>
+            <span className="text-[10px] mt-0.5">المستخدمون</span>
+            {licenseIssueOwners.length > 0 && (
+              <span className="absolute top-0 end-2 w-2 h-2 rounded-full bg-destructive" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('releases')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all",
+              activeTab === 'releases' ? "text-primary scale-105" : "text-muted-foreground"
+            )}
+          >
+            <span className="text-base">🚀</span>
+            <span className="text-[10px] mt-0.5">الإصدارات</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('health')}
+            className={cn(
+              "relative flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all",
+              activeTab === 'health' ? "text-primary scale-105" : "text-muted-foreground"
+            )}
+          >
+            <span className="text-base">🩺</span>
+            <span className="text-[10px] mt-0.5">الصحة</span>
+            {unresolvedErrorsCount > 0 && (
+              <span className="absolute top-0 end-2 w-2 h-2 rounded-full bg-destructive" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('more')}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all",
+              activeTab === 'more' ? "text-primary scale-105" : "text-muted-foreground"
+            )}
+          >
+            <span className="text-base">☰</span>
+            <span className="text-[10px] mt-0.5">المزيد</span>
+          </button>
+        </nav>
 
         {/* Direct activation without generating a code */}
         <Dialog open={!!directActivateDialog} onOpenChange={() => setDirectActivateDialog(null)}>

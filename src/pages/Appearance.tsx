@@ -37,6 +37,9 @@ export default function Appearance() {
 
   const [resetSignal, setResetSignal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaveSuccess, setIsSaveSuccess] = useState(false);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isCommittedRef = useRef(false);
 
   // Check whether any draft differs from the saved baseline
   const hasThemeChanged = draftTheme !== null && (
@@ -53,66 +56,85 @@ export default function Appearance() {
 
   // Live preview handlers
   const handleDraftFontChange = (newFont: AppFontId) => {
+    isCommittedRef.current = false;
     setDraftFont(newFont);
     applyAppFontToDOM(newFont);
   };
 
   const handleDraftScaleChange = (newScale: UIScaleId) => {
+    isCommittedRef.current = false;
     setDraftScale(newScale);
     applyUIScaleToDOM(newScale);
   };
 
-  // Revert preview on unmount if user leaves page without saving
+  // Revert preview on unmount ONLY if user leaves page without saving
   useEffect(() => {
+    isCommittedRef.current = false;
     return () => {
-      revertTheme();
-      applyAppFontToDOM(savedFontRef.current);
-      applyUIScaleToDOM(savedScaleRef.current);
+      if (!isCommittedRef.current) {
+        const s = savedThemeRef.current;
+        previewTheme(s.mode, s.color, s.blur, s.transparency, s.style);
+        applyAppFontToDOM(savedFontRef.current);
+        applyUIScaleToDOM(savedScaleRef.current);
+      }
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
     };
-  }, [revertTheme]);
+  }, []); // Empty deps: runs cleanup only on true unmount!
 
-  // Commit all draft changes
-  const handleSaveAll = async () => {
-    setIsSaving(true);
-    try {
-      const committedTheme = draftTheme;
-      // 1. Save Theme
-      if (hasThemeChanged && draftTheme) {
-        setFullTheme(draftTheme.mode, draftTheme.color, draftTheme.blur, draftTheme.transparency, draftTheme.style);
-        savedThemeRef.current = { ...draftTheme };
-        setDraftTheme(null);
-      }
+  // Commit all draft changes (Optimistic UI - 0ms immediate local apply)
+  const handleSaveAll = () => {
+    isCommittedRef.current = true;
+    setIsSaving(false);
 
-      // 2. Save Font
-      if (hasFontChanged) {
-        setFont(draftFont);
-        savedFontRef.current = draftFont;
-      }
-
-      // 3. Save UI Scale
-      if (hasScaleChanged) {
-        setScale(draftScale);
-        savedScaleRef.current = draftScale;
-      }
-      await saveUnifiedStoreSettings({
-        appFont: draftFont,
-        uiScale: draftScale,
-        ...(committedTheme ? { theme: committedTheme.mode, themeSettings: committedTheme } : {}),
-      });
-      showSmartToast({
-        type: 'settings',
-        title: t('common.saved') || 'تم الحفظ',
-        description: isRTL ? 'تم حفظ إعدادات المظهر بنجاح' : 'Appearance settings saved successfully',
-        duration: 3500,
-      });
-    } finally {
-      setIsSaving(false);
+    const committedTheme = draftTheme;
+    // 1. Save Theme immediately to DOM and context
+    if (hasThemeChanged && draftTheme) {
+      setFullTheme(draftTheme.mode, draftTheme.color, draftTheme.blur, draftTheme.transparency, draftTheme.style);
+      savedThemeRef.current = { ...draftTheme };
+      setDraftTheme(null);
     }
+
+    // 2. Save Font immediately
+    if (hasFontChanged) {
+      setFont(draftFont);
+      savedFontRef.current = draftFont;
+    }
+
+    // 3. Save UI Scale immediately
+    if (hasScaleChanged) {
+      setScale(draftScale);
+      savedScaleRef.current = draftScale;
+    }
+
+    // 4. Save to Unified Store Settings in background (Fire-and-Forget / Non-blocking)
+    void saveUnifiedStoreSettings({
+      appFont: draftFont,
+      uiScale: draftScale,
+      ...(committedTheme ? { theme: committedTheme.mode, themeSettings: committedTheme } : {}),
+    });
+
+    // 5. Instant UI feedback (Checkmark for 600ms)
+    setIsSaveSuccess(true);
+    showSmartToast({
+      type: 'settings',
+      title: t('common.saved') || 'تم الحفظ',
+      description: isRTL ? 'تم حفظ إعدادات المظهر بنجاح' : 'Appearance settings saved successfully',
+      duration: 3000,
+    });
+
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = setTimeout(() => {
+      setIsSaveSuccess(false);
+    }, 600);
   };
 
   // Discard all draft changes
   const handleCancelAll = () => {
-    revertTheme();
+    isCommittedRef.current = true;
+    const s = savedThemeRef.current;
+    previewTheme(s.mode, s.color, s.blur, s.transparency, s.style);
     applyAppFontToDOM(savedFontRef.current);
     applyUIScaleToDOM(savedScaleRef.current);
 
@@ -155,12 +177,14 @@ export default function Appearance() {
         })}
       </div>
 
-      {/* محتوى التبويب النشط */}
+      {/* محتوى التبويبات — تبقى محملة في الذاكرة لمنع فقدان المسودات عند التنقل */}
       <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border/60 shadow-sm transition-all">
-        {activeTab === 'theme' && (
+        <div className={activeTab === 'theme' ? 'block' : 'hidden'}>
           <ThemeSection
             resetSignal={resetSignal}
+            currentDraft={draftTheme}
             onPendingChange={(pending) => {
+              isCommittedRef.current = false;
               const savedTheme = savedThemeRef.current;
               const hasThemeChanges = pending.mode !== savedTheme.mode ||
                 pending.color !== savedTheme.color ||
@@ -171,30 +195,34 @@ export default function Appearance() {
               if (hasThemeChanges) {
                 previewTheme(pending.mode, pending.color, pending.blur, pending.transparency, pending.style);
               } else {
-                revertTheme();
+                previewTheme(savedTheme.mode, savedTheme.color, savedTheme.blur, savedTheme.transparency, savedTheme.style);
               }
             }}
           />
-        )}
+        </div>
 
-        {activeTab === 'fonts' && (
+        <div className={activeTab === 'fonts' ? 'block' : 'hidden'}>
           <FontSelector
             draftFont={draftFont}
             onDraftChange={handleDraftFontChange}
           />
-        )}
+        </div>
 
-        {activeTab === 'scale' && (
+        <div className={activeTab === 'scale' ? 'block' : 'hidden'}>
           <UIScaleSelector
             draftScale={draftScale}
             onDraftChange={handleDraftScaleChange}
           />
-        )}
-
-
+        </div>
       </div>
 
-      <FloatingSaveBar visible={hasUnsavedChanges} saving={isSaving} onSave={handleSaveAll} onRevert={handleCancelAll} />
+      <FloatingSaveBar
+        visible={hasUnsavedChanges || isSaveSuccess}
+        saving={isSaving}
+        success={isSaveSuccess}
+        onSave={handleSaveAll}
+        onRevert={handleCancelAll}
+      />
     </div>
   );
 }

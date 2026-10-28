@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { captureError } from '@/lib/error-radar';
 
@@ -49,6 +49,27 @@ export class FeatureErrorBoundary extends Component<
     this.setState({ hasError: false, error: null });
   };
 
+  handleClearCacheAndRetry = async (): Promise<void> => {
+    try {
+      const { invalidateAllCaches } = await import('@/lib/cloud');
+      invalidateAllCaches();
+    } catch {
+      // ignore
+    }
+    try {
+      const { NativeSWRCache } = await import('@/lib/cache/native-swr-cache');
+      NativeSWRCache.clear();
+    } catch {
+      // ignore
+    }
+    try {
+      sessionStorage.clear();
+    } catch {
+      // ignore
+    }
+    this.setState({ hasError: false, error: null });
+  };
+
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.compact) {
@@ -58,10 +79,22 @@ export class FeatureErrorBoundary extends Component<
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>تعذّر عرض {this.props.featureName || 'هذا العنصر'}</span>
             </div>
-            <Button className="h-7 gap-1 px-2 text-xs" onClick={this.handleRetry} size="sm" variant="outline">
-              <RotateCcw className="h-3 w-3" />
-              إعادة المحاولة
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button className="h-7 gap-1 px-2 text-xs" onClick={this.handleRetry} size="sm" variant="outline">
+                <RotateCcw className="h-3 w-3" />
+                إعادة المحاولة
+              </Button>
+              <Button
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={this.handleClearCacheAndRetry}
+                size="sm"
+                variant="ghost"
+                title="تفريغ الذاكرة المؤقتة وإعادة المحاولة"
+              >
+                <Trash2 className="h-3 w-3" />
+                تفريغ الكاش
+              </Button>
+            </div>
           </div>
         );
       }
@@ -87,10 +120,21 @@ export class FeatureErrorBoundary extends Component<
               {this.state.error.message}
             </pre>
           )}
-          <Button className="gap-2" onClick={this.handleRetry} size="sm" variant="default">
-            <RotateCcw className="h-4 w-4" />
-            إعادة المحاولة
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button className="gap-2" onClick={this.handleRetry} size="sm" variant="default">
+              <RotateCcw className="h-4 w-4" />
+              إعادة المحاولة
+            </Button>
+            <Button
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              onClick={this.handleClearCacheAndRetry}
+              size="sm"
+              variant="outline"
+            >
+              <Trash2 className="h-4 w-4" />
+              تفريغ الذاكرة المؤقتة وإعادة المحاولة
+            </Button>
+          </div>
         </div>
       );
     }

@@ -1,8 +1,26 @@
 {
-  "versionCode": 357,
-  "versionName": "1.4.4",
-  "lastUpdated": "2026-10-28T08:30:00.000Z",
+  "versionCode": 360,
+  "versionName": "1.4.7",
+  "lastUpdated": "2026-10-28T22:56:11.742Z",
   "buildHistory": [
+    {
+      "versionCode": 360,
+      "versionName": "1.4.7",
+      "date": "2026-10-29",
+      "description": "إعادة تصميم لوحة البوس (Boss Panel) بالكامل إلى 5 شاشات دلالية هادئة بمبدأ «كل شيء بنقرتين أو أقل»، ونظام نشر التحديثات الذكي التلقائي، وشريط تنقل سفلي للهواتف."
+    },
+    {
+      "versionCode": 359,
+      "versionName": "1.4.6",
+      "date": "2026-10-29",
+      "description": "تحويل حفظ المظهر والإعدادات إلى فوري بالكامل (Optimistic 0ms) مع إصلاح دورة حياة ثيمات React وثبات المسودة عند التنقل بين التبويبات."
+    },
+    {
+      "versionCode": 358,
+      "versionName": "1.4.5",
+      "date": "2026-10-29",
+      "description": "تحصين شامل لدورة حياة Realtime وتوفير سياقات أمان بديلة (Safe Fallbacks) لـ Auth و CloudSync لمنع الشاشة البيضاء مع تعزيز حاجز الأخطاء."
+    },
     {
       "versionCode": 357,
       "versionName": "1.4.4",

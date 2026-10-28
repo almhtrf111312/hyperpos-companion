@@ -751,7 +751,8 @@ export async function pullStoreSettingsWithGuard(): Promise<UnifiedStoreSettings
  * 2. مزامنة سحابية في الخلفية مع توضيح الحالة الدقيقة.
  */
 export async function saveUnifiedStoreSettings(
-  partial: Partial<UnifiedStoreSettings>
+  partial: Partial<UnifiedStoreSettings>,
+  options?: { waitCloud?: boolean }
 ): Promise<SaveSettingsResult> {
   // 1. تحميل الإعدادات الحالية ودمج الجزئيات معها
   const current = loadUnifiedStoreSettings();
@@ -839,7 +840,32 @@ export async function saveUnifiedStoreSettings(
     };
   }
 
-  // 5. محاولة المزامنة المباشرة مع السحابة
+  // 5. المزامنة في الخلفية (Offline-First الفوري 0ms كمعيار افتراضي لنظام FlowPOS Pro)
+  if (!options?.waitCloud) {
+    // إطلاق المزامنة السحابية بشكل هادئ في الخلفية دون حظر واجهة المستخدم
+    (async () => {
+      try {
+        const success = await saveStoreSettingsDirect(cloudPayload);
+        if (!success) {
+          enqueueStoreSettingsUpdate(cloudPayload);
+          console.log('[StoreSettingsSync] Background direct sync failed, queued in sync queue');
+        } else {
+          console.log('[StoreSettingsSync] Background cloud sync succeeded');
+        }
+      } catch (err) {
+        console.warn('[StoreSettingsSync] Background sync network error, enqueued in sync queue:', err);
+        enqueueStoreSettingsUpdate(cloudPayload);
+      }
+    })();
+
+    return {
+      success: true,
+      status: 'synced',
+      message: 'تم الحفظ محلياً وتجري المزامنة السحابية في الخلفية',
+    };
+  }
+
+  // 6. محاولة المزامنة المباشرة فقط عند طلب waitCloud: true صراحةً
   try {
     const success = await saveStoreSettingsDirect(cloudPayload);
     if (success) {

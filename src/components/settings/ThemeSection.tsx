@@ -19,18 +19,30 @@ export interface PendingTheme {
 interface ThemeSectionProps {
   onPendingChange?: (pending: PendingTheme) => void;
   resetSignal?: number; // increment to trigger reset
+  currentDraft?: PendingTheme | null;
 }
 
-export function ThemeSection({ onPendingChange, resetSignal }: ThemeSectionProps) {
+export function ThemeSection({ onPendingChange, resetSignal, currentDraft }: ThemeSectionProps) {
   const { mode, color, blurEnabled, transparencyLevel, themeStyle } = useTheme();
   const { t, isRTL } = useLanguage();
   const { pref: perfPref, effective: effectivePerf, setPref: setPerfPref } = usePerformanceMode();
   
-  const [pendingMode, setPendingMode] = useState<ThemeMode>(mode);
-  const [pendingColor, setPendingColor] = useState<ThemeColor>(color);
-  const [pendingBlur, setPendingBlur] = useState<boolean>(blurEnabled);
-  const [pendingTransparency, setPendingTransparency] = useState<number>(transparencyLevel);
-  const [pendingStyle, setPendingStyle] = useState<ThemeStyle>(themeStyle || 'standard');
+  const [pendingMode, setPendingMode] = useState<ThemeMode>(() => currentDraft?.mode ?? mode);
+  const [pendingColor, setPendingColor] = useState<ThemeColor>(() => currentDraft?.color ?? color);
+  const [pendingBlur, setPendingBlur] = useState<boolean>(() => currentDraft?.blur ?? blurEnabled);
+  const [pendingTransparency, setPendingTransparency] = useState<number>(() => currentDraft?.transparency ?? transparencyLevel);
+  const [pendingStyle, setPendingStyle] = useState<ThemeStyle>(() => currentDraft?.style ?? (themeStyle || 'standard'));
+
+  // Synchronize when currentDraft changes from parent
+  useEffect(() => {
+    if (currentDraft) {
+      setPendingMode(currentDraft.mode);
+      setPendingColor(currentDraft.color);
+      setPendingBlur(currentDraft.blur);
+      setPendingTransparency(currentDraft.transparency);
+      setPendingStyle(currentDraft.style);
+    }
+  }, [currentDraft]);
 
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
 

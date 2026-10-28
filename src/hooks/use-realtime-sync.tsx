@@ -80,11 +80,17 @@ export function useRealtimeSync() {
 
       // Cleanup existing channel if any
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        try {
+          supabase.removeChannel(channelRef.current);
+        } catch (err) {
+          console.warn('[Realtime] Error removing old channel:', err);
+        }
+        channelRef.current = null;
       }
 
-      // Create realtime channel for all owner data
-      const channel = supabase.channel(`owner-sync-${ownerId}`);
+      // Create realtime channel with unique timestamp to guarantee a pristine closed state
+      const channelTopic = `owner-sync-${ownerId}-${Date.now()}`;
+      const channel = supabase.channel(channelTopic);
 
       // Register all tables with the same owner-scoped filter
       SYNC_TABLES.forEach(table => {
@@ -140,7 +146,11 @@ export function useRealtimeSync() {
       isMounted = false;
       window.removeEventListener('online', handleOnline);
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        try {
+          supabase.removeChannel(channelRef.current);
+        } catch (err) {
+          console.warn('[Realtime] Error removing channel on unmount:', err);
+        }
         channelRef.current = null;
       }
     };

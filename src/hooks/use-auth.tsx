@@ -781,11 +781,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const SAFE_AUTH_FALLBACK: AuthContextType = {
+  user: null,
+  session: null,
+  profile: null,
+  isLoading: true,
+  isAutoLoginChecking: false,
+  stayLoggedIn: false,
+  signIn: async () => ({ error: new Error('جاري تهيئة المصادقة...') }),
+  signUp: async () => ({ error: new Error('جاري تهيئة المصادقة...') }),
+  signOut: async () => {},
+  refreshProfile: async () => {},
+  setStayLoggedIn: () => {},
+};
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    console.warn('[Auth] useAuth accessed outside AuthProvider, using safe fallback');
+    return SAFE_AUTH_FALLBACK;
   }
   return context;
 }

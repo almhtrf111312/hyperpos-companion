@@ -87,6 +87,20 @@ interface CloudSyncContextType {
   resumeSync: () => void;
 }
 
+// 1. تعريف الكائن الآمن الافتراضي:
+const SAFE_CLOUD_SYNC_FALLBACK: CloudSyncContextType = {
+  isReady: false,
+  isSyncing: false,
+  isPaused: false,
+  hasInternetAccess: true,
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  lastSyncTime: null,
+  syncNow: async () => ({ success: false, processed: 0, failed: 0 }),
+  syncImmediately: async () => ({ success: false, processed: 0, failed: 0 }),
+  pauseSync: () => {},
+  resumeSync: () => {},
+};
+
 // Export context for safe usage in components that may render outside provider
 // eslint-disable-next-line react-refresh/only-export-components
 export const CloudSyncContext = createContext<CloudSyncContextType | null>(null);
@@ -95,7 +109,8 @@ export const CloudSyncContext = createContext<CloudSyncContextType | null>(null)
 export const useCloudSyncContext = () => {
   const context = useContext(CloudSyncContext);
   if (!context) {
-    throw new Error('useCloudSyncContext must be used within CloudSyncProvider');
+    console.warn('[CloudSync] useCloudSyncContext accessed outside provider, using safe fallback');
+    return SAFE_CLOUD_SYNC_FALLBACK;
   }
   return context;
 };
