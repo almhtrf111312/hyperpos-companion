@@ -1,6 +1,3 @@
-# ملف Workflow موحد وجاهز للنسخ بالكامل إلى:
-# .github/workflows/telegram-public-release.yml
-# تم إصلاح مشكلة curl: (26) عند استخدام معرف قناة يبدأ بـ @ مثل @flowpospro
 
 name: Telegram public release
 
@@ -19,9 +16,15 @@ on:
         required: true
         default: false
         type: boolean
+      custom_notes:
+        description: 'ملاحظات التحديث لتليجرام (اختياري - اتركه فارغاً لجلب آخر التعديلات تلقائياً)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
@@ -34,33 +37,22 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.source_branch }}
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Read application version
+      - name: Read application version (Smart Decimal System)
         shell: bash
         run: |
           if [ -f "./version.json" ]; then
             BASE_CODE=$(node -p "require('./version.json').versionCode || 256")
-            BASE_NAME=$(node -p "require('./version.json').versionName || '1.0.26'")
           else
             BASE_CODE="256"
-            BASE_NAME="1.0.26"
           fi
 
+          # نفس معادلة الورك فلو الأساسي لضمان التطابق 100%
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          VERSION_NAME="${BASE_NAME}-b${COMMIT_COUNT}"
+          MAJOR=1
+          MINOR=$(( COMMIT_COUNT / 10 ))
+          PATCH=$(( COMMIT_COUNT % 10 ))
+
+          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
           VERSION_CODE=$(( BASE_CODE + COMMIT_COUNT ))
 
           if [ -f "./version.json" ]; then
@@ -118,18 +110,71 @@ jobs:
           echo "Error: Bot cannot access the channel or chat. Add the bot as Admin in your channel, send /start to the bot, or set TELEGRAM_CHAT_ID in GitHub Secrets."
           exit 1
 
+      - name: Try fast-fetching ready APK from main build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
+          echo "Checking if $FINAL_NAME is already built by build-apk.yml..."
+          
+          RUN_ID=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-apk.yml/runs?branch=${{ inputs.source_branch }}&status=success&per_page=10" \
+            | jq -r --arg sha "${{ github.sha }}" '.workflow_runs[] | select(.head_sha == $sha) | .id' | head -n 1 || true)
+
+          if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
+            mkdir -p /tmp/fast-apk
+            if gh run download "$RUN_ID" -n "FlowPOS-v${{ env.VER }}" -D /tmp/fast-apk --repo "${{ github.repository }}" 2>/dev/null; then
+              READY_APK=$(ls /tmp/fast-apk/*.apk 2>/dev/null | head -n 1)
+              if [ -n "$READY_APK" ] && [ -f "$READY_APK" ]; then
+                cp "$READY_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
+                ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
+                echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
+                echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
+                echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+                echo "⚡ Fast-fetched pre-built APK successfully! Skipping Java/Node/Gradle build."
+                exit 0
+              fi
+            fi
+          fi
+
+          echo "No pre-built artifact found for this commit. Proceeding with normal build..."
+          echo "SKIP_BUILD=false" >> "$GITHUB_ENV"
+
+      - name: Setup Java
+        if: env.SKIP_BUILD != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node.js
+        if: env.SKIP_BUILD != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Gradle
+        if: env.SKIP_BUILD != 'true'
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install dependencies
+        if: env.SKIP_BUILD != 'true'
         run: npm install --legacy-peer-deps
 
       - name: Build web app
+        if: env.SKIP_BUILD != 'true'
         env:
           VITE_BUILD_COMMIT: ${{ github.sha }}
         run: npm run build
 
       - name: Sync to Android
+        if: env.SKIP_BUILD != 'true'
         run: npx cap sync android
 
       - name: Setup release signing key
+        if: env.SKIP_BUILD != 'true'
         shell: bash
         run: |
           KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
@@ -148,6 +193,7 @@ jobs:
           echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
+        if: env.SKIP_BUILD != 'true'
         working-directory: android
         env:
           APP_VERSION_CODE: ${{ env.VERSION_CODE }}
@@ -161,6 +207,7 @@ jobs:
           ./gradlew assembleRelease --no-daemon --warning-mode=all
 
       - name: Prepare APK file
+        if: env.SKIP_BUILD != 'true'
         shell: bash
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
@@ -169,7 +216,7 @@ jobs:
             echo "Error: No APK found in $RELEASE_DIR"
             exit 1
           fi
-          FINAL_NAME="FlowPOS-Pro-v${{ env.VER }}.apk"
+          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
           cp "$SRC_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
           ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
           echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
@@ -181,31 +228,61 @@ jobs:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL: ${{ env.CHANNEL }}
           APK_PATH: ${{ env.APK_PATH }}
+          CUSTOM_NOTES: ${{ inputs.custom_notes }}
         run: |
           if [ ! -f "$APK_PATH" ]; then
             echo "Error: APK file not found at $APK_PATH"
             exit 1
           fi
 
-          if [ -f "scripts/telegram-release-notes.cjs" ]; then
-            TEXT=$(node scripts/telegram-release-notes.cjs)
+          # حساب حجم الملف وتاريخ اليوم
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          BUILD_DATE=$(TZ='Asia/Damascus' date +'%Y-%m-%d | %I:%M %p')
+
+          # تجهيز ملاحظات التحديث (يدوية، أو من السكريبت، أو آخر 3 تعديلات تلقائياً)
+          if [ -n "$CUSTOM_NOTES" ]; then
+            RAW_NOTES="$CUSTOM_NOTES"
+          elif [ -f "scripts/telegram-release-notes.cjs" ]; then
+            RAW_NOTES=$(node scripts/telegram-release-notes.cjs)
           else
-            TEXT="📥 Flow POS Pro v${{ env.VER }}"
+            RAW_NOTES=$(git log -3 --pretty=format:"• %s")
           fi
 
+          # تنظيف النص ليكون آمناً مع تنسيق HTML في تليجرام
+          SAFE_NOTES=$(echo "$RAW_NOTES" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+
+          # تصميم الكليشة الاحترافية مع نافذة اقتباس
+          CAPTION="🚀 <b>تحديث جديد | Flow POS Pro</b>
+          ━━━━━━━━━━━━━━
+          📌 <b>رقم الإصدار:</b> <code>v${{ env.VER }}</code>
+          🔢 <b>رقم البناء:</b> <code>${{ env.VERSION_CODE }}</code>
+          📦 <b>حجم الملف:</b> <code>${APK_SIZE}</code>
+          📅 <b>تاريخ النشر:</b> <code>${BUILD_DATE}</code>
+
+          ✨ <b>أبرز التحديثات والإصلاحات:</b>
+          <blockquote>${SAFE_NOTES}</blockquote>
+          ━━━━━━━━━━━━━━
+          💡 <i>يمكنك تثبيت هذا التحديث مباشرة فوق النسخة الحالية دون حذف بياناتك.</i>"
+
+          # تصميم الأزرار التفاعلية الشفافة تحت الملف
+          REPLY_MARKUP='{"inline_keyboard":[[{"text":"📢 قناة التحديثات الرسمية","url":"https://t.me/flowpospro"}]]}'
+
           # ملاحظة هامة: استخدام --form-string مع chat_id و caption يمنع curl من اعتبار @flowpospro ملفاً محلياً (الخطأ 26)
-          if [ ${#TEXT} -le 1000 ]; then
+          if [ ${#CAPTION} -le 1000 ]; then
             curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
               --form-string "chat_id=${CHANNEL}" \
               -F "document=@${APK_PATH}" \
-              --form-string "caption=${TEXT}"
+              --form-string "parse_mode=HTML" \
+              --form-string "reply_markup=${REPLY_MARKUP}" \
+              --form-string "caption=${CAPTION}"
           else
-            jq -n --arg c "$CHANNEL" --arg t "$TEXT" '{chat_id:$c,text:$t}' \
+            jq -n --arg c "$CHANNEL" --arg t "$CAPTION" '{chat_id:$c,text:$t,parse_mode:"HTML"}' \
               | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
                 -H 'Content-Type: application/json' -d @-
             curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
               --form-string "chat_id=${CHANNEL}" \
               -F "document=@${APK_PATH}" \
-              --form-string "caption=📥 Flow POS Pro v${{ env.VER }}"
+              --form-string "parse_mode=HTML" \
+              --form-string "reply_markup=${REPLY_MARKUP}" \
+              --form-string "caption=📥 <b>Flow POS Pro</b> <code>v${{ env.VER }}</code>"
           fi
- 
