@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       VERSION_CODE: '256'
-      VERSION_NAME: '1.0.26'
+      VERSION_NAME: '1.0'
       FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
@@ -42,7 +42,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Read and update application version (Smart Decimal System)
+      - name: Read and update application version
         shell: bash
         run: |
           if [ -f "./version.json" ]; then
@@ -51,13 +51,16 @@ jobs:
             BASE_CODE="256"
           fi
 
-          # حساب عدد التعديلات وتحويله لنظام فواصل (كل 10 إصلاحات ترفع الرقم الأوسط)
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          MAJOR=1
-          MINOR=$(( COMMIT_COUNT / 10 ))
-          PATCH=$(( COMMIT_COUNT % 10 ))
+          
+          # طرح التعديلات القديمة (2700) ليبدأ العداد برقم نظيف بفاصلة واحدة (مثلاً 1.40 ثم 1.41 وعند 100 يصبح 2.0)
+          OFFSET=$(( COMMIT_COUNT - 2700 ))
+          if [ "$OFFSET" -lt 1 ]; then OFFSET=1; fi
+          
+          MAJOR=$(( 1 + (OFFSET / 100) ))
+          MINOR=$(( OFFSET % 100 ))
 
-          VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
+          VERSION_NAME="${MAJOR}.${MINOR}"
           VERSION_CODE=$(( BASE_CODE + COMMIT_COUNT ))
 
           if [ -f "./version.json" ]; then
@@ -72,7 +75,7 @@ jobs:
 
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
-          echo "Unified Version: v$VERSION_NAME (Code: $VERSION_CODE)"
+          echo "Unified Version: v$VERSION_NAME (Internal Code: $VERSION_CODE)"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
