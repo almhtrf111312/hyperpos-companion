@@ -1,8 +1,14 @@
 {
-  "versionCode": 361,
-  "versionName": "1.4.8",
-  "lastUpdated": "2026-10-29T02:01:08.000Z",
+  "versionCode": 362,
+  "versionName": "1.4.9",
+  "lastUpdated": "2026-10-29T02:15:07.000Z",
   "buildHistory": [
+    {
+      "versionCode": 362,
+      "versionName": "1.4.9",
+      "date": "2026-10-29",
+      "description": "إصلاح حرج: إضافة استيراد cn من @/lib/utils في BossPanel.tsx — كانت الدالة تُستخدم في 24 موضعاً بدون استيراد مما يسبب ReferenceError وانهيار لوحة الإدارة بالكامل عند فتحها."
+    },
     {
       "versionCode": 361,
       "versionName": "1.4.8",
