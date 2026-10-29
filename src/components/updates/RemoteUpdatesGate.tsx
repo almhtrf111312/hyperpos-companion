@@ -22,6 +22,12 @@ export function RemoteUpdatesGate() {
   const [forcedDismissed, setForcedDismissed] = useState(
     () => localStorage.getItem(FORCED_DISMISS_KEY) === new Date().toDateString());
 
+  const dismissBanner = useCallback((id: string) => {
+    markBroadcastSeen(id);
+    setBanners(prev => prev.filter(x => x.id !== id));
+    window.dispatchEvent(new Event('hp-broadcasts-updated'));
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!user?.id || !navigator.onLine) return;
     try {
@@ -67,15 +73,30 @@ export function RemoteUpdatesGate() {
 
   if (status.state === 'locked' && !isBoss) {
     return (
-      <div className="fixed inset-0 z-[200] bg-background flex items-center justify-center p-6" dir="rtl">
-        <div className="max-w-sm w-full text-center space-y-4 rounded-2xl border border-destructive/40 bg-card p-6">
+      <div
+        className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]"
+        dir="rtl"
+      >
+        <div className="max-w-sm w-full text-center space-y-4 rounded-2xl border border-destructive/40 bg-card p-6 shadow-2xl">
           <Lock className="w-12 h-12 mx-auto text-destructive" />
           <h2 className="text-lg font-bold text-foreground">يجب تحديث التطبيق</h2>
-          <p className="text-sm text-muted-foreground">{cfg.message || 'توقف هذا الإصدار عن العمل. حدّث التطبيق للمتابعة.'}</p>
-          <p className="text-xs text-muted-foreground" dir="ltr">v{CURRENT_VERSION_NAME} → v{cfg.latest_version_name || '?'}</p>
-          <Button className="w-full gap-2" onClick={doUpdate}><Download className="w-4 h-4" /> تحديث الآن</Button>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {cfg.message || 'توقف هذا الإصدار عن العمل. حدّث التطبيق للمتابعة.'}
+          </p>
+          <p className="text-xs text-muted-foreground font-mono" dir="ltr">
+            v{CURRENT_VERSION_NAME} → v{cfg.latest_version_name || '?'}
+          </p>
+          <Button className="w-full gap-2 shadow-sm" onClick={doUpdate}>
+            <Download className="w-4 h-4" /> تحديث الآن
+          </Button>
           {cfg.telegram_url && (
-            <Button variant="outline" className="w-full gap-2" onClick={() => openExternal(cfg.telegram_url)}><Send className="w-4 h-4" /> قناة Telegram</Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => openExternal(cfg.telegram_url)}
+            >
+              <Send className="w-4 h-4" /> قناة Telegram
+            </Button>
           )}
         </div>
       </div>
@@ -85,37 +106,89 @@ export function RemoteUpdatesGate() {
   return (
     <>
       {status.state === 'forced' && !forcedDismissed && (
-        <div className="fixed inset-0 z-[150] bg-background/80 flex items-center justify-center p-6" dir="rtl">
-          <div className="max-w-sm w-full text-center space-y-3 rounded-2xl border border-warning/40 bg-card p-6 shadow-lg">
+        <div
+          className="fixed inset-0 z-[150] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]"
+          dir="rtl"
+        >
+          <div className="max-w-sm w-full text-center space-y-3 rounded-2xl border border-warning/40 bg-card p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
             <AlertTriangle className="w-10 h-10 mx-auto text-warning" />
             <h2 className="text-lg font-bold text-foreground">تحديث إجباري</h2>
-            <p className="text-sm text-muted-foreground">{cfg.message || 'يوجد تحديث إجباري لهذا التطبيق.'}</p>
-            <p className="text-sm font-bold text-destructive">سيتوقف التطبيق بعد {status.daysLeft} {status.daysLeft === 1 ? 'يوم' : 'أيام'}</p>
-            <Button className="w-full gap-2" onClick={doUpdate}><Download className="w-4 h-4" /> تحديث الآن</Button>
-            <Button variant="ghost" className="w-full" onClick={() => {
-              localStorage.setItem(FORCED_DISMISS_KEY, new Date().toDateString()); setForcedDismissed(true);
-            }}>لاحقاً</Button>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {cfg.message || 'يوجد تحديث إجباري لهذا التطبيق.'}
+            </p>
+            <p className="text-sm font-bold text-destructive">
+              سيتوقف التطبيق بعد {status.daysLeft} {status.daysLeft === 1 ? 'يوم' : 'أيام'}
+            </p>
+            <Button className="w-full gap-2 shadow-sm" onClick={doUpdate}>
+              <Download className="w-4 h-4" /> تحديث الآن
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                localStorage.setItem(FORCED_DISMISS_KEY, new Date().toDateString());
+                setForcedDismissed(true);
+              }}
+            >
+              لاحقاً
+            </Button>
           </div>
         </div>
       )}
       {banners.length > 0 && (
-        <div className="fixed top-2 inset-x-2 z-[140] space-y-2 max-w-lg mx-auto" dir="rtl">
+        <div
+          className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] inset-x-3 z-[140] space-y-2.5 max-w-lg mx-auto pointer-events-none"
+          dir="rtl"
+        >
           {banners.map(b => (
-            <div key={b.id} className={`rounded-xl border p-3 shadow-lg bg-card flex gap-3 items-start ${b.kind === 'warning' ? 'border-destructive/50' : 'border-primary/40'}`}>
-              <Megaphone className={`w-5 h-5 shrink-0 mt-0.5 ${b.kind === 'warning' ? 'text-destructive' : 'text-primary'}`} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground">{b.title}</p>
-                {b.body && <p className="text-xs text-muted-foreground whitespace-pre-line">{b.body}</p>}
-                {(b.link_url || b.kind === 'update') && (
-                  <Button size="sm" className="mt-2 h-7 gap-1 text-xs" onClick={() => openExternal(b.link_url || cfg.update_url)}>
-                    <Download className="w-3 h-3" /> فتح الرابط
-                  </Button>
+            <div
+              key={b.id}
+              className={`pointer-events-auto rounded-xl border p-3.5 shadow-xl bg-card/95 backdrop-blur-md flex gap-3 items-start transition-all animate-in fade-in slide-in-from-top-2 duration-200 ${
+                b.kind === 'warning'
+                  ? 'border-destructive/60 bg-destructive/5'
+                  : 'border-primary/40 bg-card'
+              }`}
+            >
+              <Megaphone
+                className={`w-5 h-5 shrink-0 mt-0.5 ${
+                  b.kind === 'warning' ? 'text-destructive' : 'text-primary'
+                }`}
+              />
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="text-sm font-bold text-foreground leading-snug">{b.title}</p>
+                {b.body && (
+                  <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                    {b.body}
+                  </p>
                 )}
+                <div className="pt-1.5 flex items-center gap-2 flex-wrap">
+                  {(b.link_url || b.kind === 'update') && (
+                    <Button
+                      size="sm"
+                      className="h-7 px-3 gap-1.5 text-xs font-medium active:scale-95 transition-transform"
+                      onClick={() => openExternal(b.link_url || cfg.update_url)}
+                    >
+                      <Download className="w-3.5 h-3.5" /> فتح الرابط
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
+                    onClick={() => dismissBanner(b.id)}
+                  >
+                    إغلاق
+                  </Button>
+                </div>
               </div>
-              <button aria-label="إغلاق" className="text-muted-foreground hover:text-foreground" onClick={() => {
-                markBroadcastSeen(b.id); setBanners(p => p.filter(x => x.id !== b.id));
-                window.dispatchEvent(new Event('hp-broadcasts-updated'));
-              }}><X className="w-4 h-4" /></button>
+              <button
+                type="button"
+                aria-label="إغلاق الإشعار"
+                className="w-9 h-9 -mr-1.5 -mt-1.5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80 active:scale-90 active:bg-muted transition-all touch-manipulation shrink-0"
+                onClick={() => dismissBanner(b.id)}
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           ))}
         </div>
