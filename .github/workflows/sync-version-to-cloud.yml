@@ -1,0 +1,59 @@
+name: Sync Version Metadata to Cloud
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'version.json'
+      - 'package.json'
+      - 'src/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Payload & Sync to Supabase Edge Function
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secret is missing. Skipping auto-sync."
+            exit 0
+          fi
+
+          node -e "
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            const v = require('./version.json');
+            const msg = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim().split('\n')[0];
+            const payload = {
+              latest_version_code: v.versionCode,
+              latest_version_name: v.versionName,
+              commit_sha: process.env.COMMIT_SHA,
+              commit_message: msg
+            };
+            fs.writeFileSync('sync-payload.json', JSON.stringify(payload));
+          "
+
+          echo "Syncing payload to Edge Function..."
+          STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/sync-release-metadata" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            --data @sync-payload.json)
+
+          echo "Response HTTP Status: $STATUS"
+          cat response.txt
+          echo ""
+
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+            echo "Successfully synced version metadata to Supabase Cloud!"
+          else
+            echo "Failed to sync version metadata (HTTP $STATUS)"
+            exit 1
+          fi

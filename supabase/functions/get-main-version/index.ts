@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
       versionName: String(v.versionName),
       versionCode: Number(v.versionCode),
       sha: commit?.sha ? String(commit.sha).slice(0, 7) : null,
+      message: commit?.commit?.message ? String(commit.commit.message).split('\n')[0].slice(0, 120) : null,
       committedAt: commit?.commit?.committer?.date ?? null,
       notes,
     });
