@@ -1,4 +1,3 @@
-
 name: Telegram public release
 
 on:
@@ -31,7 +30,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout source (لجلب سجل التعديلات فقط)
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -97,21 +96,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "🔍 جاري البحث عن أحدث ملف APK جاهز في المستودع..."
-          
-          # البحث في جميع الـ Artifacts الموجودة في المستودع عن أحدث ملف يبدأ بـ FlowPOS
           ARTIFACT_INFO=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?per_page=30" \
             | jq -r '.artifacts[] | select(.expired == false and (.name | test("FlowPOS.*"; "i")) and (.name | test("win|exe|setup"; "i") | not)) | "\(.id) \(.name)"' | head -n 1)
 
           if [ -z "$ARTIFACT_INFO" ]; then
-            echo "::error::لم يتم العثور على أي ملف APK جاهز! تأكد من انتهاء الورك فلو الرئيسي من البناء أولاً."
+            echo "::error::No ready APK artifact found."
             exit 1
           fi
 
           ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | awk '{print $1}')
           ARTIFACT_NAME=$(echo "$ARTIFACT_INFO" | awk '{print $2}')
-          echo "✅ تم العثور على النسخة الجاهزة: $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
+
+          ACTUAL_VER=$(echo "$ARTIFACT_NAME" | sed -E 's/^FlowPOS-v//i')
+          if [ -n "$ACTUAL_VER" ]; then
+            echo "VERSION_NAME=$ACTUAL_VER" >> "$GITHUB_ENV"
+            echo "VER=$ACTUAL_VER" >> "$GITHUB_ENV"
+          else
+            ACTUAL_VER="${{ env.VER }}"
+          fi
 
           mkdir -p /tmp/ready-apk
           curl -sS -L -H "Authorization: Bearer $GH_TOKEN" \
@@ -122,11 +125,11 @@ jobs:
           FOUND_APK=$(find /tmp/ready-apk -name "*.apk" | head -n 1)
 
           if [ -z "$FOUND_APK" ] || [ ! -f "$FOUND_APK" ]; then
-            echo "::error::الملف المسحوب لا يحتوي على APK!"
+            echo "::error::Downloaded artifact does not contain an APK."
             exit 1
           fi
 
-          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
+          FINAL_NAME="FlowPOS-v${ACTUAL_VER}.apk"
           cp "$FOUND_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
           ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
 
