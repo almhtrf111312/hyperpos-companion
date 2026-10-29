@@ -125,11 +125,14 @@ export const addShiftTransactionCloud = async (params: {
   amount: number;
   referenceId?: string;
   notes?: string;
+  currency?: string;
+  currencyAmount?: number;
+  exchangeRate?: number;
 }): Promise<boolean> => {
   const userId = await ensureUserId();
   if (!userId) return false;
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     shift_id: params.shiftId,
     user_id: userId,
     type: params.type,
@@ -137,6 +140,9 @@ export const addShiftTransactionCloud = async (params: {
     reference_id: params.referenceId || null,
     notes: params.notes || null,
   };
+  if (params.currency) payload.currency = params.currency;
+  if (params.currencyAmount !== undefined) payload.currency_amount = params.currencyAmount;
+  if (params.exchangeRate !== undefined) payload.exchange_rate = params.exchangeRate;
 
   try {
     const { error } = await sb.from('shift_transactions').insert(payload);
@@ -145,6 +151,38 @@ export const addShiftTransactionCloud = async (params: {
   } catch (e) {
     console.warn('[cashbox-cloud] tx insert failed, queued:', e);
     try { addToQueue('shift_transaction', payload); } catch { /* noop */ }
+    return false;
+  }
+};
+
+/**
+ * مزامنة حركة نقدية للوردية النشطة مباشرة إلى السحابة
+ */
+export const syncActiveShiftTransactionCloud = async (
+  type: ShiftTxType,
+  amountUSD: number,
+  currency: string = 'USD',
+  currencyAmount?: number,
+  referenceId?: string,
+  notes?: string,
+  exchangeRate?: number
+): Promise<boolean> => {
+  try {
+    const { getActiveShift } = await import('../cashbox-store');
+    const activeShift = getActiveShift();
+    if (!activeShift?.id) return false;
+    return await addShiftTransactionCloud({
+      shiftId: activeShift.id,
+      type,
+      amount: amountUSD,
+      currency,
+      currencyAmount,
+      exchangeRate,
+      referenceId,
+      notes,
+    });
+  } catch (err) {
+    console.warn('[syncActiveShiftTransactionCloud] Error:', err);
     return false;
   }
 };

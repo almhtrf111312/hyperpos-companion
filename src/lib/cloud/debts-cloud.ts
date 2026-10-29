@@ -16,6 +16,7 @@ import { triggerAutoBackup } from '../local-auto-backup';
 import { updateInvoiceCloud } from './invoices-cloud';
 import { supabase } from '@/integrations/supabase/client';
 import { addToQueue } from '../sync-queue';
+import { round8 } from '../utils';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -393,14 +394,18 @@ export const addDebtFromInvoiceCloud = async (
 export const recordPaymentCloud = async (
   debtId: string,
   amount: number,
-  operationId?: string
+  operationId?: string,
+  currency: string = 'USD',
+  currencyAmount?: number,
+  exchangeRate?: number,
+  method: 'cash' | 'transfer' = 'cash'
 ): Promise<Debt | null> => {
   if (isGuestDemoMode()) {
     const debts = debtsCache || loadDebtsLocally() || [];
     const target = debts.find(d => d.id === debtId);
     if (!target) throw new Error('الدين غير موجود');
-    const newPaid = Math.min(target.totalDebt, (target.totalPaid || 0) + amount);
-    const newRemaining = Math.max(0, target.totalDebt - newPaid);
+    const newPaid = Math.min(target.totalDebt, round8((target.totalPaid || 0) + amount));
+    const newRemaining = Math.max(0, round8(target.totalDebt - newPaid));
     const newStatus: DebtStatus = newRemaining === 0 ? 'fully_paid' : 'partially_paid';
     const updatedDebt: Debt = {
       ...target,
@@ -417,13 +422,13 @@ export const recordPaymentCloud = async (
     return updatedDebt;
   }
   const opId = operationId || `debtpay_${debtId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const amt = Math.round(amount * 100) / 100;
+  const amt = round8(amount);
   const queuePayment = (): Debt | null => {
-    addToQueue('debt_payment', { debtId, amount: amt, operationId: opId }, 10);
+    addToQueue('debt_payment', { debtId, amount: amt, operationId: opId, currency, currencyAmount, exchangeRate, method }, 10);
     const list = (debtsCache || loadDebtsLocally() || []).map(d => {
       if (d.id !== debtId) return d;
-      const totalPaid = Math.round((d.totalPaid + amt) * 100) / 100;
-      const remainingDebt = Math.max(0, Math.round((d.totalDebt - totalPaid) * 100) / 100);
+      const totalPaid = round8((d.totalPaid || 0) + amt);
+      const remainingDebt = Math.max(0, round8(d.totalDebt - totalPaid));
       return { ...d, totalPaid, remainingDebt, status: (remainingDebt <= 0 ? 'fully_paid' : 'partially_paid') as DebtStatus };
     });
     debtsCache = list; cacheTimestamp = Date.now(); saveDebtsLocally(list);
@@ -433,7 +438,7 @@ export const recordPaymentCloud = async (
   if (!navigator.onLine) return queuePayment();
   const { data, error } = await sb.rpc('record_debt_payment_atomic', {
     _debt_id: debtId,
-    _amount: Math.round(amount * 100) / 100,
+    _amount: amt,
     _operation_id: opId,
   });
   if (error) {
@@ -450,6 +455,23 @@ export const recordPaymentCloud = async (
       updateCustomerStatsCloud(fresh.customerId!).catch(() => {});
     });
   }
+
+  // مزامنة حركة النقد سحابياً في جدول حركات الوردية
+  if (method === 'cash') {
+    try {
+      const { syncActiveShiftTransactionCloud } = await import('./cashbox-cloud');
+      await syncActiveShiftTransactionCloud(
+        'debt_payment',
+        amt,
+        currency,
+        currencyAmount,
+        debtId,
+        `تسديد دين للعميل ${fresh?.customerName || ''}`,
+        exchangeRate
+      );
+    } catch { /* silent */ }
+  }
+
   if (fresh) return fresh;
   return {
     id: debtId,
@@ -464,8 +486,12 @@ export const recordPaymentCloud = async (
 export const recordPaymentWithInvoiceSyncCloud = async (
   debtId: string,
   amount: number,
-  operationId?: string
-): Promise<Debt | null> => recordPaymentCloud(debtId, amount, operationId);
+  operationId?: string,
+  currency: string = 'USD',
+  currencyAmount?: number,
+  exchangeRate?: number,
+  method: 'cash' | 'transfer' = 'cash'
+): Promise<Debt | null> => recordPaymentCloud(debtId, amount, operationId, currency, currencyAmount, exchangeRate, method);
 
 const roundMoney = (n: number) => Math.round(n * 100) / 100;
 

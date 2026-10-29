@@ -2,6 +2,7 @@ import { emitEvent, EVENTS } from './events';
 import { addExpenseCloud, ExpenseType } from './cloud/expenses-cloud';
 import { processExpense } from './unified-transactions';
 import { toLocalDateString } from './date-utils';
+import { getCurrencyDef, toUsd, round8 } from './money-engine';
 import {
   RECURRING_EXPENSES_KEY,
   loadRecurringExpensesLocally,
@@ -29,6 +30,7 @@ export interface RecurringExpense {
   type: ExpenseType;
   customType?: string;
   amount: number;
+  originalAmount?: number;
   currency?: string;
   exchangeRate?: number;
   notes?: string;
@@ -65,6 +67,7 @@ export function addRecurringExpense(data: {
   type: ExpenseType;
   customType?: string;
   amount: number;
+  originalAmount?: number;
   currency?: string;
   exchangeRate?: number;
   notes?: string;
@@ -81,6 +84,7 @@ export function addRecurringExpense(data: {
     type: data.type,
     customType: data.customType,
     amount: data.amount,
+    originalAmount: data.originalAmount,
     currency: data.currency,
     exchangeRate: data.exchangeRate,
     notes: data.notes,
@@ -173,17 +177,26 @@ export async function payRecurringExpense(id: string): Promise<boolean> {
       return false;
     }
 
-    // 1. Add as regular cloud expense
+    // 1. حساب المبلغ بالدولار وفق السعر اللحظي للعملة
+    const curr = expense.currency || 'USD';
+    const currDef = getCurrencyDef(curr);
+    const originalAmt = expense.originalAmount ?? (curr !== 'USD' && expense.exchangeRate ? round8(expense.amount * expense.exchangeRate) : expense.amount);
+    const dynamicUsdAmount = curr !== 'USD' ? round8(toUsd(originalAmt, curr, currDef.rate)) : round8(expense.amount);
+
+    // 2. Add as regular cloud expense with currency breakdown
     await addExpenseCloud({
       type: expense.type,
       customType: expense.customType || expense.name,
-      amount: expense.amount,
+      amount: dynamicUsdAmount,
+      originalCurrency: curr,
+      originalAmount: originalAmt,
+      exchangeRate: currDef.rate,
       notes: `${expense.name} - مصروف ثابت متكرر`,
       date: todayStr,
     });
 
-    // 2. خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي
-    processExpense(expense.amount, expense.type);
+    // 3. خصم المبلغ من الصندوق وتسجيله كمصروف تشغيلي بالعملة الأصلية والدولار
+    processExpense(dynamicUsdAmount, expense.type, curr, originalAmt);
     
     // 3. Calculate next due date strictly into the future
     const todayDate = new Date();

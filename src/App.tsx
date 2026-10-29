@@ -39,7 +39,8 @@ import { PrivacyPolicyScreen, usePrivacyAccepted } from "./components/PrivacyPol
 import POS from "./pages/POS";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import { FeatureErrorBoundary } from "@/components/debug/FeatureErrorBoundary";
+import { FeatureErrorBoundary } from "@/components/debug/FeatureErrorBoundary";
+import { AICopilotDrawer } from "./components/ai/AICopilotDrawer";
 
 // Lazy-loaded heavy pages to keep the initial startup bundle ultra-fast
 const Products = lazy(() => import("./pages/Products"));
@@ -451,7 +452,8 @@ const PageFallback = () => (
     <>
       {isDebugClick && <ClickProbe />}
       {import.meta.env.DEV && <ComponentInspector />}
-      <ExitConfirmDialog />
+      <ExitConfirmDialog />
+      {user && <AICopilotDrawer />}
       <Suspense fallback={<PageFallback />}>
         <Routes>
         {/* Public routes */}

@@ -44,14 +44,19 @@ export const loadRecurringExpensesLocally = (): RecurringExpense[] => {
 
 // Transform Supabase row to RecurringExpense
 export function toRecurringExpense(row: any): RecurringExpense {
+  const originalCurrency = row.original_currency || row.currency || (typeof row.notes === 'string' ? row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)?.[1] : undefined);
+  const exchangeRate = row.exchange_rate ? Number(row.exchange_rate) : (typeof row.notes === 'string' && row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)?.[2] ? Number(row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)[2]) : undefined);
+  const originalAmount = row.original_amount !== undefined && row.original_amount !== null ? Number(row.original_amount) : undefined;
+
   return {
     id: row.id,
     name: row.name || row.description || 'مصروف ثابت',
     type: (row.expense_type as ExpenseType) || 'other',
     customType: row.custom_type || undefined,
     amount: Number(row.amount) || 0,
-    currency: row.currency || (typeof row.notes === 'string' ? row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)?.[1] : undefined),
-    exchangeRate: row.exchange_rate ? Number(row.exchange_rate) : (typeof row.notes === 'string' && row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)?.[2] ? Number(row.notes.match(/\[CURRENCY:([A-Za-z]+)(?::([0-9.]+))?\]/)[2]) : undefined),
+    originalAmount: originalAmount,
+    currency: originalCurrency,
+    exchangeRate: exchangeRate,
     notes: row.notes || undefined,
     interval: (row.interval as RecurringInterval) || 'monthly',
     intervalDays: Number(row.interval_days) || 30,
@@ -207,6 +212,7 @@ export const addRecurringExpenseCloud = async (data: {
   type: ExpenseType;
   customType?: string;
   amount: number;
+  originalAmount?: number;
   currency?: string;
   exchangeRate?: number;
   notes?: string;
@@ -220,12 +226,15 @@ export const addRecurringExpenseCloud = async (data: {
   const intervalInfo = recurringIntervals.find(i => i.value === data.intervalDays) || recurringIntervals[1];
   const newId = crypto.randomUUID();
 
+  const origAmt = data.originalAmount !== undefined ? data.originalAmount : (data.currency && data.currency !== 'USD' && data.exchangeRate ? data.amount * data.exchangeRate : data.amount);
+
   const newExpense: RecurringExpense = {
     id: newId,
     name: data.name,
     type: data.type,
     customType: data.customType,
     amount: data.amount,
+    originalAmount: origAmt,
     currency: data.currency,
     exchangeRate: data.exchangeRate,
     notes: data.notes,
@@ -253,6 +262,9 @@ export const addRecurringExpenseCloud = async (data: {
     expense_type: data.type,
     custom_type: data.customType || null,
     amount: data.amount,
+    original_currency: data.currency || 'USD',
+    original_amount: origAmt,
+    exchange_rate: data.exchangeRate || 1,
     interval: intervalInfo.interval,
     interval_days: data.intervalDays,
     next_due_date: data.startDate,

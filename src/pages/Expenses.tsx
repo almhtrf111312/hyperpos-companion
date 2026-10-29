@@ -277,6 +277,9 @@ export default function Expenses() {
         type: formData.type,
         customType: formData.customType,
         amount: amountUSD,
+        originalCurrency: expenseCurrency,
+        originalAmount: formData.amount,
+        exchangeRate: selectedCurrencyDef.rate,
         notes: finalNotes,
         date: formData.date,
       });
@@ -286,8 +289,8 @@ export default function Expenses() {
         return;
       }
 
-      // ✅ خصم المبلغ من الصندوق تلقائياً بعملة الأساس
-      processExpense(amountUSD, formData.type);
+      // ✅ خصم المبلغ من الصندوق بعملة المصروف الأصلية والدولار
+      processExpense(amountUSD, formData.type, expenseCurrency, formData.amount);
 
       const [expensesData, statsData] = await Promise.all([
         loadExpensesCloud(),
@@ -327,6 +330,7 @@ export default function Expenses() {
         type: recurringForm.type,
         customType: recurringForm.customType,
         amount: amountUSD,
+        originalAmount: recurringForm.amount,
         currency: curr,
         exchangeRate: currDef.rate,
         intervalDays: recurringForm.intervalDays,
@@ -341,11 +345,14 @@ export default function Expenses() {
           type: recurringForm.type,
           customType: recurringForm.customType || recurringForm.name,
           amount: amountUSD,
+          originalCurrency: curr,
+          originalAmount: recurringForm.amount,
+          exchangeRate: currDef.rate,
           notes: `${recurringForm.name} - دفعة سداد فوري لمصروف ثابت${currencySuffix}`,
           date: todayStr,
         });
 
-        processExpense(amountUSD, recurringForm.type);
+        processExpense(amountUSD, recurringForm.type, curr, recurringForm.amount);
 
         const nextDate = new Date(recurringForm.startDate || todayStr);
         nextDate.setDate(nextDate.getDate() + (recurringForm.intervalDays || 30));

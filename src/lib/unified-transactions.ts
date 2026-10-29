@@ -22,7 +22,7 @@ import { deductStockBatch, checkStockAvailability } from './products-store';
 import { updateCustomerStats } from './customers-store';
 import { addActivityLog } from './activity-log';
 import { emitEvent, EVENTS } from './events';
-import { roundCurrency, addCurrency, formatNumber, formatMoney } from './utils';
+import { roundCurrency, addCurrency, formatNumber, formatMoney, round8 } from './utils';
 import { addGrossProfit, addOperatingExpense, removeOperatingExpense } from './profits-store';
 import { withLock, LOCK_RESOURCES } from './transaction-lock';
 import { addToQueue } from './sync-queue';
@@ -226,9 +226,21 @@ export const processDebtPayment = (
   method: 'cash' | 'transfer' = 'cash'
 ): TransactionResult => {
   try {
+    const roundedAmount = round8(amount);
     // Step 1: إضافة المبلغ المدفوع للصندوق إذا كانت طريقة الدفع كاش
     if (method === 'cash') {
-      addDepositToShift(roundCurrency(amount), currency, currencyAmount);
+      addDepositToShift(roundedAmount, currency, currencyAmount);
+      // مزامنة حركة الوردية سحابياً
+      import('./cloud/cashbox-cloud').then(({ syncActiveShiftTransactionCloud }) => {
+        syncActiveShiftTransactionCloud(
+          'debt_payment',
+          roundedAmount,
+          currency,
+          currencyAmount,
+          customerId,
+          'سداد دين عميل'
+        );
+      }).catch(() => {});
     }
 
     // Step 2: تسجيل النشاط (نوع debt_payment محدد بدلاً من deposit عام)
@@ -268,8 +280,20 @@ export const processCashDeposit = (
   userName?: string
 ): TransactionResult => {
   try {
-    const rounded = roundCurrency(amount);
+    const rounded = round8(amount);
     addDepositToShift(rounded);
+
+    const txType = kind === 'capital' ? 'deposit_capital' : kind === 'purchase_cover' ? 'deposit_purchase_cover' : 'deposit_revenue';
+    import('./cloud/cashbox-cloud').then(({ syncActiveShiftTransactionCloud }) => {
+      syncActiveShiftTransactionCloud(
+        txType,
+        rounded,
+        'USD',
+        rounded,
+        undefined,
+        notes || (kind === 'capital' ? 'إيداع رأس مال' : 'إيداع نقدية')
+      );
+    }).catch(() => {});
 
     if (kind === 'capital') {
       // إضافة لرأس المال
@@ -308,28 +332,43 @@ export const processExpense = (
   expenseType: string,
   userId?: string,
   userName?: string,
-  expenseId?: string
+  expenseId?: string,
+  currency: string = 'USD',
+  currencyAmount?: number
 ): TransactionResult => {
   try {
-    // Step 1: خصم المبلغ من الصندوق
-    addExpensesToShift(roundCurrency(amount));
+    const roundedAmount = round8(amount);
+    // Step 1: خصم المبلغ من الصندوق بالعملة المحددة لمنع العجز الوهمي للعملات الأجنبية
+    addExpensesToShift(roundedAmount, currency as any, currencyAmount);
 
     // Step 2: تسجيل كمصروف تشغيلي في سجل الأرباح
     const expId = expenseId || `exp_${Date.now()}`;
-    addOperatingExpense(expId, amount, expenseType);
+    addOperatingExpense(expId, roundedAmount, expenseType);
 
-    // Step 3: تسجيل النشاط
+    // Step 3: مزامنة حركة الوردية سحابياً
+    import('./cloud/cashbox-cloud').then(({ syncActiveShiftTransactionCloud }) => {
+      syncActiveShiftTransactionCloud(
+        'expense',
+        roundedAmount,
+        currency,
+        currencyAmount,
+        expId,
+        `مصروف تشغيلي (${expenseType})`
+      );
+    }).catch(() => {});
+
+    // Step 4: تسجيل النشاط
     if (userId && userName) {
       addActivityLog(
         'expense',
         userId,
         userName,
-        `مصروف تشغيلي (${expenseType}): ${formatMoney(amount)}`,
-        { amount, expenseType, type: 'expense' }
+        `مصروف تشغيلي (${expenseType}): ${formatMoney(amount, currency)}`,
+        { amount: roundedAmount, expenseType, type: 'expense', currency, currencyAmount }
       );
     }
 
-    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'expense', amount, expenseType });
+    emitEvent(EVENTS.TRANSACTION_COMPLETED, { type: 'expense', amount: roundedAmount, expenseType, currency, currencyAmount });
     emitEvent(EVENTS.EXPENSES_UPDATED, null);
 
     return { success: true };

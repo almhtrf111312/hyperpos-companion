@@ -16,6 +16,7 @@ import { addToQueue } from '../sync-queue';
 import { triggerAutoBackup } from '../local-auto-backup';
 import { loadPartnersCloud, updatePartnerCloud } from './partners-cloud';
 import { removeOperatingExpense } from '../profits-store';
+import { round8 } from '../utils';
 
 export type ExpenseCategory = 'operational' | 'payroll' | 'utilities' | 'maintenance' | 'marketing' | 'other';
 export type ExpenseType = 'rent' | 'utilities' | 'wages' | 'equipment' | 'internet' | 'electricity' | 'water' | 'gas' | 'phone' | 'insurance' | 'taxes' | 'supplies' | 'marketing' | 'transport' | 'maintenance' | 'cash_adjustment' | 'other';
@@ -39,6 +40,9 @@ export interface CloudExpense {
   distributions: ExpenseDistribution[];
   created_at: string;
   is_reversed?: boolean;
+  original_currency?: string;
+  original_amount?: number;
+  exchange_rate?: number;
 }
 
 export interface Expense {
@@ -56,6 +60,9 @@ export interface Expense {
   cashierId?: string;
   cashierName?: string;
   is_reversed?: boolean;
+  originalCurrency?: string;
+  originalAmount?: number;
+  exchangeRate?: number;
 }
 
 // Expense types with labels
@@ -108,6 +115,9 @@ function toExpense(cloud: CloudExpense & { cashier_name?: string }): Expense {
     cashierId: cloud.cashier_id || undefined,
     cashierName: cloud.cashier_name || cashierNamesCache[cloud.cashier_id || ''] || undefined,
     is_reversed: !!cloud.is_reversed,
+    originalCurrency: cloud.original_currency || 'USD',
+    originalAmount: cloud.original_amount !== undefined ? Number(cloud.original_amount) : undefined,
+    exchangeRate: cloud.exchange_rate !== undefined ? Number(cloud.exchange_rate) : undefined,
   };
 }
 
@@ -244,12 +254,15 @@ export const addExpenseCloud = async (expenseData: {
   amount: number;
   notes?: string;
   date: string;
+  originalCurrency?: string;
+  originalAmount?: number;
+  exchangeRate?: number;
 }): Promise<Expense | null> => {
   // Server does expense + partner shares together, idempotent by operation UUID.
   const operationId = crypto.randomUUID();
   const currentUid = getCurrentUserId() || '';
   const nowIso = new Date().toISOString();
-  const roundedAmount = Math.round(expenseData.amount * 100) / 100;
+  const roundedAmount = round8(expenseData.amount);
 
   const payload = {
     _operation_id: operationId,
@@ -271,6 +284,9 @@ export const addExpenseCloud = async (expenseData: {
     distributions: [],
     created_at: nowIso,
     cashier_id: currentUid || null,
+    original_currency: expenseData.originalCurrency || 'USD',
+    original_amount: expenseData.originalAmount ?? roundedAmount,
+    exchange_rate: expenseData.exchangeRate || 1,
   } as unknown as CloudExpense);
 
   const saveToLocalAndQueue = () => {

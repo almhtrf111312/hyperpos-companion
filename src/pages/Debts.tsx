@@ -381,7 +381,15 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
 
       const paymentRatio = remainingNow > 0 ? finalPaymentUSD / remainingNow : 1;
 
-      await recordPaymentWithInvoiceSyncCloud(selectedDebt.id, finalPaymentUSD, paymentOpIdRef.current);
+      await recordPaymentWithInvoiceSyncCloud(
+        selectedDebt.id,
+        finalPaymentUSD,
+        paymentOpIdRef.current,
+        paymentCurrency,
+        parseFloat(paymentAmountInput) || finalPaymentUSD,
+        currentDef.rate,
+        'cash'
+      );
       paymentOpIdRef.current = `debtpay_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
       // ✅ إضافة المبلغ للصندوق وتحديث الوردية بالعملة
