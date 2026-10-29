@@ -39,15 +39,11 @@ jobs:
       - name: Read application version
         shell: bash
         run: |
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          OFFSET=$(( COMMIT_COUNT - 2700 ))
-          if [ "$OFFSET" -lt 1 ]; then OFFSET=1; fi
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
           
-          MAJOR=$(( 1 + (OFFSET / 100) ))
-          MINOR=$(( OFFSET % 100 ))
-          VERSION_NAME="${MAJOR}.${MINOR}"
-
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VER=$VERSION_NAME" >> "$GITHUB_ENV"
 
       - name: Verify and resolve Telegram Chat ID
@@ -108,14 +104,6 @@ jobs:
           ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | awk '{print $1}')
           ARTIFACT_NAME=$(echo "$ARTIFACT_INFO" | awk '{print $2}')
 
-          ACTUAL_VER=$(echo "$ARTIFACT_NAME" | sed -E 's/^FlowPOS-v//i')
-          if [ -n "$ACTUAL_VER" ]; then
-            echo "VERSION_NAME=$ACTUAL_VER" >> "$GITHUB_ENV"
-            echo "VER=$ACTUAL_VER" >> "$GITHUB_ENV"
-          else
-            ACTUAL_VER="${{ env.VER }}"
-          fi
-
           mkdir -p /tmp/ready-apk
           curl -sS -L -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" \
@@ -129,7 +117,7 @@ jobs:
             exit 1
           fi
 
-          FINAL_NAME="FlowPOS-v${ACTUAL_VER}.apk"
+          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
           cp "$FOUND_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
           ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
 
@@ -164,7 +152,7 @@ jobs:
 
           CAPTION="🚀 <b>تحديث جديد | Flow POS Pro</b>
           ━━━━━━━━━━━━━━
-          📌 <b>الإصدار:</b> <code>v${{ env.VER }}</code>
+          📌 <b>الإصدار:</b> <code>v${{ env.VER }} (Build ${{ env.VERSION_CODE }})</code>
           📦 <b>حجم الملف:</b> <code>${APK_SIZE}B</code>
           📅 <b>تاريخ النشر:</b> <code>${BUILD_DATE}</code>
 
@@ -191,5 +179,5 @@ jobs:
               -F "document=@${APK_PATH}" \
               --form-string "parse_mode=HTML" \
               --form-string "reply_markup=${REPLY_MARKUP}" \
-              --form-string "caption=📥 <b>Flow POS Pro</b> <code>v${{ env.VER }}</code>"
+              --form-string "caption=📥 <b>Flow POS Pro</b> <code>v${{ env.VER }} (Build ${{ env.VERSION_CODE }})</code>"
           fi
