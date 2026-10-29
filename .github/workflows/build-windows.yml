@@ -1,148 +1,174 @@
-name: Build FlowPOS Pro Windows
+name: Build FlowPOS Pro APK
 
 on:
   push:
     branches: [ main, event-or-artifact ]
+    tags: ['v*']
   workflow_dispatch:
 
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION_CODE: '256'
+      VERSION_NAME: '1.0'
+      FINAL_APK_PATH: ''
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Read and update application version
+        shell: bash
+        run: |
+          if [ -f "./version.json" ]; then
+            BASE_CODE=$(node -p "require('./version.json').versionCode || 256")
+          else
+            BASE_CODE="256"
+          fi
+
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          OFFSET=$(( COMMIT_COUNT - 2700 ))
+          if [ "$OFFSET" -lt 1 ]; then OFFSET=1; fi
+          
+          MAJOR=$(( 1 + (OFFSET / 100) ))
+          MINOR=$(( OFFSET % 100 ))
+
+          VERSION_NAME="${MAJOR}.${MINOR}"
+          VERSION_CODE=$(( BASE_CODE + COMMIT_COUNT ))
+
+          node -e "
+            const fs = require('fs');
+            for (const file of ['./version.json', './public/version.json']) {
+              if (fs.existsSync(file)) {
+                const v = JSON.parse(fs.readFileSync(file, 'utf8'));
+                v.versionCode = $VERSION_CODE;
+                v.versionName = '$VERSION_NAME';
+                v.version = '$VERSION_NAME';
+                fs.writeFileSync(file, JSON.stringify(v, null, 2));
+              }
+            }
+            if (fs.existsSync('./package.json')) {
+              const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+              pkg.version = '$VERSION_NAME';
+              fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+            }
+          "
+
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i -E "s/versionCode [0-9]+/versionCode $VERSION_CODE/g" android/app/build.gradle
+            sed -i -E "s/versionName \"[^\"]+\"/versionName \"$VERSION_NAME\"/g" android/app/build.gradle
+          fi
+
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "Unified Version: v$VERSION_NAME (Internal Code: $VERSION_CODE)"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Install Electron dependencies
-        run: npm install --save-dev electron@28.0.0 electron-builder@24.9.1 --legacy-peer-deps
-
-      - name: Build web application
+      - name: Build embedded web application
+        env:
+          VITE_BUILD_COMMIT: ${{ github.sha }}
+          VITE_APP_VERSION: ${{ env.VERSION_NAME }}
+          VITE_VERSION_NAME: ${{ env.VERSION_NAME }}
+          VITE_VERSION_CODE: ${{ env.VERSION_CODE }}
         run: npm run build
 
-      - name: Create Electron Builder config
+      - name: Sync embedded files to Android
+        run: npx cap sync android
+
+      - name: Setup release signing key
         shell: bash
         run: |
-          cat > electron-builder.json << 'EOF'
-          {
-            "appId": "app.flowpos.pro",
-            "productName": "FlowPOS Pro",
-            "directories": {
-              "output": "electron-dist"
-            },
-            "files": [
-              "dist/**/*",
-              "electron/**/*",
-              "resources/**/*"
-            ],
-            "extraResources": [
-              {
-                "from": "dist",
-                "to": "dist",
-                "filter": ["**/*"]
-              }
-            ],
-            "win": {
-              "target": [
-                {
-                  "target": "nsis",
-                  "arch": ["x64"]
-                }
-              ],
-              "icon": "resources/icon.png",
-              "artifactName": "FlowPOS-Pro-Setup-${version}.exe"
-            },
-            "nsis": {
-              "oneClick": false,
-              "allowToChangeInstallationDirectory": true,
-              "createDesktopShortcut": true,
-              "createStartMenuShortcut": true,
-              "shortcutName": "FlowPOS Pro"
-            }
-          }
-          EOF
+          KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+          KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
 
-      - name: Update package.json for Electron
-        shell: bash
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.main = 'electron/main.js';
-            pkg.version = '1.0.${{ github.run_number }}';
-            pkg.description = 'FlowPOS Pro Point of Sale System';
-            pkg.author = 'FlowPOS Pro';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          "
-
-      - name: Pre-download Electron Binary with Retry
-        shell: pwsh
-        run: |
-          $electronVersion = "v28.0.0"
-          $electronZip = "electron-$electronVersion-win32-x64.zip"
-          $cacheDirs = @(
-            "$env:LOCALAPPDATA\electron\Cache",
-            "$env:LOCALAPPDATA\electron-builder\Cache\electron"
-          )
-          foreach ($dir in $cacheDirs) {
-            if (-not (Test-Path $dir)) {
-              New-Item -ItemType Directory -Force -Path $dir | Out-Null
-            }
-          }
-          $dest1 = "$env:LOCALAPPDATA\electron\Cache\$electronZip"
-          $dest2 = "$env:LOCALAPPDATA\electron-builder\Cache\electron\$electronZip"
-          $url = "https://github.com/electron/electron/releases/download/$electronVersion/$electronZip"
-          Write-Host "Pre-downloading $url to $dest1..."
-          curl.exe -fL --retry 5 --retry-connrefused --retry-delay 3 -o $dest1 $url
-          if (Test-Path $dest1) {
-            Copy-Item -Path $dest1 -Destination $dest2 -Force
-            Write-Host "Electron binary successfully cached ($((Get-Item $dest1).Length) bytes)."
-          }
-
-      - name: Build Windows Installer
-        shell: pwsh
-        run: |
-          $maxRetries = 3
-          $attempt = 0
-          $success = $false
-          while ($attempt -lt $maxRetries -and -not $success) {
-            $attempt++
-            Write-Host "=== Build Attempt $attempt of $maxRetries ==="
-            npx electron-builder --win --config electron-builder.json
-            if ($LASTEXITCODE -eq 0) {
-              $success = $true
-            } else {
-              Write-Host "Attempt $attempt failed with exit code $LASTEXITCODE. Waiting 5s before retry..."
-              Start-Sleep -Seconds 5
-            }
-          }
-          if (-not $success) {
+          if [ -f "android/app/flowpos-release.keystore" ]; then
+            if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
+              KEYSTORE_PASS="flowpos123"
+              KEY_PASS="flowpos123"
+            fi
+          else
+            echo "::error::Release keystore file android/app/flowpos-release.keystore is missing from repository. Build aborted to protect signing key integrity."
             exit 1
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fi
 
-      - name: Upload Windows Installer
-        uses: actions/upload-artifact@v5
+          echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          APP_VERSION_CODE: ${{ env.VERSION_CODE }}
+          APP_VERSION_NAME: ${{ env.VERSION_NAME }}
+          KEYSTORE_PATH: flowpos-release.keystore
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: flowpos
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --warning-mode=all
+
+      - name: Prepare single versioned APK
+        shell: bash
+        run: |
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          VERSION="${{ env.VERSION_NAME }}"
+          FINAL_APK="FlowPOS-v${VERSION}.apk"
+          
+          SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
+          if [ -z "$SRC_APK" ]; then
+            echo "Error: No APK found in $RELEASE_DIR"
+            exit 1
+          fi
+          
+          if [ "$SRC_APK" != "$RELEASE_DIR/$FINAL_APK" ]; then
+            mv "$SRC_APK" "$RELEASE_DIR/$FINAL_APK"
+          fi
+          
+          find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
+          
+          echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
+          echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
+          ls -lh "$RELEASE_DIR"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: FlowPOS-Pro-Windows-v1.0.${{ github.run_number }}
-          path: electron-dist/*.exe
+          name: FlowPOS-v${{ env.VERSION_NAME }}
+          path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
 
-      - name: Build Summary
-        run: |
-          echo "## FlowPOS Pro Windows Build Complete! :rocket:" >> $env:GITHUB_STEP_SUMMARY
-          echo "" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $env:GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Version | 1.0.${{ github.run_number }} |" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Platform | Windows x64 |" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Output | FlowPOS-Pro-Setup-1.0.${{ github.run_number }}.exe |" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Build Time | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') |" >> $env:GITHUB_STEP_SUMMARY
+      - name: Create tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.FINAL_APK_PATH }}
+          generate_release_notes: true
