@@ -1016,10 +1016,12 @@ const refundInvoiceCloudImpl = async (id: string, source: 'online' | 'offline-sy
   if (cashToRefund > 0) {
     try {
       const { recordRefundInShift } = await import('../cashbox-store');
+      const refundedProfit = Number(atomic.refunded_profit ?? atomic.profit_reduced ?? targetInvoice?.profit ?? 0) || 0;
+      const refundedCogs = Number(atomic.refunded_cogs ?? atomic.cogs_reduced ?? targetInvoice?.partsCost ?? 0) || 0;
       recordRefundInShift(
         cashToRefund,
-        Number(targetInvoice?.profit) || 0,
-        Math.max(0, (Number(targetInvoice?.total) || 0) - (Number(targetInvoice?.profit) || 0)),
+        refundedProfit,
+        refundedCogs,
         id
       );
     } catch (shiftErr) {
@@ -1211,6 +1213,15 @@ export const refundInvoicePartialCloud = async (
       await updateCustomerStatsCloud(loadedInv.customerId);
     }
   } catch { /* silent */ }
+
+  if (isFullyRefunded) {
+    try {
+      const { revertProfitDistributionCloud } = await import('./partners-cloud');
+      await revertProfitDistributionCloud(invoiceNumber);
+      const { reverseProfitCloud } = await import('./profits-cloud');
+      await reverseProfitCloud(invoiceNumber);
+    } catch { /* silent */ }
+  }
 
   emitEvent(EVENTS.INVOICES_UPDATED, null);
   emitEvent(EVENTS.PRODUCTS_UPDATED, null);

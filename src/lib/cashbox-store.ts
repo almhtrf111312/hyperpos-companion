@@ -4,8 +4,14 @@
 // ولم تتضمن userId مما يتسبب في مسح ورديات الكاشير الأول عند تسجيل دخول آخر.
 import { getCurrentUserId } from './supabase-store';
 import { emitEvent, EVENTS } from './events';
-import { addCurrency, subtractCurrency, round8 as roundCurrency } from './utils';
+import { addCurrency, subtractCurrency, round8, round8 as roundCurrency } from './utils';
 import { getEnabledCurrencies, roundForCurrency, fromUsd } from './money-engine';
+
+// دوال الحساب عالية الدقة: 8 منازل للدولار، وتدوير ديناميكي لكل عملة حسب خاناتها (3 خانات لـ KWD/BHD/OMR وخانتان للبقية)
+const addUsd = (a: number, b: number) => round8((a || 0) + (b || 0));
+const subUsd = (a: number, b: number) => round8((a || 0) - (b || 0));
+const addCur = (a: number, b: number, code: string) => roundForCurrency((a || 0) + (b || 0), code);
+const subCur = (a: number, b: number, code: string) => roundForCurrency((a || 0) - (b || 0), code);
 
 // المفاتيح القديمة (للتوافق مع البيانات المخزنة سابقاً — تُقرأ كـ fallback)
 const LEGACY_CASHBOX_KEY = 'hyperpos_cashbox_v1';
@@ -256,12 +262,9 @@ export const closeShift = (
   if (activeIndex === -1) return null;
 
   const shift = shifts[activeIndex];
-  const expectedCash = roundCurrency(
-    addCurrency(
-      shift.openingCash,
-      shift.salesTotal,
-      shift.depositsTotal
-    ) - addCurrency(shift.expensesTotal, shift.withdrawalsTotal)
+  const expectedCash = round8(
+    addUsd(shift.openingCash, addUsd(shift.salesTotal, shift.depositsTotal)) -
+    addUsd(shift.expensesTotal, shift.withdrawalsTotal)
   );
 
   const discrepancy = roundCurrency(closingCash - expectedCash);
@@ -328,12 +331,12 @@ export const updateCashboxBalance = (
   const roundedCurrAmount = currencyAmount !== undefined ? roundForCurrency(currencyAmount, currency) : roundForCurrency(fromUsd(amount, currency), currency);
   const state = loadCashboxState();
 
-  // تحديث رصيد الصندوق (بالدولار الأساسي)
+  // تحديث رصيد الصندوق (بالدولار الأساسي بدقة 8 منازل)
   if (type === 'deposit' || type === 'sale') {
-    state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+    state.currentBalance = addUsd(state.currentBalance, roundedAmount);
   } else {
     // withdrawal, expense, refund
-    state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
+    state.currentBalance = subUsd(state.currentBalance, roundedAmount);
   }
 
   state.lastUpdated = new Date().toISOString();
@@ -351,24 +354,24 @@ export const updateCashboxBalance = (
 
     switch (type) {
       case 'sale':
-        shift.salesTotal = addCurrency(shift.salesTotal, roundedAmount);
-        currMap.sales = roundForCurrency(currMap.sales + roundedCurrAmount, currency);
+        shift.salesTotal = addUsd(shift.salesTotal, roundedAmount);
+        currMap.sales = addCur(currMap.sales, roundedCurrAmount, currency);
         break;
       case 'refund':
-        shift.salesTotal = Math.max(0, subtractCurrency(shift.salesTotal, roundedAmount));
-        currMap.sales = Math.max(0, roundForCurrency(currMap.sales - roundedCurrAmount, currency));
+        shift.salesTotal = Math.max(0, subUsd(shift.salesTotal, roundedAmount));
+        currMap.sales = Math.max(0, subCur(currMap.sales, roundedCurrAmount, currency));
         break;
       case 'expense':
-        shift.expensesTotal = addCurrency(shift.expensesTotal, roundedAmount);
-        currMap.expenses = roundForCurrency(currMap.expenses + roundedCurrAmount, currency);
+        shift.expensesTotal = addUsd(shift.expensesTotal, roundedAmount);
+        currMap.expenses = addCur(currMap.expenses, roundedCurrAmount, currency);
         break;
       case 'deposit':
-        shift.depositsTotal = addCurrency(shift.depositsTotal, roundedAmount);
-        currMap.deposits = roundForCurrency(currMap.deposits + roundedCurrAmount, currency);
+        shift.depositsTotal = addUsd(shift.depositsTotal, roundedAmount);
+        currMap.deposits = addCur(currMap.deposits, roundedCurrAmount, currency);
         break;
       case 'withdrawal':
-        shift.withdrawalsTotal = addCurrency(shift.withdrawalsTotal, roundedAmount);
-        currMap.withdrawals = roundForCurrency(currMap.withdrawals + roundedCurrAmount, currency);
+        shift.withdrawalsTotal = addUsd(shift.withdrawalsTotal, roundedAmount);
+        currMap.withdrawals = addCur(currMap.withdrawals, roundedCurrAmount, currency);
         break;
     }
     shift.currencies[currency] = currMap;
@@ -395,8 +398,8 @@ export const addSalesToShift = (
 
   const state = loadCashboxState();
 
-  // تحديث رصيد الصندوق
-  state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+  // تحديث رصيد الصندوق (بالدولار بدقة 8 منازل)
+  state.currentBalance = addUsd(state.currentBalance, roundedAmount);
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
 
@@ -409,12 +412,12 @@ export const addSalesToShift = (
       shift.currencies = initShiftCurrencies(shift.openingCash);
     }
     const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
-    currMap.sales = addCurrency(currMap.sales, roundedCurrAmount);
+    currMap.sales = addCur(currMap.sales, roundedCurrAmount, currency);
     shift.currencies[currency] = currMap;
 
-    shift.salesTotal = addCurrency(shift.salesTotal, roundedAmount);
-    shift.grossProfitTotal = addCurrency(shift.grossProfitTotal || 0, roundedProfit);
-    shift.cogsTotal = addCurrency(shift.cogsTotal || 0, roundedCogs);
+    shift.salesTotal = addUsd(shift.salesTotal, roundedAmount);
+    shift.grossProfitTotal = addUsd(shift.grossProfitTotal || 0, roundedProfit);
+    shift.cogsTotal = addUsd(shift.cogsTotal || 0, roundedCogs);
     saveShifts(shifts);
     emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
   }
@@ -439,7 +442,7 @@ export const recordRefundInShift = (
   const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
 
   const state = loadCashboxState();
-  state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
+  state.currentBalance = Math.max(0, subUsd(state.currentBalance, roundedAmount));
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
 
@@ -451,12 +454,12 @@ export const recordRefundInShift = (
       shift.currencies = initShiftCurrencies(shift.openingCash);
     }
     const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
-    currMap.sales = Math.max(0, subtractCurrency(currMap.sales, roundedCurrAmount));
+    currMap.sales = Math.max(0, subCur(currMap.sales, roundedCurrAmount, currency));
     shift.currencies[currency] = currMap;
 
-    shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
-    shifts[activeIndex].grossProfitTotal = Math.max(0, subtractCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
-    shifts[activeIndex].cogsTotal = Math.max(0, subtractCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs));
+    shifts[activeIndex].salesTotal = Math.max(0, subUsd(shifts[activeIndex].salesTotal, roundedAmount));
+    shifts[activeIndex].grossProfitTotal = Math.max(0, subUsd(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
+    shifts[activeIndex].cogsTotal = Math.max(0, subUsd(shifts[activeIndex].cogsTotal || 0, roundedCogs));
     saveShifts(shifts);
     emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
 
@@ -492,7 +495,7 @@ export const reverseSaleFromShift = (
   const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(Math.max(0, currencyAmount)) : roundedAmount;
 
   const state = loadCashboxState();
-  state.currentBalance = Math.max(0, subtractCurrency(state.currentBalance, roundedAmount));
+  state.currentBalance = Math.max(0, subUsd(state.currentBalance, roundedAmount));
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
 
@@ -504,12 +507,12 @@ export const reverseSaleFromShift = (
       shift.currencies = initShiftCurrencies(shift.openingCash);
     }
     const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
-    currMap.sales = Math.max(0, subtractCurrency(currMap.sales, roundedCurrAmount));
+    currMap.sales = Math.max(0, subCur(currMap.sales, roundedCurrAmount, currency));
     shift.currencies[currency] = currMap;
 
-    shifts[activeIndex].salesTotal = Math.max(0, subtractCurrency(shifts[activeIndex].salesTotal, roundedAmount));
-    shifts[activeIndex].grossProfitTotal = Math.max(0, subtractCurrency(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
-    shifts[activeIndex].cogsTotal = Math.max(0, subtractCurrency(shifts[activeIndex].cogsTotal || 0, roundedCogs));
+    shifts[activeIndex].salesTotal = Math.max(0, subUsd(shifts[activeIndex].salesTotal, roundedAmount));
+    shifts[activeIndex].grossProfitTotal = Math.max(0, subUsd(shifts[activeIndex].grossProfitTotal || 0, roundedProfit));
+    shifts[activeIndex].cogsTotal = Math.max(0, subUsd(shifts[activeIndex].cogsTotal || 0, roundedCogs));
     saveShifts(shifts);
     emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
   }
@@ -532,7 +535,7 @@ export const refundExpenseFromShift = (
   const roundedCurrAmount = currencyAmount !== undefined ? roundCurrency(currencyAmount) : roundedAmount;
 
   const state = loadCashboxState();
-  state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+  state.currentBalance = addUsd(state.currentBalance, roundedAmount);
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);
 
@@ -544,10 +547,10 @@ export const refundExpenseFromShift = (
       shift.currencies = initShiftCurrencies(shift.openingCash);
     }
     const currMap = shift.currencies[currency] || { opening: 0, sales: 0, expenses: 0, deposits: 0, withdrawals: 0 };
-    currMap.expenses = Math.max(0, subtractCurrency(currMap.expenses, roundedCurrAmount));
+    currMap.expenses = Math.max(0, subCur(currMap.expenses, roundedCurrAmount, currency));
     shift.currencies[currency] = currMap;
 
-    shift.expensesTotal = Math.max(0, subtractCurrency(shift.expensesTotal, roundedAmount));
+    shift.expensesTotal = Math.max(0, subUsd(shift.expensesTotal, roundedAmount));
     saveShifts(shifts);
     emitEvent(EVENTS.CASH_SHIFTS_UPDATED, shifts);
   }
@@ -574,9 +577,9 @@ export const getShiftStats = () => {
     todayShifts: todayShifts.length,
     activeShift: getActiveShift(),
     totalSurplus: shifts.reduce((sum, s) =>
-      s.adjustment?.type === 'surplus' ? addCurrency(sum, s.adjustment.amount) : sum, 0),
+      s.adjustment?.type === 'surplus' ? addUsd(sum, s.adjustment.amount) : sum, 0),
     totalShortage: shifts.reduce((sum, s) =>
-      s.adjustment?.type === 'shortage' ? addCurrency(sum, s.adjustment.amount) : sum, 0),
+      s.adjustment?.type === 'shortage' ? addUsd(sum, s.adjustment.amount) : sum, 0),
   };
 };
 
@@ -638,10 +641,10 @@ export const addShiftAdjustment = (
   // تعديل المجاميع
   if (type === 'expense_added') {
     // عجز → نضيف للمصاريف حتى ينخفض المتوقع
-    shift.expensesTotal = addCurrency(shift.expensesTotal, roundedAmount);
+    shift.expensesTotal = addUsd(shift.expensesTotal, roundedAmount);
   } else {
     // فائض → نضيف للمبيعات/إيداعات حتى يرتفع المتوقع
-    shift.depositsTotal = addCurrency(shift.depositsTotal, roundedAmount);
+    shift.depositsTotal = addUsd(shift.depositsTotal, roundedAmount);
   }
 
   shifts[activeIndex] = shift;
@@ -650,9 +653,9 @@ export const addShiftAdjustment = (
   // تحديث رصيد الصندوق أيضاً
   const state = loadCashboxState();
   if (type === 'expense_added') {
-    state.currentBalance = subtractCurrency(state.currentBalance, roundedAmount);
+    state.currentBalance = subUsd(state.currentBalance, roundedAmount);
   } else {
-    state.currentBalance = addCurrency(state.currentBalance, roundedAmount);
+    state.currentBalance = addUsd(state.currentBalance, roundedAmount);
   }
   state.lastUpdated = new Date().toISOString();
   saveCashboxState(state);

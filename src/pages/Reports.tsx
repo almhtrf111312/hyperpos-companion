@@ -53,7 +53,7 @@ import {
 import { toLocalDateString, isDateInRange } from '@/lib/date-utils';
 import { cn, formatNumber, formatMoney, formatReportAmount } from '@/lib/utils';
 import { getReportCurrency } from '@/lib/currencies';
-import { getCurrencyDef, roundForCurrency } from '@/lib/money-engine';
+import { getCurrencyDef, roundForCurrency, round8 } from '@/lib/money-engine';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/sonner-bridge';
 import { useTheme } from '@/hooks/use-theme';
@@ -827,6 +827,14 @@ export default function Reports() {
 
   // ========== DYNAMIC SUMMARY CARDS ==========
   const summaryCards = useMemo(() => {
+    // فصل مجمل الربح (Gross Profit) عن صافي الربح (Net Profit) بعد خصم المصروفات التشغيلية
+    const grossProfit = reportData.summary.totalProfit;
+    const totalExpenses = expenseReportData.totalExpenses || 0;
+    const netProfit = round8(grossProfit - totalExpenses);
+    const netProfitMargin = reportData.summary.totalSales > 0
+      ? ((netProfit / reportData.summary.totalSales) * 100).toFixed(1)
+      : '0.0';
+
     switch (activeReport) {
       case 'sales':
         return [
@@ -840,11 +848,11 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatReportAmount(reportData.summary.totalProfit),
-            label: t('reports.netProfit'),
+            value: formatReportAmount(grossProfit),
+            label: 'مجمل الربح (إجمالي)',
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: `${t('reports.profitMarginRate') || 'هامش ربح'}: ${profitMargin}%`,
+            subtext: `الصافي بعد المصاريف: ${formatReportAmount(netProfit)}`,
           },
           {
             icon: ShoppingBag,
@@ -868,19 +876,27 @@ export default function Reports() {
         return [
           {
             icon: TrendingUp,
-            value: formatReportAmount(reportData.summary.totalProfit),
-            label: t('reports.totalNetProfit'),
+            value: formatReportAmount(grossProfit),
+            label: 'مجمل الربح (Gross Profit)',
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: t('reports.netRealizedProfit') || 'صافي الربح المحقق',
+            subtext: `${t('reports.profitMarginRate') || 'هامش المجمل'}: ${profitMargin}%`,
           },
           {
-            icon: PieChart,
-            value: `${profitMargin}%`,
-            label: t('reports.profitMarginRate'),
-            color: 'text-primary',
-            bg: 'bg-primary/10',
-            subtext: t('reports.overallProfitRate') || 'معدل الربحية العام',
+            icon: Receipt,
+            value: formatReportAmount(totalExpenses),
+            label: 'المصروفات التشغيلية',
+            color: 'text-rose-600',
+            bg: 'bg-rose-500/10',
+            subtext: 'إجمالي مصاريف الفترة المحددة',
+          },
+          {
+            icon: Coins,
+            value: formatReportAmount(netProfit),
+            label: 'صافي الربح الفعلي (Net Profit)',
+            color: netProfit >= 0 ? 'text-emerald-600' : 'text-destructive',
+            bg: netProfit >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10',
+            subtext: `هامش الصافي: ${netProfitMargin}% (بعد خصم المصاريف)`,
           },
           {
             icon: Banknote,
@@ -889,14 +905,6 @@ export default function Reports() {
             color: 'text-blue-600',
             bg: 'bg-blue-500/10',
             subtext: t('reports.totalSalesRevenue') || 'إجمالي إيراد المبيعات',
-          },
-          {
-            icon: Coins,
-            value: formatReportAmount(reportData.summary.totalOrders > 0 ? reportData.summary.totalProfit / reportData.summary.totalOrders : 0),
-            label: t('reports.avgProfitPerInvoice'),
-            color: 'text-amber-600',
-            bg: 'bg-amber-500/10',
-            subtext: t('reports.avgInvoiceRevenue') || 'متوسط عائد الفاتورة',
           },
         ];
 
@@ -1376,11 +1384,11 @@ export default function Reports() {
           },
           {
             icon: TrendingUp,
-            value: formatReportAmount(reportData.summary.totalProfit),
-            label: t('reports.netProfit'),
+            value: formatReportAmount(grossProfit),
+            label: 'مجمل الربح (إجمالي)',
             color: 'text-emerald-600',
             bg: 'bg-emerald-500/10',
-            subtext: `هامش ربح: ${profitMargin}%`,
+            subtext: `الصافي بعد المصاريف: ${formatReportAmount(netProfit)}`,
           },
           {
             icon: ShoppingBag,
