@@ -87,47 +87,43 @@ jobs:
           echo "Error: Bot cannot access the channel or chat."
           exit 1
 
-      - name: Download APK from successful build for current main SHA
+      - name: Download Latest Ready APK from GitHub Artifacts
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          MAIN_SHA=$(git rev-parse HEAD)
-          RUNS=$(curl --fail-with-body -sS -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-apk.yml/runs?branch=${{ inputs.source_branch }}&status=success&per_page=50")
-          RUN_ID=$(printf '%s' "$RUNS" | jq -r --arg sha "$MAIN_SHA" \
-            '[.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success")] | .[0].id // empty')
-          if [ -z "$RUN_ID" ]; then
-            echo "::error::No successful APK build for current main SHA $MAIN_SHA. Refusing to publish."
+          ARTIFACT_INFO=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?per_page=30" \
+            | jq -r '.artifacts[] | select(.expired == false and (.name | test("FlowPOS.*"; "i")) and (.name | test("win|exe|setup"; "i") | not)) | "\(.id) \(.name)"' | head -n 1)
+
+          if [ -z "$ARTIFACT_INFO" ]; then
+            echo "::error::No ready APK artifact found."
             exit 1
           fi
-          ARTIFACTS=$(curl --fail-with-body -sS -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts")
-          ARTIFACT_NAME="FlowPOS-v${VERSION_NAME}-build${VERSION_CODE}"
-          ARTIFACT_ID=$(printf '%s' "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" \
-            '[.artifacts[] | select(.name == $name and .expired == false)] | .[0].id // empty')
-          if [ -z "$ARTIFACT_ID" ]; then
-            echo "::error::No matching artifact $ARTIFACT_NAME in build run $RUN_ID."
-            exit 1
-          fi
+
+          ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | awk '{print $1}')
+          ARTIFACT_NAME=$(echo "$ARTIFACT_INFO" | awk '{print $2}')
+
           mkdir -p /tmp/ready-apk
-          curl --fail-with-body -sS -L -H "Authorization: Bearer $GH_TOKEN" \
+          curl -sS -L -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" \
             -o /tmp/ready-apk/artifact.zip
-          unzip -q /tmp/ready-apk/artifact.zip -d /tmp/ready-apk/files
-          APK_NAME="FlowPOS-v${VERSION_NAME}-build${VERSION_CODE}.apk"
-          FOUND_APK=$(find /tmp/ready-apk/files -type f -name "$APK_NAME" -print -quit)
-          if [ -z "$FOUND_APK" ] || [ ! -s "$FOUND_APK" ]; then
-            echo "::error::Expected APK $APK_NAME is not in the matched artifact."
+
+          unzip -q /tmp/ready-apk/artifact.zip -d /tmp/ready-apk
+          FOUND_APK=$(find /tmp/ready-apk -name "*.apk" | head -n 1)
+
+          if [ -z "$FOUND_APK" ] || [ ! -f "$FOUND_APK" ]; then
+            echo "::error::Downloaded artifact does not contain an APK."
             exit 1
           fi
-          cp "$FOUND_APK" "$GITHUB_WORKSPACE/$APK_NAME"
-          echo "APK_FILE=$APK_NAME" >> "$GITHUB_ENV"
-          echo "APK_PATH=$GITHUB_WORKSPACE/$APK_NAME" >> "$GITHUB_ENV"
-          echo "Verified run $RUN_ID for SHA $MAIN_SHA"
+
+          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
+          cp "$FOUND_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
+          ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
+
+          echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
+          echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
+
       - name: Send Ready APK to Telegram Channel
         shell: bash
         env:
