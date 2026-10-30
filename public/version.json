@@ -1,8 +1,20 @@
 {
-  "versionCode": 379,
-  "versionName": "1.5.2.372",
-  "lastUpdated": "2026-10-30T21:40:55.412Z",
+  "versionCode": 381,
+  "versionName": "1.5.3",
+  "lastUpdated": "2026-10-30T21:52:29.100Z",
   "buildHistory": [
+    {
+      "versionCode": 381,
+      "versionName": "1.5.3",
+      "date": "2026-10-30",
+      "description": "Release v1.5.3 (Build 381) - تحسينات وتسريع الواجهة وتأمين الأجهزة"
+    },
+    {
+      "versionCode": 380,
+      "versionName": "1.5.3",
+      "date": "2026-10-30",
+      "description": "Release v1.5.3 (Build 380) - تحسينات وتسريع الواجهة وتأمين الأجهزة"
+    },
     {
       "versionCode": 379,
       "versionName": "1.5.2.372",
@@ -80,16 +92,6 @@
       "versionName": "1.5.1",
       "date": "2026-10-30",
       "description": "إطلاق المساعد الذكي FlowPOS AI Copilot (Claude 3.5 Sonnet) وتحصين المحاسبة متعددة العملات وسداد الديون بدقة 8 منازل وتكلفة الكرتون."
-    },
-    {
-      "versionCode": 231,
-      "date": "2026-06-01T00:00:00.000Z",
-      "description": "v1.0.2 - Advanced reporting system: product movement, inventory stock count, inventory value, top products, detailed sales reports + cloud activity log"
-    },
-    {
-      "versionCode": 232,
-      "date": "2026-07-11T00:00:00.000Z",
-      "description": "v1.0.3 - Financial precision fixes: 2-decimal currency rounding, weighted average cost for purchases, discount display fix, debt deletion status fix + security hardening + onboarding tour + product image restore"
     }
   ]
 }

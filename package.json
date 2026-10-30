@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.5.2.372",
+  "version": "1.5.3",
   "description": "FlowPOS Pro Point of Sale System",
   "author": "FlowPOS Pro",
   "type": "module",
