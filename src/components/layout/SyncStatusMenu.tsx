@@ -34,6 +34,7 @@ import { CloudSyncContext } from '@/providers/CloudSyncProvider';
 import { getQueueStatus, SyncQueueStatus } from '@/lib/sync-queue';
 import { loadHistory, SyncHistoryItem, SYNC_HISTORY_UPDATED, cleanupSyncedItems } from '@/lib/sync-history';
 import { EVENTS } from '@/lib/events';
+import { toast } from '@/lib/sonner-bridge';
 import { StuckOperationsList } from './StuckOperationsList';
 
 // Helper to format date and time as: 25 تشرين الأول | 03:15 م
@@ -238,12 +239,23 @@ export function SyncStatusMenu({ onOpenChange }: SyncStatusMenuProps = {}) {
   });
 
   const handleManualFullSync = async () => {
-    // 1. إعادة تنشيط كافة الفواتير والعمليات المتعثرة دفعة واحدة
+    // 1. إعادة تنشيط كافة العمليات المعلقة محلياً لرفعها للسحابة
     const { retryFailedOperations } = await import('@/lib/sync-queue');
     retryFailedOperations();
 
-    // 2. إطلاق المزامنة المتسلسلة
+    // 2. إطلاق مزامنة الرفع
     await syncNow(true);
+
+    // 3. ✅ سحب قسري لأحدث المنتجات وتفريغ كاش IndexedDB القديم ليتطابق المخزون فوراً
+    try {
+      const { invalidateAllCaches } = await import('@/lib/cloud');
+      await invalidateAllCaches();
+      const { emitEvent, EVENTS } = await import('@/lib/events');
+      emitEvent(EVENTS.PRODUCTS_UPDATED);
+      toast.success(isRTL ? 'تمت مزامنة ورفع العمليات وتحديث المخزون بنجاح ✓' : 'Full sync & inventory updated successfully ✓');
+    } catch (e) {
+      console.warn('[SyncMenu] Failed to pull updated inventory:', e);
+    }
   };
 
   const handleOpenChange = (open: boolean) => {
