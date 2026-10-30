@@ -44,6 +44,13 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
+export interface ReleaseHistoryItem {
+  version: string;
+  versionCode: number;
+  date?: string;
+  changes?: string[];
+}
+
 interface DeployedVersion {
   code: number;
   name: string;
@@ -81,7 +88,14 @@ export function BossReleasesPanel() {
   const [isPublishingTelegramOnly, setIsPublishingTelegramOnly] = useState(false);
 
   // أحدث نسخة مدفوعة إلى main (تُقرأ من GitHub مباشرة، لا من نسخة التطبيق المثبتة)
-  const [mainVersion, setMainVersion] = useState<{ versionName: string; versionCode: number; sha: string | null; message?: string | null; notes: string[] } | null>(null);
+  const [mainVersion, setMainVersion] = useState<{
+    versionName: string;
+    versionCode: number;
+    sha: string | null;
+    message?: string | null;
+    notes: string[];
+    recentReleases?: ReleaseHistoryItem[];
+  } | null>(null);
   const [mainError, setMainError] = useState<string | null>(null);
   const loadMainVersion = async () => {
     try {
@@ -200,6 +214,72 @@ export function BossReleasesPanel() {
   const outdatedCount = useMemo(() => {
     return rawClients.filter((v) => v.version_code < latestCode).length;
   }, [rawClients, latestCode]);
+
+  // سجل آخر 10 إصدارات حقيقية تم نشرها
+  const recentReleases = useMemo<ReleaseHistoryItem[]>(() => {
+    if (mainVersion?.recentReleases && mainVersion.recentReleases.length > 0) {
+      return mainVersion.recentReleases;
+    }
+    const rawChangelog = (typeof __APP_CHANGELOG__ !== 'undefined' && Array.isArray(__APP_CHANGELOG__))
+      ? __APP_CHANGELOG__
+      : [];
+    const buildHistory = (typeof __APP_VERSION__ !== 'undefined' && Array.isArray((__APP_VERSION__ as any).buildHistory))
+      ? (__APP_VERSION__ as any).buildHistory
+      : [];
+
+    if (rawChangelog.length > 0) {
+      return rawChangelog.slice(0, 10).map((r: any) => {
+        let code = Number(r.versionCode || r.build || 0);
+        if (!code) {
+          const match = buildHistory.find((b: any) => b.versionName === r.version || b.date === r.date);
+          if (match) code = Number(match.versionCode || 0);
+        }
+        return {
+          version: String(r.version || ''),
+          versionCode: code,
+          date: r.date || '',
+          changes: Array.isArray(r.changes) ? r.changes.slice(0, 3) : [],
+        };
+      });
+    }
+
+    return buildHistory.slice(0, 10).map((b: any) => ({
+      version: String(b.versionName || ''),
+      versionCode: Number(b.versionCode || 0),
+      date: b.date || '',
+      changes: b.description ? [b.description] : [],
+    }));
+  }, [mainVersion?.recentReleases]);
+
+  // دمج آخر 10 إصدارات مع الأجهزة المتصلة لاختيار أقدم إصدار مسموح
+  const allowedVersionOptions = useMemo(() => {
+    const map = new Map<number, { name: string; code: number; count: number }>();
+
+    recentReleases.forEach((rel) => {
+      if (rel.versionCode > 0 && rel.versionCode !== CURRENT_VERSION_CODE) {
+        map.set(rel.versionCode, {
+          name: rel.version,
+          code: rel.versionCode,
+          count: 0,
+        });
+      }
+    });
+
+    deployedVersions.forEach((dep) => {
+      const existing = map.get(dep.code);
+      if (existing) {
+        existing.count = dep.count;
+      } else if (dep.code !== CURRENT_VERSION_CODE) {
+        map.set(dep.code, {
+          name: dep.name,
+          code: dep.code,
+          count: dep.count,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.code - a.code);
+  }, [recentReleases, deployedVersions, CURRENT_VERSION_CODE]);
 
   // 2. النشر الفوري بضغطة زر وتأكيد (1-Click Publish Flow)
   const handlePublishConfirm = async () => {
@@ -470,9 +550,9 @@ export function BossReleasesPanel() {
                 <option value={CURRENT_VERSION_CODE}>
                   الإصدار الحالي فقط (v{CURRENT_VERSION_NAME}) — إيقاف كافة النسخ السابقة فوراً
                 </option>
-                {deployedVersions.map((v) => (
+                {allowedVersionOptions.map((v) => (
                   <option key={v.code} value={v.code}>
-                    من إصدار v{v.name} (Build {v.code}) فما فوق — ({v.count} جهاز مسجل)
+                    من إصدار v{v.name} (Build {v.code}) فما فوق {v.count > 0 ? `— (${v.count} جهاز مسجل)` : ''}
                   </option>
                 ))}
               </select>
@@ -567,6 +647,50 @@ export function BossReleasesPanel() {
               رسالة تيليجرام فقط
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* بطاقة سجل آخر 10 إصدارات منشورة */}
+      <div className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-card shadow-sm space-y-3">
+        <div className="flex items-center justify-between pb-1 border-b border-border/50">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">سجل آخر 10 إصدارات منشورة</h3>
+          </div>
+          <span className="text-[11px] text-muted-foreground font-mono">آخر 10 نسخ حقيقية</span>
+        </div>
+
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {recentReleases.map((rel, idx) => (
+            <div
+              key={rel.versionCode || idx}
+              className="p-2.5 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors flex items-center justify-between gap-3 text-xs"
+            >
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-foreground" dir="ltr">v{rel.version}</span>
+                  {rel.versionCode > 0 && (
+                    <Badge variant="outline" className="text-[10px] font-mono py-0 px-1.5">
+                      Build {rel.versionCode}
+                    </Badge>
+                  )}
+                  {idx === 0 && (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[9px] py-0 px-1.5">
+                      الأحدث
+                    </Badge>
+                  )}
+                </div>
+                {rel.changes?.[0] && (
+                  <p className="text-[11px] text-muted-foreground truncate max-w-sm">
+                    {rel.changes[0]}
+                  </p>
+                )}
+              </div>
+              <span className="text-[10px] text-muted-foreground shrink-0 font-mono" dir="ltr">
+                {rel.date || '—'}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 

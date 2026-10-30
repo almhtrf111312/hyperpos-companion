@@ -1,8 +1,20 @@
 {
-  "versionCode": 377,
+  "versionCode": 379,
   "versionName": "1.5.2.372",
-  "lastUpdated": "2026-10-30T21:09:11.115Z",
+  "lastUpdated": "2026-10-30T21:40:55.412Z",
   "buildHistory": [
+    {
+      "versionCode": 379,
+      "versionName": "1.5.2.372",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.372 (Build 379)"
+    },
+    {
+      "versionCode": 378,
+      "versionName": "1.5.2.372",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.372 (Build 378)"
+    },
     {
       "versionCode": 377,
       "versionName": "1.5.2.372",
@@ -78,16 +90,6 @@
       "versionCode": 232,
       "date": "2026-07-11T00:00:00.000Z",
       "description": "v1.0.3 - Financial precision fixes: 2-decimal currency rounding, weighted average cost for purchases, discount display fix, debt deletion status fix + security hardening + onboarding tour + product image restore"
-    },
-    {
-      "versionCode": 233,
-      "date": "2026-07-11T00:00:00.000Z",
-      "description": "v1.0.4 - Phase 2 financial fixes: shift profit/COGS tracking on cash sales, complete debt-sale bundle fields (discount%, tax), addCurrency summation, discount type display, invoice item total rounding"
-    },
-    {
-      "versionCode": 235,
-      "date": "2026-07-12T00:00:00.000Z",
-      "description": "v1.0.6 - Sync UX: offline toast when a change is stored locally, and success/partial/failed toast when the queue drains after reconnection"
     }
   ]
 }

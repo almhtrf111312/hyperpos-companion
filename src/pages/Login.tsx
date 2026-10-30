@@ -8,12 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/lib/sonner-bridge';
-import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail, Sparkles, Send, KeyRound, ShieldCheck, CheckCircle2, ArrowRight, Lock } from 'lucide-react';
+import { Loader2, Store, Eye, EyeOff, Smartphone, RefreshCw, AlertTriangle, Mail, Sparkles, Send, KeyRound, ShieldCheck, ShieldAlert, CheckCircle2, ArrowRight, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageQuickSelector } from '@/components/auth/LanguageQuickSelector';
 import { getDeviceId } from '@/lib/device-fingerprint';
 import { getDeviceKey } from '@/lib/secure-storage';
-import { CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
+import { ContactLinksSection, CHANNELS, type ContactLinks } from '@/components/settings/ContactLinksSection';
 import { getAuthErrorMessage, isValidEmailFormat } from '@/lib/auth-errors';
 import { injectGuestDemoData, clearGuestDemoData } from '@/lib/demo-data';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,11 @@ export default function Login() {
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeviceBlockedDialog, setShowDeviceBlockedDialog] = useState(false);
+  const [blockedState, setBlockedState] = useState<{
+    isBlocked: boolean;
+    registeredDevice?: string | null;
+    userEmail?: string;
+  } | null>(null);
   const [isResettingDevice, setIsResettingDevice] = useState(false);
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -354,8 +359,14 @@ export default function Login() {
       const { blocked } = await checkDeviceBinding(data.user.id);
 
       if (blocked) {
+        // ✅ تسجيل الخروج فوراً من السيرفر لمنع استهلاك الجلسة
         await supabase.auth.signOut();
-        setShowDeviceBlockedDialog(true);
+        
+        // ✅ تثبيت شاشة الحظر في حالة المكون حتى لا تختفي أبداً
+        setBlockedState({
+          isBlocked: true,
+          userEmail: email,
+        });
         setIsLoading(false);
         return;
       }
@@ -403,6 +414,7 @@ export default function Login() {
       if (data?.success) {
         toast.success(data.message || 'تم إعادة تعيين الجهاز بنجاح');
         setShowDeviceBlockedDialog(false);
+        setBlockedState(null);
 
         // Now try to login again
         setIsLoading(true);
@@ -579,67 +591,56 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Device Blocked Dialog - Protected from accidental closure on mobile */}
-      <Dialog open={showDeviceBlockedDialog} onOpenChange={(open) => { if (!open) return; }}>
-        <DialogContent
-          className="sm:max-w-md [&>button:last-child]:hidden z-[200]"
-          dir={direction}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="text-center sm:text-center">
-            <div className="mx-auto w-14 h-14 bg-destructive/10 rounded-full flex items-center justify-center mb-3">
-              <Smartphone className="w-7 h-7 text-destructive" />
+      {/* شاشة الحظر الدائمة - لا تختفي إلا بطلب المستخدم أو تواصله مع الدعم */}
+      {blockedState?.isBlocked && (
+        <div className="fixed inset-0 z-[250] bg-background/95 backdrop-blur-md flex items-center justify-center p-4" dir={direction}>
+          <div className="w-full max-w-md bg-card border border-destructive/30 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            
+            {/* الترويسة والأيقونة */}
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-2xl flex items-center justify-center mx-auto mb-2">
+                <ShieldAlert className="w-9 h-9" />
+              </div>
+              <h3 className="text-xl font-black text-foreground">الحساب مرتبط بجهاز آخر</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                عذراً، هذا الحساب مسجل ويعمل حالياً على جهاز آخر. وفقاً لسياسة الأمان والترخيص، لا يُسمح بتشغيل نفس الحساب على جهازين في وقت واحد.
+              </p>
             </div>
-            <DialogTitle className="flex items-center justify-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              جهاز جديد تم اكتشافه
-            </DialogTitle>
-            <DialogDescription className="text-base mt-2">
-              هذا الحساب مرتبط بجهاز آخر. هل تريد نقل الحساب إلى هذا الجهاز؟
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="bg-muted/50 rounded-lg p-4 space-y-3 my-2">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              عند إعادة تعيين الجهاز، سيتم فصل الحساب عن الجهاز السابق وربطه بهذا الجهاز.
-            </p>
-            <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>لن تتمكن من استخدام الحساب على الجهاز السابق بعد هذا الإجراء.</span>
+            {/* خيارات المساعدة والحل */}
+            <div className="bg-muted/50 rounded-2xl p-4 space-y-3 border border-border/60 text-xs">
+              <div className="flex items-start gap-2.5 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>إذا كان هذا جهازك الجديد، يمكنك طلب نقل الحساب وفصله عن الجهاز القديم.</span>
+              </div>
+              <div className="border-t border-border/40 pt-2.5">
+                <p className="font-semibold text-foreground mb-1">أو تواصل مباشرة مع الإدارة والدعم الفني:</p>
+                <ContactLinksSection />
+              </div>
+            </div>
+
+            {/* أزرار الإجراء */}
+            <div className="space-y-2 pt-1">
+              <Button
+                onClick={handleResetDevice}
+                disabled={isResettingDevice}
+                className="w-full h-11 rounded-xl text-xs font-bold gap-2 bg-primary text-primary-foreground"
+              >
+                {isResettingDevice ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                نقل الحساب إلى هذا الجهاز
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setBlockedState(null)}
+                className="w-full h-10 rounded-xl text-xs font-semibold"
+              >
+                إغلاق والعودة لتسجيل الدخول
+              </Button>
             </div>
           </div>
-
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowDeviceBlockedDialog(false)}
-              className="w-full sm:w-auto"
-              disabled={isResettingDevice}
-            >
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleResetDevice}
-              disabled={isResettingDevice}
-              className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-            >
-              {isResettingDevice ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  جاري النقل...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  نقل الحساب لهذا الجهاز
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* Forgot Password Dialog with Telegram & Email Recovery */}
       <Dialog open={showForgotDialog} onOpenChange={(open) => {

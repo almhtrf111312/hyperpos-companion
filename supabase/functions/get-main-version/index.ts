@@ -40,13 +40,40 @@ Deno.serve(async (req) => {
     const v = JSON.parse(decode(ver.content));
 
     let notes: string[] = [];
+    let recentReleases: Array<{ version: string; versionCode: number; date?: string; changes?: string[] }> = [];
     try {
       const c = log?.content ? JSON.parse(decode(log.content)) : null;
       const list = Array.isArray(c) ? c : c?.entries || c?.versions || [];
       const entry = list.find((e: any) => Number(e.versionCode ?? e.build) === Number(v.versionCode)) || list[0];
       const pub = entry?.public;
       if (pub) notes = [...(pub.new || []), ...(pub.improved || []), ...(pub.fixed || [])].map(String).slice(0, 8);
+
+      // استخراج آخر 10 إصدارات من changelog و version.json
+      const buildHist = Array.isArray(v.buildHistory) ? v.buildHistory : [];
+      recentReleases = list.slice(0, 10).map((r: any) => {
+        let code = Number(r.versionCode || r.build || 0);
+        if (!code) {
+          const match = buildHist.find((b: any) => b.versionName === r.version || b.date === r.date);
+          if (match) code = Number(match.versionCode || 0);
+        }
+        return {
+          version: String(r.version || ''),
+          versionCode: code,
+          date: r.date || '',
+          changes: Array.isArray(r.changes) ? r.changes.slice(0, 3) : [],
+        };
+      });
     } catch { /* الملاحظات اختيارية */ }
+
+    // إذا كان changelog فارغاً، استخدم buildHistory من version.json مباشرة
+    if (recentReleases.length === 0 && Array.isArray(v.buildHistory)) {
+      recentReleases = v.buildHistory.slice(0, 10).map((b: any) => ({
+        version: String(b.versionName || ''),
+        versionCode: Number(b.versionCode || 0),
+        date: b.date || '',
+        changes: b.description ? [b.description] : [],
+      }));
+    }
 
     return json({
       versionName: String(v.versionName),
@@ -55,6 +82,7 @@ Deno.serve(async (req) => {
       message: commit?.commit?.message ? String(commit.commit.message).split('\n')[0].slice(0, 120) : null,
       committedAt: commit?.commit?.committer?.date ?? null,
       notes,
+      recentReleases, // ✅ مصفوفة آخر 10 إصدارات رسمية
     });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
