@@ -1026,7 +1026,9 @@ export default function Invoices() {
         import('@/lib/cloud/products-cloud').then(({ restoreProductsQuantitiesLocally }) => {
           const itemsToRestore = invoice.items.map(item => ({
             productId: item.productId || item.id,
-            quantity: item.quantity,
+            quantity: (item.unit === 'box' || item.unit === 'bulk')
+              ? (Number(item.quantity) * Math.max(Number(item.conversionFactor || 1), 1))
+              : Number(item.quantity),
           }));
           restoreProductsQuantitiesLocally(itemsToRestore);
         }).catch(() => {});
@@ -1066,12 +1068,41 @@ export default function Invoices() {
         const ok = result && (result === true || (result as RefundResult).success);
         if (!ok) {
           const reason = typeof result === 'object' ? (result as RefundResult).error : undefined;
+          if (reason?.includes('not found') || reason?.includes('لم يتم العثور') || reason?.includes('غير موجود')) {
+            console.warn('[Refund] Invoice not on cloud yet, applying local-first refund fallback');
+            markInvoiceRefundedLocally(invoiceLabel);
+            setInvoices(prev => prev.map(inv =>
+              inv.id === invoiceLabel ? { ...inv, status: 'refunded' as const } : inv
+            ));
+            if (invoice.items && invoice.items.length > 0) {
+              import('@/lib/cloud/products-cloud').then(({ restoreProductsQuantitiesLocally }) => {
+                const itemsToRestore = invoice.items.map(item => ({
+                  productId: item.productId || item.id,
+                  quantity: (item.unit === 'box' || item.unit === 'bulk')
+                    ? (Number(item.quantity) * Math.max(Number(item.conversionFactor || 1), 1))
+                    : Number(item.quantity),
+                }));
+                restoreProductsQuantitiesLocally(itemsToRestore);
+              }).catch(() => {});
+            }
+            if (invoice.customerId) {
+              import('@/lib/cloud/customers-cloud').then(({ updateCustomerStatsCloud }) => {
+                updateCustomerStatsCloud(invoice.customerId!).catch(() => {});
+              });
+            }
+            addToQueueIfNotExists('invoice_refund', { invoiceNumber: invoiceLabel }, `invoice-refund:${invoiceLabel}`);
+            toast.info(`تم استرداد الفاتورة ${invoiceLabel} محلياً وستُطابق بالسحابة فور مزامنة البيع`, {
+              id: toastId,
+              duration: 4000,
+            });
+            return;
+          }
+
           toast.error(`فشل في استرداد ${invoiceLabel}`, {
             id: toastId,
             description: reason || 'لم يطرأ أي تغيير على الفاتورة أو المخزون',
             duration: 5000,
           });
-          // No optimistic change was made, so nothing to roll back.
           return;
         }
 
@@ -1098,7 +1129,9 @@ export default function Invoices() {
             import('@/lib/cloud/products-cloud').then(({ restoreProductsQuantitiesLocally }) => {
               const itemsToRestore = invoice.items.map(item => ({
                 productId: item.productId || item.id,
-                quantity: item.quantity,
+                quantity: (item.unit === 'box' || item.unit === 'bulk')
+                  ? (Number(item.quantity) * Math.max(Number(item.conversionFactor || 1), 1))
+                  : Number(item.quantity),
               }));
               restoreProductsQuantitiesLocally(itemsToRestore);
             }).catch(() => {});

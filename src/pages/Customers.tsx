@@ -272,6 +272,20 @@ export default function Customers() {
   const handleDeleteCustomer = async () => {
     if (!selectedCustomer) return;
 
+    // 🛡️ التحقق الصارم من رصيد الديون قبل السماح بالحذف
+    let totalDebt = Number(selectedCustomer.totalDebt) || 0;
+    try {
+      const statsMap = await loadCustomersStatsMap();
+      const stats = getCustomerStatsFrom(statsMap, { id: selectedCustomer.id, name: selectedCustomer.name });
+      totalDebt = Math.max(totalDebt, stats.totalDebt || 0);
+    } catch {}
+
+    if (totalDebt > 0.001) {
+      toast.error(`لا يمكن حذف العميل "${selectedCustomer.name}" لوجود ذمم وديون قائمة بقيمة $${totalDebt.toFixed(2)}`);
+      setShowDeleteDialog(false);
+      return;
+    }
+
     setIsSaving(true);
     const deletedName = selectedCustomer.name;
     const deletedId = selectedCustomer.id;

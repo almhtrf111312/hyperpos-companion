@@ -53,7 +53,10 @@ REVOKE EXECUTE ON FUNCTION public.recalc_pos_invoice_profit(uuid) FROM PUBLIC, a
 GRANT EXECUTE ON FUNCTION public.recalc_pos_invoice_profit(uuid) TO authenticated;
 
 -- 2) ترقية دالة معالجة البيع الذرية (process_pos_sale_atomic)
+ALTER TABLE IF EXISTS public.invoices ADD COLUMN IF NOT EXISTS tax_mode text DEFAULT 'exclusive';
+
 DROP FUNCTION IF EXISTS public.process_pos_sale_atomic(text,text,text,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text,uuid,jsonb,numeric,numeric);
+DROP FUNCTION IF EXISTS public.process_pos_sale_atomic(text,text,text,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text,uuid,jsonb,numeric,numeric,text);
 
 CREATE OR REPLACE FUNCTION public.process_pos_sale_atomic(
   _operation_id text,
@@ -71,7 +74,8 @@ CREATE OR REPLACE FUNCTION public.process_pos_sale_atomic(
   _warehouse_id uuid,
   _items jsonb,
   _down_payment numeric DEFAULT 0,
-  _exchange_rate numeric DEFAULT 1
+  _exchange_rate numeric DEFAULT 1,
+  _tax_mode text DEFAULT 'exclusive'
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
 DECLARE
@@ -119,11 +123,11 @@ BEGIN
   INSERT INTO public.invoices (
     user_id, operation_id, invoice_number, payment_type, customer_name, customer_phone,
     subtotal, discount, discount_percentage, tax_rate, tax_amount, total, profit,
-    currency, exchange_rate, status, date
+    currency, exchange_rate, status, date, tax_mode
   ) VALUES (
     _user_id, _operation_id, _inv_number, _payment_type, _customer_name, _customer_phone,
     _usd_subtotal, _usd_discount, _discount_percentage, _tax_rate, _usd_tax, _usd_total, 0,
-    COALESCE(_currency, 'USD'), _effective_rate, 'completed', CURRENT_DATE
+    COALESCE(_currency, 'USD'), _effective_rate, 'completed', CURRENT_DATE, COALESCE(_tax_mode, 'exclusive')
   ) RETURNING id INTO _inv_id;
 
   -- إدراج البنود وخصم المخزون واحتساب التكلفة بدقة
@@ -201,5 +205,5 @@ BEGIN
   );
 END $$;
 
-REVOKE EXECUTE ON FUNCTION public.process_pos_sale_atomic(text,text,text,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text,uuid,jsonb,numeric,numeric) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.process_pos_sale_atomic(text,text,text,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text,uuid,jsonb,numeric,numeric) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.process_pos_sale_atomic(text,text,text,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text,uuid,jsonb,numeric,numeric,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.process_pos_sale_atomic(text,text,text,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text,uuid,jsonb,numeric,numeric,text) TO authenticated;

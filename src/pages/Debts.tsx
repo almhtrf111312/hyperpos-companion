@@ -120,7 +120,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
     notes: '',
   });
 
-  const statusConfig = {
+  const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
+    pending: { label: 'قيد المزامنة', icon: Clock, color: 'badge-warning' },
     due: { label: t('debts.statusDue'), icon: Clock, color: 'badge-info' },
     partially_paid: { label: t('debts.statusPartiallyPaid'), icon: Banknote, color: 'badge-warning' },
     overdue: { label: t('debts.statusOverdue'), icon: AlertTriangle, color: 'badge-danger' },
@@ -624,8 +625,8 @@ export default function Debts({ embedded, onAddDebt, onAddDebtChange }: DebtsPro
           </div>
         ) : (
           filteredDebts.map((debt) => {
-            const status = statusConfig[debt.status];
-            const StatusIcon = status.icon;
+            const status = statusConfig[debt.status] || statusConfig.due;
+            const StatusIcon = status.icon || Clock;
             const progress = debt.totalDebt > 0 ? Math.min(100, Math.round((debt.totalPaid / debt.totalDebt) * 100)) : 0;
 
             return (

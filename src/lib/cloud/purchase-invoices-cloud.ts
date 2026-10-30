@@ -530,12 +530,56 @@ export async function loadPurchaseInvoiceWithItems(invoiceId: string): Promise<{
         }
       }
  
+     // ⚖️ تحديث المخزون والتكلفة WAC محلياً وفورياً
+     for (const item of items) {
+       if (!item.product_id) continue;
+       try {
+         const { loadProductsFromLocalCache, saveProductsToLocalCache, updateProductInIDB } = await import('./products-cloud');
+         const localProducts = loadProductsFromLocalCache() || [];
+         const prodIndex = localProducts.findIndex(p => p.id === item.product_id);
+         if (prodIndex !== -1) {
+           const current = localProducts[prodIndex];
+           const currentQty = Number(current.quantity) || 0;
+           const currentCost = Number(current.cost_price) || 0;
+           const purchasedQty = Number(item.quantity) || 0;
+           const purchasedCost = Number(item.cost_price) || 0;
+
+           let newCost = currentCost;
+           if (currentQty <= 0) {
+             newCost = purchasedCost > 0 ? purchasedCost : currentCost;
+           } else if (purchasedCost > 0) {
+             newCost = Math.round(((currentQty * currentCost) + (purchasedQty * purchasedCost)) / (currentQty + purchasedQty) * 100000000) / 100000000;
+           }
+           const newQty = currentQty + purchasedQty;
+
+           localProducts[prodIndex] = {
+             ...current,
+             quantity: newQty,
+             cost_price: newCost,
+             status: newQty > 0 ? 'available' : 'out_of_stock'
+           };
+           saveProductsToLocalCache(localProducts);
+           await updateProductInIDB(item.product_id, {
+             quantity: newQty,
+             cost_price: newCost,
+             status: newQty > 0 ? 'available' : 'out_of_stock'
+           });
+         }
+       } catch (e) {
+         console.warn('[PurchaseInvoices] Local WAC update error:', e);
+       }
+     }
+     emitEvent(EVENTS.PRODUCTS_UPDATED, null);
+
+     invalidatePurchaseInvoicesCache();
+     emitEvent(EVENTS.PURCHASE_INVOICES_UPDATED, null);
+
      // Update invoice status
      await supabase
        .from('purchase_invoices')
        .update({ status: 'finalized' })
        .eq('id', invoiceId);
- 
+
      return true;
    } catch (error) {
      console.error('Error finalizing purchase invoice:', error);

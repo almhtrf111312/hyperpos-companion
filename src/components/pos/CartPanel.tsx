@@ -44,6 +44,7 @@ import { loadCustomers, Customer } from '@/lib/customers-store';
 import { getNextInvoiceNumber } from '@/lib/invoices-store';
 import { addActivityLog } from '@/lib/activity-log';
 import { addGrossProfit } from '@/lib/profits-store';
+import { distributeDetailedProfit } from '@/lib/partners-store';
 import { useAuth } from '@/hooks/use-auth';
 import { printHTML, printInvoice, PrintableInvoice, getStoreSettings, getPrintSettings } from '@/lib/native-print';
 import { isNativeAndroid } from '@/lib/printer/flowpos-printer';
@@ -604,28 +605,31 @@ export function CartPanel({
   const shortageAsExpenseRef = useRef(false);
 
   const confirmCashSale = async () => {
-    // ✅ حماية مزدوجة: state + ref لمنع التكرارات
+    // 🛡️ تفعيل القفل فوراً وبشكل متزامن قبل أي استدعاء غير متزامن (await)
     if (isSaving || savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
 
-    // 🎫 بوابة تذكرة الأوفلاين: منع البيع عند انتهاء التذكرة أو العبث بالساعة أو بلوغ حد الفواتير
+    // 🎫 بوابة تذكرة الأوفلاين
     const leaseGate = canSellOffline();
     if (!leaseGate.allowed) {
+      savingRef.current = false;
+      setIsSaving(false);
       showToast.error(leaseGate.message, { persistent: false });
       return;
     }
 
-    // 🛡️ فحص استباقي حاسم قبل تفريغ السلة وتوليد الفاتورة
+    // 🛡️ فحص سلامة أصناف السلة
     const validation = await validateCartProducts(cart);
     if (!validation.isValid) {
+      savingRef.current = false;
+      setIsSaving(false);
       showToast.error(
-        `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" تالف أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
+        `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" غير متاح حالياً`,
         { persistent: false }
       );
       return;
     }
-
-    savingRef.current = true;
-    setIsSaving(true);
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
@@ -826,6 +830,20 @@ export function CartPanel({
       // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
       addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
 
+      // 🤝 توزيع الأرباح على الشركاء محلياً
+      const categoryProfits = Object.entries(profitsByCategory)
+        .filter(([_, profit]) => Number(profit) > 0)
+        .map(([category, profit]) => ({ category, profit: Number(profit) }));
+
+      if (categoryProfits.length > 0) {
+        distributeDetailedProfit(
+          categoryProfits,
+          invoiceNumber,
+          customerNameSnapshot || 'عميل نقدي',
+          false
+        );
+      }
+
       // 2. ✅ إضافة الفاتورة لطابور المزامنة sync-queue
       addUniqueOperation('invoice_create', {
         operationId,
@@ -986,17 +1004,23 @@ export function CartPanel({
   };
 
   const confirmDebtSale = async (isSplitSale: boolean = false) => {
-    // ✅ حماية مزدوجة: state + ref لمنع التكرارات
+    // 🛡️ تفعيل القفل فوراً وبشكل متزامن قبل أي استدعاء غير متزامن (await)
     if (isSaving || savingRef.current) return;
+    savingRef.current = true;
+    setIsSaving(true);
 
-    // 🎫 بوابة تذكرة الأوفلاين: منع البيع عند انتهاء التذكرة أو العبث بالساعة أو بلوغ حد الفواتير
+    // 🎫 بوابة تذكرة الأوفلاين
     const leaseGate = canSellOffline();
     if (!leaseGate.allowed) {
+      savingRef.current = false;
+      setIsSaving(false);
       showToast.error(leaseGate.message, { persistent: false });
       return;
     }
 
     if (!isRealCustomerSelected(customerName)) {
+      savingRef.current = false;
+      setIsSaving(false);
       showToast.error('لا يمكن اعتماد الفاتورة كدين أو بيع مركب بدون تحديد عميل مسجل.');
       return;
     }
@@ -1008,6 +1032,8 @@ export function CartPanel({
     const resolvedCustomerId = selectedCustomerId || selectedCustomer?.id;
 
     if (!resolvedCustomerId) {
+      savingRef.current = false;
+      setIsSaving(false);
       showToast.error('العميل المحدد غير مسجل في النظام. يرجى اختيار عميل من القائمة أو إضافة عميل جديد لحفظ الفاتورة مع معرف العميل.');
       return;
     }
@@ -1015,15 +1041,14 @@ export function CartPanel({
     // 🛡️ فحص استباقي حاسم قبل تفريغ السلة وتوليد الفاتورة
     const validation = await validateCartProducts(cart);
     if (!validation.isValid) {
+      savingRef.current = false;
+      setIsSaving(false);
       showToast.error(
         `تعذر حفظ الفاتورة: الصنف "${validation.invalidItems.join('، ')}" تالف أو تم حذفه من السحابة. يرجى إزالته من السلة.`,
         { persistent: false }
       );
       return;
     }
-
-    savingRef.current = true;
-    setIsSaving(true);
 
     // Snapshot cart data before any changes
     const cartSnapshot = [...cart];
@@ -1262,6 +1287,20 @@ export function CartPanel({
 
       // ✅ تسجيل الربح محلياً فوراً برقم الفاتورة ومعرف العملية (يمنع المضاعفة عند المزامنة)
       addGrossProfit(invoiceNumber, discountedProfit, totalCOGS, totalSnapshot, operationId);
+
+      // 🤝 توزيع الأرباح على الشركاء محلياً (معلقة للبيع الآجل)
+      const debtCategoryProfits = Object.entries(profitsByCategory)
+        .filter(([_, profit]) => Number(profit) > 0)
+        .map(([category, profit]) => ({ category, profit: Number(profit) }));
+
+      if (debtCategoryProfits.length > 0) {
+        distributeDetailedProfit(
+          debtCategoryProfits,
+          invoiceNumber,
+          customerNameSnapshot || 'عميل بيع مؤجل',
+          true
+        );
+      }
 
       // 2. ✅ إضافة حزمة البيع الآجل لطابور المزامنة sync-queue
       addUniqueOperation('debt_sale_bundle', { localId: operationId, bundle }, operationId);
