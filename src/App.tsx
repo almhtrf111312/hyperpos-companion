@@ -33,14 +33,12 @@ import { saveLastRoute } from "./lib/last-route";
 import { hideSplashScreen } from "./lib/splash-screen";
 // Demo data loading removed - app uses cloud sync for data persistence
 import { ClickProbe } from "./components/debug/ClickProbe";
-import { ComponentInspector } from "./components/debug/ComponentInspector";
 import { SafeModeScreen } from "./components/debug/SafeModeScreen";
 import { PrivacyPolicyScreen, usePrivacyAccepted } from "./components/PrivacyPolicyScreen";
 import POS from "./pages/POS";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { FeatureErrorBoundary } from "@/components/debug/FeatureErrorBoundary";
-import { AICopilotDrawer } from "./components/ai/AICopilotDrawer";
 
 // Lazy-loaded heavy pages to keep the initial startup bundle ultra-fast
 const Products = lazy(() => import("./pages/Products"));
@@ -355,7 +353,6 @@ const AppContent = () => {
     return (
       <>
         {isDebugClick && <ClickProbe />}
-      {import.meta.env.DEV && <ComponentInspector />}
         <SafeModeScreen />
       </>
     );
@@ -451,9 +448,7 @@ const PageFallback = () => (
   return (
     <>
       {isDebugClick && <ClickProbe />}
-      {import.meta.env.DEV && <ComponentInspector />}
       <ExitConfirmDialog />
-      {user && <AICopilotDrawer />}
       <Suspense fallback={<PageFallback />}>
         <Routes>
         {/* Public routes */}
