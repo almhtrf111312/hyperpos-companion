@@ -1,8 +1,20 @@
 {
-  "versionCode": 374,
-  "versionName": "1.5.2.374",
-  "lastUpdated": "2026-10-30T20:43:07.946Z",
+  "versionCode": 375,
+  "versionName": "1.5.2.372",
+  "lastUpdated": "2026-10-30T20:52:10.669Z",
   "buildHistory": [
+    {
+      "versionCode": 375,
+      "versionName": "1.5.2.372",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.372 (Build 375)"
+    },
+    {
+      "versionCode": 374,
+      "versionName": "1.5.2.372",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.372 (Build 374)"
+    },
     {
       "versionCode": 373,
       "versionName": "1.5.2.372",
@@ -74,16 +86,6 @@
       "versionCode": 237,
       "date": "2026-07-14T00:00:00.000Z",
       "description": "v1.0.8 - Refund UX: dialog closes instantly and processing runs in background + unique toast id per invoice prevents stacked duplicate notifications + notification now shows the actual refunded invoice number and amount"
-    },
-    {
-      "versionCode": 238,
-      "date": "2026-07-14T00:00:00.000Z",
-      "description": "v1.0.9 - Extended duplicate-click protection & background processing to invoice deletion, debt deletion, product deletion, shift closing, and stock transfers (create/complete/cancel/return) with unique toast IDs"
-    },
-    {
-      "versionCode": 239,
-      "date": "2026-07-20T00:00:00.000Z",
-      "description": "v1.0.10 - Fully atomic and idempotent invoice refunds: exact stock quantity restored once, duplicate offline refunds deduplicated, and accurate single notification using backend-confirmed invoice amount and restored units"
     }
   ]
 }

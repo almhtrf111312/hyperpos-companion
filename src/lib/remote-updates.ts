@@ -16,15 +16,16 @@ export interface ReleaseConfig {
   message: string;
 }
 
-export interface Broadcast {
-  id: string;
-  title: string;
-  body: string;
-  kind: 'info' | 'warning' | 'update' | 'maintenance';
-  link_url: string | null;
-  is_active: boolean;
-  expires_at: string | null;
-  created_at: string;
+export interface Broadcast {
+  id: string;
+  title: string;
+  body: string;
+  kind: 'info' | 'warning' | 'update' | 'maintenance';
+  link_url: string | null;
+  target_version_code?: number | null;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
 }
 
 export const DEFAULT_RELEASE_CONFIG: ReleaseConfig = {
@@ -62,7 +63,7 @@ export function computeUpdateStatus(cfg: ReleaseConfig, versionCode: number, now
 }
 
 const CFG_KEY = 'hp_release_config_cache';
-const SEEN_KEY = 'hp_seen_broadcasts';
+export const SEEN_KEY = 'hp_seen_broadcasts';
 
 export function getCachedReleaseConfig(): ReleaseConfig {
   try { return { ...DEFAULT_RELEASE_CONFIG, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') }; }
@@ -87,17 +88,32 @@ export async function saveReleaseConfig(cfg: ReleaseConfig) {
 
 export async function fetchActiveBroadcasts(): Promise<Broadcast[]> {
   const { data } = await supabase.from('app_broadcasts').select('*').eq('is_active', true)
-    .order('created_at', { ascending: false }).limit(10);
+    .order('created_at', { ascending: false }).limit(20);
   const now = Date.now();
   return ((data || []) as Broadcast[]).filter(b => !b.expires_at || new Date(b.expires_at).getTime() > now);
 }
 
-export function getSeenBroadcasts(): string[] {
-  try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch { return []; }
-}
-export function markBroadcastSeen(id: string) {
-  const s = new Set(getSeenBroadcasts()); s.add(id);
-  localStorage.setItem(SEEN_KEY, JSON.stringify([...s].slice(-100)));
+export function getSeenBroadcasts(): string[] {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    if (raw) return JSON.parse(raw);
+    const legacy = localStorage.getItem('hyperpos_seen_broadcasts');
+    if (legacy) {
+      localStorage.setItem(SEEN_KEY, legacy);
+      localStorage.removeItem('hyperpos_seen_broadcasts');
+      return JSON.parse(legacy);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export function markBroadcastSeen(id: string) {
+  const s = new Set(getSeenBroadcasts());
+  s.add(id);
+  localStorage.setItem(SEEN_KEY, JSON.stringify([...s].slice(-200)));
+  window.dispatchEvent(new Event('hp-broadcasts-updated'));
 }
 
 export async function reportClientVersion(userId: string) {

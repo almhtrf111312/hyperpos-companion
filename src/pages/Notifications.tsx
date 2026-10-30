@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   fetchActiveBroadcasts, getCachedReleaseConfig, getSeenBroadcasts, openExternal,
+  markBroadcastSeen, SEEN_KEY,
   CURRENT_VERSION_CODE,
   type Broadcast,
 } from '@/lib/remote-updates';
@@ -27,6 +28,7 @@ export default function Notifications() {
     try {
       const list = await fetchActiveBroadcasts();
       setRawItems(list);
+      setSeenIds(getSeenBroadcasts());
     } catch {
       /* وضع عدم الاتصال */
     } finally {
@@ -36,7 +38,10 @@ export default function Notifications() {
 
   useEffect(() => {
     load();
-    const h = () => load();
+    const h = () => {
+      setSeenIds(getSeenBroadcasts());
+      load();
+    };
     window.addEventListener('hp-broadcasts-updated', h);
     return () => window.removeEventListener('hp-broadcasts-updated', h);
   }, [load]);
@@ -50,7 +55,7 @@ export default function Notifications() {
 
     return rawItems.filter((b) => {
       const isUpdate = b.kind === 'update';
-      const targetCode = (b as any).target_version_code || latestBuildCode;
+      const targetCode = b.target_version_code || latestBuildCode;
 
       if (isUpdate) {
         // إذا كان التحديث قد تم تثبيته بالفعل على جهاز العميل -> يختفي تلقائياً
@@ -81,7 +86,7 @@ export default function Notifications() {
       } else {
         next = [...prev, id];
       }
-      localStorage.setItem('hyperpos_seen_broadcasts', JSON.stringify(next));
+      localStorage.setItem(SEEN_KEY, JSON.stringify(next.slice(-200)));
       window.dispatchEvent(new Event('hp-broadcasts-updated'));
       return next;
     });
@@ -91,9 +96,9 @@ export default function Notifications() {
   const markAllRead = () => {
     const allIds = filteredBroadcasts.map((b) => b.id);
     const set = new Set([...seenIds, ...allIds]);
-    const next = Array.from(set);
+    const next = Array.from(set).slice(-200);
     setSeenIds(next);
-    localStorage.setItem('hyperpos_seen_broadcasts', JSON.stringify(next));
+    localStorage.setItem(SEEN_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event('hp-broadcasts-updated'));
   };
 
@@ -234,7 +239,14 @@ export default function Notifications() {
 
                 <div className="flex flex-wrap gap-2 pt-1">
                   {link && (
-                    <Button size="sm" className="h-8 gap-1.5 text-xs font-bold" onClick={() => openExternal(link)}>
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs font-bold"
+                      onClick={() => {
+                        if (!isRead) toggleRead(b.id);
+                        openExternal(link);
+                      }}
+                    >
                       <Download className="w-3.5 h-3.5" />
                       {isUpdate ? 'تحميل التحديث وتثبيته' : 'فتح الرابط'}
                     </Button>

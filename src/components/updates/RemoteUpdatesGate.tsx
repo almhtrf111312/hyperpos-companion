@@ -13,6 +13,8 @@ import {
 const FORCED_DISMISS_KEY = 'hp_forced_update_dismissed_day';
 const NOTIFIED_KEY = 'hp_notified_broadcasts';
 const POLL_MS = 60 * 1000;
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+const BANNER_AUTO_DISMISS_MS = 7000;
 
 export function RemoteUpdatesGate() {
   const { user } = useAuth();
@@ -25,25 +27,55 @@ export function RemoteUpdatesGate() {
   const dismissBanner = useCallback((id: string) => {
     markBroadcastSeen(id);
     setBanners(prev => prev.filter(x => x.id !== id));
-    window.dispatchEvent(new Event('hp-broadcasts-updated'));
   }, []);
+
+  // اختفاء اللافتة المنبثقة تلقائياً بعد 7 ثوانٍ وحفظها كمقروءة دون إزعاج
+  useEffect(() => {
+    if (banners.length === 0) return;
+    const timer = setTimeout(() => {
+      banners.forEach(b => markBroadcastSeen(b.id));
+      setBanners([]);
+    }, BANNER_AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [banners]);
 
   const refresh = useCallback(async () => {
     if (!user?.id || !navigator.onLine) return;
     try {
       reportClientVersion(user.id).catch(() => {});
-      setCfg(await fetchReleaseConfig());
+      const releaseCfg = await fetchReleaseConfig();
+      setCfg(releaseCfg);
       const list = await fetchActiveBroadcasts();
       const seen = new Set(getSeenBroadcasts());
-      const fresh = list.filter(b => !seen.has(b.id));
+
+      const now = Date.now();
+      const latestBuildCode = releaseCfg.latest_version_code || releaseCfg.min_version_code || CURRENT_VERSION_CODE;
+
+      // تصفية الإعلانات: عدم إظهار لافتة لتحديث مثبت بالفعل أو إعلان عادي تجاوز 3 أيام
+      const activeItems = list.filter(b => {
+        if (b.kind === 'update') {
+          const targetCode = b.target_version_code || latestBuildCode;
+          if (CURRENT_VERSION_CODE >= targetCode) return false;
+          return true;
+        }
+        const createdAt = new Date(b.created_at).getTime();
+        if (now - createdAt > THREE_DAYS_MS) return false;
+        return true;
+      });
+
+      const fresh = activeItems.filter(b => !seen.has(b.id));
       const notified = new Set<string>(JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'));
       for (const b of fresh.filter(x => !notified.has(x.id))) {
         notified.add(b.id);
         sendLocalNotification(b.title, b.body, b.kind === 'info' ? 'system' : 'critical').catch(() => {});
       }
       localStorage.setItem(NOTIFIED_KEY, JSON.stringify([...notified].slice(-200)));
-      setBanners(fresh);
-      window.dispatchEvent(new Event('hp-broadcasts-updated'));
+
+      if (fresh.length > 0) {
+        setBanners(fresh);
+      } else {
+        setBanners(prev => (prev.length > 0 ? [] : prev));
+      }
     } catch { /* offline: keep cached */ }
   }, [user?.id]);
 
@@ -166,7 +198,10 @@ export function RemoteUpdatesGate() {
                     <Button
                       size="sm"
                       className="h-7 px-3 gap-1.5 text-xs font-medium active:scale-95 transition-transform"
-                      onClick={() => openExternal(b.link_url || cfg.update_url)}
+                      onClick={() => {
+                        dismissBanner(b.id);
+                        openExternal(b.link_url || cfg.update_url);
+                      }}
                     >
                       <Download className="w-3.5 h-3.5" /> فتح الرابط
                     </Button>
