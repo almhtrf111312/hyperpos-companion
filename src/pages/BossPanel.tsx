@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -49,6 +49,7 @@ import {
   Wrench,
   Terminal,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1285,89 +1286,125 @@ export default function BossPanel() {
           )}
         </div>
 
-                {/* Tabs */}
-        {/* شريط التنقل العلوي: 5 كبسولات متساوية بدون سكرول */}
-        <div className="grid grid-cols-5 gap-1 sm:gap-2 p-1 bg-muted/60 rounded-2xl border border-border/50 shadow-xs select-none">
-          <button
-            type="button"
-            onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={cn(
-              "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
-              activeTab === 'home'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">🏠</span>
-            <span className="truncate">الرئيسية</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={cn(
-              "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
-              activeTab === 'users'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">👥</span>
-            <span className="truncate">المستخدمون</span>
-            {licenseIssueOwners.length > 0 && (
-              <span className="absolute -top-1 -right-1 sm:static w-3.5 h-3.5 sm:w-4 sm:h-4 bg-destructive text-destructive-foreground text-[9px] sm:text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                {licenseIssueOwners.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('releases'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={cn(
-              "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
-              activeTab === 'releases'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">🚀</span>
-            <span className="truncate">الإصدارات</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('health'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={cn(
-              "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
-              activeTab === 'health'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">🩺</span>
-            <span className="truncate">الصحة</span>
-            {unresolvedErrorsCount > 0 && (
-              <span className="absolute -top-1 -right-1 sm:static w-3.5 h-3.5 sm:w-4 sm:h-4 bg-destructive text-destructive-foreground text-[9px] sm:text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                {unresolvedErrorsCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('more'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className={cn(
-              "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
-              activeTab === 'more'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">✨</span>
-            <span className="truncate">المساعد</span>
-          </button>
+                {/* الشريط العلوي: كبسولة المستشار الذكي المنعزلة بدلاً من تكرار الأزرار السفلية على الموبايل */}
+        <div className={cn(
+          "flex items-center justify-between gap-2 p-1.5 bg-muted/50 rounded-2xl border border-border/40 select-none",
+          activeTab !== 'more' && "md:hidden"
+        )}>
+          {activeTab === 'more' ? (
+            // زر خروج مباشر وبارز عند التواجد داخل المستشار الذكي
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="w-full h-9 gap-2 text-xs font-bold rounded-xl bg-primary text-primary-foreground shadow-xs"
+            >
+              <ArrowRight className="w-4 h-4" />
+              <span>خروج من المستشار الذكي والعودة للوحة الرئيسية</span>
+            </Button>
+          ) : (
+            <>
+              <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 px-2">
+                <span>لوحة تحكم البوس</span>
+              </div>
+              {/* كبسولة المساعد الذكي المستقلة في الأعلى */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setActiveTab('more'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="h-8 gap-1.5 text-xs font-bold rounded-xl border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>المستشار الذكي</span>
+              </Button>
+            </>
+          )}
         </div>
+
+        {/* شريط التنقل العلوي للكمبيوتر (Desktop Tabs) */}
+        {activeTab !== 'more' && (
+          <div className="hidden md:grid grid-cols-5 gap-1 sm:gap-2 p-1 bg-muted/60 rounded-2xl border border-border/50 shadow-xs select-none">
+            <button
+              type="button"
+              onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
+                activeTab === 'home'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">🏠</span>
+              <span className="truncate">الرئيسية</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab('users'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
+                activeTab === 'users'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">👥</span>
+              <span className="truncate">المستخدمون</span>
+              {licenseIssueOwners.length > 0 && (
+                <span className="absolute -top-1 -right-1 sm:static w-3.5 h-3.5 sm:w-4 sm:h-4 bg-destructive text-destructive-foreground text-[9px] sm:text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {licenseIssueOwners.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab('releases'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
+                activeTab === 'releases'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">🚀</span>
+              <span className="truncate">الإصدارات</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab('health'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
+                activeTab === 'health'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">🩺</span>
+              <span className="truncate">الصحة</span>
+              {unresolvedErrorsCount > 0 && (
+                <span className="absolute -top-1 -right-1 sm:static w-3.5 h-3.5 sm:w-4 sm:h-4 bg-destructive text-destructive-foreground text-[9px] sm:text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {unresolvedErrorsCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab('more'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={cn(
+                "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold transition-all",
+                activeTab === 'more'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">✨</span>
+              <span className="truncate">المستشار الذكي</span>
+            </button>
+          </div>
+        )}
 
         {/* ===================== SCREEN 1: الرئيسية (Home) ===================== */}
         {activeTab === 'home' && (
@@ -2835,8 +2872,8 @@ export default function BossPanel() {
               activeTab === 'more' ? "text-primary scale-105" : "text-muted-foreground"
             )}
           >
-            <span className="text-base">☰</span>
-            <span className="text-[10px] mt-0.5">المزيد</span>
+            <span className="text-base">✨</span>
+            <span className="text-[10px] mt-0.5">المستشار</span>
           </button>
         </nav>
 
