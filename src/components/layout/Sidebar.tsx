@@ -269,7 +269,13 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                 <Zap className="w-5 h-5 text-primary-foreground" />
               </div>
               <div className="flex flex-col items-center gap-1.5">
-                <SyncStatusMenu />
+                <SyncStatusMenu 
+                  onOpenChange={(open) => {
+                    if (open && isMobile && isOpen) {
+                      onToggle();
+                    }
+                  }} 
+                />
               </div>
             </div>
           ) : (
@@ -286,7 +292,13 @@ export function Sidebar({ isOpen, onToggle, defaultCollapsed = false }: SidebarP
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <SyncStatusMenu />
+                  <SyncStatusMenu 
+                    onOpenChange={(open) => {
+                      if (open && isMobile && isOpen) {
+                        onToggle();
+                      }
+                    }} 
+                  />
                   {isMobile && (
                     <button
                       type="button"

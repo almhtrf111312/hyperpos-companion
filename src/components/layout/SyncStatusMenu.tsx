@@ -67,7 +67,11 @@ function formatLastSyncTime(timestamp: string | null | undefined, isRTL: boolean
   }
 }
 
-export function SyncStatusMenu() {
+interface SyncStatusMenuProps {
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function SyncStatusMenu({ onOpenChange }: SyncStatusMenuProps = {}) {
   const { isRTL, t, language } = useLanguage();
   const navigate = useNavigate();
   const cloudContext = useContext(CloudSyncContext);
@@ -242,8 +246,13 @@ export function SyncStatusMenu() {
     await syncNow(true);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    onOpenChange?.(open);
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button
           variant="ghost"
@@ -269,7 +278,7 @@ export function SyncStatusMenu() {
 
       <SheetContent
         side={isRTL ? "left" : "right"}
-        className="w-full sm:max-w-md p-0 flex flex-col bg-background border-border shadow-2xl h-full max-h-[100dvh] overflow-hidden"
+        className="w-full sm:max-w-md p-0 flex flex-col bg-background border-border shadow-2xl h-full max-h-[100dvh] overflow-hidden z-[100]"
       >
         {/* Header */}
         <SheetHeader className="px-4 py-3.5 border-b border-border/70 shrink-0 bg-muted/20 text-start">
