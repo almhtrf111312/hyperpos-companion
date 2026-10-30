@@ -22,40 +22,35 @@ jobs:
       FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           clean: true
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Read application version & activate 4th digit
+      - name: Read application version
         shell: bash
         run: |
-          node -e '
-            const fs = require("fs");
-            const v = JSON.parse(fs.readFileSync("./version.json", "utf8"));
-            const baseVersion = String(v.versionName || "1.5.2").split(".").slice(0, 3).join(".");
-            const nextCode = parseInt(v.versionCode || 366, 10) + 1;
-            v.versionCode = nextCode;
-            v.versionName = `${baseVersion}.${nextCode}`;
-            fs.writeFileSync("./version.json", JSON.stringify(v, null, 2) + "\n");
-          '
-          VERSION_NAME=$(node -p "require('./version.json').versionName")
-          VERSION_CODE=$(node -p "require('./version.json').versionCode")
+          BASE_VER=$(node -p "require('./version.json').versionName.split('.').slice(0,3).join('.')")
+          BASE_CODE=$(node -p "require('./version.json').versionCode")
+          VERSION_CODE=$((BASE_CODE + 1))
+          VERSION_NAME="${BASE_VER}.${VERSION_CODE}"
+          
+          node -e "const fs=require('fs'); const v=require('./version.json'); v.versionName='$VERSION_NAME'; v.versionCode=$VERSION_CODE; fs.writeFileSync('./version.json', JSON.stringify(v, null, 2)+'\n');"
           
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
@@ -139,37 +134,15 @@ jobs:
           path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
 
-      - name: Save bumped version.json & Sync to Supabase Cloud
+      - name: Update version.json in repository
         if: github.ref == 'refs/heads/main'
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          COMMIT_SHA: ${{ github.sha }}
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.json
-          git commit -m "chore: release v${{ env.VERSION_NAME }} (Build ${{ env.VERSION_CODE }}) [skip ci]" || true
+          git commit -m "chore: bump version to v${{ env.VERSION_NAME }}" || true
           git push origin HEAD:main || true
-
-          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            node -e '
-              const fs = require("fs");
-              const { execSync } = require("child_process");
-              const v = JSON.parse(fs.readFileSync("./version.json", "utf8"));
-              const msg = execSync("git log -1 --pretty=%B", { encoding: "utf-8" }).trim().split("\n")[0];
-              fs.writeFileSync("sync-payload.json", JSON.stringify({
-                latest_version_code: v.versionCode,
-                latest_version_name: v.versionName,
-                commit_sha: process.env.COMMIT_SHA,
-                commit_message: msg
-              }));
-            '
-            curl -s -X POST "${SUPABASE_URL}/functions/v1/sync-release-metadata" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-              --data @sync-payload.json || true
-          fi
 
       - name: Create tagged release
         if: startsWith(github.ref, 'refs/tags/')
