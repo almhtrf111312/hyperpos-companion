@@ -1409,87 +1409,8 @@ export default function BossPanel() {
         {/* ===================== SCREEN 1: الرئيسية (Home) ===================== */}
         {activeTab === 'home' && (
           <div className="space-y-4 animate-in fade-in pb-16 md:pb-6">
-            {/* بطاقات الإحصاءات الفورية */}
-            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-4">
-              <Card className="overflow-hidden border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 shadow-xs">
-                <CardContent className="p-3.5 md:p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 text-blue-600 dark:text-blue-400">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xl md:text-2xl font-black">{totalUsers}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">إجمالي المستخدمين</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-xs">
-                <CardContent className="p-3.5 md:p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0 text-emerald-600 dark:text-emerald-400">
-                      <Shield className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xl md:text-2xl font-black">{owners.filter(o => o.role !== 'boss' && o.is_active && !o.license_revoked).length}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">التراخيص النشطة</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className={cn(
-                "overflow-hidden border shadow-xs transition-colors",
-                licenseIssueOwners.length > 0
-                  ? "border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5"
-                  : "border-border/60 bg-card"
-              )}>
-                <CardContent className="p-3.5 md:p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-                      licenseIssueOwners.length > 0 ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground"
-                    )}>
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className={cn("text-xl md:text-2xl font-black", licenseIssueOwners.length > 0 && "text-amber-600 dark:text-amber-400")}>
-                        {licenseIssueOwners.length}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">تنبيهات التراخيص</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className={cn(
-                "overflow-hidden border shadow-xs transition-colors",
-                unresolvedErrorsCount > 0
-                  ? "border-destructive/30 bg-gradient-to-br from-destructive/10 to-destructive/5"
-                  : "border-border/60 bg-card"
-              )}>
-                <CardContent className="p-3.5 md:p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-                      unresolvedErrorsCount > 0 ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"
-                    )}>
-                      <Terminal className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className={cn("text-xl md:text-2xl font-black", unresolvedErrorsCount > 0 && "text-destructive")}>
-                        {unresolvedErrorsCount}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">أخطاء الرادار</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* بطاقة يحتاج انتباهك الآن */}
-            {(licenseIssueOwners.length > 0 || unresolvedErrorsCount > 0) ? (
+            {/* بطاقة يحتاج انتباهك الآن (تظهر فقط عند وجود تنبيهات أو أخطاء) */}
+            {(licenseIssueOwners.length > 0 || unresolvedErrorsCount > 0) && (
               <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-xs space-y-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
@@ -1537,86 +1458,7 @@ export default function BossPanel() {
                   )}
                 </div>
               </div>
-            ) : (
-              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-4 flex items-center gap-3 shadow-xs">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">النظام مستقر وسليم بنسبة 100%</h3>
-                  <p className="text-xs text-muted-foreground">جميع التراخيص سارية، ولا توجد أي أخطاء أو بلاغات برمجية مسجلة في الوقت الحالي.</p>
-                </div>
-              </div>
             )}
-
-            {/* الإجراءات السريعة بنقرتين (Two-Tap Administration) */}
-            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm space-y-3">
-              <div className="flex items-center justify-between pb-1 border-b border-border/50">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-amber-500" />
-                  <h3 className="text-sm font-bold text-foreground">إجراءات سريعة بنقرتين</h3>
-                </div>
-                <span className="text-[11px] text-muted-foreground">العمليات الأكثر استخداماً</span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateOwnerDialog(true)}
-                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <UserPlus className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs text-foreground">إضافة متجر جديد</p>
-                    <p className="text-[10px] text-muted-foreground">إنشاء حساب مالك</p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowNewCodeDialog(true)}
-                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Key className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs text-foreground">توليد كود تفعيل</p>
-                    <p className="text-[10px] text-muted-foreground">أكواد اشتراك وترخيص</p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('releases')}
-                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Rocket className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs text-foreground">نشر تحديث جديد</p>
-                    <p className="text-[10px] text-muted-foreground">بناء ورفع الـ APK</p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('health'); setHealthSubTab('diagnostics'); }}
-                  className="p-3 rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 transition-all text-start flex flex-col justify-between h-24 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Wrench className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs text-foreground">فحص صحة النظام</p>
-                    <p className="text-[10px] text-muted-foreground">تشخيص قاعدة البيانات</p>
-                  </div>
-                </button>
-              </div>
-            </div>
 
             {/* أحدث الحسابات المسجلة */}
             <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm space-y-3">
@@ -1714,61 +1556,7 @@ export default function BossPanel() {
 
             {usersSubTab === 'accounts' && (
               <div className="space-y-4">
-{/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
-              <Card className="overflow-hidden bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg md:text-2xl font-bold">{totalUsers}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">إجمالي المستخدمين</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="overflow-hidden bg-gradient-to-br from-violet-500/10 to-violet-600/5 border-violet-500/20">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                      <UserPlus className="w-4 h-4 md:w-5 md:h-5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg md:text-2xl font-bold">{totalSubAccounts}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">الحسابات التابعة</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="overflow-hidden bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg md:text-2xl font-bold">{owners.filter(o => o.license_expires && new Date(o.license_expires) > new Date() && !o.license_revoked).length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص فعالة</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="overflow-hidden bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                      <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg md:text-2xl font-bold">{licenseIssueOwners.length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground truncate">تراخيص بها مشاكل</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+
 
             {/* Search */}
             <div className="relative">
@@ -2864,17 +2652,7 @@ export default function BossPanel() {
               <span className="absolute top-0 end-2 w-2 h-2 rounded-full bg-destructive" />
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('more')}
-            className={cn(
-              "flex flex-col items-center justify-center py-1 px-3 rounded-xl text-xs font-bold transition-all",
-              activeTab === 'more' ? "text-primary scale-105" : "text-muted-foreground"
-            )}
-          >
-            <span className="text-base">✨</span>
-            <span className="text-[10px] mt-0.5">المستشار</span>
-          </button>
+
         </nav>
 
         {/* Direct activation without generating a code */}
