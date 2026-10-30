@@ -39,6 +39,7 @@ jobs:
       - name: Read application version
         shell: bash
         run: |
+          git pull origin ${{ inputs.source_branch }} --rebase || true
           VERSION_NAME=$(node -p "require('./version.json').versionName")
           VERSION_CODE=$(node -p "require('./version.json').versionCode")
           
