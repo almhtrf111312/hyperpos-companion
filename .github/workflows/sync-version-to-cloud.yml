@@ -1,89 +1,59 @@
-name: Sync successful APK build to cloud
+name: Sync Version Metadata to Cloud
 
 on:
-  workflow_run:
-    workflows: ["Build FlowPOS Pro APK"]
-    types:
-      - completed
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  actions: read
+  push:
+    branches:
+      - main
+    paths:
+      - 'version.json'
+      - 'package.json'
+      - 'src/**'
 
 jobs:
-  sync-cloud:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-24.04
+  sync:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v5
-        with:
-          ref: main
-          fetch-depth: 0
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Read current version from repository
-        shell: bash
-        run: |
-          git pull origin main --rebase || true
-          VERSION_NAME=$(node -p "require('./version.json').versionName")
-          VERSION_CODE=$(node -p "require('./version.json').versionCode")
-          
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "Syncing Version: v$VERSION_NAME (Build $VERSION_CODE)"
-
-      - name: Run project sync script if present
-        shell: bash
+      - name: Prepare Payload & Sync to Supabase Edge Function
         env:
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
-          VERSION_NAME: ${{ env.VERSION_NAME }}
-          VERSION_CODE: ${{ env.VERSION_CODE }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [ -f "scripts/sync-version-to-cloud.cjs" ]; then
-            node scripts/sync-version-to-cloud.cjs
-          elif [ -f "scripts/sync-version-to-cloud.js" ]; then
-            node scripts/sync-version-to-cloud.js
-          elif [ -f "scripts/sync-version.cjs" ]; then
-            node scripts/sync-version.cjs
-          else
-            echo "No external sync script found in scripts/, proceeding with direct Supabase REST sync..."
-          fi
-
-      - name: Direct sync to Supabase app_versions / system_settings
-        shell: bash
-        env:
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
-          VERSION_NAME: ${{ env.VERSION_NAME }}
-          VERSION_CODE: ${{ env.VERSION_CODE }}
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-            echo "Notice: Supabase credentials not set in GitHub Secrets. Skipping direct REST call."
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secret is missing. Skipping auto-sync."
             exit 0
           fi
 
-          PAYLOAD=$(jq -n \
-            --arg vn "$VERSION_NAME" \
-            --argjson vc "$VERSION_CODE" \
-            --arg url "https://t.me/flowpospro" \
-            '{
-              version_name: $vn,
-              version_code: $vc,
-              apk_url: $url,
-              telegram_url: $url,
-              is_ready: true,
-              updated_at: (now | todateiso8601)
-            }')
+          node -e "
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            const v = require('./version.json');
+            const msg = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim().split('\n')[0];
+            const payload = {
+              latest_version_code: v.versionCode,
+              latest_version_name: v.versionName,
+              commit_sha: process.env.COMMIT_SHA,
+              commit_message: msg
+            };
+            fs.writeFileSync('sync-payload.json', JSON.stringify(payload));
+          "
 
-          # محاولة تحديث جدول إعدادات الإصدارات إن وجد دون كسر العملية في حال اختلاف اسم الجدول
-          curl -sS -X POST "${SUPABASE_URL}/rest/v1/app_versions" \
-            -H "apikey: ${SUPABASE_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+          echo "Syncing payload to Edge Function..."
+          STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/sync-release-metadata" \
             -H "Content-Type: application/json" \
-            -H "Prefer: resolution=merge-duplicates" \
-            -d "$PAYLOAD" >/dev/null 2>&1 || true
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            --data @sync-payload.json)
 
-          echo "Cloud version sync completed for v${VERSION_NAME} (Build ${VERSION_CODE})."
+          echo "Response HTTP Status: $STATUS"
+          cat response.txt
+          echo ""
+
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+            echo "Successfully synced version metadata to Supabase Cloud!"
+          else
+            echo "Failed to sync version metadata (HTTP $STATUS)"
+            exit 1
+          fi
