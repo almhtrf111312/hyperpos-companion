@@ -539,6 +539,7 @@ export interface StoreCurrencyConfig {
 export interface NormalizedCurrencySettings {
   primaryCurrencyCode: string;
   currencies: Record<string, StoreCurrencyConfig>;
+  enabledCurrencies?: StoreCurrencyConfig[];
 }
 
 /**
@@ -692,9 +693,13 @@ export function normalizeCurrencySettings(rawSettings?: any): NormalizedCurrency
     primaryCurrencyCode = firstEnabled ? firstEnabled.code : 'USD';
   }
 
+  // فلترة صارمة: فقط العملات المفعّلة صراحةً (active !== false و enabled !== false)
+  const enabledCurrencies = Object.values(currencies).filter(c => (c as any).active !== false && c.enabled !== false);
+
   return {
     primaryCurrencyCode,
     currencies,
+    enabledCurrencies,
   };
 }
 

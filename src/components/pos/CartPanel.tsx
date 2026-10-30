@@ -270,7 +270,8 @@ export function CartPanel({
 
   // تصفية العملات المفعلة بصرامة لعزل أي عملات وهمية معطلة
   const activeCartCurrencies = useMemo(() => {
-    return (currencies || []).filter(c => c.code === 'USD' || (c.enabled !== false && Number.isFinite(c.rate) && c.rate > 0));
+    // فلترة صارمة: فقط العملات المفعّلة صراحةً (active !== false و enabled !== false)
+    return (currencies || []).filter(c => c.code === 'USD' || ((c as any).active !== false && c.enabled !== false && Number.isFinite(c.rate) && c.rate > 0));
   }, [currencies]);
 
   // Fallback if the selected currency or received currency was disabled in settings

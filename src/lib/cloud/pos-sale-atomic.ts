@@ -87,6 +87,7 @@ function buildRpcItems(bundle: AtomicSaleBundle) {
       product_id: item.id,
       product_name: item.name,
       quantity,
+      price: round8(item.price),
       unit_price: round8(item.price),
       cost_price: round8(item.costPrice || 0),
       amount_original: lineTotalUSD,
