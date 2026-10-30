@@ -8,13 +8,22 @@ on:
       - 'version.json'
       - 'package.json'
       - 'src/**'
+  workflow_run:
+    workflows: ["Build FlowPOS Pro APK"]
+    types:
+      - completed
+  workflow_dispatch:
 
 jobs:
   sync:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Prepare Payload & Sync to Supabase Edge Function
         env:
@@ -22,10 +31,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+          if [ -z "$SUPABASE_URL" ] \vert{}\vert{} [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
             echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secret is missing. Skipping auto-sync."
             exit 0
           fi
+
+          git pull origin main --rebase || true
 
           node -e "
             const fs = require('fs');
