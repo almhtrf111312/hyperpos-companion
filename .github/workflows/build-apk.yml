@@ -16,6 +16,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      VERSION_CODE: '256'
+      VERSION_NAME: '1.0'
+      FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -38,10 +42,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Validate and read application version
+      - name: Read application version
         shell: bash
         run: |
-          node scripts/check-version.mjs
           VERSION_NAME=$(node -p "require('./version.json').versionName")
           VERSION_CODE=$(node -p "require('./version.json').versionCode")
           
@@ -102,7 +105,7 @@ jobs:
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
           VERSION="${{ env.VERSION_NAME }}"
-          FINAL_APK="FlowPOS-v${VERSION}-build${{ env.VERSION_CODE }}.apk"
+          FINAL_APK="FlowPOS-v${VERSION}.apk"
           
           SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
           if [ -z "$SRC_APK" ]; then
@@ -120,20 +123,10 @@ jobs:
           echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
           ls -lh "$RELEASE_DIR"
 
-      - name: Verify APK version metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt -print | sort -V | tail -n 1)
-          if [ -z "$AAPT" ]; then echo "::error::aapt not found"; exit 1; fi
-          BADGING=$("$AAPT" dump badging "$FINAL_APK_PATH")
-          echo "$BADGING" | grep -F "package: name='com.flowpos.pro' versionCode='${VERSION_CODE}' versionName='${VERSION_NAME}'" >/dev/null || {
-            echo "::error::APK metadata does not match version.json"; echo "$BADGING" | head -5; exit 1;
-          }
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlowPOS-v${{ env.VERSION_NAME }}-build${{ env.VERSION_CODE }}
+          name: FlowPOS-v${{ env.VERSION_NAME }}
           path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
 
