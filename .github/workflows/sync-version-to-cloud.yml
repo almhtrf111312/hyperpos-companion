@@ -1,0 +1,89 @@
+name: Sync successful APK build to cloud
+
+on:
+  workflow_run:
+    workflows: ["Build FlowPOS Pro APK"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  sync-cloud:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Read current version from repository
+        shell: bash
+        run: |
+          git pull origin main --rebase || true
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "Syncing Version: v$VERSION_NAME (Build $VERSION_CODE)"
+
+      - name: Run project sync script if present
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+        run: |
+          if [ -f "scripts/sync-version-to-cloud.cjs" ]; then
+            node scripts/sync-version-to-cloud.cjs
+          elif [ -f "scripts/sync-version-to-cloud.js" ]; then
+            node scripts/sync-version-to-cloud.js
+          elif [ -f "scripts/sync-version.cjs" ]; then
+            node scripts/sync-version.cjs
+          else
+            echo "No external sync script found in scripts/, proceeding with direct Supabase REST sync..."
+          fi
+
+      - name: Direct sync to Supabase app_versions / system_settings
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "Notice: Supabase credentials not set in GitHub Secrets. Skipping direct REST call."
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg vn "$VERSION_NAME" \
+            --argjson vc "$VERSION_CODE" \
+            --arg url "https://t.me/flowpospro" \
+            '{
+              version_name: $vn,
+              version_code: $vc,
+              apk_url: $url,
+              telegram_url: $url,
+              is_ready: true,
+              updated_at: (now | todateiso8601)
+            }')
+
+          # محاولة تحديث جدول إعدادات الإصدارات إن وجد دون كسر العملية في حال اختلاف اسم الجدول
+          curl -sS -X POST "${SUPABASE_URL}/rest/v1/app_versions" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "$PAYLOAD" >/dev/null 2>&1 || true
+
+          echo "Cloud version sync completed for v${VERSION_NAME} (Build ${VERSION_CODE})."
