@@ -469,29 +469,47 @@ export default function Settings() {
       [currency]: enabled,
     };
 
-    const anyEnabled = Object.values(nextEnabled).some(Boolean);
-    if (!anyEnabled) {
-      toast({
-        title: 'تنبيه',
-        description: 'يجب الإبقاء على عملة واحدة مفعلة على الأقل في النظام',
-        variant: 'destructive',
-      });
-      return;
+    // 1. حساب العملات النشطة الفعلية
+    const activeNonUsd = [slot1Code, slot2Code].filter(code => code && nextEnabled[code] === true);
+    
+    // إذا عطل المستخدم كل العملات بما فيها الدولار، يُجبر تفعيل الدولار تلقائياً
+    if (!enabled && activeNonUsd.length === 0 && nextEnabled.USD === false) {
+      nextEnabled.USD = true;
     }
 
+    // 2. إدارة الانتقال التلقائي للعملة الافتراضية
     let newPrimary = primaryCurrency;
     if (!enabled && primaryCurrency === currency) {
-      const activeOther = Object.keys(nextEnabled).find(k => k !== currency && nextEnabled[k]);
-      newPrimary = activeOther || 'USD';
+      // إذا عطلنا العملة الافتراضية الحالية، ننتقل للعملة المفعلة التالية:
+      if (currency !== 'USD' && nextEnabled[slot1Code] && slot1Code !== currency) {
+        newPrimary = slot1Code;
+      } else if (currency !== 'USD' && nextEnabled[slot2Code] && slot2Code !== currency) {
+        newPrimary = slot2Code;
+      } else {
+        // إذا عطل العملتين الافتراضيتين أو لم يتبق بديل: يتحول حتماً وتلقائياً إلى الدولار
+        newPrimary = 'USD';
+        nextEnabled.USD = true; // ضمان تفعيل الدولار
+      }
       setPrimaryCurrency(newPrimary);
+    } else if (primaryCurrency === currency && !enabled) {
+      newPrimary = 'USD';
+      nextEnabled.USD = true;
+      setPrimaryCurrency('USD');
     }
 
     setEnabledCurrencies(nextEnabled);
 
+    // 3. تطهير الكائن المحفوظ ليقتصر فقط على العملات الحقيقية الثلاث
+    const sanitizedEnabled: Record<string, boolean> = {
+      USD: nextEnabled.USD !== false,
+    };
+    if (slot1Code) sanitizedEnabled[slot1Code] = nextEnabled[slot1Code] === true;
+    if (slot2Code) sanitizedEnabled[slot2Code] = nextEnabled[slot2Code] === true;
+
     const persistedSettings = loadPersistedSettings() || {};
     const updated = {
       ...persistedSettings,
-      enabledCurrencies: { USD: true, ...nextEnabled },
+      enabledCurrencies: sanitizedEnabled,
       primaryCurrency: newPrimary,
     };
 
@@ -499,7 +517,7 @@ export default function Settings() {
 
     saveUnifiedStoreSettings({
       updatedAt: Date.now(),
-      enabledCurrencies: nextEnabled,
+      enabledCurrencies: sanitizedEnabled,
       primaryCurrency: newPrimary,
     }).catch(e => console.warn('[Settings] toggleCurrency unified save error:', e));
 
@@ -1276,11 +1294,20 @@ export default function Settings() {
       const existingCustomFields = loadCustomFields();
       const existingProductFields = productFieldsConfig || loadProductFieldsConfig();
 
+      // تطهير العملات وحصرها في الثلاث بطاقات فقط
+      const cleanEnabledCurrencies: Record<string, boolean> = {
+        USD: enabledCurrencies.USD !== false,
+      };
+      if (slot1Code) cleanEnabledCurrencies[slot1Code] = enabledCurrencies[slot1Code] === true;
+      if (slot2Code && slot2Code !== slot1Code) cleanEnabledCurrencies[slot2Code] = enabledCurrencies[slot2Code] === true;
+
+      setEnabledCurrencies(cleanEnabledCurrencies);
+
       const saveResult = await saveUnifiedStoreSettings({
         updatedAt: Date.now(),
         storeSettings,
         primaryCurrency,
-        enabledCurrencies,
+        enabledCurrencies: cleanEnabledCurrencies,
         exchangeRates: (() => {
           const res: Record<string, number> = { USD: 1 };
           for (const [k, v] of Object.entries(exchangeRates)) {
@@ -1324,7 +1351,7 @@ export default function Settings() {
       settingsSnapshotRef.current = {
         storeSettings: { ...storeSettings },
         primaryCurrency,
-        enabledCurrencies: { ...enabledCurrencies },
+        enabledCurrencies: { ...cleanEnabledCurrencies },
         exchangeRates: { ...exchangeRates },
         currencyNames: { ...currencyNames },
         currencySymbols: { ...currencySymbols },
@@ -2316,13 +2343,22 @@ export default function Settings() {
                                 const selected = PREDEFINED_CURRENCIES.find(c => c.code === e.target.value);
                                 if (selected) {
                                   const nextCode = selected.code;
+                                  const oldCode = slot1Code; // حفظ الكود القديم
                                   setSlot1Code(nextCode);
                                   setCurrencySymbols(prev => ({ ...prev, [nextCode]: selected.symbol }));
                                   setCurrencyNames(prev => ({ ...prev, [nextCode]: isRTL ? selected.name : selected.nameEn }));
                                   if (selected.suggestedRate) {
                                     setExchangeRates(prev => ({ ...prev, [nextCode]: String(selected.suggestedRate) }));
                                   }
-                                  setEnabledCurrencies(prev => ({ ...prev, [nextCode]: true }));
+                                  // تنظيف الكود القديم وتفعيل الكود الجديد فقط
+                                  setEnabledCurrencies(prev => {
+                                    const next = { ...prev };
+                                    if (oldCode && oldCode !== nextCode && oldCode !== slot2Code && oldCode !== 'USD') {
+                                      delete next[oldCode];
+                                    }
+                                    next[nextCode] = true;
+                                    return next;
+                                  });
                                   if (primaryCurrency === slot1Code) {
                                     setPrimaryCurrency(nextCode);
                                   }
@@ -2439,13 +2475,22 @@ export default function Settings() {
                                 const selected = PREDEFINED_CURRENCIES.find(c => c.code === e.target.value);
                                 if (selected) {
                                   const nextCode = selected.code;
+                                  const oldCode = slot2Code; // حفظ الكود القديم
                                   setSlot2Code(nextCode);
                                   setCurrencySymbols(prev => ({ ...prev, [nextCode]: selected.symbol }));
                                   setCurrencyNames(prev => ({ ...prev, [nextCode]: isRTL ? selected.name : selected.nameEn }));
                                   if (selected.suggestedRate) {
                                     setExchangeRates(prev => ({ ...prev, [nextCode]: String(selected.suggestedRate) }));
                                   }
-                                  setEnabledCurrencies(prev => ({ ...prev, [nextCode]: true }));
+                                  // تنظيف الكود القديم وتفعيل الكود الجديد فقط
+                                  setEnabledCurrencies(prev => {
+                                    const next = { ...prev };
+                                    if (oldCode && oldCode !== nextCode && oldCode !== slot1Code && oldCode !== 'USD') {
+                                      delete next[oldCode];
+                                    }
+                                    next[nextCode] = true;
+                                    return next;
+                                  });
                                   if (primaryCurrency === slot2Code) {
                                     setPrimaryCurrency(nextCode);
                                   }

@@ -637,54 +637,56 @@ export default function POS() {
     };
   }, []);
 
-  const currencies: Currency[] = useMemo(() => {
-    const _ = settingsRev;
-    const normalized = loadNormalizedCurrencySettings();
-    const result: Currency[] = [];
-
-    // 1. إضافة الدولار إذا كان مفعلاً
-    const usd = normalized.currencies.USD || {
-      code: 'USD',
-      symbol: '$',
-      name: t('currency.usd') || 'دولار',
-      rate: 1,
-      enabled: true,
-    };
-
-    if (usd.enabled) {
-      result.push({
-        code: 'USD',
-        symbol: usd.symbol || '$',
-        name: usd.name || 'دولار',
-        rate: 1,
-      });
-    }
-
-    // 2. إضافة كافة العملات الأخرى المفعلة في إعدادات المتجر بكودها ورمزها واسمها الحقيقي (فلترة صارمة)
-    for (const [code, c] of Object.entries(normalized.currencies)) {
-      if (code === 'USD') continue;
-      if (c.enabled === true && Number.isFinite(c.rate) && c.rate > 0) {
-        result.push({
-          code: c.code,
-          symbol: c.symbol,
-          name: c.name,
-          rate: c.rate,
-          enabled: true,
-        });
-      }
-    }
-
-    // 3. كضمان أمان: إذا تم تعطيل جميع العملات، يبقى الدولار هو العملة المرجعية
-    if (result.length === 0) {
-      result.push({
-        code: 'USD',
-        symbol: usd.symbol || '$',
-        name: usd.name || 'دولار',
-        rate: 1,
-      });
-    }
-
-    return result;
+  const currencies: Currency[] = useMemo(() => {
+    const _ = settingsRev;
+    const normalized = loadNormalizedCurrencySettings();
+    const result: Currency[] = [];
+
+    // 1. إضافة الدولار إذا كان مفعلاً
+    const usd = normalized.currencies.USD || {
+      code: 'USD',
+      symbol: '$',
+      name: t('currency.usd') || 'دولار',
+      rate: 1,
+      enabled: true,
+    };
+
+    if (usd.enabled !== false) {
+      result.push({
+        code: 'USD',
+        symbol: usd.symbol || '$',
+        name: usd.name || 'دولار',
+        rate: 1,
+        enabled: true,
+      });
+    }
+
+    // 2. إضافة فقط العملات الأخرى المفعلة صراحة
+    for (const [code, c] of Object.entries(normalized.currencies)) {
+      if (code === 'USD') continue;
+      if (c.enabled === true && Number.isFinite(c.rate) && c.rate > 0) {
+        result.push({
+          code: c.code,
+          symbol: c.symbol,
+          name: c.name,
+          rate: c.rate,
+          enabled: true,
+        });
+      }
+    }
+
+    // 3. ضمان أمان: إذا عُطلت كل العملات، يبقى الدولار دائماً
+    if (result.length === 0) {
+      result.push({
+        code: 'USD',
+        symbol: usd.symbol || '$',
+        name: usd.name || 'دولار',
+        rate: 1,
+        enabled: true,
+      });
+    }
+
+    return result;
   }, [settingsRev, t]);
 
   // 1. تثبيت عملة عرض شبكة المنتجات على عملة المتجر الافتراضية

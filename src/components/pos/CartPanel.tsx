@@ -269,20 +269,27 @@ export function CartPanel({
     setReceivedAmount(0);
   }, [selectedCurrency.code]);
 
-  // تصفية العملات المفعلة بصرامة لعزل أي عملات وهمية معطلة
+    // تصفية العملات المفعلة بصرامة لعزل أي عملات وهمية أو معطلة
   const activeCartCurrencies = useMemo(() => {
-    // فلترة صارمة: فقط العملات المفعّلة صراحةً (active !== false و enabled !== false)
-    return (currencies || []).filter(c => c.code === 'USD' || ((c as any).active !== false && c.enabled !== false && Number.isFinite(c.rate) && c.rate > 0));
+    return (currencies || []).filter(c => 
+      c.enabled !== false && 
+      (c as any).active !== false && 
+      Number.isFinite(c.rate) && 
+      c.rate > 0
+    );
   }, [currencies]);
 
-  // Fallback if the selected currency or received currency was disabled in settings
+  // Fallback: إذا تعطلت العملة المحددة في السلة، نرجع تلقائياً لعملة المتجر الافتراضية أو USD
   useEffect(() => {
     if (activeCartCurrencies.length > 0 && !activeCartCurrencies.some(c => c.code === selectedCurrency.code)) {
-      const usd = activeCartCurrencies.find(c => c.code === 'USD') || activeCartCurrencies[0];
-      onCurrencyChange?.(usd);
+      const fallback = activeCartCurrencies.find(c => c.code === 'USD') || activeCartCurrencies[0];
+      if (fallback) {
+        onCurrencyChange?.(fallback);
+      }
     }
     if (!activeCartCurrencies.some(c => c.code === receivedCurrencyCode)) {
-      setReceivedCurrencyCode(activeCartCurrencies[0]?.code || 'USD');
+      const fallback = activeCartCurrencies.find(c => c.code === 'USD') || activeCartCurrencies[0];
+      setReceivedCurrencyCode(fallback?.code || 'USD');
     }
   }, [activeCartCurrencies, selectedCurrency.code, receivedCurrencyCode, onCurrencyChange]);
 

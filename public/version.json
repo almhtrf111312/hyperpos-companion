@@ -1,8 +1,14 @@
 {
-  "versionCode": 368,
-  "versionName": "1.5.2.367",
-  "lastUpdated": "2026-10-30T20:21:22.586Z",
+  "versionCode": 370,
+  "versionName": "1.5.2.369",
+  "lastUpdated": "2026-10-30T20:29:33.411Z",
   "buildHistory": [
+    {
+      "versionCode": 370,
+      "versionName": "1.5.2.369",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.369 (Build 370)"
+    },
     {
       "versionCode": 368,
       "versionName": "1.5.2.367",
