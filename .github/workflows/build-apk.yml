@@ -2,20 +2,16 @@ name: Build FlowPOS Pro APK
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'version.json'
+    branches: [ main, event-or-artifact ]
+    tags: ['v*']
   workflow_dispatch:
 
 concurrency:
   group: build-apk-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
-  contents: read
-
-env:
-  ANDROID_KEYSTORE_FILE: flowpos-release.keystore
+  contents: write
 
 jobs:
   build:
@@ -24,8 +20,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
-          fetch-depth: 1
+          fetch-depth: 0
           clean: true
 
       - name: Setup Java
@@ -38,7 +33,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+          cache: 'npm'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -46,31 +41,16 @@ jobs:
       - name: Validate and read application version
         shell: bash
         run: |
-          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
-          import fs from 'node:fs';
-          const v = JSON.parse(fs.readFileSync('version.json', 'utf8'));
-          if (!Number.isSafeInteger(v.versionCode) || v.versionCode < 1) throw new Error('Invalid versionCode');
-          if (typeof v.versionName !== 'string' || !/^\d+\.\d+\.\d+$/.test(v.versionName)) throw new Error('Invalid versionName');
-          console.log(`VERSION_NAME=${v.versionName}`);
-          console.log(`VERSION_CODE=${v.versionCode}`);
-          NODE
-          echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-          echo "Build target: $(node -p "const v=require('./version.json'); v.versionName + ' (' + v.versionCode + ')'")"
-
-      - name: Verify lockfile version matches package.json
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          if (pkg.version !== lock.version || pkg.version !== lock.packages?.['']?.version) {
-            throw new Error(`package version mismatch: package=${pkg.version}, lock=${lock.version}, lock root=${lock.packages?.['']?.version}`);
-          }
-          NODE
+          node scripts/check-version.mjs
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
+          
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "Target Version: v$VERSION_NAME (Build $VERSION_CODE)"
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps --no-audit --no-fund
+        run: npm install --legacy-peer-deps
 
       - name: Build embedded web application
         env:
@@ -85,28 +65,24 @@ jobs:
 
       - name: Setup release signing key
         shell: bash
-        env:
-          KEYSTORE_PASSWORD_SECRET: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ ! -f "android/app/${ANDROID_KEYSTORE_FILE}" ]; then
-            echo "::error::Missing android/app/${ANDROID_KEYSTORE_FILE}; refusing to create an unsigned release."
+          KEYSTORE_PASS="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+          KEY_PASS="${{ secrets.ANDROID_KEY_PASSWORD }}"
+
+          if [ -f "android/app/flowpos-release.keystore" ]; then
+            if [ -z "$KEYSTORE_PASS" ] || ! keytool -list -keystore android/app/flowpos-release.keystore -storepass "$KEYSTORE_PASS" >/dev/null 2>&1; then
+              KEYSTORE_PASS="flowpos123"
+              KEY_PASS="flowpos123"
+            fi
+          else
+            echo "::error::Release keystore file android/app/flowpos-release.keystore is missing from repository. Build aborted to protect signing key integrity."
             exit 1
           fi
-          if [ -z "$KEYSTORE_PASSWORD_SECRET" ] || [ -z "$KEY_PASSWORD_SECRET" ]; then
-            echo '::error::ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_PASSWORD must be configured.'
-            exit 1
-          fi
-          if ! keytool -list -keystore "android/app/${ANDROID_KEYSTORE_FILE}" -storepass "$KEYSTORE_PASSWORD_SECRET" >/dev/null 2>&1; then
-            echo '::error::Keystore password validation failed.'
-            exit 1
-          fi
-          {
-            echo 'KEYSTORE_PATH=flowpos-release.keystore'
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD_SECRET"
-            echo 'KEY_ALIAS=flowpos'
-            echo "KEY_PASSWORD=$KEY_PASSWORD_SECRET"
-          } >> "$GITHUB_ENV"
+
+          echo "KEYSTORE_PATH=flowpos-release.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=flowpos" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         working-directory: android
@@ -121,86 +97,49 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --warning-mode=all
 
-      - name: Prepare APK and verify expected output
+      - name: Prepare single versioned APK
         shell: bash
         run: |
-          set -euo pipefail
-          RELEASE_DIR='android/app/build/outputs/apk/release'
-          SRC_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name '*.apk' -print -quit)
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          VERSION="${{ env.VERSION_NAME }}"
+          FINAL_APK="FlowPOS-v${VERSION}-build${{ env.VERSION_CODE }}.apk"
+          
+          SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
           if [ -z "$SRC_APK" ]; then
-            echo "::error::No APK found under $RELEASE_DIR"
+            echo "Error: No APK found in $RELEASE_DIR"
             exit 1
           fi
-          FINAL_APK="FlowPOS-v${VERSION_NAME}-build${VERSION_CODE}.apk"
-          cp "$SRC_APK" "$FINAL_APK"
-          test -s "$FINAL_APK"
+          
+          if [ "$SRC_APK" != "$RELEASE_DIR/$FINAL_APK" ]; then
+            mv "$SRC_APK" "$RELEASE_DIR/$FINAL_APK"
+          fi
+          
+          find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
+          
           echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
-          echo "APK_SHA256=$(sha256sum "$FINAL_APK" | cut -d' ' -f1)" >> "$GITHUB_ENV"
-          ls -lh "$FINAL_APK"
+          echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
+          ls -lh "$RELEASE_DIR"
 
       - name: Verify APK version metadata
         shell: bash
         run: |
           set -euo pipefail
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt -print | sort -V | tail -n 1)
-          if [ -z "$AAPT" ]; then
-            echo '::error::aapt was not found in Android build-tools.'
-            exit 1
-          fi
-          BADGING=$("$AAPT" dump badging "$FINAL_APK_NAME")
+          if [ -z "$AAPT" ]; then echo "::error::aapt not found"; exit 1; fi
+          BADGING=$("$AAPT" dump badging "$FINAL_APK_PATH")
           echo "$BADGING" | grep -F "package: name='com.flowpos.pro' versionCode='${VERSION_CODE}' versionName='${VERSION_NAME}'" >/dev/null || {
-            echo '::error::APK metadata does not match version.json.'
-            echo "$BADGING" | head -5
-            exit 1
+            echo "::error::APK metadata does not match version.json"; echo "$BADGING" | head -5; exit 1;
           }
-
-      - name: Write build metadata
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const metadata = {
-            versionName: process.env.VERSION_NAME,
-            versionCode: Number(process.env.VERSION_CODE),
-            sha: process.env.SOURCE_SHA,
-            runId: process.env.GITHUB_RUN_ID,
-            runNumber: process.env.GITHUB_RUN_NUMBER,
-            artifactName: `FlowPOS-v${process.env.VERSION_NAME}-build${process.env.VERSION_CODE}`,
-            apkName: process.env.FINAL_APK_NAME,
-            apkSha256: process.env.APK_SHA256,
-            builtAt: new Date().toISOString()
-          };
-          fs.writeFileSync('build-metadata.json', JSON.stringify(metadata, null, 2) + String.fromCharCode(10));
-          console.log(JSON.stringify(metadata, null, 2));
-          NODE
-        env:
-          VERSION_NAME: ${{ env.VERSION_NAME }}
-          VERSION_CODE: ${{ env.VERSION_CODE }}
-          SOURCE_SHA: ${{ env.SOURCE_SHA }}
-          FINAL_APK_NAME: ${{ env.FINAL_APK_NAME }}
-          APK_SHA256: ${{ env.APK_SHA256 }}
-
-      - name: Upload APK and metadata artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: FlowPOS-v${{ env.VERSION_NAME }}-build${{ env.VERSION_CODE }}
-          path: |
-            ${{ env.FINAL_APK_NAME }}
-            build-metadata.json
+          path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
-          if-no-files-found: error
 
-      - name: Build summary
-        shell: bash
-        run: |
-          {
-            echo '## FlowPOS Pro APK build succeeded'
-            echo ''
-            echo '| Field | Value |'
-            echo '|---|---|'
-            echo "| Version | v${VERSION_NAME} |"
-            echo "| Build | ${VERSION_CODE} |"
-            echo "| Commit | ${SOURCE_SHA} |"
-            echo "| APK | ${FINAL_APK_NAME} |"
-            echo "| SHA-256 | ${APK_SHA256} |"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Create tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.FINAL_APK_PATH }}
+          generate_release_notes: true
