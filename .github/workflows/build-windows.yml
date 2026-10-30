@@ -1,10 +1,13 @@
 name: Build FlowPOS Pro Windows
 
 on:
-  push:
-    branches: [ main, event-or-artifact ]
-    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      confirm_build:
+        description: 'تشغيل بناء نسخة الكمبيوتر (Windows EXE) الآن'
+        required: true
+        default: true
+        type: boolean
 
 concurrency:
   group: build-windows-${{ github.ref }}
@@ -15,6 +18,7 @@ permissions:
 
 jobs:
   build-windows:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm_build == true
     runs-on: windows-latest
     env:
       ELECTRON_VER: '32.2.5'
@@ -47,25 +51,14 @@ jobs:
         run: |
           VERSION_NAME=$(node -p "require('./version.json').versionName")
           VERSION_CODE=$(node -p "require('./version.json').versionCode")
-          SEMVER_VERSION="${VERSION_NAME}.0"
+          SEMVER_VERSION=$(node -p "const p = String(require('./version.json').versionName).split('.'); while(p.length < 3) p.push('0'); p.slice(0, 3).join('.')")
 
-          node -e "
-            const fs = require('fs');
-            if (fs.existsSync('./package.json')) {
-              const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-              pkg.main = 'electron/main.js';
-              pkg.version = '$SEMVER_VERSION';
-              pkg.description = 'FlowPOS Pro Point of Sale System';
-              pkg.author = 'FlowPOS Pro';
-              fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '
-');
-            }
-          "
+          node -e "const fs = require('fs'); if (fs.existsSync('./package.json')) { const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8')); pkg.main = 'electron/main.js'; pkg.version = '$SEMVER_VERSION'; pkg.description = 'FlowPOS Pro Point of Sale System'; pkg.author = 'FlowPOS Pro'; fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n'); }"
 
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "SEMVER_VERSION=$SEMVER_VERSION" >> "$GITHUB_ENV"
-          echo "Unified Version: v$VERSION_NAME (Build $VERSION_CODE)"
+          echo "Unified Version: v$VERSION_NAME (SemVer: $SEMVER_VERSION, Build $VERSION_CODE)"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps --no-audit --no-fund
