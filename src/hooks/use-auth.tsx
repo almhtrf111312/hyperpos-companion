@@ -718,30 +718,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       });
 
-      // Reset device_id on sign out (except boss) so user can login on another device
+      // مسح كاش ربط الجهاز المحلي فقط دون المساس بقاعدة البيانات (الجهاز يبقى مقيداً دائماً)
       try {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (roleData?.role !== 'boss') {
-          await supabase
-            .from('app_licenses')
-            .update({ device_id: null })
-            .eq('user_id', user.id)
-            .eq('is_revoked', false);
-          
-          // Clear local device binding cache (encrypted + legacy plain-text)
-          try {
-            const { clearDeviceBindingCache } = await import('./use-device-binding');
-            clearDeviceBindingCache();
-          } catch { /* */ }
-        }
-      } catch (err) {
-        console.error('Failed to reset device on sign out:', err);
-      }
+        const { clearDeviceBindingCache } = await import('./use-device-binding');
+        clearDeviceBindingCache();
+      } catch { /* */ }
     }
     
     // Clear auto-login attempt flag so next app open can try again

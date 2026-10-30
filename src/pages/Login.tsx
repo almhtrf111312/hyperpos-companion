@@ -275,7 +275,22 @@ export default function Login() {
       console.log('[DeviceCheck] Current device ID:', currentDeviceId, 'Device Key:', currentDeviceKey);
       console.log('[DeviceCheck] Checking for user:', userId);
 
-      // Check if user is Boss or Admin - Boss and Admin have unlimited device access
+      // محاولة فحص وربط الجهاز عبر الدالة السحابية الذرية في حال توفرها
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('check_and_bind_device', {
+          p_device_id: currentDeviceId,
+        });
+        if (!rpcError && rpcData && typeof rpcData === 'object') {
+          return {
+            blocked: Boolean(rpcData.blocked),
+            allowMultiDevice: Boolean(rpcData.allow_multi_device),
+          };
+        }
+      } catch (e) {
+        console.warn('[DeviceCheck] RPC not available or failed, using direct query:', e);
+      }
+
+      // استخراج رتبة المستخدم - استثناء حصري ومطلق لحساب الـ Boss فقط
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -284,15 +299,15 @@ export default function Login() {
 
       console.log('[DeviceCheck] Role data:', roleData, 'Error:', roleError);
 
-      if (roleData?.role === 'boss' || roleData?.role === 'admin') {
-        console.log('[DeviceCheck] User is boss/admin, skipping device check');
+      if (roleData?.role === 'boss') {
+        console.log('[DeviceCheck] User is Boss - unlimited devices permitted');
         return { blocked: false, allowMultiDevice: true };
       }
 
-      // Get user's license with device info
+      // جلب ترخيص المستخدم
       const { data: license, error: licenseError } = await supabase
         .from('app_licenses')
-        .select('device_id, allow_multi_device')
+        .select('id, device_id, allow_multi_device')
         .eq('user_id', userId)
         .eq('is_revoked', false)
         .order('created_at', { ascending: false })
@@ -301,34 +316,31 @@ export default function Login() {
 
       console.log('[DeviceCheck] License data:', license, 'Error:', licenseError);
 
-      // No license = no blocking
+      // في حال عدم وجود ترخيص
       if (!license) {
-        console.log('[DeviceCheck] No license found, allowing access');
         return { blocked: false, allowMultiDevice: false };
       }
 
-      // Multi-device allowed
+      // إذا كان تعدد الأجهزة مفعلاً صراحةً في الترخيص
       if (license.allow_multi_device === true) {
-        console.log('[DeviceCheck] Multi-device allowed');
         return { blocked: false, allowMultiDevice: true };
       }
 
-      // No device registered yet
+      // إذا لم يكن هناك جهاز مسجل بعد: نقوم بربط هذا الجهاز حالاً
       if (!license.device_id) {
-        console.log('[DeviceCheck] No device registered yet, allowing access');
+        await supabase
+          .from('app_licenses')
+          .update({ device_id: currentDeviceId })
+          .eq('id', license.id);
+
+        console.log('[DeviceCheck] First device successfully bound:', currentDeviceId);
         return { blocked: false, allowMultiDevice: false };
       }
 
-      // Check if device matches EITHER currentDeviceId OR currentDeviceKey
+      // فحص تطابق معرف الجهاز الحالي مع المسجل
       const isMatch = license.device_id === currentDeviceId || license.device_id === currentDeviceKey;
       const blocked = !isMatch;
-      console.log('[DeviceCheck] Device comparison:', {
-        registered: license.device_id,
-        currentDeviceId,
-        currentDeviceKey,
-        isMatch,
-        blocked
-      });
+
       return { blocked, allowMultiDevice: false };
     } catch (error) {
       console.error('[DeviceCheck] Error:', error);

@@ -81,7 +81,8 @@ export function useDeviceBinding() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (roleData?.role === 'boss' || roleData?.role === 'admin') {
+        // استثناء الـ Boss فقط
+        if (roleData?.role === 'boss') {
           return { roleData, license: null, error: null };
         }
 
@@ -102,7 +103,8 @@ export function useDeviceBinding() {
 
       const { roleData, license, error } = await Promise.race([queryPromise, timeoutPromise]);
 
-      if (roleData?.role === 'boss' || roleData?.role === 'admin') {
+      // استثناء الـ Boss فقط
+      if (roleData?.role === 'boss') {
         const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: null };
         setState({ isChecking: false, ...result });
         saveDeviceCache(result);
