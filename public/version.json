@@ -1,8 +1,14 @@
 {
-  "versionCode": 365,
-  "versionName": "1.5.1",
-  "lastUpdated": "2026-10-30T06:24:31.076Z",
+  "versionCode": 366,
+  "versionName": "1.5.2",
+  "lastUpdated": "2026-10-30T13:59:10.587Z",
   "buildHistory": [
+    {
+      "versionCode": 366,
+      "versionName": "1.5.2",
+      "date": "2026-10-30",
+      "description": "v1.5.2 (Build 366) - تحسين تجربة المستشار الذكي وإلغاء تكرار التبويبات ودمج رقم الإصدار بكبسولات التحديث"
+    },
     {
       "versionCode": 365,
       "versionName": "1.5.1",

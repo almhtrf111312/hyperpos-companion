@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "FlowPOS Pro Point of Sale System",
   "author": "FlowPOS Pro",
   "type": "module",
@@ -18,7 +18,8 @@
     "version:bump": "node scripts/bump-version.js",
     "version:bump:minor": "node scripts/bump-version.js --minor",
     "version:bump:major": "node scripts/bump-version.js --major",
-    "version:set": "node scripts/bump-version.js --set"
+    "version:set": "node scripts/bump-version.js --set",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "8.2.1",

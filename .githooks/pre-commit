@@ -1,0 +1,11 @@
+#!/bin/sh
+# FlowPOS Pro - Auto Version Bump Pre-Commit Hook
+# Automatically increments versionCode when source code is committed
+
+if git diff --cached --name-only | grep -qE '^src/'; then
+  if ! git diff --cached --name-only | grep -qE '^version\.json$'; then
+    echo "🚀 [Git Hook] Source code changes detected. Auto-bumping build number..."
+    node scripts/bump-version.js
+    git add version.json public/version.json package.json
+  fi
+fi
