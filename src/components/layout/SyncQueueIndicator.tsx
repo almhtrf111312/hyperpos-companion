@@ -65,6 +65,7 @@ export const SyncQueueIndicator = forwardRef<HTMLDivElement, { className?: strin
     };
 
     const handleManualSync = async () => {
+      retryFailedOperations();
       await syncNow(true);
       setStatus(getQueueStatus());
     };

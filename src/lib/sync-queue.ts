@@ -510,20 +510,28 @@ export const processQueue = async (
 };
 
 /**
- * إعادة محاولة العمليات الفاشلة
+ * إعادة تنشيط كافة العمليات الفاشلة والمتعثرة لتجهيزها للمزامنة الجماعية
  */
-export const retryFailedOperations = (): void => {
+export const retryFailedOperations = (): number => {
   const queue = loadQueue();
-  
+  let revivedCount = 0;
+
   queue.forEach(op => {
-    if (op.status === 'failed') {
+    if (op.status === 'failed' || op.retryCount >= op.maxRetries) {
       op.status = 'pending';
       op.retryCount = 0;
       op.error = undefined;
+      op.errorClass = undefined;
+      revivedCount++;
     }
   });
-  
-  saveQueue(queue);
+
+  if (revivedCount > 0) {
+    saveQueue(queue);
+    emitEvent(EVENTS.SYNC_QUEUE_UPDATED, getQueueStatus());
+  }
+
+  return revivedCount;
 };
 
 /**

@@ -401,30 +401,37 @@ export function CloudSyncProvider({ children }: CloudSyncProviderProps) {
         return processGenericQueuedOperation(operation);
       }, targetOperationId);
 
-      // Report sync completion to the user when we actually processed queued work
-      if (pendingBefore > 0 && !forceDirect && !targetOperationId) {
-        const refundOnly = processedRefund && !processedNonRefund;
-        if (result.failed === 0 && result.processed > 0) {
-          if (!refundOnly && pendingBefore >= 2) {
-            showToast.success(
-              'اكتملت المزامنة',
-              `تمت مزامنة ${result.processed} عملية بنجاح`
-            );
-          }
+      // 🔔 إشعار موحد ونهائي يمنع تكدس الإشعارات
+      if (pendingBefore > 0 || result.processed > 0 || result.failed > 0) {
+        // معرف ثابت لـ Toast لضمان استبدال أي إشعار سابق وعدم تراكمها
+        const TOAST_SYNC_ID = 'unified-sync-summary';
+
+        if (result.processed > 0 && result.failed === 0) {
+          showToast.success('اكتملت المزامنة بنجاح', {
+            id: TOAST_SYNC_ID,
+            description: `تمت مزامنة كافة العمليات بنجاح (${result.processed} عملية) ✓`,
+            duration: 4000,
+          });
         } else if (result.processed > 0 && result.failed > 0) {
-          showToast.info(
-            'اكتملت المزامنة جزئياً',
-            `نجحت ${result.processed} — فشلت ${result.failed} (ستُعاد المحاولة)`
-          );
+          showToast.info('اكتملت المزامنة جزئياً', {
+            id: TOAST_SYNC_ID,
+            description: `تمت مزامنة ${result.processed} عملية بنجاح — تعذرت ${result.failed} عملية`,
+            duration: 5000,
+          });
         } else if (result.failed > 0 && result.processed === 0) {
-          const failedOps = getFailedOperations();
-          const allQueue = loadQueue();
-          const rawError = failedOps[0]?.error || allQueue.find(op => !!op.error)?.error || '';
-          const friendlyError = formatSyncServerError(rawError);
-          showToast.error('فشلت المزامنة', {
-            description: `${result.failed} عملية معلقة: ${friendlyError}`
+          showToast.error('تعذرت المزامنة', {
+            id: TOAST_SYNC_ID,
+            description: `فشلت مزامنة ${result.failed} عملية — يرجى مراجعة سبب التعثر في قائمة العمليات`,
+            duration: 5000,
           });
         }
+      } else if (forceDirect && !targetOperationId) {
+        // إذا ضغط المستخدم ولم تكن هناك أي عمليات معلقة
+        showToast.info('النظام متطابق', {
+          id: 'unified-sync-summary',
+          description: 'لا توجد فواتير أو عمليات معلقة بحاجة للمزامنة',
+          duration: 3000,
+        });
       }
 
       if (result.processed > 0) {

@@ -233,6 +233,15 @@ export function SyncStatusMenu() {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
+  const handleManualFullSync = async () => {
+    // 1. إعادة تنشيط كافة الفواتير والعمليات المتعثرة دفعة واحدة
+    const { retryFailedOperations } = await import('@/lib/sync-queue');
+    retryFailedOperations();
+
+    // 2. إطلاق المزامنة المتسلسلة
+    await syncNow(true);
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
@@ -303,9 +312,9 @@ export function SyncStatusMenu() {
                   size="sm"
                   variant="default"
                   className="h-8 text-xs gap-1 rounded-xl bg-primary text-primary-foreground font-bold shadow-xs"
-                  onClick={() => syncNow(true)}
+                  onClick={handleManualFullSync}
                   disabled={isSyncing}
-                  title="مزامنة فورية الآن"
+                  title="مزامنة شاملة لكافة العمليات المعلقة والمتعثرة"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
                   <span className="hidden sm:inline">مزامنة</span>
