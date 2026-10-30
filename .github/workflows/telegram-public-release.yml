@@ -21,6 +21,10 @@ on:
         default: ''
         type: string
 
+concurrency:
+  group: telegram-release
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: read
@@ -35,6 +39,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.source_branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Read application version
         shell: bash
