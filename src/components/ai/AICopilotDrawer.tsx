@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/hooks/use-language';
 import { toast } from '@/lib/sonner-bridge';
@@ -30,6 +31,8 @@ import {
   X,
   MessageSquare,
   ArrowDownCircle,
+  Lock,
+  LogIn,
 } from 'lucide-react';
 import { getActiveShift } from '@/lib/cashbox-store';
 import { getEnabledCurrencies } from '@/lib/money-engine';
@@ -41,6 +44,7 @@ interface ChatMessage {
   content: string;
   timestamp: string;
   category?: 'shift_audit' | 'pricing_advisor' | 'inventory_forecast' | 'profit_analysis' | 'general';
+  isAuthRequired?: boolean;
 }
 
 const STORAGE_KEY = 'flowpos_ai_copilot_messages_v1';
@@ -195,6 +199,7 @@ function SimpleMarkdown({ content }: { content: string }) {
 }
 
 export function AICopilotDrawer() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -301,7 +306,19 @@ export function AICopilotDrawer() {
       const token = sessionData?.session?.access_token;
 
       if (!token) {
-        throw new Error('يرجى تسجيل الدخول لاستخدام المساعد الذكي');
+        setIsStreaming(false);
+        setStreamingText('');
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `auth_required_${Date.now()}`,
+            role: 'assistant',
+            content: 'تسجيل الدخول مطلوب للوصول إلى المساعد الذكي FlowPOS Copilot ومستشارك المحاسبي والإداري.',
+            timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+            isAuthRequired: true,
+          },
+        ]);
+        return;
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -403,17 +420,37 @@ export function AICopilotDrawer() {
       if (err.name === 'AbortError') {
         toast.info('تم إيقاف الرد');
       } else {
-        const errMsg = err?.message || 'تعذر الاتصال بالمساعد الذكي';
-        toast.error(errMsg);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `err_${Date.now()}`,
-            role: 'assistant',
-            content: `⚠️ **تنبيه:** ${errMsg}`,
-            timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-          },
-        ]);
+        const isAuthErr =
+          err?.status === 401 ||
+          err?.message?.includes('تسجيل الدخول') ||
+          err?.message?.includes('JWT') ||
+          err?.message?.includes('Unauthorized') ||
+          err?.message?.includes('401');
+
+        if (isAuthErr) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `auth_err_${Date.now()}`,
+              role: 'assistant',
+              content: 'انتهت جلسة تسجيل الدخول أو يلزم تسجيل الدخول مجدداً للمتابعة بأمان.',
+              timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+              isAuthRequired: true,
+            },
+          ]);
+        } else {
+          const errMsg = err?.message || 'تعذر الاتصال بالمساعد الذكي';
+          toast.error(errMsg);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `err_${Date.now()}`,
+              role: 'assistant',
+              content: `⚠️ **تنبيه:** ${errMsg}`,
+              timestamp: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
       }
     } finally {
       setIsStreaming(false);
@@ -582,10 +619,33 @@ export function AICopilotDrawer() {
                   className={`max-w-[88%] sm:max-w-[82%] rounded-2xl p-3 sm:p-3.5 shadow-xs text-xs sm:text-sm ${
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground rounded-br-xs'
+                      : msg.isAuthRequired
+                      ? 'bg-amber-500/10 border border-amber-500/30 rounded-bl-xs text-foreground'
                       : 'bg-card border border-border/80 rounded-bl-xs text-foreground'
                   }`}
                 >
-                  {msg.role === 'assistant' ? (
+                  {msg.isAuthRequired ? (
+                    <div className="space-y-3 py-1">
+                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs sm:text-sm">
+                        <Lock className="w-4 h-4" />
+                        <span>تسجيل الدخول مطلوب</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {msg.content}
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setIsOpen(false);
+                          navigate('/login');
+                        }}
+                        className="w-full gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-medium text-xs h-9 rounded-xl shadow-sm transition-all"
+                      >
+                        <LogIn className="w-4 h-4 rtl:rotate-180" />
+                        <span>تسجيل الدخول الآن</span>
+                      </Button>
+                    </div>
+                  ) : msg.role === 'assistant' ? (
                     <SimpleMarkdown content={msg.content} />
                   ) : (
                     <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
@@ -593,7 +653,7 @@ export function AICopilotDrawer() {
 
                   <div className="flex items-center justify-between mt-2.5 pt-1.5 border-t border-border/20 text-[10px] text-muted-foreground">
                     <span className="font-mono">{msg.timestamp}</span>
-                    {msg.role === 'assistant' && (
+                    {msg.role === 'assistant' && !msg.isAuthRequired && (
                       <button
                         onClick={() => handleCopy(msg.id, msg.content)}
                         className="hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted/50"

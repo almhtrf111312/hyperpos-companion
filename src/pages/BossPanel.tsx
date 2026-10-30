@@ -1286,87 +1286,94 @@ export default function BossPanel() {
         </div>
 
         {/* Tabs */}
-                {/* 1. شريط التنقل العلوي الكبسولي للشاشات الكبيرة واللوحية */}
-        <div className="flex items-center justify-between gap-1 sm:gap-2 p-1.5 bg-muted/60 rounded-2xl border border-border/50 shadow-xs select-none">
-          <button
-            type="button"
-            onClick={() => setActiveTab('home')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
-              activeTab === 'home'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">🏠</span>
-            <span className="whitespace-nowrap">الرئيسية</span>
-          </button>
+                {/* شريط التنقل العلوي الكبسولي: كبسولة رئيسية + كبسولة منعزلة لـ (المزيد) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 select-none">
+          {/* 1. الكبسولة الرئيسية للتبويبات الأربعة الأولى */}
+          <div className="flex-1 flex items-center justify-between gap-1 sm:gap-1.5 p-1.5 bg-muted/60 rounded-2xl border border-border/50 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('home')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+                activeTab === 'home'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">🏠</span>
+              <span className="whitespace-nowrap">الرئيسية</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('users')}
-            className={cn(
-              "relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
-              activeTab === 'users'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">👥</span>
-            <span className="whitespace-nowrap">المستخدمون</span>
-            {licenseIssueOwners.length > 0 && (
-              <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                {licenseIssueOwners.length}
-              </span>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('users')}
+              className={cn(
+                "relative flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+                activeTab === 'users'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">👥</span>
+              <span className="whitespace-nowrap">المستخدمون</span>
+              {licenseIssueOwners.length > 0 && (
+                <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {licenseIssueOwners.length}
+                </span>
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('releases')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
-              activeTab === 'releases'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">🚀</span>
-            <span className="whitespace-nowrap">الإصدارات</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('releases')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+                activeTab === 'releases'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">🚀</span>
+              <span className="whitespace-nowrap">الإصدارات</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('health')}
-            className={cn(
-              "relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
-              activeTab === 'health'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">🩺</span>
-            <span className="whitespace-nowrap">الصحة</span>
-            {unresolvedErrorsCount > 0 && (
-              <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
-                {unresolvedErrorsCount}
-              </span>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('health')}
+              className={cn(
+                "relative flex-1 flex items-center justify-center gap-1 sm:gap-2 py-2 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
+                activeTab === 'health'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+            >
+              <span className="text-sm sm:text-base">🩺</span>
+              <span className="whitespace-nowrap">الصحة</span>
+              {unresolvedErrorsCount > 0 && (
+                <span className="w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full inline-flex items-center justify-center shrink-0">
+                  {unresolvedErrorsCount}
+                </span>
+              )}
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('more')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all",
-              activeTab === 'more'
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            )}
-          >
-            <span className="text-sm sm:text-base">☰</span>
-            <span className="whitespace-nowrap">المزيد</span>
-          </button>
+          {/* 2. كبسولة منعزلة ومستقلة لزر المزيد لمنع السكرول الأفقي */}
+          <div className="p-1.5 bg-muted/60 rounded-2xl border border-border/50 shadow-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('more')}
+              className={cn(
+                "flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all",
+                activeTab === 'more'
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+              )}
+              title="المزيد من الخيارات"
+            >
+              <span className="text-sm sm:text-base">☰</span>
+              <span className="hidden sm:inline whitespace-nowrap">المزيد</span>
+            </button>
+          </div>
         </div>
 
         {/* ===================== SCREEN 1: الرئيسية (Home) ===================== */}
