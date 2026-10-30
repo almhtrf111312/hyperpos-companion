@@ -1,3 +1,9 @@
+# ملفات Workflows المحدثة لمشروع FlowPOS Pro
+
+---
+
+## 1. ملف بناء الأندرويد: `.github/workflows/build-apk.yml`
+
 ```yaml
 name: Build FlowPOS Pro APK
 
