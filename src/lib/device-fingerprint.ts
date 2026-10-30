@@ -26,16 +26,16 @@ export const getDeviceId = async (): Promise<string> => {
     // First check if we have a stored device ID
     let deviceId = localStorage.getItem(DEVICE_ID_KEY);
     
-    if (deviceId) {
+    // If deviceId already exists as a Capacitor hardware ID, return it immediately
+    if (deviceId && deviceId.startsWith('CAP-')) {
       return deviceId;
     }
 
-    // Check if Capacitor Device plugin is available (for mobile)
+    // جلب معرف جهاز أندرويد الثابت عبر @capacitor/device
     try {
-      // Dynamic import to avoid build errors when Capacitor Device is not installed
-      const CapacitorDevice = await import('@capacitor/core').then(m => (m as any).Device).catch(() => null);
-      if (CapacitorDevice && typeof CapacitorDevice.getId === 'function') {
-        const info = await CapacitorDevice.getId();
+      const { Device } = await import('@capacitor/device');
+      if (Device && typeof Device.getId === 'function') {
+        const info = await Device.getId();
         if (info?.identifier) {
           deviceId = `CAP-${info.identifier}`;
           localStorage.setItem(DEVICE_ID_KEY, deviceId);
@@ -43,7 +43,11 @@ export const getDeviceId = async (): Promise<string> => {
         }
       }
     } catch {
-      // Capacitor not available, use browser fingerprint
+      // إذا لم يكن التطبيق يعمل داخل بيئة Capacitor Native
+    }
+
+    if (deviceId) {
+      return deviceId;
     }
 
     // Generate browser fingerprint

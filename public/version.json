@@ -1,8 +1,20 @@
 {
-  "versionCode": 375,
+  "versionCode": 377,
   "versionName": "1.5.2.372",
-  "lastUpdated": "2026-10-30T20:52:10.669Z",
+  "lastUpdated": "2026-10-30T21:09:11.115Z",
   "buildHistory": [
+    {
+      "versionCode": 377,
+      "versionName": "1.5.2.372",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.372 (Build 377)"
+    },
+    {
+      "versionCode": 376,
+      "versionName": "1.5.2.372",
+      "date": "2026-10-30",
+      "description": "Release v1.5.2.372 (Build 376)"
+    },
     {
       "versionCode": 375,
       "versionName": "1.5.2.372",
@@ -76,16 +88,6 @@
       "versionCode": 235,
       "date": "2026-07-12T00:00:00.000Z",
       "description": "v1.0.6 - Sync UX: offline toast when a change is stored locally, and success/partial/failed toast when the queue drains after reconnection"
-    },
-    {
-      "versionCode": 236,
-      "date": "2026-07-13T00:00:00.000Z",
-      "description": "v1.0.7 - Duplicate-click protection: refund/sale/mark-paid buttons disable while running + atomic server-side refund reservation + offline refund queue"
-    },
-    {
-      "versionCode": 237,
-      "date": "2026-07-14T00:00:00.000Z",
-      "description": "v1.0.8 - Refund UX: dialog closes instantly and processing runs in background + unique toast id per invoice prevents stacked duplicate notifications + notification now shows the actual refunded invoice number and amount"
     }
   ]
 }

@@ -354,17 +354,9 @@ export default function Login() {
       const { blocked } = await checkDeviceBinding(data.user.id);
 
       if (blocked) {
-        // Sign out first, then show dialog after a delay to prevent touch event bubbling
-        try {
-          await supabase.auth.signOut();
-        } catch (e) {
-          console.log('Sign out during device block:', e);
-        }
+        await supabase.auth.signOut();
+        setShowDeviceBlockedDialog(true);
         setIsLoading(false);
-        // Delay showing dialog to avoid touch event from login button closing it
-        setTimeout(() => {
-          setShowDeviceBlockedDialog(true);
-        }, 300);
         return;
       }
     }

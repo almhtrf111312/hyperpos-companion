@@ -146,7 +146,7 @@ export function useDeviceBinding() {
         return;
       }
 
-      // Check if license.device_id matches EITHER currentDeviceId OR currentDeviceKey
+      // فحص التطابق الصارم مع معرف الجهاز المسجل بالسحابة
       const isMatch = license.device_id === currentDeviceId || license.device_id === currentDeviceKey;
       
       if (isMatch) {
@@ -156,20 +156,7 @@ export function useDeviceBinding() {
         return;
       }
 
-      // If user already had a valid authenticated session running locally:
-      // Background network reconnects must NOT abruptly interrupt or lock the screen
-      // unless the license is explicitly revoked (is_revoked === true).
-      const cachedData = loadDeviceCache();
-      const hadActiveUnblockedSession = cachedData && cachedData.isDeviceBlocked === false;
-
-      if (hadActiveUnblockedSession) {
-        console.warn('[DeviceBinding] Active unblocked session running during reconnect. Preserving session.');
-        const result = { isDeviceBlocked: false, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
-        setState({ isChecking: false, ...result });
-        return;
-      }
-
-      // Genuine block confirmed against both IDs
+      // ⛔ إذا اختلف المعرف: حظر فوري وإغلاق الجلسة دون أي استثناء
       const result = { isDeviceBlocked: true, deviceId: currentDeviceId, registeredDeviceId: license.device_id };
       setState({ isChecking: false, ...result });
       saveDeviceCache(result);
