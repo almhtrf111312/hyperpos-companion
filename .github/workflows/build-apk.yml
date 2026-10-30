@@ -42,15 +42,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Read application version
+      - name: Read application version & activate 4th digit
         shell: bash
         run: |
-          BASE_VERSION=$(node -p "require('./version.json').versionName")
-          BASE_CODE=$(node -p "require('./version.json').versionCode")
-          
-          # استخدام رقم البناء التلقائي من GitHub Actions لضمان عدم تكرار نفس الإصدار أبداً
-          VERSION_CODE="${{ github.run_number }}"
-          VERSION_NAME="${BASE_VERSION}.${VERSION_CODE}"
+          node -e '
+            const fs = require("fs");
+            const v = JSON.parse(fs.readFileSync("./version.json", "utf8"));
+            const baseVersion = String(v.versionName || "1.5.2").split(".").slice(0, 3).join(".");
+            const nextCode = parseInt(v.versionCode || 366, 10) + 1;
+            v.versionCode = nextCode;
+            v.versionName = `${baseVersion}.${nextCode}`;
+            fs.writeFileSync("./version.json", JSON.stringify(v, null, 2) + "\n");
+          '
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
           
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
@@ -133,6 +138,38 @@ jobs:
           name: FlowPOS-v${{ env.VERSION_NAME }}
           path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
+
+      - name: Save bumped version.json & Sync to Supabase Cloud
+        if: github.ref == 'refs/heads/main'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git commit -m "chore: release v${{ env.VERSION_NAME }} (Build ${{ env.VERSION_CODE }}) [skip ci]" || true
+          git push origin HEAD:main || true
+
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            node -e '
+              const fs = require("fs");
+              const { execSync } = require("child_process");
+              const v = JSON.parse(fs.readFileSync("./version.json", "utf8"));
+              const msg = execSync("git log -1 --pretty=%B", { encoding: "utf-8" }).trim().split("\n")[0];
+              fs.writeFileSync("sync-payload.json", JSON.stringify({
+                latest_version_code: v.versionCode,
+                latest_version_name: v.versionName,
+                commit_sha: process.env.COMMIT_SHA,
+                commit_message: msg
+              }));
+            '
+            curl -s -X POST "${SUPABASE_URL}/functions/v1/sync-release-metadata" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+              --data @sync-payload.json || true
+          fi
 
       - name: Create tagged release
         if: startsWith(github.ref, 'refs/tags/')
