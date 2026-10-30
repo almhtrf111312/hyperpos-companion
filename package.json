@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.0.68",
+  "version": "1.5.1",
   "description": "FlowPOS Pro Point of Sale System",
   "author": "FlowPOS Pro",
   "type": "module",
@@ -16,8 +16,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "version:bump": "node scripts/bump-version.js",
-    "version:bump:minor": "node scripts/bump-version.js --increment 1",
-    "version:bump:major": "node scripts/bump-version.js --increment 10",
+    "version:bump:minor": "node scripts/bump-version.js --minor",
+    "version:bump:major": "node scripts/bump-version.js --major",
     "version:set": "node scripts/bump-version.js --set"
   },
   "dependencies": {

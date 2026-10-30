@@ -1,8 +1,14 @@
 {
-  "versionCode": 364,
+  "versionCode": 365,
   "versionName": "1.5.1",
-  "lastUpdated": "2026-10-30T05:00:00.000Z",
+  "lastUpdated": "2026-10-30T06:24:31.076Z",
   "buildHistory": [
+    {
+      "versionCode": 365,
+      "versionName": "1.5.1",
+      "date": "2026-10-30",
+      "description": "v1.5.1 (Build 365) - توحيد منظومة الإصدارات والتحديثات، إزالة الأزرار العائمة، كبسولات البوس المتجاوبة، واعتماد version.json كمرجع مطلق."
+    },
     {
       "versionCode": 364,
       "versionName": "1.5.1",

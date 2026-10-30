@@ -45,48 +45,27 @@ jobs:
       - name: Read and unify application version
         shell: bash
         run: |
-          if [ -f "./version.json" ]; then
-            BASE_CODE=$(node -p "require('./version.json').versionCode || 256")
-          else
-            BASE_CODE="256"
-          fi
-
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          OFFSET=$(( COMMIT_COUNT - 2700 ))
-          if [ "$OFFSET" -lt 1 ]; then OFFSET=1; fi
-
-          MAJOR=$(( 1 + (OFFSET / 100) ))
-          MINOR=$(( OFFSET % 100 ))
-
-          VERSION_NAME="${MAJOR}.${MINOR}"
-          SEMVER_VERSION="${MAJOR}.${MINOR}.0"
-          VERSION_CODE=$(( BASE_CODE + COMMIT_COUNT ))
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
+          SEMVER_VERSION="${VERSION_NAME}.0"
 
           node -e "
             const fs = require('fs');
-            for (const file of ['./version.json', './public/version.json']) {
-              if (fs.existsSync(file)) {
-                const v = JSON.parse(fs.readFileSync(file, 'utf8'));
-                v.versionCode = $VERSION_CODE;
-                v.versionName = '$VERSION_NAME';
-                v.version = '$VERSION_NAME';
-                fs.writeFileSync(file, JSON.stringify(v, null, 2));
-              }
-            }
             if (fs.existsSync('./package.json')) {
               const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
               pkg.main = 'electron/main.js';
               pkg.version = '$SEMVER_VERSION';
               pkg.description = 'FlowPOS Pro Point of Sale System';
               pkg.author = 'FlowPOS Pro';
-              fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+              fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '
+');
             }
           "
 
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "SEMVER_VERSION=$SEMVER_VERSION" >> "$GITHUB_ENV"
-          echo "Unified Version: v$VERSION_NAME (SemVer: $SEMVER_VERSION)"
+          echo "Unified Version: v$VERSION_NAME (Build $VERSION_CODE)"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps --no-audit --no-fund
