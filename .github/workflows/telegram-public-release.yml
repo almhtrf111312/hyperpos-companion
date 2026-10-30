@@ -4,19 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       source_branch:
-        description: 'الفرع الذي تريد سحب نسخته وإرسالها للمستخدمين'
+        description: 'الفرع الذي تريد نشر نسخته'
         required: true
         default: main
         type: choice
-        options:
-          - main
+        options: [main]
       confirm_publish:
         description: 'أؤكد إرسال ملف التطبيق الجاهز إلى قناة Telegram الآن'
         required: true
         default: false
         type: boolean
       custom_notes:
-        description: 'ملاحظات التحديث لتليجرام (اختياري - اتركه فارغاً لجلب آخر التعديلات تلقائياً)'
+        description: 'ملاحظات التحديث الاختيارية'
         required: false
         default: ''
         type: string
@@ -27,104 +26,118 @@ permissions:
 
 jobs:
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.confirm_publish == true
+    if: ${{ inputs.confirm_publish == true }}
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout source
+      - name: Checkout current source branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ inputs.source_branch }}
 
-      - name: Read application version
+      - name: Read source version and commit
         shell: bash
         run: |
+          set -euo pipefail
           VERSION_NAME=$(node -p "require('./version.json').versionName")
           VERSION_CODE=$(node -p "require('./version.json').versionCode")
-          
+          SOURCE_SHA=$(git rev-parse HEAD)
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "VER=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
+          echo "Publishing candidate: v${VERSION_NAME} build ${VERSION_CODE}, SHA ${SOURCE_SHA}"
 
-      - name: Verify and resolve Telegram Chat ID
+      - name: Resolve exact successful APK build for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          RUNS_JSON=$(curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${REPOSITORY}/actions/workflows/build-apk.yml/runs?branch=main&status=success&per_page=50")
+
+          RUN_ID=$(printf '%s' "$RUNS_JSON" | jq -r --arg sha "$SOURCE_SHA" \
+            '[.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success")] | .[0].id // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No successful APK build exists for current main SHA ${SOURCE_SHA}. Build the current source before publishing."
+            exit 1
+          fi
+
+          ARTIFACTS_JSON=$(curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${REPOSITORY}/actions/runs/${RUN_ID}/artifacts")
+          ARTIFACT_NAME="FlowPOS-v${VERSION_NAME}-build${VERSION_CODE}"
+          ARTIFACT_ID=$(printf '%s' "$ARTIFACTS_JSON" | jq -r --arg name "$ARTIFACT_NAME" \
+            '[.artifacts[] | select(.name == $name and .expired == false)] | .[0].id // empty')
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "::error::Build run ${RUN_ID} has no unexpired artifact named ${ARTIFACT_NAME}."
+            exit 1
+          fi
+
+          mkdir -p /tmp/flowpos-release
+          curl --fail-with-body -sS -L \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            -o /tmp/flowpos-release/artifact.zip
+          unzip -q /tmp/flowpos-release/artifact.zip -d /tmp/flowpos-release/files
+
+          META=/tmp/flowpos-release/files/build-metadata.json
+          if [ ! -s "$META" ]; then
+            echo '::error::Build artifact is missing build-metadata.json.'
+            exit 1
+          fi
+          META_SHA=$(jq -r '.sha' "$META")
+          META_VERSION=$(jq -r '.versionName' "$META")
+          META_CODE=$(jq -r '.versionCode' "$META")
+          APK_NAME=$(jq -r '.apkName' "$META")
+          if [ "$META_SHA" != "$SOURCE_SHA" ] || [ "$META_VERSION" != "$VERSION_NAME" ] || [ "$META_CODE" != "$VERSION_CODE" ]; then
+            echo '::error::Artifact metadata does not match current main source/version; refusing to publish.'
+            cat "$META"
+            exit 1
+          fi
+          APK_PATH="/tmp/flowpos-release/files/${APK_NAME}"
+          if [ ! -s "$APK_PATH" ]; then
+            echo "::error::Expected APK ${APK_NAME} was not present in the artifact."
+            exit 1
+          fi
+          EXPECTED_HASH=$(jq -r '.apkSha256' "$META")
+          ACTUAL_HASH=$(sha256sum "$APK_PATH" | cut -d' ' -f1)
+          if [ "$EXPECTED_HASH" != "$ACTUAL_HASH" ]; then
+            echo '::error::APK SHA-256 does not match build metadata.'
+            exit 1
+          fi
+          echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
+          echo "BUILD_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+          echo "Verified exact artifact: run=${RUN_ID}, ${APK_NAME}, sha256=${ACTUAL_HASH}"
+
+      - name: Verify Telegram target
         shell: bash
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           RAW_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          set -euo pipefail
           if [ -z "$TOKEN" ]; then
-            echo "Error: TELEGRAM_BOT_TOKEN is missing in GitHub Secrets"
+            echo '::error::TELEGRAM_BOT_TOKEN is missing.'
             exit 1
           fi
-
           RAW_CHAT=$(echo "$RAW_CHAT" | tr -d '[:space:]')
-          CANDIDATES=""
-
-          if [ -n "$RAW_CHAT" ]; then
-            CANDIDATES="$RAW_CHAT"
-            if echo "$RAW_CHAT" | grep -qE '^[0-9]+$'; then
-              CANDIDATES="$CANDIDATES -100$RAW_CHAT"
-            fi
-            if echo "$RAW_CHAT" | grep -qE '^[A-Za-z][A-Za-z0-9_]+$'; then
-              CANDIDATES="$CANDIDATES @$RAW_CHAT"
-            fi
-          fi
-
-          AUTO_CHATS=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getUpdates" | jq -r '.result[]? | (.message.chat.id // .channel_post.chat.id // .my_chat_member.chat.id) | select(. != null)' 2>/dev/null | tac | uniq | tr '\n' ' ' || true)
-
-          CANDIDATES="$CANDIDATES $AUTO_CHATS @flowpospro"
-
-          for C in $CANDIDATES; do
-            R=$(curl -sS "https://api.telegram.org/bot${TOKEN}/getChat" --data-urlencode "chat_id=$C" || true)
-            if echo "$R" | grep -q '"ok":true'; then
-              echo "Verified Telegram target: $C"
-              echo "CHANNEL=$C" >> "$GITHUB_ENV"
-              exit 0
-            fi
-            echo "Target ($C) check failed: $R"
-          done
-
-          echo "Error: Bot cannot access the channel or chat."
-          exit 1
-
-      - name: Download Latest Ready APK from GitHub Artifacts
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          ARTIFACT_INFO=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?per_page=30" \
-            | jq -r '.artifacts[] | select(.expired == false and (.name | test("FlowPOS.*"; "i")) and (.name | test("win|exe|setup"; "i") | not)) | "\(.id) \(.name)"' | head -n 1)
-
-          if [ -z "$ARTIFACT_INFO" ]; then
-            echo "::error::No ready APK artifact found."
+          if [ -z "$RAW_CHAT" ]; then RAW_CHAT='@flowpospro'; fi
+          RESPONSE=$(curl --fail-with-body -sS \
+            "https://api.telegram.org/bot${TOKEN}/getChat" \
+            --data-urlencode "chat_id=${RAW_CHAT}")
+          if ! echo "$RESPONSE" | jq -e '.ok == true' >/dev/null; then
+            echo '::error::Telegram bot cannot access the configured channel/chat.'
+            echo "$RESPONSE"
             exit 1
           fi
+          echo "CHANNEL=$RAW_CHAT" >> "$GITHUB_ENV"
 
-          ARTIFACT_ID=$(echo "$ARTIFACT_INFO" | awk '{print $1}')
-          ARTIFACT_NAME=$(echo "$ARTIFACT_INFO" | awk '{print $2}')
-
-          mkdir -p /tmp/ready-apk
-          curl -sS -L -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${ARTIFACT_ID}/zip" \
-            -o /tmp/ready-apk/artifact.zip
-
-          unzip -q /tmp/ready-apk/artifact.zip -d /tmp/ready-apk
-          FOUND_APK=$(find /tmp/ready-apk -name "*.apk" | head -n 1)
-
-          if [ -z "$FOUND_APK" ] || [ ! -f "$FOUND_APK" ]; then
-            echo "::error::Downloaded artifact does not contain an APK."
-            exit 1
-          fi
-
-          FINAL_NAME="FlowPOS-v${{ env.VER }}.apk"
-          cp "$FOUND_APK" "$GITHUB_WORKSPACE/$FINAL_NAME"
-          ls -lh "$GITHUB_WORKSPACE/$FINAL_NAME"
-
-          echo "APK_FILE=$FINAL_NAME" >> "$GITHUB_ENV"
-          echo "APK_PATH=$GITHUB_WORKSPACE/$FINAL_NAME" >> "$GITHUB_ENV"
-
-      - name: Send Ready APK to Telegram Channel
+      - name: Send verified APK to Telegram
         shell: bash
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -132,52 +145,47 @@ jobs:
           APK_PATH: ${{ env.APK_PATH }}
           CUSTOM_NOTES: ${{ inputs.custom_notes }}
         run: |
-          if [ ! -f "$APK_PATH" ]; then
-            echo "Error: APK file not found at $APK_PATH"
+          set -euo pipefail
+          if [ ! -s "$APK_PATH" ]; then
+            echo '::error::Verified APK file is missing.'
             exit 1
           fi
-
-          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
-          BUILD_DATE=$(TZ='Asia/Damascus' date +'%Y-%m-%d (%H:%M)')
-
           if [ -n "$CUSTOM_NOTES" ]; then
             RAW_NOTES="$CUSTOM_NOTES"
-          elif [ -f "scripts/telegram-release-notes.cjs" ]; then
+          elif [ -f scripts/telegram-release-notes.cjs ]; then
             RAW_NOTES=$(node scripts/telegram-release-notes.cjs)
           else
-            RAW_NOTES=$(git log -3 --pretty=format:"• %s")
+            RAW_NOTES=$(git log -3 --pretty=format:'• %s')
           fi
-
-          SAFE_NOTES=$(echo "$RAW_NOTES" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-
-          CAPTION="🚀 <b>تحديث جديد | Flow POS Pro</b>
+          SAFE_NOTES=$(printf '%s' "$RAW_NOTES" | sed 's/\&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          BUILD_DATE=$(TZ='Asia/Damascus' date +'%Y-%m-%d (%H:%M)')
+          CAPTION="🚀 <b>تحديث جديد | FlowPOS Pro</b>
           ━━━━━━━━━━━━━━
-          📌 <b>الإصدار:</b> <code>v${{ env.VER }} (Build ${{ env.VERSION_CODE }})</code>
-          📦 <b>حجم الملف:</b> <code>${APK_SIZE}B</code>
+          📌 <b>الإصدار:</b> <code>v${VERSION_NAME} (Build ${VERSION_CODE})</code>
+          🔐 <b>Commit:</b> <code>${SOURCE_SHA:0:7}</code>
+          📦 <b>حجم الملف:</b> <code>${APK_SIZE}</code>
           📅 <b>تاريخ النشر:</b> <code>${BUILD_DATE}</code>
-
-          ✨ <b>أبرز التحديثات والإصلاحات:</b>
+          ✨ <b>أبرز التحديثات:</b>
           <blockquote>${SAFE_NOTES}</blockquote>
           ━━━━━━━━━━━━━━
-          💡 <i>يمكنك تثبيت هذا التحديث مباشرة فوق النسخة الحالية دون حذف بياناتك.</i>"
-
-          REPLY_MARKUP='{"inline_keyboard":[[{"text":"📢 قناة التحديثات الرسمية","url":"https://t.me/flowpospro"}]]}'
-
+          💡 <i>يمكن تثبيت التحديث فوق النسخة الحالية دون حذف البيانات.</i>"
+          REPLY_MARKUP='{"inline_keyboard":[[{"text":"قناة التحديثات الرسمية","url":"https://t.me/flowpospro"}]]}'
           if [ ${#CAPTION} -le 1000 ]; then
-            curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
+            curl --fail-with-body -sS "https://api.telegram.org/bot${TOKEN}/sendDocument" \
               --form-string "chat_id=${CHANNEL}" \
               -F "document=@${APK_PATH}" \
-              --form-string "parse_mode=HTML" \
+              --form-string 'parse_mode=HTML' \
               --form-string "reply_markup=${REPLY_MARKUP}" \
               --form-string "caption=${CAPTION}"
           else
             jq -n --arg c "$CHANNEL" --arg t "$CAPTION" '{chat_id:$c,text:$t,parse_mode:"HTML"}' \
-              | curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+              | curl --fail-with-body -sS -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
                 -H 'Content-Type: application/json' -d @-
-            curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
+            curl --fail-with-body -sS "https://api.telegram.org/bot${TOKEN}/sendDocument" \
               --form-string "chat_id=${CHANNEL}" \
               -F "document=@${APK_PATH}" \
-              --form-string "parse_mode=HTML" \
+              --form-string 'parse_mode=HTML' \
               --form-string "reply_markup=${REPLY_MARKUP}" \
-              --form-string "caption=📥 <b>Flow POS Pro</b> <code>v${{ env.VER }} (Build ${{ env.VERSION_CODE }})</code>"
+              --form-string "caption=FlowPOS Pro v${VERSION_NAME} (Build ${VERSION_CODE})"
           fi
