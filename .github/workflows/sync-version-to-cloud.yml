@@ -1,22 +1,19 @@
 name: Sync Version Metadata to Cloud
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'version.json'
-      - 'package.json'
-      - 'src/**'
   workflow_run:
     workflows: ["Build FlowPOS Pro APK"]
     types:
       - completed
   workflow_dispatch:
 
+concurrency:
+  group: sync-version-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sync:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -25,13 +22,18 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Prepare Payload & Sync to Supabase Edge Function
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [ -z "$SUPABASE_URL" ] \vert{}\vert{} [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
             echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secret is missing. Skipping auto-sync."
             exit 0
           fi
@@ -42,14 +44,17 @@ jobs:
             const fs = require('fs');
             const { execSync } = require('child_process');
             const v = require('./version.json');
-            const msg = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim().split('\n')[0];
+            let msg = 'Manual Sync';
+            try {
+              msg = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim().split('\n')[0];
+            } catch (e) {}
             const payload = {
               latest_version_code: v.versionCode,
               latest_version_name: v.versionName,
               commit_sha: process.env.COMMIT_SHA,
               commit_message: msg
             };
-            fs.writeFileSync('sync-payload.json', JSON.stringify(payload));
+            fs.writeFileSync('sync-payload.json', JSON.stringify(payload, null, 2));
           "
 
           echo "Syncing payload to Edge Function..."
