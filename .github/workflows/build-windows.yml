@@ -45,6 +45,7 @@ jobs:
       - name: Read and unify application version
         shell: bash
         run: |
+          node scripts/check-version.mjs
           VERSION_NAME=$(node -p "require('./version.json').versionName")
           VERSION_CODE=$(node -p "require('./version.json').versionCode")
           SEMVER_VERSION="${VERSION_NAME}.0"
@@ -57,8 +58,7 @@ jobs:
               pkg.version = '$SEMVER_VERSION';
               pkg.description = 'FlowPOS Pro Point of Sale System';
               pkg.author = 'FlowPOS Pro';
-              fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '
-');
+              fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + String.fromCharCode(10));
             }
           "
 
