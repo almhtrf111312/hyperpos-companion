@@ -1,3 +1,4 @@
+```yaml
 name: Build FlowPOS Pro APK
 
 on:
@@ -5,6 +6,17 @@ on:
     branches: [ main, event-or-artifact ]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      override_version_name:
+        description: 'رقم الإصدار (اختياري - اتركه فارغاً للقراءة من version.json)'
+        required: false
+        default: ''
+        type: string
+      override_version_code:
+        description: 'رقم البناء Build (اختياري - اتركه فارغاً للقراءة من version.json)'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: build-apk-${{ github.ref }}
@@ -13,12 +25,15 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     env:
       VERSION_CODE: '256'
-      VERSION_NAME: '1.0'
+      VERSION_NAME: '1.0.0'
       FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
@@ -28,7 +43,7 @@ jobs:
           clean: true
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -45,12 +60,18 @@ jobs:
       - name: Read application version
         shell: bash
         run: |
-          VERSION_NAME=$(node -p "require('./version.json').versionName")
-          VERSION_CODE=$(node -p "require('./version.json').versionCode")
-          
+          FILE_VER_NAME=$(node -p "try { require('./version.json').versionName || require('./package.json').version } catch(e) { '1.5.2' }")
+          FILE_VER_CODE=$(node -p "try { require('./version.json').versionCode || 366 } catch(e) { 366 }")
+
+          INPUT_VER_NAME="${{ inputs.override_version_name }}"
+          INPUT_VER_CODE="${{ inputs.override_version_code }}"
+
+          VERSION_NAME="${INPUT_VER_NAME:-$FILE_VER_NAME}"
+          VERSION_CODE="${INPUT_VER_CODE:-$FILE_VER_CODE}"
+
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "Target Version: v$VERSION_NAME (Build $VERSION_CODE)"
+          echo "Target Version: v$VERSION_NAME (Build $VERSION_CODE - Run #${{ github.run_number }})"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -105,9 +126,10 @@ jobs:
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
           VERSION="${{ env.VERSION_NAME }}"
-          FINAL_APK="FlowPOS-v${VERSION}.apk"
+          BUILD_CODE="${{ env.VERSION_CODE }}"
+          FINAL_APK="FlowPOS-v${VERSION}-b${BUILD_CODE}.apk"
           
-          SRC_APK=$(ls $RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
+          SRC_APK=$(ls$RELEASE_DIR/*.apk 2>/dev/null | head -n 1)
           if [ -z "$SRC_APK" ]; then
             echo "Error: No APK found in $RELEASE_DIR"
             exit 1
@@ -126,7 +148,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlowPOS-v${{ env.VERSION_NAME }}
+          name: FlowPOS-v${{ env.VERSION_NAME }}-build-${{ env.VERSION_CODE }}
           path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
 
