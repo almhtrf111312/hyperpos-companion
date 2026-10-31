@@ -112,25 +112,34 @@ export async function saveProductsToIDB(products: unknown[]): Promise<void> {
         for (const product of products) {
           const p = product as any;
           if (!p || !p.id) continue;
+
+          const salePrice = Number(p.salePrice ?? p.price ?? p.sale_price) || 0;
+          const costPrice = Number(p.costPrice ?? p.cost_price) || 0;
+          const stockQty = Number(p.quantity ?? p.stock) || 0;
+          const imageVal = p.image || p.imageUrl || p.image_url || null;
+          const isActive = p.archived === true || p.is_archived === true || p.is_deleted === true ? 0 : 1;
+
           await nativeDb.run(
             `INSERT OR REPLACE INTO local_products 
-            (id, name, barcode, barcode2, barcode3, price, cost_price, stock, category, unit, pieces_per_box, is_active, custom_fields, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            (id, name, barcode, barcode2, barcode3, price, cost_price, stock, image, category, unit, pieces_per_box, is_active, custom_fields, raw_data, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
             [
               p.id,
               p.name || '',
               p.barcode || null,
               p.barcode2 || null,
               p.barcode3 || null,
-              Number(p.price) || 0,
-              Number(p.cost_price) || 0,
-              Number(p.stock) || 0,
+              salePrice,
+              costPrice,
+              stockQty,
+              imageVal,
               p.category || '',
-              p.unit || 'piece',
-              p.pieces_per_box || 1,
-              p.is_active !== false ? 1 : 0,
-              p.custom_fields ? JSON.stringify(p.custom_fields) : null,
-              p.updated_at || new Date().toISOString()
+              p.smallUnit || p.unit || 'piece',
+              p.conversionFactor || p.pieces_per_box || 1,
+              isActive,
+              p.customFields ? JSON.stringify(p.customFields) : (p.custom_fields ? (typeof p.custom_fields === 'string' ? p.custom_fields : JSON.stringify(p.custom_fields)) : null),
+              JSON.stringify(p),
+              p.updatedAt || p.updated_at || new Date().toISOString()
             ]
           );
         }
@@ -182,10 +191,47 @@ export async function loadProductsFromIDB<T>(): Promise<{ products: T[]; timesta
       if (nativeDb) {
         const res = await nativeDb.query('SELECT * FROM local_products WHERE is_active = 1;');
         if (res.values && res.values.length > 0) {
-          const products = res.values.map(p => ({
-            ...p,
-            custom_fields: p.custom_fields ? (typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : p.custom_fields) : null
-          })) as T[];
+          const products = res.values.map(p => {
+            let baseObj: any = {};
+            if (p.raw_data) {
+              try {
+                baseObj = JSON.parse(p.raw_data);
+              } catch (_) {}
+            }
+
+            const salePrice = Number(p.price ?? baseObj.salePrice ?? baseObj.price) || 0;
+            const costPrice = Number(p.cost_price ?? baseObj.costPrice ?? baseObj.cost_price) || 0;
+            const quantity = Number(p.stock !== null && p.stock !== undefined ? p.stock : (baseObj.quantity ?? baseObj.stock)) || 0;
+            const image = p.image || baseObj.image || baseObj.imageUrl || undefined;
+
+            return {
+              ...baseObj,
+              id: p.id,
+              name: p.name || baseObj.name || '',
+              barcode: p.barcode || baseObj.barcode || '',
+              barcode2: p.barcode2 || baseObj.barcode2 || undefined,
+              barcode3: p.barcode3 || baseObj.barcode3 || undefined,
+              category: p.category || baseObj.category || '',
+              salePrice,
+              price: salePrice,
+              costPrice,
+              quantity,
+              stock: quantity,
+              image,
+              imageUrl: image,
+              status: quantity <= 0 ? 'out_of_stock' : (quantity <= (p.min_stock_alert || baseObj.minStockLevel || 5) ? 'low_stock' : 'in_stock'),
+              minStockLevel: Number(p.min_stock_alert ?? baseObj.minStockLevel) || 5,
+              smallUnit: p.unit || baseObj.smallUnit || 'قطعة',
+              bulkUnit: baseObj.bulkUnit || 'كرتونة',
+              conversionFactor: p.pieces_per_box || baseObj.conversionFactor || 1,
+              bulkSalePrice: Number(baseObj.bulkSalePrice) || 0,
+              bulkCostPrice: Number(baseObj.bulkCostPrice) || 0,
+              wholesalePrice: baseObj.wholesalePrice ? Number(baseObj.wholesalePrice) : undefined,
+              laborCost: Number(baseObj.laborCost) || 0,
+              archived: p.is_active === 0 || baseObj.archived === true,
+              customFields: p.custom_fields ? (typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : p.custom_fields) : baseObj.customFields,
+            };
+          }) as T[];
           return { products, timestamp: Date.now() };
         }
       }
@@ -234,9 +280,44 @@ export async function getProductByBarcodeIDB<T>(barcode: string): Promise<T | nu
         );
         if (res.values && res.values.length > 0) {
           const p = res.values[0];
+          let baseObj: any = {};
+          if (p.raw_data) {
+            try {
+              baseObj = JSON.parse(p.raw_data);
+            } catch (_) {}
+          }
+
+          const salePrice = Number(p.price ?? baseObj.salePrice ?? baseObj.price) || 0;
+          const costPrice = Number(p.cost_price ?? baseObj.costPrice ?? baseObj.cost_price) || 0;
+          const quantity = Number(p.stock !== null && p.stock !== undefined ? p.stock : (baseObj.quantity ?? baseObj.stock)) || 0;
+          const image = p.image || baseObj.image || baseObj.imageUrl || undefined;
+
           return {
-            ...p,
-            custom_fields: p.custom_fields ? (typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : p.custom_fields) : null
+            ...baseObj,
+            id: p.id,
+            name: p.name || baseObj.name || '',
+            barcode: p.barcode || baseObj.barcode || '',
+            barcode2: p.barcode2 || baseObj.barcode2 || undefined,
+            barcode3: p.barcode3 || baseObj.barcode3 || undefined,
+            category: p.category || baseObj.category || '',
+            salePrice,
+            price: salePrice,
+            costPrice,
+            quantity,
+            stock: quantity,
+            image,
+            imageUrl: image,
+            status: quantity <= 0 ? 'out_of_stock' : (quantity <= (p.min_stock_alert || baseObj.minStockLevel || 5) ? 'low_stock' : 'in_stock'),
+            minStockLevel: Number(p.min_stock_alert ?? baseObj.minStockLevel) || 5,
+            smallUnit: p.unit || baseObj.smallUnit || 'قطعة',
+            bulkUnit: baseObj.bulkUnit || 'كرتونة',
+            conversionFactor: p.pieces_per_box || baseObj.conversionFactor || 1,
+            bulkSalePrice: Number(baseObj.bulkSalePrice) || 0,
+            bulkCostPrice: Number(baseObj.bulkCostPrice) || 0,
+            wholesalePrice: baseObj.wholesalePrice ? Number(baseObj.wholesalePrice) : undefined,
+            laborCost: Number(baseObj.laborCost) || 0,
+            archived: p.is_active === 0 || baseObj.archived === true,
+            customFields: p.custom_fields ? (typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : p.custom_fields) : baseObj.customFields,
           } as T;
         }
       }
@@ -330,10 +411,25 @@ export async function updateProductInIDB(id: string, updates: Record<string, unk
         const sets: string[] = [];
         const vals: any[] = [];
         for (const [key, val] of Object.entries(updates)) {
-          if (['name', 'barcode', 'barcode2', 'barcode3', 'price', 'cost_price', 'stock', 'category', 'unit', 'pieces_per_box', 'is_active', 'updated_at'].includes(key)) {
+          if (['name', 'barcode', 'barcode2', 'barcode3', 'category', 'updated_at'].includes(key)) {
             sets.push(`${key} = ?`);
             vals.push(val);
-          } else if (key === 'custom_fields') {
+          } else if (key === 'quantity' || key === 'stock') {
+            sets.push('stock = ?');
+            vals.push(Number(val) || 0);
+          } else if (key === 'salePrice' || key === 'price' || key === 'sale_price') {
+            sets.push('price = ?');
+            vals.push(Number(val) || 0);
+          } else if (key === 'costPrice' || key === 'cost_price') {
+            sets.push('cost_price = ?');
+            vals.push(Number(val) || 0);
+          } else if (key === 'image' || key === 'imageUrl' || key === 'image_url') {
+            sets.push('image = ?');
+            vals.push(val || null);
+          } else if (key === 'archived') {
+            sets.push('is_active = ?');
+            vals.push(val ? 0 : 1);
+          } else if (key === 'custom_fields' || key === 'customFields') {
             sets.push('custom_fields = ?');
             vals.push(val ? JSON.stringify(val) : null);
           }
