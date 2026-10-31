@@ -4,13 +4,7 @@
  * FlowPOS Pro - Unified Version Bump Script
  * =========================================
  * Single source of truth: version.json
- * Synchronizes: version.json, package.json, public/version.json, build.gradle
- *
- * Usage:
- *   npm run version:bump                  # Increment versionCode by 1 (e.g. 364 -> 365)
- *   npm run version:bump:minor            # Increment versionName (1.5.1 -> 1.5.2) + bump versionCode
- *   npm run version:bump:major            # Increment major (1.5.1 -> 2.0.0) + bump versionCode
- *   node scripts/bump-version.js --set 370 --name 1.6.0
+ * Synchronizes: version.json, public/version.json, package.json, package-lock.json, build.gradle
  */
 
 import fs from 'fs';
@@ -24,9 +18,9 @@ const ROOT_DIR = path.join(__dirname, '..');
 const VERSION_FILE = path.join(ROOT_DIR, 'version.json');
 const PUBLIC_VERSION_FILE = path.join(ROOT_DIR, 'public', 'version.json');
 const PKG_FILE = path.join(ROOT_DIR, 'package.json');
+const LOCK_FILE = path.join(ROOT_DIR, 'package-lock.json');
 const BUILD_GRADLE_FILE = path.join(ROOT_DIR, 'android', 'app', 'build.gradle');
 
-// Parse CLI args
 const args = process.argv.slice(2);
 let incrementBy = 1;
 let setVersion = null;
@@ -68,15 +62,13 @@ function bumpSemver(versionStr, type) {
     parts[0] += 1;
     parts[1] = 0;
     parts[2] = 0;
-  } else if (type === 'minor' || type === 'patch') {
-    // 1.5.1 -> 1.5.2 (or 1.5 -> 1.6 if 2 parts)
-    if (versionStr.split('.').length === 2) {
-      parts[1] += 1;
-      return `${parts[0]}.${parts[1]}`;
-    }
+  } else if (type === 'minor') {
+    parts[1] += 1;
+    parts[2] = 0;
+  } else if (type === 'patch') {
     parts[2] += 1;
   }
-  return parts.join('.');
+  return parts.slice(0, 3).join('.');
 }
 
 function main() {
@@ -90,28 +82,22 @@ function main() {
   const raw = fs.readFileSync(VERSION_FILE, 'utf8');
   const versionData = JSON.parse(raw);
 
-  const oldVersionCode = Number(versionData.versionCode) || 364;
-  const oldVersionName = versionData.versionName || '1.5.1';
+  const oldVersionCode = Number(versionData.versionCode) || 382;
+  const oldVersionName = versionData.versionName || '1.5.3';
 
-  // Calculate new version code
-  let newVersionCode;
-  if (setVersion !== null) {
-    newVersionCode = setVersion;
-  } else {
-    newVersionCode = oldVersionCode + incrementBy;
+  let newVersionCode = setVersion !== null ? setVersion : oldVersionCode + incrementBy;
+  if (!Number.isSafeInteger(newVersionCode) || newVersionCode <= 0) {
+    console.error('❌ Error: Invalid new versionCode:', newVersionCode);
+    process.exit(1);
   }
 
-  // Calculate new version name
   let newVersionName = oldVersionName;
   if (customVersionName) {
     newVersionName = customVersionName;
-  } else if (bumpType === 'minor' || bumpType === 'patch') {
+  } else if (bumpType === 'minor' || bumpType === 'patch' || bumpType === 'major') {
     newVersionName = bumpSemver(oldVersionName, bumpType);
-  } else if (bumpType === 'major') {
-    newVersionName = bumpSemver(oldVersionName, 'major');
   }
 
-  // Update object
   versionData.versionCode = newVersionCode;
   versionData.versionName = newVersionName;
   versionData.lastUpdated = new Date().toISOString();
@@ -128,24 +114,20 @@ function main() {
     description: desc,
   });
 
-  // Keep last 15 history items
-  if (versionData.buildHistory.length > 15) {
-    versionData.buildHistory = versionData.buildHistory.slice(0, 15);
+  if (versionData.buildHistory.length > 20) {
+    versionData.buildHistory = versionData.buildHistory.slice(0, 20);
   }
 
-  // 1. Write version.json
   const formattedJson = JSON.stringify(versionData, null, 2) + '\n';
   fs.writeFileSync(VERSION_FILE, formattedJson, 'utf8');
   console.log('✅ Updated version.json');
 
-  // 2. Sync to public/version.json if public folder exists
   const publicDir = path.dirname(PUBLIC_VERSION_FILE);
   if (fs.existsSync(publicDir)) {
     fs.writeFileSync(PUBLIC_VERSION_FILE, formattedJson, 'utf8');
     console.log('✅ Updated public/version.json');
   }
 
-  // 3. Update package.json version
   if (fs.existsSync(PKG_FILE)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(PKG_FILE, 'utf8'));
@@ -157,16 +139,24 @@ function main() {
     }
   }
 
-  // 4. Check android/app/build.gradle
+  if (fs.existsSync(LOCK_FILE)) {
+    try {
+      const lock = JSON.parse(fs.readFileSync(LOCK_FILE, 'utf8'));
+      lock.version = newVersionName;
+      if (lock.packages && lock.packages['']) {
+        lock.packages[''].version = newVersionName;
+      }
+      fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2) + '\n', 'utf8');
+      console.log('✅ Updated package-lock.json');
+    } catch (e) {
+      console.warn('⚠️ Could not update package-lock.json version:', e.message);
+    }
+  }
+
   if (fs.existsSync(BUILD_GRADLE_FILE)) {
     let gradle = fs.readFileSync(BUILD_GRADLE_FILE, 'utf8');
     if (gradle.includes('versionProps.versionCode')) {
-      console.log('✅ android/app/build.gradle dynamically reads version.json (already in sync)');
-    } else {
-      gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${newVersionCode}`);
-      gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${newVersionName}"`);
-      fs.writeFileSync(BUILD_GRADLE_FILE, gradle, 'utf8');
-      console.log('✅ Updated android/app/build.gradle');
+      console.log('✅ android/app/build.gradle dynamically reads version.json');
     }
   }
 

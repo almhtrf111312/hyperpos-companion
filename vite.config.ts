@@ -5,12 +5,16 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import fs from "fs";
 
-// Load version info from version.json
-let appVersion = { versionName: '1.0.0', versionCode: 221, lastUpdated: new Date().toISOString() };
-try {
-  const versionFile = fs.readFileSync(path.resolve(__dirname, 'version.json'), 'utf-8');
-  appVersion = JSON.parse(versionFile);
-} catch { /* use defaults */ }
+// Load version info strictly from version.json
+const versionFilePath = path.resolve(__dirname, 'version.json');
+if (!fs.existsSync(versionFilePath)) {
+  throw new Error(`[Vite Build Error] version.json missing at ${versionFilePath}`);
+}
+const versionRaw = fs.readFileSync(versionFilePath, 'utf-8');
+const appVersion = JSON.parse(versionRaw);
+if (!appVersion.versionCode || !appVersion.versionName) {
+  throw new Error(`[Vite Build Error] Invalid version metadata in ${versionFilePath}`);
+}
 
 // Load changelog from public/changelog.json
 let appChangelog: Array<{ type: string; ar: string; en: string }> = [];

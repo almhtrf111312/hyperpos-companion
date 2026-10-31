@@ -10,6 +10,17 @@ on:
       - '.github/workflows/telegram-public-release.yml'
       - '.github/workflows/sync-version-to-cloud.yml'
   workflow_dispatch:
+    inputs:
+      publish_telegram:
+        description: 'إرسال ملف الـ APK المبني في هذه الجلسة إلى قناة Telegram مباشرة'
+        required: false
+        default: false
+        type: boolean
+      custom_notes:
+        description: 'ملاحظات مخصصة للنشر (اختياري)'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: build-apk-${{ github.ref }}
@@ -21,10 +32,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    env:
-      VERSION_CODE: '256'
-      VERSION_NAME: '1.0'
-      FINAL_APK_PATH: ''
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -47,19 +54,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Read application version
+      - name: Read authoritative version
         shell: bash
         run: |
-          BASE_VER=$(node -p "require('./version.json').versionName.split('.').slice(0,3).join('.')")
-          BASE_CODE=$(node -p "require('./version.json').versionCode")
-          VERSION_CODE=$((BASE_CODE + 1))
-          VERSION_NAME="${BASE_VER}.${VERSION_CODE}"
-          
-          node -e "const fs=require('fs'); const v=require('./version.json'); v.versionName='$VERSION_NAME'; v.versionCode=$VERSION_CODE; fs.writeFileSync('./version.json', JSON.stringify(v, null, 2)+'\n');"
+          VERSION_NAME=$(node -p "require('./version.json').versionName")
+          VERSION_CODE=$(node -p "require('./version.json').versionCode")
           
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "Target Version: v$VERSION_NAME (Build $VERSION_CODE)"
+          echo "Building FlowPOS Pro: v$VERSION_NAME (Build $VERSION_CODE)"
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -87,7 +90,7 @@ jobs:
               KEY_PASS="flowpos123"
             fi
           else
-            echo "::error::Release keystore file android/app/flowpos-release.keystore is missing from repository. Build aborted to protect signing key integrity."
+            echo "::error::Release keystore file is missing. Aborting."
             exit 1
           fi
 
@@ -122,15 +125,12 @@ jobs:
             exit 1
           fi
           
-          if [ "$SRC_APK" != "$RELEASE_DIR/$FINAL_APK" ]; then
-            mv "$SRC_APK" "$RELEASE_DIR/$FINAL_APK"
-          fi
-          
+          mv "$SRC_APK" "$RELEASE_DIR/$FINAL_APK"
           find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "$FINAL_APK" -delete
           
           echo "FINAL_APK_NAME=$FINAL_APK" >> "$GITHUB_ENV"
           echo "FINAL_APK_PATH=$RELEASE_DIR/$FINAL_APK" >> "$GITHUB_ENV"
-          ls -lh "$RELEASE_DIR"
+          ls -lh "$RELEASE_DIR/$FINAL_APK"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -139,15 +139,57 @@ jobs:
           path: ${{ env.FINAL_APK_PATH }}
           retention-days: 30
 
-      - name: Update version.json in repository (With CI Skip)
-        if: github.ref == 'refs/heads/main'
+      - name: Publish exact APK to Telegram (If Requested)
+        if: ${{ inputs.publish_telegram == true }}
         shell: bash
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          RAW_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APK_PATH: ${{ env.FINAL_APK_PATH }}
+          CUSTOM_NOTES: ${{ inputs.custom_notes }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add version.json
-          git commit -m "chore: bump version to v${{ env.VERSION_NAME }} [skip ci]" || true
-          git push origin HEAD:main || true
+          if [ -z "$TOKEN" ]; then
+            echo "::error::TELEGRAM_BOT_TOKEN is missing"
+            exit 1
+          fi
+
+          CHANNEL=$(echo "$RAW_CHAT" | tr -d '[:space:]')
+          if echo "$CHANNEL" | grep -qE '^[0-9]+$'; then
+            CHANNEL="-100$CHANNEL"
+          fi
+
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          BUILD_DATE=$(TZ='Asia/Damascus' date +'%Y-%m-%d (%H:%M)')
+
+          if [ -n "$CUSTOM_NOTES" ]; then
+            RAW_NOTES="$CUSTOM_NOTES"
+          elif [ -f "scripts/telegram-release-notes.cjs" ]; then
+            RAW_NOTES=$(node scripts/telegram-release-notes.cjs)
+          else
+            RAW_NOTES=$(git log -3 --pretty=format:"• %s")
+          fi
+
+          SAFE_NOTES=$(echo "$RAW_NOTES" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+
+          CAPTION="🚀 <b>تحديث جديد | Flow POS Pro</b>
+          ━━━━━━━━━━━━━━
+          📌 <b>الإصدار:</b> <code>v${{ env.VERSION_NAME }} (Build ${{ env.VERSION_CODE }})</code>
+          📦 <b>حجم الملف:</b> <code>${APK_SIZE}B</code>
+          📅 <b>تاريخ النشر:</b> <code>${BUILD_DATE}</code>
+
+          ✨ <b>أبرز التحديثات والإصلاحات:</b>
+          <blockquote>${SAFE_NOTES}</blockquote>
+          ━━━━━━━━━━━━━━
+          💡 <i>يمكنك تثبيت هذا التحديث مباشرة فوق النسخة الحالية دون حذف بياناتك.</i>"
+
+          REPLY_MARKUP='{"inline_keyboard":[[{"text":"📢 قناة التحديثات الرسمية","url":"https://t.me/flowpospro"}]]}'
+
+          curl -sS --fail-with-body "https://api.telegram.org/bot${TOKEN}/sendDocument" \
+            --form-string "chat_id=${CHANNEL}" \
+            -F "document=@${APK_PATH}" \
+            --form-string "parse_mode=HTML" \
+            --form-string "reply_markup=${REPLY_MARKUP}" \
+            --form-string "caption=${CAPTION}"
 
       - name: Create tagged release
         if: startsWith(github.ref, 'refs/tags/')

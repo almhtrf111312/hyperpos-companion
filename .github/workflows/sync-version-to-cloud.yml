@@ -34,17 +34,15 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secret is missing. Skipping auto-sync."
+            echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing. Skipping sync."
             exit 0
           fi
-
-          git pull origin main --rebase || true
 
           node -e "
             const fs = require('fs');
             const { execSync } = require('child_process');
             const v = require('./version.json');
-            let msg = 'Manual Sync';
+            let msg = 'Automatic Build Sync';
             try {
               msg = execSync('git log -1 --pretty=%B', { encoding: 'utf-8' }).trim().split('\n')[0];
             } catch (e) {}
@@ -57,7 +55,6 @@ jobs:
             fs.writeFileSync('sync-payload.json', JSON.stringify(payload, null, 2));
           "
 
-          echo "Syncing payload to Edge Function..."
           STATUS=$(curl -s -o response.txt -w "%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/sync-release-metadata" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
@@ -65,11 +62,10 @@ jobs:
 
           echo "Response HTTP Status: $STATUS"
           cat response.txt
-          echo ""
 
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
-            echo "Successfully synced version metadata to Supabase Cloud!"
+            echo "✅ Successfully synced version metadata to Cloud!"
           else
-            echo "Failed to sync version metadata (HTTP $STATUS)"
+            echo "❌ Failed to sync version metadata (HTTP $STATUS)"
             exit 1
           fi

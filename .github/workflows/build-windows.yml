@@ -124,58 +124,13 @@ jobs:
           }
           EOF
 
-      - name: Pre-download Electron Binary with Retry
-        shell: pwsh
-        run: |
-          $electronVersion = "v${{ env.ELECTRON_VER }}"
-          $electronZip = "electron-$electronVersion-win32-x64.zip"
-          $cacheDirs = @(
-            "$env:LOCALAPPDATA\electron\Cache",
-            "$env:LOCALAPPDATA\electron-builder\Cache\electron"
-          )
-          foreach ($dir in $cacheDirs) {
-            if (-not (Test-Path $dir)) {
-              New-Item -ItemType Directory -Force -Path $dir | Out-Null
-            }
-          }
-          $dest1 = "$env:LOCALAPPDATA\electron\Cache\$electronZip"
-          $dest2 = "$env:LOCALAPPDATA\electron-builder\Cache\electron\$electronZip"
-
-          if (-not (Test-Path $dest1)) {
-            $url = "https://github.com/electron/electron/releases/download/$electronVersion/$electronZip"
-            Write-Host "Pre-downloading $url to $dest1..."
-            curl.exe -fL --retry 5 --retry-connrefused --retry-delay 3 -o $dest1 $url
-          } else {
-            Write-Host "Electron binary already exists in cache."
-          }
-
-          if ((Test-Path $dest1) -and -not (Test-Path $dest2)) {
-            Copy-Item -Path $dest1 -Destination $dest2 -Force
-          }
-
       - name: Build Windows Installer
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION_NAME: ${{ env.VERSION_NAME }}
         run: |
-          $maxRetries = 3
-          $attempt = 0
-          $success = $false
-          while ($attempt -lt $maxRetries -and -not $success) {
-            $attempt++
-            Write-Host "=== Build Attempt $attempt of $maxRetries ==="
-            npx electron-builder --win --config electron-builder.json --publish never
-            if ($LASTEXITCODE -eq 0) {
-              $success = $true
-            } else {
-              Write-Host "Attempt $attempt failed with exit code $LASTEXITCODE. Waiting 5s before retry..."
-              Start-Sleep -Seconds 5
-            }
-          }
-          if (-not $success) {
-            exit 1
-          }
+          npx electron-builder --win --config electron-builder.json --publish never
 
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
@@ -183,15 +138,3 @@ jobs:
           name: FlowPOS-Pro-Windows-v${{ env.VERSION_NAME }}
           path: electron-dist/*.exe
           retention-days: 30
-
-      - name: Build Summary
-        shell: pwsh
-        run: |
-          echo "## FlowPOS Pro Windows Build Complete! :rocket:" >> $env:GITHUB_STEP_SUMMARY
-          echo "" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $env:GITHUB_STEP_SUMMARY
-          echo "|----------|-------|" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Version | v${{ env.VERSION_NAME }} (Internal: ${{ env.VERSION_CODE }}) |" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Platform | Windows x64 |" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Output | FlowPOS-Pro-Setup-v${{ env.VERSION_NAME }}.exe |" >> $env:GITHUB_STEP_SUMMARY
-          echo "| Build Time | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') |" >> $env:GITHUB_STEP_SUMMARY
