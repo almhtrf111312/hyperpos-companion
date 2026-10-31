@@ -65,6 +65,7 @@ import { addUniqueOperation } from '@/lib/sync-queue';
 import { deductProductsLocalCache, validateCartProducts } from '@/lib/cloud/products-cloud';
 import { useCloudSyncContext } from '@/providers/CloudSyncProvider';
 import { recordOfflineInvoiceLocal, Invoice } from '@/lib/cloud/invoices-cloud';
+import { recordSaleInNativeSQLite } from '@/lib/db/sales-storage-bridge';
 import { canSellOffline, incrementOfflineInvoiceCounter } from '@/lib/offline-lease';
 import { getCurrencySymbolByCode, resolveInvoiceCurrencySymbol } from '@/lib/currencies';
 import { createCurrencySnapshot, getCurrencyDef, toUsd, fromUsd, round8, roundForCurrency as roundForCurr } from '@/lib/money-engine';
@@ -826,6 +827,32 @@ export function CartPanel({
         warehouseId: stockWarehouseId,
       };
       recordOfflineInvoiceLocal(offlineCashInvoice);
+      recordSaleInNativeSQLite({
+        id: operationId,
+        invoiceNumber,
+        customerId: resolvedCustomerId,
+        customerName: customerNameSnapshot || 'عميل نقدي',
+        subtotal,
+        discount: effectiveDiscountAmount,
+        taxAmount,
+        totalAmount: totalSnapshot,
+        paidAmount: totalSnapshot,
+        remainingAmount: 0,
+        currency: cashSnap.currency_code,
+        exchangeRate: cashSnap.exchange_rate,
+        paymentType: 'cash',
+        cashierName: profile?.full_name || user?.email || undefined,
+        createdAt: new Date().toISOString(),
+        items: localItems.map(i => ({
+          productId: i.id,
+          productName: i.name,
+          quantity: i.quantity,
+          unitPrice: i.price,
+          costPrice: i.costPrice,
+          totalPrice: i.total,
+          isBox: i.unit === 'bulk',
+        })),
+      }).catch(err => console.warn('[CartPanel] Native SQLite sale recording error:', err));
 
       // ✅ تحديث إحصائيات العميل النشطة فوراً
       if (resolvedCustomerId) {
@@ -1270,6 +1297,32 @@ export function CartPanel({
         warehouseId: stockWarehouseId,
       };
       recordOfflineInvoiceLocal(offlineDebtInvoice);
+      recordSaleInNativeSQLite({
+        id: operationId,
+        invoiceNumber,
+        customerId: resolvedCustomerId,
+        customerName: customerNameSnapshot,
+        subtotal,
+        discount: discountAmount,
+        taxAmount,
+        totalAmount: totalSnapshot,
+        paidAmount: downPaymentSnapshot,
+        remainingAmount: debtRemainingSnapshot,
+        currency: debtSnap.currency_code,
+        exchangeRate: debtSnap.exchange_rate,
+        paymentType: downPaymentSnapshot > 0 ? 'split' : 'debt',
+        cashierName: profile?.full_name || user?.email || undefined,
+        createdAt: new Date().toISOString(),
+        items: localItems.map(i => ({
+          productId: i.id,
+          productName: i.name,
+          quantity: i.quantity,
+          unitPrice: i.price,
+          costPrice: i.costPrice,
+          totalPrice: i.total,
+          isBox: i.unit === 'bulk',
+        })),
+      }).catch(err => console.warn('[CartPanel] Native SQLite debt sale recording error:', err));
 
       // ✅ تحديث إحصائيات العميل النشطة فوراً
       if (resolvedCustomerId) {

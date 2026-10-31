@@ -1,8 +1,14 @@
 {
-  "versionCode": 382,
+  "versionCode": 383,
   "versionName": "1.5.3.382",
-  "lastUpdated": "2026-10-30T21:52:29.100Z",
+  "lastUpdated": "2026-10-31T19:30:48.059Z",
   "buildHistory": [
+    {
+      "versionCode": 383,
+      "versionName": "1.5.3.382",
+      "date": "2026-10-31",
+      "description": "Release v1.5.3.382 (Build 383)"
+    },
     {
       "versionCode": 381,
       "versionName": "1.5.3",
@@ -86,12 +92,6 @@
       "versionName": "1.5.1",
       "date": "2026-10-30",
       "description": "v1.5.1 (Build 365) - توحيد منظومة الإصدارات والتحديثات، إزالة الأزرار العائمة، كبسولات البوس المتجاوبة، واعتماد version.json كمرجع مطلق."
-    },
-    {
-      "versionCode": 364,
-      "versionName": "1.5.1",
-      "date": "2026-10-30",
-      "description": "إطلاق المساعد الذكي FlowPOS AI Copilot (Claude 3.5 Sonnet) وتحصين المحاسبة متعددة العملات وسداد الديون بدقة 8 منازل وتكلفة الكرتون."
     }
   ]
 }

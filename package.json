@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "1.5.3",
+  "version": "1.5.3.382",
   "description": "FlowPOS Pro Point of Sale System",
   "author": "FlowPOS Pro",
   "type": "module",
@@ -22,6 +22,7 @@
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor-mlkit/barcode-scanning": "8.2.1",
     "@capacitor/app": "^8.0.1",
     "@capacitor/camera": "^8.0.1",

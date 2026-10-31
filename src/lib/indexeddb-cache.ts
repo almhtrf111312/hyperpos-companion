@@ -1,5 +1,6 @@
 // IndexedDB Cache Layer for Offline-First Product Access
 // Provides instant loading and full offline capability for POS
+import { isNativeStorageSupported, getNativeDB } from './db/native-sqlite';
 
 const DB_NAME = 'hyperpos_cache';
 const DB_VERSION = 2;
@@ -101,8 +102,45 @@ export async function removePendingStockDeduction(operationId: string): Promise<
   }
 }
 
-// Save all products to IndexedDB (bulk replace)
+// Save all products to Hybrid Store (SQLite on Native, IndexedDB on Web)
 export async function saveProductsToIDB(products: unknown[]): Promise<void> {
+  if (isNativeStorageSupported()) {
+    try {
+      const nativeDb = await getNativeDB();
+      if (nativeDb) {
+        await nativeDb.execute('BEGIN TRANSACTION;');
+        for (const product of products) {
+          const p = product as any;
+          if (!p || !p.id) continue;
+          await nativeDb.run(
+            `INSERT OR REPLACE INTO local_products 
+            (id, name, barcode, barcode2, barcode3, price, cost_price, stock, category, unit, pieces_per_box, is_active, custom_fields, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            [
+              p.id,
+              p.name || '',
+              p.barcode || null,
+              p.barcode2 || null,
+              p.barcode3 || null,
+              Number(p.price) || 0,
+              Number(p.cost_price) || 0,
+              Number(p.stock) || 0,
+              p.category || '',
+              p.unit || 'piece',
+              p.pieces_per_box || 1,
+              p.is_active !== false ? 1 : 0,
+              p.custom_fields ? JSON.stringify(p.custom_fields) : null,
+              p.updated_at || new Date().toISOString()
+            ]
+          );
+        }
+        await nativeDb.execute('COMMIT;');
+      }
+    } catch (e) {
+      console.warn('[HybridStore] Native SQLite save failed, falling back to IDB:', e);
+    }
+  }
+
   try {
     const db = await openDB();
     const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readwrite');
@@ -136,8 +174,26 @@ export async function saveProductsToIDB(products: unknown[]): Promise<void> {
   }
 }
 
-// Load all products from IndexedDB
+// Load all products from Hybrid Store (SQLite on Native, IndexedDB on Web)
 export async function loadProductsFromIDB<T>(): Promise<{ products: T[]; timestamp: number } | null> {
+  if (isNativeStorageSupported()) {
+    try {
+      const nativeDb = await getNativeDB();
+      if (nativeDb) {
+        const res = await nativeDb.query('SELECT * FROM local_products WHERE is_active = 1;');
+        if (res.values && res.values.length > 0) {
+          const products = res.values.map(p => ({
+            ...p,
+            custom_fields: p.custom_fields ? (typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : p.custom_fields) : null
+          })) as T[];
+          return { products, timestamp: Date.now() };
+        }
+      }
+    } catch (e) {
+      console.warn('[HybridStore] Native SQLite load failed, falling back to IDB:', e);
+    }
+  }
+
   try {
     const db = await openDB();
     const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readonly');
@@ -166,8 +222,29 @@ export async function loadProductsFromIDB<T>(): Promise<{ products: T[]; timesta
   }
 }
 
-// Get a single product by barcode from IndexedDB
+// Get a single product by barcode from Hybrid Store (SQLite on Native, IndexedDB on Web)
 export async function getProductByBarcodeIDB<T>(barcode: string): Promise<T | null> {
+  if (isNativeStorageSupported()) {
+    try {
+      const nativeDb = await getNativeDB();
+      if (nativeDb) {
+        const res = await nativeDb.query(
+          'SELECT * FROM local_products WHERE is_active = 1 AND (barcode = ? OR barcode2 = ? OR barcode3 = ?) LIMIT 1;',
+          [barcode, barcode, barcode]
+        );
+        if (res.values && res.values.length > 0) {
+          const p = res.values[0];
+          return {
+            ...p,
+            custom_fields: p.custom_fields ? (typeof p.custom_fields === 'string' ? JSON.parse(p.custom_fields) : p.custom_fields) : null
+          } as T;
+        }
+      }
+    } catch (e) {
+      console.warn('[HybridStore] Native barcode search failed, falling back to IDB:', e);
+    }
+  }
+
   try {
     const db = await openDB();
     const tx = db.transaction(PRODUCTS_STORE, 'readonly');
@@ -194,6 +271,17 @@ export async function getProductByBarcodeIDB<T>(barcode: string): Promise<T | nu
 
 // Clear all cached products
 export async function clearProductsIDB(): Promise<void> {
+  if (isNativeStorageSupported()) {
+    try {
+      const nativeDb = await getNativeDB();
+      if (nativeDb) {
+        await nativeDb.execute('DELETE FROM local_products;');
+      }
+    } catch (e) {
+      console.warn('[HybridStore] Failed to clear native products:', e);
+    }
+  }
+
   try {
     const db = await openDB();
     const tx = db.transaction([PRODUCTS_STORE, META_STORE, PENDING_STOCK_STORE], 'readwrite');
@@ -205,8 +293,19 @@ export async function clearProductsIDB(): Promise<void> {
   }
 }
 
-// Delete a single product from IndexedDB
+// Delete a single product from IndexedDB and SQLite
 export async function deleteProductFromIDB(id: string): Promise<void> {
+  if (isNativeStorageSupported()) {
+    try {
+      const nativeDb = await getNativeDB();
+      if (nativeDb) {
+        await nativeDb.run('DELETE FROM local_products WHERE id = ?;', [id]);
+      }
+    } catch (e) {
+      console.warn('[HybridStore] Native delete failed:', e);
+    }
+  }
+
   try {
     const db = await openDB();
     const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readwrite');
@@ -222,8 +321,33 @@ export async function deleteProductFromIDB(id: string): Promise<void> {
   }
 }
 
-// Update a single product in IndexedDB
+// Update a single product in IndexedDB and SQLite
 export async function updateProductInIDB(id: string, updates: Record<string, unknown>): Promise<void> {
+  if (isNativeStorageSupported()) {
+    try {
+      const nativeDb = await getNativeDB();
+      if (nativeDb) {
+        const sets: string[] = [];
+        const vals: any[] = [];
+        for (const [key, val] of Object.entries(updates)) {
+          if (['name', 'barcode', 'barcode2', 'barcode3', 'price', 'cost_price', 'stock', 'category', 'unit', 'pieces_per_box', 'is_active', 'updated_at'].includes(key)) {
+            sets.push(`${key} = ?`);
+            vals.push(val);
+          } else if (key === 'custom_fields') {
+            sets.push('custom_fields = ?');
+            vals.push(val ? JSON.stringify(val) : null);
+          }
+        }
+        if (sets.length > 0) {
+          vals.push(id);
+          await nativeDb.run(`UPDATE local_products SET ${sets.join(', ')} WHERE id = ?;`, vals);
+        }
+      }
+    } catch (e) {
+      console.warn('[HybridStore] Native update failed:', e);
+    }
+  }
+
   try {
     const db = await openDB();
     const tx = db.transaction([PRODUCTS_STORE, META_STORE], 'readwrite');
@@ -266,4 +390,14 @@ export async function isIDBCacheFresh(maxAgeMs: number = 86400000): Promise<bool
   } catch {
     return false;
   }
+}
+
+// Compatibility helper aliases for Hybrid Store bridge
+export async function getCachedProducts<T = any>(): Promise<T[]> {
+  const result = await loadProductsFromIDB<T>();
+  return result?.products || [];
+}
+
+export async function setCachedProducts(products: unknown[]): Promise<void> {
+  return await saveProductsToIDB(products);
 }
